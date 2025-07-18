@@ -6,8 +6,9 @@ metadata:
   name: 'openedx-ai-extensions
   description: "Plugin project to add AI capabilities to developers in Open edX"
   annotations:
-    openedx.org/arch-interest-groups: "felipemontoya"
+    openedx.org/arch-interest-groups: ""
+    openedx.org/release: null
 spec:
-  owner: user:felipemontoya
+  owner: "user:felipemontoya"
   type: 'library'
   lifecycle: 'experimental'

@@ -1,0 +1,5 @@
+# Requirements for running tests in CI
+
+-c constraints.txt
+
+tox                       # Virtualenv management for tests

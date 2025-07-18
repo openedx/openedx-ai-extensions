@@ -1,12 +1,12 @@
-.. sample_plugin documentation top level file, created by
+.. openedx_ai_extensions documentation top level file, created by
    sphinx-quickstart on Fri Apr 11 10:00:56 2025.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-sample_plugin
+openedx_ai_extensions
 =============
 
-A sample backend plugin for the Open edX Platform
+A experimental plugin for Open edX designed to explore AI extensibility
 
 Contents:
 

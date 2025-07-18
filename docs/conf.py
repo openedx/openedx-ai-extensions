@@ -1,6 +1,6 @@
 # pylint: disable=invalid-name
 """
-sample_plugin documentation build configuration file.
+openedx_ai_extensions documentation build configuration file.
 
 This file is execfile()d with the current directory set to its
 containing dir.
@@ -39,7 +39,7 @@ def get_version(*file_paths):
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(REPO_ROOT)
 
-VERSION = get_version('./backend/sample_plugin', '__init__.py')
+VERSION = get_version('./backend/openedx_ai_extensions', '__init__.py')
 # Configure Django for autodoc usage
 os.environ['DJANGO_SETTINGS_MODULE'] = 'test_settings'
 django_setup()
@@ -91,17 +91,17 @@ source_suffix = '.rst'
 top_level_doc = 'index'
 
 # General information about the project.
-project = 'sample_plugin'
+project = 'openedx_ai_extensions'
 copyright = f'{datetime.now().year}, Felipe Montoya <edunext>.'  # pylint: disable=redefined-builtin
 author = 'Felipe Montoya <edunext>.'
-project_title = 'sample_plugin'
+project_title = 'openedx_ai_extensions'
 documentation_title = f"{project_title}"
 
 # Set display_github to False if you don't want "edit on Github" button
 html_context = {
     "display_github": True,  # Integrate GitHub
     "github_user": "openedx",  # Username
-    "github_repo": 'sample-plugin',  # Repo name
+    "github_repo": 'openedx-ai-extensions',  # Repo name
     "github_version": "main",  # Version
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root
 }
@@ -186,7 +186,7 @@ html_theme = 'sphinx_book_theme'
 # documentation.
 #
 html_theme_options = {
-    "repository_url": "https://github.com/openedx/sample-plugin",
+    "repository_url": "https://github.com/openedx/openedx-ai-extensions",
     "repository_branch": 'main',
     "path_to_docs": "docs/",
     "home_page_in_toc": True,
@@ -223,7 +223,7 @@ html_theme_options = {
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.
 #
-# html_title = 'sample_plugin v0.1.0'
+# html_title = 'openedx_ai_extensions v0.1.0'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #
@@ -409,7 +409,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (top_level_doc, project_title, documentation_title,
-     author, project_title, 'A sample backend plugin for the Open edX Platform',
+     author, project_title, 'A experimental plugin for Open edX designed to explore AI extensibility',
      'Miscellaneous'),
 ]
 
@@ -537,8 +537,8 @@ def on_init(app):  # pylint: disable=unused-argument
         # If we are, assemble the path manually
         bin_path = os.path.abspath(os.path.join(sys.prefix, 'bin'))
         apidoc_path = os.path.join(bin_path, apidoc_path)
-    check_call([apidoc_path, '-o', docs_path, os.path.join(root_path, 'sample_plugin'),
-                os.path.join(root_path, 'sample_plugin/migrations')])
+    check_call([apidoc_path, '-o', docs_path, os.path.join(root_path, 'openedx_ai_extensions'),
+                os.path.join(root_path, 'openedx_ai_extensions/migrations')])
 
 
 def setup(app):
