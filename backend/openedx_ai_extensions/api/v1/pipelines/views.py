@@ -47,21 +47,10 @@ class AIGenericPipelinesView(View):
         request_info = {
             "timestamp": datetime.now().isoformat(),
             "method": method,
-            "path": request.path,
             "user": str(request.user),
             "user_id": getattr(request.user, 'id', None),
-            "is_authenticated": request.user.is_authenticated,
-            "remote_ip": request.META.get('REMOTE_ADDR'),
-            "user_agent": request.META.get('HTTP_USER_AGENT'),
-            "content_type": request.META.get('CONTENT_TYPE'),
             "query_params": dict(request.GET),
             "request_body": body_data,
-            "headers": {
-                "Origin": request.headers.get('Origin'),
-                "Referer": request.headers.get('Referer'),
-                "Accept": request.headers.get('Accept'),
-                "X-Requested-With": request.headers.get('X-Requested-With'),
-            }
         }
         
         # Single pretty log with all info
