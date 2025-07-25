@@ -110,7 +110,7 @@ export const generateRequestId = () => {
 export const callAIService = async ({
   contextData = {},
   userQuery = 'Provide learning assistance for this content',
-  apiEndpoint = 'http://local.openedx.io:8000/openedx-ai-extensions/ai/v1/',
+  apiEndpoint = '',
   requestId = null,
   options = {},
 }) => {
@@ -231,17 +231,7 @@ import { getConfig } from '@edx/frontend-platform';
  */
 export const getDefaultEndpoint = () => {
   // TODO: figure out why getConfig is not working
-  return `http://local.openedx.io:8000/openedx-ai-extensions/ai/v1/`;
-  try {
-    // Use Open edX standard config to get LMS base URL
-    return `${getConfig().LMS_BASE_URL}/openedx-ai-extensions/ai/v1/`;
-  
-  } catch (error) {
-    console.warn('Could not get LMS_BASE_URL from config:', error);
-  }
-  
-  // Last resort fallback
-  return `${window.location.origin}/openedx-ai-extensions/ai/v1/`;
+  return `http://local.openedx.io:8000/openedx-ai-extensions/v1/pipelines/`;
 };
 
 /**
