@@ -10,5 +10,5 @@ def plugin_settings(settings):
     Args:
         settings (dict): Django settings object
     """
-    pass
-    # settings.FOO = 'bar'
+    settings.AI_MODEL = 'gpt-4.1-mini'
+    settings.OPENAI_API_KEY = "make_it_read_from_tutor"
