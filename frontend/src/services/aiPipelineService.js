@@ -156,6 +156,7 @@ export const callAIService = async ({
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify(requestPayload),
     });
 
