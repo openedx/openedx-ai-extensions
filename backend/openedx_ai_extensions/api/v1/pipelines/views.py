@@ -12,6 +12,10 @@ from django.views.decorators.http import require_http_methods
 from django.utils.decorators import method_decorator
 from django.views import View
 
+from .services.openedx_content import get_unit_content
+from .services.ai_processing import summarize_content
+
+
 # Configure logger for this module
 logger = logging.getLogger(__name__)
 
@@ -56,12 +60,21 @@ class AIGenericPipelinesView(View):
         # Single pretty log with all info
         logger.info("🤖 AI ASSISTANCE REQUEST:\n" + pprint.pformat(request_info, indent=2, width=100))
         
+        # Do something with the content
+        # this will be replaced by the flex pipeline
+        unit_id = body_data.get('context', {}).get('unitId')
+        unit_content = get_unit_content(unit_id)
+        ai_summary = summarize_content(str(unit_content)[:300], body_data.get('user_query', ''))
+
+        logger.info("🤖 AI EXTENSION CONTEXT:\n" + pprint.pformat(unit_content, indent=2, width=100)[:350])
+        logger.info("🤖 AI SUMMARY:\n" + pprint.pformat(ai_summary, indent=2, width=100))
+
         # Generate simple response
         request_id = body_data.get('requestId', 'no-request-id')
         
         response_data = {
             'requestId': request_id,
-            'response': f'¡Hola Mundo desde Python! 👋 Request recibido correctamente via {method}.',
+            'response': ai_summary.get('summary', "No summary available"),
             'status': 'success',
             'timestamp': datetime.now().isoformat(),
         }
