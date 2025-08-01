@@ -1,30 +1,31 @@
 """
-AI Pipelines API Views
-Simple logging and basic response functionality
+AI Workflows API Views  
+Refactored to use Django models and workflow orchestrators
 """
 import json
 import logging
 import pprint
 from datetime import datetime
+from typing import Optional, Dict
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 from django.utils.decorators import method_decorator
 from django.views import View
+from django.core.exceptions import ValidationError
+from django.contrib.auth.decorators import login_required
 
-from .services.openedx_content import get_unit_content
-from .services.ai_processing import summarize_content
-
+from openedx_ai_extensions.workflows.models import AIWorkflow
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class AIGenericPipelinesView(View):
+@method_decorator(csrf_exempt, name='dispatch')  # TODO: fix the UI so the csrf token is sent and check
+@method_decorator(login_required, name='dispatch')
+class AIGenericWorkflowView(View):
     """
-    AI Assistance Pipeline API endpoint
-    Simple logging and hello world response
+    AI Workflow API endpoint
     """
     
     def post(self, request):
@@ -44,39 +45,65 @@ class AIGenericPipelinesView(View):
                 body_data = json.loads(request.body.decode('utf-8'))
             else:
                 body_data = {}
-        except:
-            body_data = {"error": "Could not parse request body"}
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'error': 'Invalid JSON in request body',
+                'status': 'error'
+            }, status=400)
         
-        # Create complete request info for logging
-        request_info = {
+        context = body_data.get('context', {})
+
+        # Extract obligatory workflow identification fields
+        action = body_data.get('action')  # This value is set at the UI trigger
+        course_id = body_data.get('courseId')
+        user = request.user
+        context = body_data.get('context', {})
+
+        
+        # TODO: Remove verbose logging
+        logger.info("🤖 AI WORKFLOW REQUEST:\n" + pprint.pformat({
             "timestamp": datetime.now().isoformat(),
             "method": method,
-            "user": str(request.user),
-            "user_id": getattr(request.user, 'id', None),
+            "action": action,
+            "user_id": user.id,
+            "username": user.username,
+            "course_id": course_id,
             "query_params": dict(request.GET),
             "request_body": body_data,
-        }
+        }, indent=2, width=100))
         
-        # Single pretty log with all info
-        logger.info("🤖 AI ASSISTANCE REQUEST:\n" + pprint.pformat(request_info, indent=2, width=100))
-        
-        # Do something with the content
-        # this will be replaced by the flex pipeline
-        unit_id = body_data.get('context', {}).get('unitId')
-        unit_content = get_unit_content(unit_id)
-        ai_summary = summarize_content(str(unit_content)[:300], body_data.get('user_query', ''))
+        try:
+            # Get or create workflow based on context
+            workflow, created = AIWorkflow.find_workflow_for_context(
+                action=action,
+                course_id=course_id,
+                user=user,
+                context=context
+            )
+            
+            result = workflow.execute()
 
-        logger.info("🤖 AI EXTENSION CONTEXT:\n" + pprint.pformat(unit_content, indent=2, width=100)[:350])
-        logger.info("🤖 AI SUMMARY:\n" + pprint.pformat(ai_summary, indent=2, width=100))
-
-        # Generate simple response
-        request_id = body_data.get('requestId', 'no-request-id')
-        
-        response_data = {
-            'requestId': request_id,
-            'response': ai_summary.get('summary', "No summary available"),
-            'status': 'success',
-            'timestamp': datetime.now().isoformat(),
-        }
-        
-        return JsonResponse(response_data, status=200)
+            # TODO: this should go through a serializer so that every UI actuator receives a compatible object
+            request_id = body_data.get('requestId', 'no-request-id')
+            result.update({
+                'requestId': request_id,
+                'timestamp': datetime.now().isoformat(),
+                'workflow_created': created
+            })
+            return JsonResponse(result, status=200)
+            
+        except ValidationError as e:
+            logger.warning(f"🤖 WORKFLOW VALIDATION ERROR: {str(e)}")
+            return JsonResponse({
+                'error': str(e),
+                'status': 'validation_error',
+                'timestamp': datetime.now().isoformat(),
+            }, status=400)
+            
+        except Exception as e:
+            logger.error(f"🤖 WORKFLOW ERROR: {str(e)}")
+            return JsonResponse({
+                'error': str(e),
+                'status': 'error',
+                'timestamp': datetime.now().isoformat(),
+            }, status=500)
