@@ -110,6 +110,7 @@ export const generateRequestId = () => {
 export const callAIService = async ({
   contextData = {},
   userQuery = 'Provide learning assistance for this content',
+  courseId = '',
   apiEndpoint = '',
   requestId = null,
   options = {},
@@ -117,7 +118,8 @@ export const callAIService = async ({
   const requestPayload = {
     // Request metadata
     requestId: requestId || generateRequestId(),
-    action: 'get_assistance',
+    action: 'simple_button_assistance',
+    courseId: courseId || extractCourseIdFromUrl(),
     timestamp: new Date().toISOString(),
     
     // AI request data
@@ -232,7 +234,7 @@ import { getConfig } from '@edx/frontend-platform';
  */
 export const getDefaultEndpoint = () => {
   // TODO: figure out why getConfig is not working
-  return `http://local.openedx.io:8000/openedx-ai-extensions/v1/pipelines/`;
+  return `http://local.openedx.io:8000/openedx-ai-extensions/v1/workflows/`;
 };
 
 /**

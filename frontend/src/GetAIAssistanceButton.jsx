@@ -73,6 +73,7 @@ const GetAIAssistanceButton = ({
       const data = await callAIService({
         contextData,
         apiEndpoint: endpoint,
+        courseId: courseId,
         userQuery: requestMessage || 'Provide learning assistance for this content',
       });
 
