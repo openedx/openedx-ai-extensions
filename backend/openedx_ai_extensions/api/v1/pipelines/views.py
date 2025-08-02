@@ -81,7 +81,7 @@ class AIGenericWorkflowView(View):
                 context=context
             )
             
-            result = workflow.execute()
+            result = workflow.execute(body_data.get('user_input', {}))
 
             # TODO: this should go through a serializer so that every UI actuator receives a compatible object
             request_id = body_data.get('requestId', 'no-request-id')
@@ -90,7 +90,18 @@ class AIGenericWorkflowView(View):
                 'timestamp': datetime.now().isoformat(),
                 'workflow_created': created
             })
-            return JsonResponse(result, status=200)
+
+
+            # Check result status and return appropriate HTTP status
+            result_status = result.get('status', 'success')
+            if result_status == 'error':
+                http_status = 500  # Internal Server Error for processing failures
+            elif result_status in ['validation_error', 'bad_request']:
+                http_status = 400  # Bad Request for validation issues
+            else:
+                http_status = 200  # Success for completed/success status
+
+            return JsonResponse(result, status=http_status)
             
         except ValidationError as e:
             logger.warning(f"🤖 WORKFLOW VALIDATION ERROR: {str(e)}")

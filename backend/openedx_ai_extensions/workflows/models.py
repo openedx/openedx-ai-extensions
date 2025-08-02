@@ -3,11 +3,14 @@ AI Workflow models for managing flexible AI pipeline execution
 """
 import uuid
 from django.db import models
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from typing import Optional, Dict, Any
 import logging
+from openedx_ai_extensions.workflows import orchestrators
+
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -54,9 +57,16 @@ class AIWorkflowConfig(models.Model):
         return cls(
             action=action,
             course_id=course_id,
-            orchestrator_class="orchestrator_class",
-            processor_config={},
-            actuator_config={},
+            orchestrator_class="DirectLLMResponse",
+            # orchestrator_class="MockResponse",
+            processor_config={
+                'LLMProcessor': {
+                    'api_key': settings.OPENAI_API_KEY,
+                    'model': settings.AI_MODEL,
+                    'temperature': 0.7,
+                },
+            },
+            actuator_config={}, # TODO: first I must make the actuator selection dynamic
         )
 
 
@@ -64,9 +74,6 @@ class AIWorkflow(models.Model):
     """
     Individual AI workflow instances with state management
     """
-    # Unique identifier for this workflow instance
-    token = models.UUIDField(default=uuid.uuid4, unique=True, help_text="Unique token for workflow identification")
-    
     # Core identification fields
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User who initiated this workflow")
     action = models.CharField(max_length=100, help_text="Action identifier")
@@ -77,7 +84,9 @@ class AIWorkflow(models.Model):
     
     # Workflow execution state
     config = models.ForeignKey(AIWorkflowConfig, on_delete=models.CASCADE, help_text="Configuration used for this workflow")
-    current_step = models.CharField(max_length=100, default="start", help_text="Current step in workflow execution")
+    
+    # TODO: think about partial execution with multiple trips for user info
+    # current_step = models.CharField(max_length=100, default="start", help_text="Current step in workflow execution")
     status = models.CharField(max_length=50, default="active", choices=[
         ('active', 'Active'),
         ('completed', 'Completed'),
@@ -99,7 +108,6 @@ class AIWorkflow(models.Model):
         unique_together = ['user', 'action', 'course_id', 'unit_id']
         indexes = [
             models.Index(fields=['user', 'action', 'status']),
-            models.Index(fields=['token']),
             models.Index(fields=['created_at']),
         ]
     
@@ -135,16 +143,6 @@ class AIWorkflow(models.Model):
         
         # Get or create workflow using natural key
         # workflow, created = cls.objects.get_or_create(
-        #     user=user,
-        #     action=action,
-        #     course_id=course_id,
-        #     unit_id=unit_id,
-        #     defaults={
-        #         'config': config,
-        #         'extra_context': context,
-        #         'context_data': {}
-        #     }
-        # )
         workflow = cls(
             user=user,
             action=action,
@@ -159,7 +157,7 @@ class AIWorkflow(models.Model):
         logger.info(f"🤖 WORKFLOW FINDER: {'Created new' if created else 'Found existing'} workflow {workflow.get_natural_key()}")
         return workflow, created
     
-    def execute(self) -> Dict[str, Any]:
+    def execute(self, user_input) -> Dict[str, Any]:
         """
         Execute this workflow using its configured orchestrator
         This is where the actual AI processing happens
@@ -169,30 +167,18 @@ class AIWorkflow(models.Model):
         logger.info(f"🤖 WORKFLOW EXECUTOR: Starting execution for {self.get_natural_key()}")
         
         try:
-            # # Load the orchestrator for this workflow
-            # orchestrator = self._load_orchestrator()
+            # Load the orchestrator for this workflow
+            orchestrator_name = self.config.orchestrator_class  # "DirectLLMResponse"
+            orchestrator = getattr(orchestrators, orchestrator_name)(workflow=self)
             
-            # # Prepare input data for orchestrator
-            # input_data = {
-            #     'context': self.extra_context,
-            #     'workflow_data': self.context_data,
-            #     'user_id': self.user.id,
-            #     'course_id': self.course_id,
-            #     'unit_id': self.unit_id,
-            #     'action': self.action
-            # }
-            
-            # # Execute the orchestrator
-            # result = orchestrator.execute(input_data)
-            result = {}
+            # Execute the orchestrator
+            result = orchestrator.run(user_input)
             
             logger.info(f"🤖 WORKFLOW EXECUTOR: Completed execution for {self.get_natural_key()}, status={self.status}")
             
             # Add workflow metadata to result
             result.update({
-                'response': "saying something in the model",
                 'workflow_info': {
-                    # 'token': str(self.token),
                     # 'natural_key': self.get_natural_key(),
                     # 'status': self.status,
                     # 'current_step': self.current_step,
@@ -216,10 +202,9 @@ class AIWorkflow(models.Model):
                 'error': f"Workflow execution failed: {str(e)}",
                 'status': 'error',
                 'workflow_info': {
-                    'token': str(self.token),
                     'natural_key': self.get_natural_key(),
                     'status': self.status,
-                    'current_step': self.current_step
+                    # 'current_step': self.current_step
                 }
             }
     
@@ -235,7 +220,7 @@ class AIWorkflow(models.Model):
     
     def set_step(self, step: str, status: Optional[str] = None):
         """Update current step and optionally status"""
-        self.current_step = step
+        # self.current_step = step
         if status:
             self.status = status
         # self.save(update_fields=['current_step', 'status', 'updated_at'])
@@ -243,7 +228,7 @@ class AIWorkflow(models.Model):
     def complete(self, **final_context):
         """Mark workflow as completed with final context"""
         self.status = 'completed'
-        self.current_step = 'completed'
+        # self.current_step = 'completed'
         self.completed_at = timezone.now()
         if final_context:
             self.context_data.update(final_context)
