@@ -17,8 +17,11 @@ class LLMProcessor:
         class_name = self.__class__.__name__
         self.config = config.get(class_name, {})
 
-        logger.warning("")
-        logger.warning(f"🤖 WORKFLOW LLMProcessor config: {str(self.config)}")
+    def process(self, input_data):
+        """Process based on configured function"""
+        function_name = self.config.get('function', 'summarize_content')
+        function = getattr(self, function_name)
+        return function(input_data)
 
     def summarize_content(self, content_text, user_query=""):
         """Summarize content using LiteLLM"""

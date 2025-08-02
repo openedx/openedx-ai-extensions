@@ -25,28 +25,29 @@ class MockResponse(BaseOrchestrator):
 
 class DirectLLMResponse(BaseOrchestrator):
     def run(self, input_data):
-    
-        unit_id = self.workflow.unit_id
-        if not unit_id:
-            return {'error': 'Unit ID is required', 'status': 'error'}
+        # Prepare context
+        context = {
+            'course_id': self.workflow.course_id,
+            'extra_context': self.workflow.extra_context
+        }
         
-        # 1. Get unit content
+        # 1. Process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_text = openedx_processor.get_unit_content(unit_id)
+        content_result = openedx_processor.process(context)
         
-        if 'error' in content_text:
-            return {'error': content_text['error'], 'status': 'error'}
+        if 'error' in content_result:
+            return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
         
-        # 2. Summarize with LLM
+        # 2. Process with LLM processor
         llm_processor = LLMProcessor(self.config.processor_config)
-        llm_result = llm_processor.summarize_content(str(content_text))
+        llm_result = llm_processor.process(str(content_result))
         
         if 'error' in llm_result:
-            return {'error': llm_result['error'], 'status': 'error'}
+            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
         
         # 3. Return result
         return {
-            'response': llm_result.get('summary', 'No summary available'),
+            'response': llm_result.get('summary', 'No response available'),
             'status': 'completed',
             'metadata': {
                 'tokens_used': llm_result.get('tokens_used'),

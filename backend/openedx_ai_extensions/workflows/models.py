@@ -64,6 +64,11 @@ class AIWorkflowConfig(models.Model):
                     'api_key': settings.OPENAI_API_KEY,
                     'model': settings.AI_MODEL,
                     'temperature': 0.7,
+                    'function': "summarize_content",
+                },
+                'OpenEdXProcessor': {
+                    'function': "get_unit_content",
+                    'char_limit': 300,
                 },
             },
             actuator_config={}, # TODO: first I must make the actuator selection dynamic
