@@ -47,7 +47,7 @@ class DirectLLMResponse(BaseOrchestrator):
         
         # 3. Return result
         return {
-            'response': llm_result.get('summary', 'No response available'),
+            'response': llm_result.get('response', 'No response available'),
             'status': 'completed',
             'metadata': {
                 'tokens_used': llm_result.get('tokens_used'),
