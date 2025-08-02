@@ -51,24 +51,23 @@ class AIWorkflowConfig(models.Model):
     @classmethod
     def get_config(cls, action: str, course_id: Optional[str] = None):
         """Get the best matching configuration for action and course"""
-        # Try course-specific first, then global
-
-        # return something empty
+        # Returns fixed in memory object for now
         return cls(
             action=action,
             course_id=course_id,
             orchestrator_class="DirectLLMResponse",
             # orchestrator_class="MockResponse",
             processor_config={
+                'OpenEdXProcessor': {
+                    'function': "get_unit_content",
+                    'char_limit': 300,
+                },
                 'LLMProcessor': {
                     'api_key': settings.OPENAI_API_KEY,
                     'model': settings.AI_MODEL,
                     'temperature': 0.7,
-                    'function': "summarize_content",
-                },
-                'OpenEdXProcessor': {
-                    'function': "get_unit_content",
-                    'char_limit': 300,
+                    # 'function': "summarize_content",
+                    'function': "explain_like_five",
                 },
             },
             actuator_config={}, # TODO: first I must make the actuator selection dynamic
