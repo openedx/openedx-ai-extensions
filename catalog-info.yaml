@@ -3,7 +3,7 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: 'openedx-ai-extensions
+  name: 'openedx-ai-extensions'
   description: "Plugin project to add AI capabilities to developers in Open edX"
   annotations:
     openedx.org/arch-interest-groups: ""
