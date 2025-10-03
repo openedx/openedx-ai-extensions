@@ -7,75 +7,11 @@ import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 
 /**
- * Prepare context data from Open edX learning environment
- * Captures ALL available information without requiring anything specific
- * @param {Object} params - Learning context parameters (all optional)
- * @returns {Object} Formatted context for AI service
- */
-export const prepareContextData = ({ 
-  sequence = null, 
-  courseId = null, 
-  unitId = null,
-  ...extraProps 
-} = {}) => {
-  // Base context that's always available
-  const contextData = {
-    // Environment info
-    timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    platform: 'openedx-learning-mfe',
-    url: window.location.href,
-    pathname: window.location.pathname,
-    
-    // User info (if available)
-    userId: window.user?.id || null,
-    username: window.user?.username || null,
-    isStaff: window.user?.is_staff || false,
-    
-    // Course context (if available)
-    courseId: courseId || extractCourseIdFromUrl(),
-    unitId: unitId || extractUnitIdFromUrl(),
-    
-    // Sequence context (if available)
-    sequence: sequence ? {
-      id: sequence.id,
-      displayName: sequence.displayName,
-      blockCount: sequence.unitBlocks?.length || 0,
-      blockTypes: sequence.unitBlocks?.map(block => block.type) || [],
-      blocks: sequence.unitBlocks?.map(block => ({
-        id: block.id,
-        type: block.type,
-        displayName: block.displayName,
-        // Capture any additional block properties
-        ...block
-      })) || []
-    } : null,
-    
-    // Browser context
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    },
-    
-    // Language/locale
-    language: navigator.language || 'en',
-    
-    // Any extra props passed in
-    ...extraProps
-  };
-
-  // Remove null/undefined values to keep payload clean
-  return Object.fromEntries(
-    Object.entries(contextData).filter(([_, value]) => value != null)
-  );
-};
-
-/**
  * Extract course ID from current URL if not provided
  */
 const extractCourseIdFromUrl = () => {
   try {
-    const pathMatch = window.location.pathname.match(/course\/([^\/]+)/);
+    const pathMatch = window.location.pathname.match(/course\/([^/]+)/);
     return pathMatch ? pathMatch[1] : null;
   } catch {
     return null;
@@ -87,11 +23,75 @@ const extractCourseIdFromUrl = () => {
  */
 const extractUnitIdFromUrl = () => {
   try {
-    const pathMatch = window.location.pathname.match(/unit\/([^\/]+)/);
+    const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
     return pathMatch ? pathMatch[1] : null;
   } catch {
     return null;
   }
+};
+
+/**
+ * Prepare context data from Open edX learning environment
+ * Captures ALL available information without requiring anything specific
+ * @param {Object} params - Learning context parameters (all optional)
+ * @returns {Object} Formatted context for AI service
+ */
+export const prepareContextData = ({
+  sequence = null,
+  courseId = null,
+  unitId = null,
+  ...extraProps
+} = {}) => {
+  // Base context that's always available
+  const contextData = {
+    // Environment info
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    platform: 'openedx-learning-mfe',
+    url: window.location.href,
+    pathname: window.location.pathname,
+
+    // User info (if available)
+    userId: window.user?.id || null,
+    username: window.user?.username || null,
+    isStaff: window.user?.is_staff || false,
+
+    // Course context (if available)
+    courseId: courseId || extractCourseIdFromUrl(),
+    unitId: unitId || extractUnitIdFromUrl(),
+
+    // Sequence context (if available)
+    sequence: sequence ? {
+      id: sequence.id,
+      displayName: sequence.displayName,
+      blockCount: sequence.unitBlocks?.length || 0,
+      blockTypes: sequence.unitBlocks?.map(block => block.type) || [],
+      blocks: sequence.unitBlocks?.map(block => ({
+        id: block.id,
+        type: block.type,
+        displayName: block.displayName,
+        // Capture any additional block properties
+        ...block,
+      })) || [],
+    } : null,
+
+    // Browser context
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    },
+
+    // Language/locale
+    language: navigator.language || 'en',
+
+    // Any extra props passed in
+    ...extraProps,
+  };
+
+  // Remove null/undefined values to keep payload clean
+  return Object.fromEntries(
+    Object.entries(contextData).filter(([, value]) => value != null),
+  );
 };
 
 /**
@@ -124,11 +124,11 @@ export const callAIService = async ({
     action: 'simple_button_assistance',
     courseId: courseId || extractCourseIdFromUrl(),
     timestamp: new Date().toISOString(),
-    
+
     // AI request data
     context: contextData,
     user_query: userQuery,
-    
+
     // Flexible options
     options: {
       responseFormat: 'text',
@@ -136,17 +136,18 @@ export const callAIService = async ({
       temperature: 0.7,
       ...options, // Allow override of defaults
     },
-    
+
     // Include any additional data
     metadata: {
       source: 'openedx-ai-extensions',
       version: '1.0.0',
       mfe: 'learning',
-    }
+    },
   };
 
   // Log the request for debugging (only in development)
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.log('AI Service Request:', {
       endpoint: apiEndpoint,
       payload: requestPayload,
@@ -161,21 +162,22 @@ export const callAIService = async ({
       .catch((error) => {
         throw error;
       });
-    
+
     // Log successful response (only in development)
     if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
       console.log('AI Service Response Data:', data);
     }
-    
+
     // Very flexible response validation - accept any structure
     if (!data) {
       throw new Error('Empty response from AI service');
     }
 
     return data;
-
   } catch (error) {
     // Enhanced error logging
+    // eslint-disable-next-line no-console
     console.error('AI Service Error:', {
       error: error.message,
       endpoint: apiEndpoint,
@@ -195,6 +197,7 @@ export const callAIService = async ({
  */
 export const validateEndpoint = (endpoint) => {
   try {
+    // eslint-disable-next-line no-new
     new URL(endpoint, window.location.origin);
     return true;
   } catch {
@@ -220,23 +223,23 @@ export const getDefaultEndpoint = () => {
  */
 export const formatErrorMessage = (error) => {
   const errorMessage = error.message || 'Unknown error occurred';
-  
+
   // Map technical errors to user-friendly messages
   if (errorMessage.includes('fetch')) {
     return 'Unable to connect to AI service. Please check your connection.';
   }
-  
+
   if (errorMessage.includes('404')) {
     return 'AI service not available. Please contact support.';
   }
-  
+
   if (errorMessage.includes('500')) {
     return 'AI service temporarily unavailable. Please try again later.';
   }
-  
+
   if (errorMessage.includes('timeout')) {
     return 'Request timed out. The AI service may be busy, please try again.';
   }
-  
+
   return 'Failed to get AI assistance. Please try again.';
 };

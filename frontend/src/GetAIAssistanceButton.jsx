@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import PropTypes from 'prop-types';
 
 // Import service modules
 import {
@@ -19,17 +20,17 @@ import {
  * Main AI Assistant Plugin Component
  * Orchestrates the AI assistance flow using modular components
  */
-const GetAIAssistanceButton = ({ 
-  sequence, 
-  courseId, 
+const GetAIAssistanceButton = ({
+  sequence,
+  courseId,
   unitId,
   apiEndpoint,
   requestMessage,
   buttonText,
-  showResponseActions = true,
-  allowCopy = true,
-  allowDownload = false,
-  ...props 
+  showResponseActions,
+  allowCopy,
+  allowDownload,
+  ...props
 }) => {
   // Core state management
   const [isLoading, setIsLoading] = useState(false);
@@ -64,16 +65,17 @@ const GetAIAssistanceButton = ({
         courseId,
         unitId,
         // Pass any additional props that might be useful
-        ...props
+        ...props,
       });
 
+      // eslint-disable-next-line no-console
       console.log('Prepared context data:', contextData);
 
       // Make API call with flexible parameters
       const data = await callAIService({
         contextData,
         apiEndpoint: endpoint,
-        courseId: courseId,
+        courseId,
         userQuery: requestMessage || 'Provide learning assistance for this content',
       });
 
@@ -100,8 +102,8 @@ const GetAIAssistanceButton = ({
         setResponse(JSON.stringify(data, null, 2));
         setHasAsked(true);
       }
-
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('AI Assistant Error:', err);
       const userFriendlyError = formatErrorMessage(err);
       setError(userFriendlyError);
@@ -142,7 +144,7 @@ const GetAIAssistanceButton = ({
 
   return (
     <div className="ai-assistant-plugin" style={{ maxWidth: '100%' }}>
-      
+
       {/* Request Interface - Show button unless we have a successful response */}
       <AIRequestComponent
         isLoading={isLoading}
@@ -179,6 +181,34 @@ const GetAIAssistanceButton = ({
       )}
     </div>
   );
+};
+
+GetAIAssistanceButton.propTypes = {
+  sequence: PropTypes.shape({
+    id: PropTypes.string,
+    displayName: PropTypes.string,
+    unitBlocks: PropTypes.arrayOf(PropTypes.shape({})),
+  }),
+  courseId: PropTypes.string,
+  unitId: PropTypes.string,
+  apiEndpoint: PropTypes.string,
+  requestMessage: PropTypes.string,
+  buttonText: PropTypes.string,
+  showResponseActions: PropTypes.bool,
+  allowCopy: PropTypes.bool,
+  allowDownload: PropTypes.bool,
+};
+
+GetAIAssistanceButton.defaultProps = {
+  sequence: null,
+  courseId: null,
+  unitId: null,
+  apiEndpoint: null,
+  requestMessage: 'Need help understanding this content?',
+  buttonText: 'Get AI Assistance',
+  showResponseActions: true,
+  allowCopy: true,
+  allowDownload: false,
 };
 
 export default GetAIAssistanceButton;

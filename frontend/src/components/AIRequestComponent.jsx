@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { Button, Spinner } from '@openedx/paragon';
 import { Send } from '@openedx/paragon/icons';
 
@@ -24,9 +25,9 @@ const AIRequestComponent = ({
       {/* Loading state */}
       {isLoading && (
         <div className="d-flex align-items-center justify-content-center py-3">
-          <Spinner 
-            animation="border" 
-            variant="primary" 
+          <Spinner
+            animation="border"
+            variant="primary"
             size="sm"
             className="me-2"
           />
@@ -39,8 +40,8 @@ const AIRequestComponent = ({
         <div className="d-flex align-items-center justify-content-end">
           <small
             className="text-muted me-3"
-            style={{ 
-              paddingRight: '16px'
+            style={{
+              paddingRight: '16px',
             }}
           >
             {customMessage}
@@ -51,11 +52,11 @@ const AIRequestComponent = ({
             onClick={onAskAI}
             disabled={disabled || isLoading}
             iconBefore={Send}
-            style={{ 
+            style={{
               borderRadius: '20px',
               fontWeight: '500',
               paddingLeft: '16px',
-              paddingRight: '16px'
+              paddingRight: '16px',
             }}
           >
             {buttonText}
@@ -64,6 +65,21 @@ const AIRequestComponent = ({
       )}
     </div>
   );
+};
+
+AIRequestComponent.propTypes = {
+  isLoading: PropTypes.bool.isRequired,
+  hasAsked: PropTypes.bool.isRequired,
+  onAskAI: PropTypes.func.isRequired,
+  customMessage: PropTypes.string,
+  buttonText: PropTypes.string,
+  disabled: PropTypes.bool,
+};
+
+AIRequestComponent.defaultProps = {
+  customMessage: 'Need help understanding this content?',
+  buttonText: 'Get AI Assistance',
+  disabled: false,
 };
 
 export default AIRequestComponent;
