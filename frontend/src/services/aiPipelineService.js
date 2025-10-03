@@ -3,6 +3,9 @@
  * Handles API calls and context data preparation
  */
 
+import { getConfig } from '@edx/frontend-platform';
+import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
+
 /**
  * Prepare context data from Open edX learning environment
  * Captures ALL available information without requiring anything specific
@@ -151,34 +154,13 @@ export const callAIService = async ({
   }
 
   try {
-    const response = await fetch(apiEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify(requestPayload),
-    });
-
-    // Log response status
-    if (process.env.NODE_ENV === 'development') {
-      console.log('AI Service Response Status:', response.status);
-    }
-
-    // Handle HTTP errors
-    if (!response.ok) {
-      let errorText;
-      try {
-        errorText = await response.text();
-      } catch {
-        errorText = 'Unknown server error';
-      }
-      throw new Error(`API request failed: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
+    // Use Open edX authenticated HTTP client
+    // This automatically handles JWT cookies and CSRF tokens
+    const { data } = await getAuthenticatedHttpClient()
+      .post(apiEndpoint, requestPayload)
+      .catch((error) => {
+        throw error;
+      });
     
     // Log successful response (only in development)
     if (process.env.NODE_ENV === 'development') {
@@ -221,20 +203,14 @@ export const validateEndpoint = (endpoint) => {
 };
 
 /**
- * AI Assistant Service Module
- * Handles API calls and context data preparation
- */
-
-import { getConfig } from '@edx/frontend-platform';
-
-/**
  * Get default API endpoint based on environment
  * Uses Open edX standard configuration system
  * @returns {string} Default endpoint URL
  */
 export const getDefaultEndpoint = () => {
-  // TODO: figure out why getConfig is not working
-  return `http://local.openedx.io:8000/openedx-ai-extensions/v1/workflows/`;
+  const config = getConfig();
+  const lmsBaseUrl = config.LMS_BASE_URL;
+  return `${lmsBaseUrl}/openedx-ai-extensions/v1/workflows/`;
 };
 
 /**

@@ -9,7 +9,6 @@ from datetime import datetime
 from typing import Optional, Dict
 
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.core.exceptions import ValidationError
@@ -21,7 +20,6 @@ from openedx_ai_extensions.workflows.models import AIWorkflow
 logger = logging.getLogger(__name__)
 
 
-@method_decorator(csrf_exempt, name='dispatch')  # TODO: fix the UI so the csrf token is sent and check
 @method_decorator(login_required, name='dispatch')
 class AIGenericWorkflowView(View):
     """
