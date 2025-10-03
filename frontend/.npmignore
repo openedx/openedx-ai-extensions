@@ -1,0 +1,10 @@
+.eslintignore
+.eslintrc.json
+.gitignore
+.github
+Makefile
+npm-debug.log
+
+coverage
+node_modules
+src
