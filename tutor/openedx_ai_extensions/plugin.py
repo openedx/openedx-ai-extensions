@@ -8,6 +8,17 @@ from tutormfe.hooks import MFE_APPS, PLUGIN_SLOTS
 
 from .__about__ import __version__
 
+hooks.Filters.CONFIG_DEFAULTS.add_items(
+    [
+        # Add your new settings that have default values here.
+        # Each new setting is a pair: (setting_name, default_value).
+        ("OPENEDX_AI_EXTENSIONS_VERSION", __version__),
+        ("OPENEDX_AI_EXTENSIONS_API_KEY", None),
+        ("OPENEDX_AI_EXTENSIONS_MODEL", "gpt-5-mini"),
+        ("OPENEDX_AI_EXTENSIONS_TEMPERATURE", 0.7),
+        ("OPENEDX_AI_EXTENSIONS_LLM_FUNCTION", "explain_like_five"),
+    ]
+)
 
 ########################
 # Plugin path management
