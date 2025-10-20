@@ -1,0 +1,2 @@
+RUN --mount=type=cache,target=/openedx/.cache/pip,sharing=shared \
+    pip install git+https://github.com/edunext/openedx-ai-extensions.git@main#subdirectory=backend
