@@ -6,13 +6,13 @@ import json
 import logging
 import pprint
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Dict, Optional
 
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.core.exceptions import ValidationError
-from django.contrib.auth.decorators import login_required
 
 from openedx_ai_extensions.workflows.models import AIWorkflow
 

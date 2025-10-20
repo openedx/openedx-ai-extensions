@@ -3,7 +3,7 @@ Orchestrators
 Base classes to hold the logic of execution in ai workflows
 """
 
-from openedx_ai_extensions.processors import OpenEdXProcessor, LLMProcessor
+from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
 
 
 class BaseOrchestrator:

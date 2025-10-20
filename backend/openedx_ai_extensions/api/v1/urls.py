@@ -2,6 +2,7 @@
 Version 1 API URLs
 """
 from django.urls import path
+
 from .pipelines.views import AIGenericWorkflowView
 
 app_name = 'v1'

@@ -2,8 +2,9 @@
 LLM Processing using LiteLLM for multiple providers
 """
 import logging
-from litellm import completion
+
 from django.conf import settings
+from litellm import completion
 
 logger = logging.getLogger(__name__)
 

@@ -2,6 +2,7 @@
 Open edX Content Extraction
 """
 import logging
+
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from xmodule.modulestore.django import modulestore
 
