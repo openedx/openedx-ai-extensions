@@ -10,7 +10,7 @@ class BaseOrchestrator:
     def __init__(self, workflow):
         self.workflow = workflow
         self.config = workflow.config
-    
+
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
 
@@ -30,21 +30,21 @@ class DirectLLMResponse(BaseOrchestrator):
             'course_id': self.workflow.course_id,
             'extra_context': self.workflow.extra_context
         }
-        
+
         # 1. Process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
         content_result = openedx_processor.process(context)
-        
+
         if 'error' in content_result:
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
-        
+
         # 2. Process with LLM processor
         llm_processor = LLMProcessor(self.config.processor_config)
         llm_result = llm_processor.process(str(content_result))
-        
+
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
-        
+
         # 3. Return result
         return {
             'response': llm_result.get('response', 'No response available'),

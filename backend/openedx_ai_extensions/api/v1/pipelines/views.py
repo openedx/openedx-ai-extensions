@@ -25,18 +25,18 @@ class AIGenericWorkflowView(View):
     """
     AI Workflow API endpoint
     """
-    
+
     def post(self, request):
         """Handle POST request for AI assistance"""
         return self._handle_request(request, 'POST')
-    
+
     def get(self, request):
         """Handle GET request for AI assistance"""
         return self._handle_request(request, 'GET')
-    
+
     def _handle_request(self, request, method):
         """Common handler for GET and POST requests"""
-        
+
         # Parse request body if present
         try:
             if request.body:
@@ -48,7 +48,7 @@ class AIGenericWorkflowView(View):
                 'error': 'Invalid JSON in request body',
                 'status': 'error'
             }, status=400)
-        
+
         context = body_data.get('context', {})
 
         # Extract obligatory workflow identification fields
@@ -57,7 +57,6 @@ class AIGenericWorkflowView(View):
         user = request.user
         context = body_data.get('context', {})
 
-        
         # TODO: Remove verbose logging
         logger.info("🤖 AI WORKFLOW REQUEST:\n" + pprint.pformat({
             "timestamp": datetime.now().isoformat(),
@@ -69,7 +68,7 @@ class AIGenericWorkflowView(View):
             "query_params": dict(request.GET),
             "request_body": body_data,
         }, indent=2, width=100))
-        
+
         try:
             # Get or create workflow based on context
             workflow, created = AIWorkflow.find_workflow_for_context(
@@ -78,7 +77,7 @@ class AIGenericWorkflowView(View):
                 user=user,
                 context=context
             )
-            
+
             result = workflow.execute(body_data.get('user_input', {}))
 
             # TODO: this should go through a serializer so that every UI actuator receives a compatible object
@@ -88,7 +87,6 @@ class AIGenericWorkflowView(View):
                 'timestamp': datetime.now().isoformat(),
                 'workflow_created': created
             })
-
 
             # Check result status and return appropriate HTTP status
             result_status = result.get('status', 'success')
@@ -100,7 +98,7 @@ class AIGenericWorkflowView(View):
                 http_status = 200  # Success for completed/success status
 
             return JsonResponse(result, status=http_status)
-            
+
         except ValidationError as e:
             logger.warning(f"🤖 WORKFLOW VALIDATION ERROR: {str(e)}")
             return JsonResponse({
@@ -108,7 +106,7 @@ class AIGenericWorkflowView(View):
                 'status': 'validation_error',
                 'timestamp': datetime.now().isoformat(),
             }, status=400)
-            
+
         except Exception as e:
             logger.error(f"🤖 WORKFLOW ERROR: {str(e)}")
             return JsonResponse({
