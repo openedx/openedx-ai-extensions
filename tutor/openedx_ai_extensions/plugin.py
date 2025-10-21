@@ -16,10 +16,12 @@ from .__about__ import __version__
 PLUGIN_DIR = Path(__file__).parent
 REPO_ROOT = PLUGIN_DIR.parent.parent
 FRONTEND_PATH = REPO_ROOT / "frontend"
+BACKEND_PATH = REPO_ROOT / "backend"
 
 # Makes the UI Slots code available for local install during the build process
 hooks.Filters.DOCKER_BUILD_COMMAND.add_items([
-    "--build-context", f"ai-extensions-frontend={str(FRONTEND_PATH)}"
+    "--build-context", f"ai-extensions-frontend={str(FRONTEND_PATH)}",
+    "--build-context", f"ai-extensions-backend={str(BACKEND_PATH)}",
 ])
 
 @hooks.Filters.IMAGES_BUILD_MOUNTS.add()

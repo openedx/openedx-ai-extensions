@@ -6,6 +6,7 @@ import os
 import re
 import sys
 
+from pathlib import Path
 from setuptools import find_packages, setup
 
 
@@ -125,8 +126,11 @@ if sys.argv[-1] == 'tag':
     os.system("git push --tags")
     sys.exit()
 
-README = open(os.path.join(os.path.dirname(__file__), '..', 'README.md'), encoding="utf8").read()
-CHANGELOG = open(os.path.join(os.path.dirname(__file__), 'CHANGELOG.rst'), encoding="utf8").read()
+readme_path = Path(__file__).parent.parent / 'README.md'
+README = readme_path.read_text(encoding="utf8") if readme_path.exists() else ""
+
+changelog_path = Path(__file__).parent / 'CHANGELOG.rst'
+CHANGELOG = changelog_path.read_text(encoding="utf8") if changelog_path.exists() else ""
 
 setup(
     name='openedx_ai_extensions',
