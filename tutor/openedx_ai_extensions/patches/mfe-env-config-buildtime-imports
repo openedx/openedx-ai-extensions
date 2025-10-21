@@ -1,2 +1,0 @@
-// openedx-ai-extension-ui imports
-import { GetAIAssistanceButton } from '@openedx/openedx-ai-extensions-ui';
