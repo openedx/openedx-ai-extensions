@@ -1,2 +1,4 @@
-RUN --mount=type=cache,target=/openedx/.cache/pip,sharing=shared \
-    pip install git+https://github.com/edunext/openedx-ai-extensions.git@main#subdirectory=backend
+# Patch openedx-dev-dockerfile-post-python-requirements used for openedx-ai-extensions
+
+COPY --from=ai-extensions-backend / /openedx/ai-extensions-backend
+RUN pip install -e /openedx/ai-extensions-backend
