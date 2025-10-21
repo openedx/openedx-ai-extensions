@@ -5,7 +5,6 @@ Open edX Content Extraction
 import logging
 
 from opaque_keys.edx.keys import UsageKey
-from xmodule.modulestore.django import modulestore  # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,9 @@ class OpenEdXProcessor:
     def get_unit_content(self, context):
         """Extract unit content from Open edX modulestore"""
         try:
+            # pylint: disable=import-error,import-outside-toplevel
+            from xmodule.modulestore.django import modulestore
+
             unit_id = context.get("extra_context", {}).get("unitId")
 
             if not unit_id:
