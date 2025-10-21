@@ -46,3 +46,13 @@ jobs:
           flags: unittests
           fail_ci_if_error: true
           working-directory: "./backend"
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '20'
+
+      - name: install
+        run: cd frontend && npm install
+
+      - name: Run the QA suite for frontend
+        run: npm run lint --prefix frontend

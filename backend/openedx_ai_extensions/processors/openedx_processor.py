@@ -1,10 +1,11 @@
 """
 Open edX Content Extraction
 """
+
 import logging
 
-from opaque_keys.edx.keys import CourseKey, UsageKey
-from xmodule.modulestore.django import modulestore
+from opaque_keys.edx.keys import UsageKey
+from xmodule.modulestore.django import modulestore  # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
@@ -21,20 +22,20 @@ class OpenEdXProcessor:
 
     def process(self, context):
         """Process based on configured function"""
-        function_name = self.config.get('function', 'get_unit_content')
+        function_name = self.config.get("function", "get_unit_content")
         function = getattr(self, function_name)
         return function(context)
 
     def get_unit_content(self, context):
         """Extract unit content from Open edX modulestore"""
         try:
-            unit_id = context.get('extra_context', {}).get('unitId')
+            unit_id = context.get("extra_context", {}).get("unitId")
 
             if not unit_id:
                 return {"error": "Missing unitId in context"}
 
             # Get char_limit from config. Useful during development
-            char_limit = self.config.get('char_limit', None)
+            char_limit = self.config.get("char_limit", None)
 
             unit_key = UsageKey.from_string(unit_id)
             store = modulestore()
@@ -44,10 +45,10 @@ class OpenEdXProcessor:
                 "unit_id": str(unit.location),
                 "display_name": unit.display_name,
                 "category": unit.category,
-                "blocks": []
+                "blocks": [],
             }
 
-            if hasattr(unit, 'children') and unit.children:
+            if hasattr(unit, "children") and unit.children:
                 for child_key in unit.children:
                     try:
                         child = store.get_item(child_key)
@@ -57,13 +58,13 @@ class OpenEdXProcessor:
                             "category": child.category,
                         }
 
-                        if child.category == 'html':
-                            block_info["content"] = getattr(child, 'data', '')
-                        elif child.category == 'problem':
-                            block_info["content"] = getattr(child, 'data', '')
+                        if child.category == "html":
+                            block_info["content"] = getattr(child, "data", "")
+                        elif child.category == "problem":
+                            block_info["content"] = getattr(child, "data", "")
 
                         unit_info["blocks"].append(block_info)
-                    except Exception as e:
+                    except Exception as e:  # pylint: disable=broad-exception-caught
                         logger.warning(f"Could not load block {child_key}: {e}")
 
             # limit for dev
@@ -72,5 +73,5 @@ class OpenEdXProcessor:
 
             return unit_info
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return {"error": f"Error accessing content: {str(e)}"}

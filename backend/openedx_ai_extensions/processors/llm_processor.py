@@ -1,9 +1,9 @@
 """
 LLM Processing using LiteLLM for multiple providers
 """
+
 import logging
 
-from django.conf import settings
 from litellm import completion
 
 logger = logging.getLogger(__name__)
@@ -19,17 +19,17 @@ class LLMProcessor:
         self.config = config.get(class_name, {})
 
         # Extract API configuration once during initialization
-        self.api_key = self.config.get('api_key')
-        self.model = self.config.get('model')
-        self.temperature = self.config.get('temperature')  # No default
-        self.max_tokens = self.config.get('max_tokens')    # No default
+        self.api_key = self.config.get("api_key")
+        self.model = self.config.get("model")
+        self.temperature = self.config.get("temperature")  # No default
+        self.max_tokens = self.config.get("max_tokens")  # No default
 
         if not self.api_key:
             logger.error("AI API key not configured")
 
     def process(self, input_data):
         """Process based on configured function"""
-        function_name = self.config.get('function', 'summarize_content')
+        function_name = self.config.get("function", "summarize_content")
         function = getattr(self, function_name)
         return function(input_data)
 
@@ -44,19 +44,19 @@ class LLMProcessor:
 
             # Build completion parameters
             completion_params = {
-                'model': self.model,
-                'messages': [
+                "model": self.model,
+                "messages": [
                     {"role": "system", "content": system_role},
-                    {"role": "user", "content": user_content}
+                    {"role": "user", "content": user_content},
                 ],
-                'api_key': self.api_key
+                "api_key": self.api_key,
             }
 
             # Add optional parameters only if configured
             if self.temperature is not None:
-                completion_params['temperature'] = self.temperature
+                completion_params["temperature"] = self.temperature
             if self.max_tokens is not None:
-                completion_params['max_tokens'] = self.max_tokens
+                completion_params["max_tokens"] = self.max_tokens
 
             response = completion(**completion_params)
             content = response.choices[0].message.content
@@ -65,22 +65,25 @@ class LLMProcessor:
                 "response": content,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
                 "model_used": self.model,
-                "status": "success"
+                "status": "success",
             }
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
-    def summarize_content(self, content_text, user_query=""):
+    def summarize_content(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """Summarize content using LiteLLM"""
-        system_role = "You are an academic assistant which helps students briefly summarize a unit of content of an online course."
+        system_role = (
+            "You are an academic assistant which helps students briefly "
+            "summarize a unit of content of an online course."
+        )
 
         result = self._call_completion_api(system_role, content_text)
 
         return result
 
-    def explain_like_five(self, content_text, user_query=""):
+    def explain_like_five(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """
         Explain content in very simple terms, like explaining to a 5-year-old
         Short, simple language that anyone can understand

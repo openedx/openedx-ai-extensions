@@ -1,6 +1,7 @@
 """
 Test settings for the openedx_ai_extensions application.
 """
+
 from openedx_ai_extensions.settings.common import plugin_settings as common_settings
 
 
