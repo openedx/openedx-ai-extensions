@@ -1,5 +1,5 @@
 {
-  "name": "@openedx/openedx-aiext-ui",
+  "name": "@openedx/openedx-ai-extensions-ui",
   "version": "0.0.1",
   "description": "AI Extensions UI component for Open edX utilizing Frontend Plugin Framework",
   "main": "dist/index.js",

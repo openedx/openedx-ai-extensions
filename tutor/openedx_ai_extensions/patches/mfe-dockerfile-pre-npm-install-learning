@@ -1,0 +1,7 @@
+### PRE NPM PATCH LEARNING
+COPY --from=ai-extensions-frontend / /openedx/ai-extensions-frontend
+
+WORKDIR /openedx/ai-extensions-frontend
+RUN npm install && npm run build
+WORKDIR /openedx/app
+##
