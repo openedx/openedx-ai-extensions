@@ -1,4 +1,6 @@
 # Patch openedx-dev-dockerfile-post-python-requirements used for openedx-ai-extensions
 
 COPY --from=ai-extensions-backend / /openedx/ai-extensions-backend
+USER root
 RUN pip install -e /openedx/ai-extensions-backend
+USER app
