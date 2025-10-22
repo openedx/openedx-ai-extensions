@@ -6,6 +6,7 @@ Package metadata for openedx_ai_extensions.
 import os
 import re
 import sys
+from pathlib import Path
 
 from setuptools import find_packages, setup
 
@@ -140,20 +141,11 @@ if sys.argv[-1] == "tag":
     os.system("git push --tags")
     sys.exit()
 
-# Read README and CHANGELOG, handling missing files gracefully during package build
-try:
-    README = open(
-        os.path.join(os.path.dirname(__file__), "..", "README.md"), encoding="utf8"
-    ).read()
-except FileNotFoundError:
-    README = ""
+readme_path = Path(__file__).parent.parent / 'README.rst'
+README = readme_path.read_text(encoding="utf8") if readme_path.exists() else ""
 
-try:
-    CHANGELOG = open(
-        os.path.join(os.path.dirname(__file__), "CHANGELOG.rst"), encoding="utf8"
-    ).read()
-except FileNotFoundError:
-    CHANGELOG = ""
+changelog_path = Path(__file__).parent.parent / 'CHANGELOG.rst'
+CHANGELOG = changelog_path.read_text(encoding="utf8") if changelog_path.exists() else ""
 
 setup(
     name="openedx_ai_extensions",
