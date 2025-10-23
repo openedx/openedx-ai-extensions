@@ -79,11 +79,10 @@ class AIWorkflowConfig(models.Model):
                     "char_limit": 300,
                 },
                 'LLMProcessor': {
-                    'api_key': settings.OPENEDX_AI_EXTENSIONS_API_KEY,
-                    'model': settings.OPENEDX_AI_EXTENSIONS_MODEL,
-                    'temperature': settings.OPENEDX_AI_EXTENSIONS_TEMPERATURE,
-                    # 'function': "summarize_content",
-                    'function': settings.OPENEDX_AI_EXTENSIONS_LLM_FUNCTION,
+                    'api_key': settings.OPENEDX_AI_EXTENSIONS['default']['API_KEY'],
+                    'model': settings.OPENEDX_AI_EXTENSIONS['default']['LITELLM_MODEL'],
+                    'temperature': settings.OPENEDX_AI_EXTENSIONS['default']['TEMPERATURE'],
+                    'function': "summarize_content",
                 },
             },
             actuator_config={},  # TODO: first I must make the actuator selection dynamic
