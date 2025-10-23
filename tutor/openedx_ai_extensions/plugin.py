@@ -8,6 +8,19 @@ from tutormfe.hooks import MFE_APPS, PLUGIN_SLOTS
 
 from .__about__ import __version__
 
+hooks.Filters.CONFIG_DEFAULTS.add_items(
+    [
+        # Add your new settings that have default values here.
+        # Each new setting is a pair: (setting_name, default_value).
+        ("OPENEDX_AI_EXTENSIONS", [{
+            "default": {
+              "API_KEY": "",
+              "LITELLM_MODEL": "gpt-5-mini",
+              "TEMPERATURE": 1,
+            }
+         }]),
+    ]
+)
 
 ########################
 # Plugin path management
