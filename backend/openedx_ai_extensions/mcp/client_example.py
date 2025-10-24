@@ -1,23 +1,39 @@
 # client_litellm.py
 import asyncio
-from fastmcp import Client, tools
-from litellm import completion, responses
+from fastmcp import Client
+from litellm import responses
+import os
 import openai
 
+from fastmcp.client.transports import StreamableHttpTransport
+from fastmcp.server.auth.providers.bearer import RSAKeyPair
+from pydantic import SecretStr
 
-import os 
+# Read key pair
+with open("private.pem", "r") as private_key_file:
+    private_key_content = private_key_file.read()
+
+with open("public.pem", "r") as public_key_file:
+    public_key_content = public_key_file.read()
+
 os.environ["OPENAI_API_KEY"] = "your_openai_api_key_here"
 
 
 openai_client = openai.OpenAI()
+key_pair = RSAKeyPair(
+    private_key=SecretStr(private_key_content),
+    public_key=public_key_content
+)
 
 async def main():
-    # Connect to the MCP server
-    async with Client("http://127.0.0.1:9001/mcp") as client:
+    # Generate JWT token
+    token = key_pair.create_token(
+        subject="user@example.com",
+        issuer="https://<your_ngrok_subdomain>.ngrok-free.app",
+        audience="dice_server",
+        scopes=["read", "write"]
+    )
 
-        # List resources (optional, just to show it works)
-        resources = await client.list_tools()
-        print("Available resources:", [r.name for r in resources])
 
     response = responses(
         model="gpt-4.1-nano",
@@ -26,8 +42,9 @@ async def main():
             {
                 "type": "mcp",
                 "server_label": "dice_server",
-                "server_url": "https://<your_ngrok_subdomain>.ngrok-free.app/mcp/",
+                "server_url": "https://ce888b1c33bf.ngrok-free.app/mcp/",
                 "require_approval": "never",
+                "authorization": token,
             },
         ],
         input="Roll a dice for me.",
