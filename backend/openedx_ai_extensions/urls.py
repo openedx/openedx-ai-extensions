@@ -11,5 +11,5 @@ router = DefaultRouter()
 
 # The API URLs are now determined automatically by the router
 urlpatterns = [
-    path('', include('openedx_ai_extensions.api.urls', namespace='api')),
+    path("", include("openedx_ai_extensions.api.urls", namespace="api")),
 ]

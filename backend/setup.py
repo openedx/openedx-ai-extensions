@@ -2,6 +2,7 @@
 """
 Package metadata for openedx_ai_extensions.
 """
+
 import os
 import re
 import sys
@@ -19,11 +20,10 @@ def get_version(*file_paths):
     """
     filename = os.path.join(os.path.dirname(__file__), *file_paths)
     version_file = open(filename, encoding="utf8").read()
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
-                              version_file, re.M)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
     if version_match:
         return version_match.group(1)
-    raise RuntimeError('Unable to find version string.')
+    raise RuntimeError("Unable to find version string.")
 
 
 def load_requirements(*requirements_paths):
@@ -46,14 +46,14 @@ def load_requirements(*requirements_paths):
         with extras we don't constrain it without mentioning the extras (since
         that too would interfere with matching constraints.)
         """
-        canonical = package.lower().replace('_', '-').split('[')[0]
+        canonical = package.lower().replace("_", "-").split("[")[0]
         seen_spelling = by_canonical_name.get(canonical)
         if seen_spelling is None:
             by_canonical_name[canonical] = package
         elif seen_spelling != package:
             raise Exception(
                 f'Encountered both "{seen_spelling}" and "{package}" in requirements '
-                'and constraints files; please use just one or the other.'
+                "and constraints files; please use just one or the other."
             )
 
     requirements = {}
@@ -67,7 +67,9 @@ def load_requirements(*requirements_paths):
         % (re_package_name_base_chars, re_package_name_base_chars)
     )
 
-    def add_version_constraint_or_raise(current_line, current_requirements, add_if_not_present):
+    def add_version_constraint_or_raise(
+        current_line, current_requirements, add_if_not_present
+    ):
         regex_match = requirement_line_regex.match(current_line)
         if regex_match:
             package = regex_match.group(1)
@@ -76,11 +78,16 @@ def load_requirements(*requirements_paths):
             existing_version_constraints = current_requirements.get(package, None)
             # It's fine to add constraints to an unconstrained package,
             # but raise an error if there are already constraints in place.
-            if existing_version_constraints and existing_version_constraints != version_constraints:
-                raise BaseException(f'Multiple constraint definitions found for {package}:'
-                                    f' "{existing_version_constraints}" and "{version_constraints}".'
-                                    f'Combine constraints into one location with {package}'
-                                    f'{existing_version_constraints},{version_constraints}.')
+            if (
+                existing_version_constraints
+                and existing_version_constraints != version_constraints
+            ):
+                raise BaseException(
+                    f"Multiple constraint definitions found for {package}:"
+                    f' "{existing_version_constraints}" and "{version_constraints}".'
+                    f"Combine constraints into one location with {package}"
+                    f"{existing_version_constraints},{version_constraints}."
+                )
             if add_if_not_present or package in current_requirements:
                 current_requirements[package] = version_constraints
 
@@ -91,8 +98,12 @@ def load_requirements(*requirements_paths):
             for line in reqs:
                 if is_requirement(line):
                     add_version_constraint_or_raise(line, requirements, True)
-                if line and line.startswith('-c') and not line.startswith('-c http'):
-                    constraint_files.add(os.path.dirname(path) + '/' + line.split('#')[0].replace('-c', '').strip())
+                if line and line.startswith("-c") and not line.startswith("-c http"):
+                    constraint_files.add(
+                        os.path.dirname(path)
+                        + "/"
+                        + line.split("#")[0].replace("-c", "").strip()
+                    )
 
     # process constraint files: add constraints to existing requirements
     for constraint_file in constraint_files:
@@ -102,7 +113,9 @@ def load_requirements(*requirements_paths):
                     add_version_constraint_or_raise(line, requirements, False)
 
     # process back into list of pkg><=constraints strings
-    constrained_requirements = [f'{pkg}{version or ""}' for (pkg, version) in sorted(requirements.items())]
+    constrained_requirements = [
+        f"{pkg}{version or ''}" for (pkg, version) in sorted(requirements.items())
+    ]
     return constrained_requirements
 
 
@@ -114,56 +127,69 @@ def is_requirement(line):
         bool: True if the line is not blank, a comment,
         a URL, or an included file
     """
-    return line and line.strip() and not line.startswith(("-r", "#", "-e", "git+", "-c"))
+    return (
+        line and line.strip() and not line.startswith(("-r", "#", "-e", "git+", "-c"))
+    )
 
 
-VERSION = get_version('openedx_ai_extensions', '__init__.py')
+VERSION = get_version("openedx_ai_extensions", "__init__.py")
 
-if sys.argv[-1] == 'tag':
+if sys.argv[-1] == "tag":
     print("Tagging the version on github:")
     os.system("git tag -a %s -m 'version %s'" % (VERSION, VERSION))
     os.system("git push --tags")
     sys.exit()
 
-README = open(os.path.join(os.path.dirname(__file__), '..', 'README.md'), encoding="utf8").read()
-CHANGELOG = open(os.path.join(os.path.dirname(__file__), 'CHANGELOG.rst'), encoding="utf8").read()
+# Read README and CHANGELOG, handling missing files gracefully during package build
+try:
+    README = open(
+        os.path.join(os.path.dirname(__file__), "..", "README.md"), encoding="utf8"
+    ).read()
+except FileNotFoundError:
+    README = ""
+
+try:
+    CHANGELOG = open(
+        os.path.join(os.path.dirname(__file__), "CHANGELOG.rst"), encoding="utf8"
+    ).read()
+except FileNotFoundError:
+    CHANGELOG = ""
 
 setup(
-    name='openedx_ai_extensions',
+    name="openedx_ai_extensions",
     version=VERSION,
     description="""A experimental plugin for Open edX designed to explore AI extensibility""",
-    long_description=README + '\n\n' + CHANGELOG,
-    author='Open edX Project',
-    author_email='oscm@openedx.org',
-    url='https://github.com/openedx/openedx-ai-extensions',
+    long_description=README + "\n\n" + CHANGELOG,
+    author="Open edX Project",
+    author_email="oscm@openedx.org",
+    url="https://github.com/openedx/openedx-ai-extensions",
     packages=find_packages(
-        include=['openedx_ai_extensions', 'openedx_ai_extensions.*'],
+        include=["openedx_ai_extensions", "openedx_ai_extensions.*"],
         exclude=["*tests"],
     ),
-
     include_package_data=True,
-    install_requires=load_requirements('requirements/base.in'),
+    install_requires=load_requirements("requirements/base.in"),
     python_requires=">=3.11.8",
     license="Apache Software License 2.0",
     zip_safe=False,
-    keywords='Python edx',
+    keywords="Python edx",
     classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Framework :: Django',
-        'Framework :: Django :: 4.2',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache Software License',
-        'Natural Language :: English',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.11',
-        'Programming Language :: Python :: 3.12',
+        "Development Status :: 3 - Alpha",
+        "Framework :: Django",
+        "Framework :: Django :: 4.2",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Natural Language :: English",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     entry_points={
-        'lms.djangoapp': [
-            'openedx_ai_extensions = openedx_ai_extensions.apps:OpenedxAIExtensionsConfig',
+        "lms.djangoapp": [
+            "openedx_ai_extensions = openedx_ai_extensions.apps:OpenedxAIExtensionsConfig",
         ],
-        'cms.djangoapp': [
-            'openedx_ai_extensions = openedx_ai_extensions.apps:OpenedxAIExtensionsConfig',
+        "cms.djangoapp": [
+            "openedx_ai_extensions = openedx_ai_extensions.apps:OpenedxAIExtensionsConfig",
         ],
     },
 )

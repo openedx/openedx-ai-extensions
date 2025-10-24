@@ -15,7 +15,10 @@ def test_app_is_installed():
     INSTALLED_APPS
 
     """
-    assert "openedx_ai_extensions.apps.OpenedxAIExtensionsConfig" in settings.INSTALLED_APPS
+    assert (
+        "openedx_ai_extensions.apps.OpenedxAIExtensionsConfig"
+        in settings.INSTALLED_APPS
+    )
     assert apps.get_app_config("openedx_ai_extensions") is not None
 
 
