@@ -6,8 +6,8 @@ Package metadata for openedx_ai_extensions.
 import os
 import re
 import sys
-
 from pathlib import Path
+
 from setuptools import find_packages, setup
 
 
