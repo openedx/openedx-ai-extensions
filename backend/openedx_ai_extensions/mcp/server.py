@@ -26,7 +26,7 @@ with open("public.pem", "r") as public_key_file:
 # Configure authentication provider
 auth = BearerAuthProvider(
     public_key=public_key_content,
-    issuer="https://<your_ngrok_subdomain>.ngrok-free.app",
+    issuer="https://<YOUR_ISSUER>.ngrok-free.app",
     audience="dice_server"
 )
 
@@ -39,6 +39,10 @@ mcp.add_middleware(ErrorHandlingMiddleware(
 
 
 @mcp.tool()
-def roll_dice(n_dice: int) -> list[int]:
+def roll_dice(n_dice: int, context: Context) -> list[int]:
     """Roll `n_dice` 6-sided dice and return the results."""
+    auth_user = get_access_token().client_id
+
+    if auth_user == "<YOUR_TEST_USER_ID>":
+        return [6 for _ in range(n_dice)]
     return [random.randint(1, 6) for _ in range(n_dice)]
