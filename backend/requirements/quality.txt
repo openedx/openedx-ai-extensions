@@ -24,7 +24,10 @@ anyio==4.11.0
     # via
     #   -r requirements/test.txt
     #   httpx
+    #   mcp
     #   openai
+    #   sse-starlette
+    #   starlette
 asgiref==3.8.1
     # via
     #   -r requirements/test.txt
@@ -61,6 +64,7 @@ click==8.3.0
     #   edx-django-utils
     #   edx-lint
     #   litellm
+    #   uvicorn
 click-log==0.4.0
     # via edx-lint
 code-annotations==1.8.2
@@ -84,6 +88,7 @@ django==4.2.20
     #   django-crum
     #   django-extensions
     #   django-filter
+    #   django-mcp-server
     #   django-waffle
     #   djangorestframework
     #   edx-django-utils
@@ -95,12 +100,16 @@ django-extensions==4.1
     # via -r requirements/test.txt
 django-filter==25.1
     # via -r requirements/test.txt
+django-mcp-server==0.5.7
+    # via -r requirements/test.txt
 django-waffle==4.2.0
     # via
     #   -r requirements/test.txt
     #   edx-django-utils
 djangorestframework==3.16.0
-    # via -r requirements/test.txt
+    # via
+    #   -r requirements/test.txt
+    #   django-mcp-server
 dnspython==2.7.0
     # via
     #   -r requirements/test.txt
@@ -132,6 +141,7 @@ h11==0.16.0
     # via
     #   -r requirements/test.txt
     #   httpcore
+    #   uvicorn
 hf-xet==1.1.10
     # via
     #   -r requirements/test.txt
@@ -144,7 +154,12 @@ httpx==0.28.1
     # via
     #   -r requirements/test.txt
     #   litellm
+    #   mcp
     #   openai
+httpx-sse==0.4.3
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 huggingface-hub==0.35.3
     # via
     #   -r requirements/test.txt
@@ -160,6 +175,10 @@ importlib-metadata==8.7.0
     # via
     #   -r requirements/test.txt
     #   litellm
+inflection==0.5.1
+    # via
+    #   -r requirements/test.txt
+    #   django-mcp-server
 iniconfig==2.1.0
     # via
     #   -r requirements/test.txt
@@ -181,6 +200,7 @@ jsonschema==4.25.1
     # via
     #   -r requirements/test.txt
     #   litellm
+    #   mcp
 jsonschema-specifications==2025.9.1
     # via
     #   -r requirements/test.txt
@@ -193,6 +213,10 @@ markupsafe==3.0.3
     #   jinja2
 mccabe==0.7.0
     # via pylint
+mcp==1.19.0
+    # via
+    #   -r requirements/test.txt
+    #   django-mcp-server
 multidict==6.7.0
     # via
     #   -r requirements/test.txt
@@ -242,11 +266,17 @@ pydantic==2.11.10
     # via
     #   -r requirements/test.txt
     #   litellm
+    #   mcp
     #   openai
+    #   pydantic-settings
 pydantic-core==2.33.2
     # via
     #   -r requirements/test.txt
     #   pydantic
+pydantic-settings==2.11.0
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 pydocstyle==6.3.0
     # via -r requirements/quality.in
 pylint==3.3.6
@@ -284,6 +314,11 @@ python-dotenv==1.1.1
     # via
     #   -r requirements/test.txt
     #   litellm
+    #   pydantic-settings
+python-multipart==0.0.20
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 python-slugify==8.0.4
     # via
     #   -r requirements/test.txt
@@ -325,6 +360,14 @@ sqlparse==0.5.3
     # via
     #   -r requirements/test.txt
     #   django
+sse-starlette==3.0.2
+    # via
+    #   -r requirements/test.txt
+    #   mcp
+starlette==0.48.0
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 stevedore==5.4.1
     # via
     #   -r requirements/test.txt
@@ -361,15 +404,25 @@ typing-extensions==4.13.2
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via
     #   -r requirements/test.txt
     #   pydantic
+    #   pydantic-settings
+uritemplate==4.2.0
+    # via
+    #   -r requirements/test.txt
+    #   django-mcp-server
 urllib3==2.5.0
     # via
     #   -r requirements/test.txt
     #   requests
+uvicorn==0.38.0
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 yarl==1.22.0
     # via
     #   -r requirements/test.txt
