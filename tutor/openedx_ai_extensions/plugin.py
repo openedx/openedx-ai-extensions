@@ -4,9 +4,7 @@ from pathlib import Path
 
 import importlib_resources
 from tutor import hooks
-from tutormfe.hooks import MFE_APPS, PLUGIN_SLOTS
-
-from .__about__ import __version__
+from tutormfe.hooks import PLUGIN_SLOTS
 
 hooks.Filters.CONFIG_DEFAULTS.add_items(
     [
@@ -14,7 +12,7 @@ hooks.Filters.CONFIG_DEFAULTS.add_items(
         # Each new setting is a pair: (setting_name, default_value).
         ("OPENEDX_AI_EXTENSIONS", [{
             "default": {
-              "API_KEY": "",
+              "API_KEY": "put_your_api_key_here",
               "LITELLM_MODEL": "gpt-5-mini",
               "TEMPERATURE": 1,
             }
