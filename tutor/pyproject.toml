@@ -14,7 +14,6 @@ maintainers = [
     {email = "oscm@axim.org"}
 ]
 description = "AI Extensibility Framework plugin for Tutor"
-readme = {file = "../README.rst", content-type = "text/x-rst"}
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
