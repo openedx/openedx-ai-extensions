@@ -8,6 +8,7 @@ from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
 
 class BaseOrchestrator:
     """Base class for workflow orchestrators."""
+
     def __init__(self, workflow):
         self.workflow = workflow
         self.config = workflow.config
@@ -26,6 +27,7 @@ class MockResponse(BaseOrchestrator):
 
 class DirectLLMResponse(BaseOrchestrator):
     """Orchestrator that provides direct LLM responses."""
+
     def run(self, input_data):
         # Prepare context
         context = {
