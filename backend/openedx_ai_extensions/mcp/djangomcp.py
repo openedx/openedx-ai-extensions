@@ -88,26 +88,21 @@ async def _call_starlette_handler(
     return response
 
 
-MCP_SESSION_ID_HDR = "Mcp-Session-Id"
-
 # Extracted/adapted from django-mcp-server by Omar BENHAMID (https://github.com/gts360/django-mcp-server)
 # Copyright (c) 2025 Omar BENHAMID
 # Licensed under the MIT License
 class DjangoMCP(FastMCP):
-    def __init__(self, name=None, instructions=None, stateless=False):
+    def __init__(self, **kwargs):
         # Prevent extra server settings as we do not use the embedded server
-        super().__init__(name or "django_mcp_server", instructions)
-        self.stateless = stateless
-        engine = import_module(settings.SESSION_ENGINE)
-        self.SessionStore = engine.SessionStore
+        super().__init__(**kwargs)
 
     @property
     def session_manager(self) -> StreamableHTTPSessionManager:
         return StreamableHTTPSessionManager(
             app=self._mcp_server,
-            event_store=self._event_store,
+            event_store=None,
             json_response=True,
-            stateless=True,  # Sessions will be managed as Django sessions.
+            stateless=True
         )
 
     def handle_django_request(self, request):
@@ -115,35 +110,10 @@ class DjangoMCP(FastMCP):
         Handle a Django request and return a response.
         This method is called by the Django view when a request is received.
         """
-        if not self.stateless:
-            session_key = request.headers.get(MCP_SESSION_ID_HDR)
-            if session_key:
-                session = self.SessionStore(session_key)
-                if session.exists(session_key):
-                    request.session = session
-                else:
-                    return HttpResponse(status=404, content="Session not found")
-            elif request.data.get("method") == "initialize":
-                # FIXME: Trick to read body before data to avoid DRF complaining
-                request.session = self.SessionStore()
-            else:
-                return HttpResponse(
-                    status=400, content="Session required for stateful server"
-                )
 
         result = async_to_sync(_call_starlette_handler)(request, self.session_manager)
-
-        # Only persist and strip the session in stateful mode when we actually
-        # added it to the request.
-        if not self.stateless and hasattr(request, "session"):
-            request.session.save()
-            result.headers[MCP_SESSION_ID_HDR] = request.session.session_key
-            delattr(request, "session")
 
         return result
 
     def destroy_session(self, request):
-        session_key = request.headers.get(MCP_SESSION_ID_HDR)
-        if not self.stateless and session_key:
-            self.SessionStore(session_key).flush()
-            request.session = None
+        pass
