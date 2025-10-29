@@ -18,8 +18,16 @@ PLUGIN_DIR = Path(__file__).parent
 # Locate backend and frontend directories
 # They should be siblings to the openedx_ai_extensions package
 PACKAGE_ROOT = PLUGIN_DIR.parent
-FRONTEND_PATH = PACKAGE_ROOT / "openedx-ai-extensions-frontend"
-BACKEND_PATH = PACKAGE_ROOT / "openedx-ai-extensions-backend"
+FRONTEND_CANDIDATES = [
+    PACKAGE_ROOT / "openedx-ai-extensions-frontend",
+    PACKAGE_ROOT.parent / "frontend",
+]
+FRONTEND_PATH = next((p for p in FRONTEND_CANDIDATES if p.exists()), None)
+BACKEND_CANDIDATES = [
+    PACKAGE_ROOT / "openedx-ai-extensions-backend",
+    PACKAGE_ROOT.parent / "backend",
+]
+BACKEND_PATH = next((p for p in BACKEND_CANDIDATES if p.exists()), None)
 
 # Makes the UI Slots code available for local install during the build process
 hooks.Filters.DOCKER_BUILD_COMMAND.add_items([
