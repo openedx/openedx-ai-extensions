@@ -3,7 +3,7 @@ Orchestrators
 Base classes to hold the logic of execution in ai workflows
 """
 
-from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
+from openedx_ai_extensions.processors import CompletionLLMProcessor, OpenEdXProcessor, MCPLLMProcessor
 
 
 class BaseOrchestrator:
@@ -45,12 +45,12 @@ class DirectLLMResponse(BaseOrchestrator):
                 "status": "OpenEdXProcessor error",
             }
 
-        # 2. Process with LLM processor
-        llm_processor = LLMProcessor(self.config.processor_config)
+        # 2. Process with MCPLLMProcessor
+        llm_processor = MCPLLMProcessor(self.config.processor_config)
         llm_result = llm_processor.process(str(content_result))
 
         if "error" in llm_result:
-            return {"error": llm_result["error"], "status": "LLMProcessor error"}
+            return {"error": llm_result["error"], "status": "MCPLLMProcessor error"}
 
         # 3. Return result
         return {

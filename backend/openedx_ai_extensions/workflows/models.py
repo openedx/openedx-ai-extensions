@@ -78,12 +78,17 @@ class AIWorkflowConfig(models.Model):
                     "function": "get_unit_content",
                     "char_limit": 300,
                 },
-                "LLMProcessor": {
+                "MCPLLMProcessor": {
                     "api_key": settings.OPENAI_API_KEY,
                     "model": settings.AI_MODEL,
                     "temperature": 0.7,
                     # 'function': "summarize_content",
                     "function": "explain_like_five",
+                    "mcp_config": {
+                        "server_label": "dice_server",
+                        "server_url": "https://b49dda4a8717.ngrok-free.app/openedx-ai-extensions/v1/mcp",
+                        "require_approval": "never",
+                    },
                 },
             },
             actuator_config={},  # TODO: first I must make the actuator selection dynamic

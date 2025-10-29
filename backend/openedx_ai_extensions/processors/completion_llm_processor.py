@@ -9,7 +9,7 @@ from litellm import completion
 logger = logging.getLogger(__name__)
 
 
-class LLMProcessor:
+class CompletionLLMProcessor:
     """Handles AI/LLM processing operations"""
 
     def __init__(self, config=None):
