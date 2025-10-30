@@ -4,12 +4,12 @@ LLM Processing using LiteLLM for multiple providers
 
 import logging
 
-from litellm import completion
+from litellm import responses
 
 logger = logging.getLogger(__name__)
 
 
-class LLMProcessor:
+class MCPLLMProcessor:
     """Handles AI/LLM processing operations"""
 
     def __init__(self, config=None):
@@ -23,6 +23,7 @@ class LLMProcessor:
         self.model = self.config.get("model")
         self.temperature = self.config.get("temperature")  # No default
         self.max_tokens = self.config.get("max_tokens")  # No default
+        self.mcp_config = self.config.get("mcp_config", {})
 
         if not self.api_key:
             logger.error("AI API key not configured")
@@ -33,7 +34,7 @@ class LLMProcessor:
         function = getattr(self, function_name)
         return function(input_data)
 
-    def _call_completion_api(self, system_role, user_content):
+    def _call_responses_api(self, system_role, context):
         """
         General method to call LiteLLM completion API
         Handles configuration and returns standardized response
@@ -45,11 +46,19 @@ class LLMProcessor:
             # Build completion parameters
             completion_params = {
                 "model": self.model,
-                "messages": [
+                "input": [
                     {"role": "system", "content": system_role},
-                    {"role": "user", "content": user_content},
+                    {"role": "system", "content": context}
                 ],
                 "api_key": self.api_key,
+                "tools": [
+                    {
+                        "type": "mcp",
+                        "server_label": self.mcp_config.get("server_label", "openedx_server"),
+                        "server_url": self.mcp_config.get("server_url", ""),
+                        "require_approval": self.mcp_config.get("require_approval", "never"),
+                    },
+                ],
             }
 
             # Add optional parameters only if configured
@@ -58,8 +67,16 @@ class LLMProcessor:
             if self.max_tokens is not None:
                 completion_params["max_tokens"] = self.max_tokens
 
-            response = completion(**completion_params)
-            content = response.choices[0].message.content
+            response = responses(**completion_params)
+            if hasattr(response, "output") and response.output:
+                for item in response.output:
+                    # Find the assistant message
+                    if getattr(item, "type", None) == "message":
+                        for c in item.content:
+                            if getattr(c, "type", None) == "output_text":
+                                content = c.text  # ✅ This is your clean text
+            else:
+                content = ""
 
             return {
                 "response": content,
@@ -72,22 +89,12 @@ class LLMProcessor:
             logger.error(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
-    def summarize_content(self, content_text, user_query=""):  # pylint: disable=unused-argument
-        """Summarize content using LiteLLM"""
-        system_role = (
-            "You are an academic assistant which helps students briefly "
-            "summarize a unit of content of an online course."
-        )
-
-        result = self._call_completion_api(system_role, content_text)
-
-        return result
-
     def explain_like_five(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """
         Explain content in very simple terms, like explaining to a 5-year-old
         Short, simple language that anyone can understand
         """
+
         system_role = (
             "You are a friendly teacher who explains things to young children. "
             "Explain the content in very simple words, like you're talking to a 5-year-old. "
@@ -95,6 +102,6 @@ class LLMProcessor:
             "Keep your explanation very brief - no more than 3-4 simple sentences."
         )
 
-        result = self._call_completion_api(system_role, content_text)
+        result = self._call_responses_api(system_role, content_text)
 
         return result

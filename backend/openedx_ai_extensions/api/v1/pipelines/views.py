@@ -72,7 +72,7 @@ class AIGenericWorkflowView(View):
                 },
                 indent=2,
                 width=100,
-            )
+            ),
         )
 
         try:

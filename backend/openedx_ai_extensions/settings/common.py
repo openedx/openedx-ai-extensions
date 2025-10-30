@@ -10,5 +10,5 @@ def plugin_settings(settings):  # pylint: disable=unused-argument
     Args:
         settings (dict): Django settings object
     """
-    settings.AI_MODEL = 'gpt-4.1-mini'
+    settings.AI_MODEL = "gpt-4.1-mini"
     settings.OPENAI_API_KEY = "make_it_read_from_tutor"

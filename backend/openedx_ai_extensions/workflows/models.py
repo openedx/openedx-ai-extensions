@@ -74,16 +74,17 @@ class AIWorkflowConfig(models.Model):
             orchestrator_class="DirectLLMResponse",
             # orchestrator_class="MockResponse",
             processor_config={
-                "OpenEdXProcessor": {
-                    "function": "get_unit_content",
-                    "char_limit": 300,
-                },
-                'LLMProcessor': {
-                    'api_key': settings.OPENAI_API_KEY,
-                    'model': settings.AI_MODEL,
-                    'temperature': 0.7,
+                "MCPLLMProcessor": {
+                    "api_key": settings.OPENAI_API_KEY,
+                    "model": settings.AI_MODEL,
+                    "temperature": 0.7,
                     # 'function': "summarize_content",
-                    'function': "explain_like_five",
+                    "function": "explain_like_five",
+                    "mcp_config": {
+                        "server_label": "openedx_server",
+                        "server_url": "https://9cdf5c9e1a44.ngrok-free.app/openedx-ai-extensions/v1/mcp",
+                        "require_approval": "never",
+                    },
                 },
             },
             actuator_config={},  # TODO: first I must make the actuator selection dynamic
@@ -259,7 +260,7 @@ class AIWorkflow(models.Model):
                 "workflow_info": {
                     "natural_key": self.get_natural_key(),
                     "status": self.status,
-                    'current_step': self.current_step
+                    "current_step": self.current_step,
                 },
             }
 
@@ -285,7 +286,7 @@ class AIWorkflow(models.Model):
     def complete(self, **final_context):
         """Mark workflow as completed with final context"""
         self.status = "completed"
-        self.current_step = 'completed'  # pylint: disable=attribute-defined-outside-init
+        self.current_step = "completed"  # pylint: disable=attribute-defined-outside-init
         self.completed_at = timezone.now()
         if final_context:
             self.context_data.update(final_context)

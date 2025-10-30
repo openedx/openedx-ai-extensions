@@ -3,11 +3,15 @@ Orchestrators
 Base classes to hold the logic of execution in ai workflows
 """
 
-from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
+from openedx_ai_extensions.processors import CompletionLLMProcessor, OpenEdXProcessor, MCPLLMProcessor
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BaseOrchestrator:
     """Base class for workflow orchestrators."""
+
     def __init__(self, workflow):
         self.workflow = workflow
         self.config = workflow.config
@@ -26,29 +30,21 @@ class MockResponse(BaseOrchestrator):
 
 class DirectLLMResponse(BaseOrchestrator):
     """Orchestrator that provides direct LLM responses."""
+
     def run(self, input_data):
         # Prepare context
-        context = {
-            "course_id": self.workflow.course_id,
-            "extra_context": self.workflow.extra_context,
-        }
 
-        # 1. Process with OpenEdX processor
-        openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(context)
+        context = f"""
+        course_id: {self.workflow.course_id}
+        unit_id: {self.workflow.extra_context.get('unitId')}
+        """
 
-        if "error" in content_result:
-            return {
-                "error": content_result["error"],
-                "status": "OpenEdXProcessor error",
-            }
-
-        # 2. Process with LLM processor
-        llm_processor = LLMProcessor(self.config.processor_config)
-        llm_result = llm_processor.process(str(content_result))
+        # 2. Process with MCPLLMProcessor
+        llm_processor = MCPLLMProcessor(self.config.processor_config)
+        llm_result = llm_processor.process(context)
 
         if "error" in llm_result:
-            return {"error": llm_result["error"], "status": "LLMProcessor error"}
+            return {"error": llm_result["error"], "status": "MCPLLMProcessor error"}
 
         # 3. Return result
         return {
