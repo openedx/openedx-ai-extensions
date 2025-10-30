@@ -34,7 +34,7 @@ class MCPLLMProcessor:
         function = getattr(self, function_name)
         return function(input_data)
 
-    def _call_responses_api(self, system_role, user_content):
+    def _call_responses_api(self, system_role, context):
         """
         General method to call LiteLLM completion API
         Handles configuration and returns standardized response
@@ -46,7 +46,10 @@ class MCPLLMProcessor:
             # Build completion parameters
             completion_params = {
                 "model": self.model,
-                "input": system_role,
+                "input": [
+                    {"role": "system", "content": system_role},
+                    {"role": "system", "content": context}
+                ],
                 "api_key": self.api_key,
                 "tools": [
                     {
@@ -91,8 +94,12 @@ class MCPLLMProcessor:
         Explain content in very simple terms, like explaining to a 5-year-old
         Short, simple language that anyone can understand
         """
+
         system_role = (
-            "Roll a dice for me."
+            "You are a friendly teacher who explains things to young children. "
+            "Explain the content in very simple words, like you're talking to a 5-year-old. "
+            "Use short sentences, simple words, and make it fun and easy to understand. "
+            "Keep your explanation very brief - no more than 3-4 simple sentences."
         )
 
         result = self._call_responses_api(system_role, content_text)

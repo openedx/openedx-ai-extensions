@@ -8,7 +8,7 @@ from asgiref.sync import async_to_sync
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpRequest, HttpResponse
-from mcp.server import FastMCP
+from fastmcp import FastMCP
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.datastructures import Headers
 from starlette.types import Receive, Scope, Send
@@ -114,6 +114,3 @@ class DjangoMCP(FastMCP):
         result = async_to_sync(_call_starlette_handler)(request, self.session_manager)
 
         return result
-
-    def destroy_session(self, request):
-        pass

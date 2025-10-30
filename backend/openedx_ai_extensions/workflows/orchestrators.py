@@ -4,6 +4,9 @@ Base classes to hold the logic of execution in ai workflows
 """
 
 from openedx_ai_extensions.processors import CompletionLLMProcessor, OpenEdXProcessor, MCPLLMProcessor
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BaseOrchestrator:
@@ -30,24 +33,15 @@ class DirectLLMResponse(BaseOrchestrator):
 
     def run(self, input_data):
         # Prepare context
-        context = {
-            "course_id": self.workflow.course_id,
-            "extra_context": self.workflow.extra_context,
-        }
 
-        # 1. Process with OpenEdX processor
-        openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(context)
-
-        if "error" in content_result:
-            return {
-                "error": content_result["error"],
-                "status": "OpenEdXProcessor error",
-            }
+        context = f"""
+        course_id: {self.workflow.course_id}
+        unit_id: {self.workflow.extra_context.get('unitId')}
+        """
 
         # 2. Process with MCPLLMProcessor
         llm_processor = MCPLLMProcessor(self.config.processor_config)
-        llm_result = llm_processor.process(str(content_result))
+        llm_result = llm_processor.process(context)
 
         if "error" in llm_result:
             return {"error": llm_result["error"], "status": "MCPLLMProcessor error"}
