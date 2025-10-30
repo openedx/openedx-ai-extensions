@@ -62,8 +62,7 @@ Installation
 
 Install the plugin in your Open edX environment using the provided tutor plugin::
 
-    git clone git@github.com:openedx/openedx-ai-extensions.git
-    pip install openedx-ai-extensions/tutor
+    pip install git+https://github.com/openedx/openedx-ai-extensions.git
     tutor plugins enable openedx-ai-extensions
     tutor images build openedx
     tutor images build mfe
