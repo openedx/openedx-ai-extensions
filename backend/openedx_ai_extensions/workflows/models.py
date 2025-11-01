@@ -5,7 +5,6 @@ AI Workflow models for managing flexible AI pipeline execution
 import logging
 from typing import Any, Dict, Optional
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -79,10 +78,8 @@ class AIWorkflowConfig(models.Model):
                     "char_limit": 300,
                 },
                 'LLMProcessor': {
-                    'api_key': settings.OPENEDX_AI_EXTENSIONS['default']['API_KEY'],
-                    'model': settings.OPENEDX_AI_EXTENSIONS['default']['LITELLM_MODEL'],
-                    'temperature': settings.OPENEDX_AI_EXTENSIONS['default']['TEMPERATURE'],
-                    'function': "summarize_content",
+                    'function': "explain_like_five",
+                    'config': "default",
                 },
             },
             actuator_config={},  # TODO: first I must make the actuator selection dynamic
