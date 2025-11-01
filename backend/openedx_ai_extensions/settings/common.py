@@ -1,6 +1,9 @@
 """
 Common settings for the openedx_ai_extensions application.
 """
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def plugin_settings(settings):  # pylint: disable=unused-argument
@@ -10,5 +13,3 @@ def plugin_settings(settings):  # pylint: disable=unused-argument
     Args:
         settings (dict): Django settings object
     """
-    settings.AI_MODEL = 'gpt-4.1-mini'
-    settings.OPENAI_API_KEY = "make_it_read_from_tutor"

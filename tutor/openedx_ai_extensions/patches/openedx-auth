@@ -1,0 +1,21 @@
+{%- if AI_EXTENSIONS is defined %}
+AI_EXTENSIONS:
+{%- for profile_key, profile_config in AI_EXTENSIONS.items() %}
+  {{ profile_key }}:
+  {%- for key, value in profile_config.items() %}
+    {{ key }}: "{{ value }}"
+  {%- endfor %}
+{%- endfor %}
+{%- elif AI_EXTENSIONS_OPENAI_API_KEY is defined or AI_EXTENSIONS_ANTHROPIC_API_KEY is defined %}
+AI_EXTENSIONS:
+  {%- if AI_EXTENSIONS_OPENAI_API_KEY is defined %}
+  openai:
+    API_KEY: "{{ AI_EXTENSIONS_OPENAI_API_KEY }}"
+    LITELLM_MODEL: "{{ AI_EXTENSIONS_OPENAI_MODEL | default("gpt-4.1-mini") }}"
+  {%- endif %}
+  {%- if AI_EXTENSIONS_ANTHROPIC_API_KEY is defined %}
+  anthropic:
+    API_KEY: "{{ AI_EXTENSIONS_ANTHROPIC_API_KEY }}"
+    LITELLM_MODEL: "{{ AI_EXTENSIONS_ANTHROPIC_MODEL | default("claude-3-haiku-20240307") }}"
+  {%- endif %}
+{% endif %}
