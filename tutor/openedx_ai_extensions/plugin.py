@@ -4,9 +4,7 @@ from pathlib import Path
 
 import importlib_resources
 from tutor import hooks
-from tutormfe.hooks import MFE_APPS, PLUGIN_SLOTS
-
-from .__about__ import __version__
+from tutormfe.hooks import PLUGIN_SLOTS
 
 
 ########################
