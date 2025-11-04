@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-from setuptools import find_packages, setup
+from setuptools import find_packages, setup  # pylint: disable=import-error
 
 
 def get_version(*file_paths):

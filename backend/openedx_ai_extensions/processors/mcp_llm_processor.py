@@ -5,12 +5,12 @@ LLM Processing using LiteLLM for multiple providers
 import logging
 
 from django.conf import settings
-from litellm import completion
+from litellm import responses
 
 logger = logging.getLogger(__name__)
 
 
-class LLMProcessor:
+class MCPLLMProcessor:
     """Handles AI/LLM processing operations"""
 
     def __init__(self, config=None):
@@ -20,6 +20,7 @@ class LLMProcessor:
         self.config = config.get(class_name, {})
 
         self.config_profile = self.config.get("config", "default")
+        self.mcp_config = self.config.get("mcp_config", {})
 
         # Extract API configuration once during initialization
         self.api_key = settings.AI_EXTENSIONS[self.config_profile]['API_KEY']
@@ -33,11 +34,24 @@ class LLMProcessor:
 
     def process(self, input_data):
         """Process based on configured function"""
-        function_name = self.config.get("function", "summarize_content")
+        function_name = self.config.get("function", "explain_like_five")
         function = getattr(self, function_name)
         return function(input_data)
 
-    def _call_completion_api(self, system_role, user_content):
+    def _extract_response_content(self, response):
+        """Extract text content from LiteLLM response."""
+        if not hasattr(response, "output") or not response.output:
+            return ""
+
+        for item in response.output:
+            if getattr(item, "type", None) != "message":
+                continue
+            for content_item in item.content:
+                if getattr(content_item, "type", None) == "output_text":
+                    return content_item.text
+        return ""
+
+    def _call_responses_api(self, system_role, context):
         """
         General method to call LiteLLM completion API
         Handles configuration and returns standardized response
@@ -49,11 +63,19 @@ class LLMProcessor:
             # Build completion parameters
             completion_params = {
                 "model": self.model,
-                "messages": [
+                "input": [
                     {"role": "system", "content": system_role},
-                    {"role": "user", "content": user_content},
+                    {"role": "system", "content": context}
                 ],
                 "api_key": self.api_key,
+                "tools": [
+                    {
+                        "type": "mcp",
+                        "server_label": self.mcp_config.get("server_label", "openedx_server"),
+                        "server_url": self.mcp_config.get("server_url", ""),
+                        "require_approval": self.mcp_config.get("require_approval", "never"),
+                    },
+                ],
             }
 
             # Add optional parameters only if configured
@@ -61,11 +83,9 @@ class LLMProcessor:
                 completion_params["temperature"] = self.temperature
             if self.max_tokens is not None:
                 completion_params["max_tokens"] = self.max_tokens
-            if self.timeout is not None:
-                completion_params["timeout"] = self.timeout
 
-            response = completion(**completion_params)
-            content = response.choices[0].message.content
+            response = responses(**completion_params)
+            content = self._extract_response_content(response)
 
             return {
                 "response": content,
@@ -78,22 +98,12 @@ class LLMProcessor:
             logger.error(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
-    def summarize_content(self, content_text, user_query=""):  # pylint: disable=unused-argument
-        """Summarize content using LiteLLM"""
-        system_role = (
-            "You are an academic assistant which helps students briefly "
-            "summarize a unit of content of an online course."
-        )
-
-        result = self._call_completion_api(system_role, content_text)
-
-        return result
-
     def explain_like_five(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """
         Explain content in very simple terms, like explaining to a 5-year-old
         Short, simple language that anyone can understand
         """
+
         system_role = (
             "You are a friendly teacher who explains things to young children. "
             "Explain the content in very simple words, like you're talking to a 5-year-old. "
@@ -101,6 +111,6 @@ class LLMProcessor:
             "Keep your explanation very brief - no more than 3-4 simple sentences."
         )
 
-        result = self._call_completion_api(system_role, content_text)
+        result = self._call_responses_api(system_role, content_text)
 
         return result

@@ -24,7 +24,10 @@ anyio==4.11.0
     # via
     #   -r requirements/quality.txt
     #   httpx
+    #   mcp
     #   openai
+    #   sse-starlette
+    #   starlette
 asgiref==3.8.1
     # via
     #   -r requirements/quality.txt
@@ -77,6 +80,7 @@ click==8.3.0
     #   edx-lint
     #   litellm
     #   pip-tools
+    #   uvicorn
 click-log==0.4.0
     # via
     #   -r requirements/quality.txt
@@ -114,6 +118,7 @@ django==4.2.20
     #   django-crum
     #   django-extensions
     #   django-filter
+    #   django-mcp-server
     #   django-waffle
     #   djangorestframework
     #   edx-django-utils
@@ -126,12 +131,16 @@ django-extensions==4.1
     # via -r requirements/quality.txt
 django-filter==25.1
     # via -r requirements/quality.txt
+django-mcp-server==0.5.7
+    # via -r requirements/quality.txt
 django-waffle==4.2.0
     # via
     #   -r requirements/quality.txt
     #   edx-django-utils
 djangorestframework==3.16.0
-    # via -r requirements/quality.txt
+    # via
+    #   -r requirements/quality.txt
+    #   django-mcp-server
 dnspython==2.7.0
     # via
     #   -r requirements/quality.txt
@@ -168,6 +177,7 @@ h11==0.16.0
     # via
     #   -r requirements/quality.txt
     #   httpcore
+    #   uvicorn
 hf-xet==1.1.10
     # via
     #   -r requirements/quality.txt
@@ -180,7 +190,12 @@ httpx==0.28.1
     # via
     #   -r requirements/quality.txt
     #   litellm
+    #   mcp
     #   openai
+httpx-sse==0.4.3
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 huggingface-hub==0.35.3
     # via
     #   -r requirements/quality.txt
@@ -196,6 +211,10 @@ importlib-metadata==8.7.0
     # via
     #   -r requirements/quality.txt
     #   litellm
+inflection==0.5.1
+    # via
+    #   -r requirements/quality.txt
+    #   django-mcp-server
 iniconfig==2.1.0
     # via
     #   -r requirements/quality.txt
@@ -218,6 +237,7 @@ jsonschema==4.25.1
     # via
     #   -r requirements/quality.txt
     #   litellm
+    #   mcp
 jsonschema-specifications==2025.9.1
     # via
     #   -r requirements/quality.txt
@@ -238,6 +258,10 @@ mccabe==0.7.0
     # via
     #   -r requirements/quality.txt
     #   pylint
+mcp==1.19.0
+    # via
+    #   -r requirements/quality.txt
+    #   django-mcp-server
 multidict==6.7.0
     # via
     #   -r requirements/quality.txt
@@ -306,11 +330,17 @@ pydantic==2.11.10
     # via
     #   -r requirements/quality.txt
     #   litellm
+    #   mcp
     #   openai
+    #   pydantic-settings
 pydantic-core==2.33.2
     # via
     #   -r requirements/quality.txt
     #   pydantic
+pydantic-settings==2.11.0
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 pydocstyle==6.3.0
     # via -r requirements/quality.txt
 pygments==2.19.1
@@ -365,6 +395,11 @@ python-dotenv==1.1.1
     # via
     #   -r requirements/quality.txt
     #   litellm
+    #   pydantic-settings
+python-multipart==0.0.20
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 python-slugify==8.0.4
     # via
     #   -r requirements/quality.txt
@@ -411,6 +446,14 @@ sqlparse==0.5.3
     # via
     #   -r requirements/quality.txt
     #   django
+sse-starlette==3.0.2
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
+starlette==0.48.0
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 stevedore==5.4.1
     # via
     #   -r requirements/quality.txt
@@ -451,15 +494,25 @@ typing-extensions==4.13.2
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via
     #   -r requirements/quality.txt
     #   pydantic
+    #   pydantic-settings
+uritemplate==4.2.0
+    # via
+    #   -r requirements/quality.txt
+    #   django-mcp-server
 urllib3==2.5.0
     # via
     #   -r requirements/quality.txt
     #   requests
+uvicorn==0.38.0
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 virtualenv==20.30.0
     # via
     #   -r requirements/ci.txt
