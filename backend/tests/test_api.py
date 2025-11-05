@@ -56,7 +56,7 @@ def test_api_urls_are_registered():
     Test that the API URLs are properly registered and accessible.
     """
     # Test that the v1 workflows URL can be reversed
-    url = reverse("openedx_ai_extensions:api:v1:ai_pipelines")
+    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
     assert url == "/openedx-ai-extensions/v1/workflows/"
 
 
@@ -65,7 +65,7 @@ def test_workflows_endpoint_requires_authentication(api_client):  # pylint: disa
     """
     Test that the workflows endpoint requires authentication.
     """
-    url = reverse("openedx_ai_extensions:api:v1:ai_pipelines")
+    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
 
     # Test POST without authentication
     response = api_client.post(url, {}, format="json")
@@ -83,7 +83,7 @@ def test_workflows_post_with_authentication(api_client, course_key):  # pylint: 
     Test POST request to workflows endpoint with authentication.
     """
     api_client.login(username="testuser", password="password123")
-    url = reverse("openedx_ai_extensions:api:v1:ai_pipelines")
+    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
 
     payload = {
         "action": "summarize",
@@ -115,7 +115,7 @@ def test_workflows_get_with_authentication(api_client):  # pylint: disable=redef
     Test GET request to workflows endpoint with authentication.
     """
     api_client.login(username="testuser", password="password123")
-    url = reverse("openedx_ai_extensions:api:v1:ai_pipelines")
+    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
 
     response = api_client.get(url)
 

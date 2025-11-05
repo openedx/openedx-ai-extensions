@@ -1,5 +1,5 @@
 """
-AI Workflow models for managing flexible AI pipeline execution
+AI Workflow models for managing flexible AI workflow execution
 """
 
 import logging
