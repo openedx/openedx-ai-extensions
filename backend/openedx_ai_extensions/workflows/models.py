@@ -2,7 +2,9 @@
 AI Workflow models for managing flexible AI workflow execution
 """
 
+import json
 import logging
+import os
 from typing import Any, Dict, Optional
 
 from django.contrib.auth import get_user_model
@@ -30,6 +32,13 @@ class AIWorkflowConfig(models.Model):
         null=True,
         blank=True,
         help_text="Course this config applies to (null = global)",
+    )
+
+    unit_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Unit this config applies to (null = all units)",
     )
 
     # Orchestrator configuration
@@ -64,25 +73,39 @@ class AIWorkflowConfig(models.Model):
         return f"{self.action}{course_part}"
 
     @classmethod
-    def get_config(cls, action: str, course_id: Optional[str] = None):
-        """Get the best matching configuration for action and course"""
-        # Returns fixed in memory object for now
+    def get_config(cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None):
+        """
+        """
+        base_dir = os.path.join(os.path.dirname(__file__), "configs")
+
+        paths_to_try = []
+        if course_id and unit_id:
+            paths_to_try.append(os.path.join(base_dir, course_id, f"{unit_id}.json"))
+
+        config_data = None
+        for path in paths_to_try:
+            if os.path.exists(path):
+                with open(path) as f:
+                    config_data = json.load(f)
+                break
+
+        if not config_data:
+            # fallback inline config
+            config_data = {
+                "orchestrator_class": "DirectLLMResponse",
+                "processor_config": {
+                    "OpenEdXProcessor": {"function": "get_unit_content", "char_limit": 300},
+                    "LLMProcessor": {"function": "explain_like_five", "config": "default"},
+                },
+                "actuator_config": {},
+            }
+
         return cls(
             action=action,
             course_id=course_id,
-            orchestrator_class="DirectLLMResponse",
-            # orchestrator_class="MockResponse",
-            processor_config={
-                "OpenEdXProcessor": {
-                    "function": "get_unit_content",
-                    "char_limit": 300,
-                },
-                'LLMProcessor': {
-                    'function': "explain_like_five",
-                    'config': "default",
-                },
-            },
-            actuator_config={},  # TODO: first I must make the actuator selection dynamic
+            orchestrator_class=config_data["orchestrator_class"],
+            processor_config=config_data.get("processor_config", {}),
+            actuator_config=config_data.get("actuator_config", {}),
         )
 
 
@@ -176,7 +199,7 @@ class AIWorkflow(models.Model):
         unit_id = context.get("unitId")
 
         # Get workflow configuration
-        config = AIWorkflowConfig.get_config(action, course_id)
+        config = AIWorkflowConfig.get_config(action, course_id, unit_id)
         if not config:
             raise ValidationError(
                 f"No AIWorkflowConfiguration found for action '{action}' in course '{course_id}'"
