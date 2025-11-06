@@ -10,44 +10,136 @@ aiohttp==3.13.0
     # via litellm
 aiosignal==1.4.0
     # via aiohttp
+amqp==5.3.1
+    # via kombu
+aniso8601==10.0.1
+    # via tincan
 annotated-types==0.7.0
     # via pydantic
 anyio==4.11.0
     # via
     #   httpx
     #   openai
+apache-libcloud==3.8.0
+    # via edx-event-routing-backends
 asgiref==3.8.1
     # via django
 attrs==25.4.0
     # via
     #   aiohttp
     #   jsonschema
+    #   openedx-events
     #   referencing
+billiard==4.2.2
+    # via celery
+celery==5.5.3
+    # via
+    #   edx-celeryutils
+    #   event-tracking
 certifi==2025.10.5
     # via
     #   httpcore
     #   httpx
     #   requests
+cffi==2.0.0
+    # via
+    #   cryptography
+    #   pynacl
 charset-normalizer==3.4.4
     # via requests
 click==8.3.0
-    # via litellm
+    # via
+    #   celery
+    #   click-didyoumean
+    #   click-plugins
+    #   click-repl
+    #   code-annotations
+    #   edx-django-utils
+    #   litellm
+click-didyoumean==0.3.1
+    # via celery
+click-plugins==1.1.1.2
+    # via celery
+click-repl==0.3.0
+    # via celery
+code-annotations==2.3.0
+    # via edx-toggles
+cryptography==46.0.3
+    # via django-fernet-fields-v2
 distro==1.9.0
     # via openai
 django==4.2.20
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
     #   -r requirements/base.in
+    #   django-config-models
+    #   django-crum
+    #   django-fernet-fields-v2
     #   django-filter
+    #   django-model-utils
+    #   django-redis
+    #   django-waffle
     #   djangorestframework
+    #   edx-celeryutils
+    #   edx-django-utils
+    #   edx-event-routing-backends
+    #   edx-toggles
+    #   event-tracking
+    #   jsonfield
+    #   openedx-events
+    #   openedx-filters
+django-config-models==2.9.0
+    # via edx-event-routing-backends
+django-crum==0.7.9
+    # via
+    #   edx-django-utils
+    #   edx-toggles
+django-fernet-fields-v2==0.9
+    # via edx-event-routing-backends
 django-filter==25.1
     # via -r requirements/base.in
+django-model-utils==5.0.0
+    # via edx-celeryutils
+django-redis==6.0.0
+    # via edx-event-routing-backends
+django-waffle==5.0.0
+    # via
+    #   edx-django-utils
+    #   edx-toggles
 djangorestframework==3.16.0
-    # via -r requirements/base.in
+    # via
+    #   -r requirements/base.in
+    #   django-config-models
 dnspython==2.7.0
     # via pymongo
-edx-opaque-keys==2.12.0
+edx-ccx-keys==2.0.2
+    # via openedx-events
+edx-celeryutils==1.4.0
+    # via edx-event-routing-backends
+edx-django-utils==8.0.1
+    # via
+    #   django-config-models
+    #   edx-toggles
+    #   event-tracking
+    #   openedx-events
+edx-event-routing-backends==9.3.6
     # via -r requirements/base.in
+edx-opaque-keys[django]==2.12.0
+    # via
+    #   -r requirements/base.in
+    #   edx-ccx-keys
+    #   openedx-events
+    #   openedx-filters
+edx-toggles==5.4.1
+    # via
+    #   edx-event-routing-backends
+    #   event-tracking
+event-tracking==3.3.0
+    # via edx-event-routing-backends
+fastavro==1.12.1
+    # via openedx-events
+fasteners==0.20
+    # via edx-event-routing-backends
 fastuuid==0.13.5
     # via litellm
 filelock==3.20.0
@@ -78,14 +170,24 @@ idna==3.11
     #   yarl
 importlib-metadata==8.7.0
     # via litellm
+isodate==0.7.2
+    # via edx-event-routing-backends
 jinja2==3.1.6
-    # via litellm
+    # via
+    #   code-annotations
+    #   litellm
 jiter==0.11.0
     # via openai
+jsonfield==3.2.0
+    # via
+    #   edx-celeryutils
+    #   edx-event-routing-backends
 jsonschema==4.25.1
     # via litellm
 jsonschema-specifications==2025.9.1
     # via jsonschema
+kombu==5.5.4
+    # via celery
 litellm==1.78.2
     # via -r requirements/base.in
 markupsafe==3.0.3
@@ -98,14 +200,26 @@ openai==2.4.0
     # via litellm
 openedx-atlas==0.7.0
     # via -r requirements/base.in
+openedx-events==10.5.0
+    # via event-tracking
+openedx-filters==2.1.0
+    # via edx-event-routing-backends
 packaging==25.0
-    # via huggingface-hub
+    # via
+    #   huggingface-hub
+    #   kombu
 pbr==6.1.1
     # via stevedore
+prompt-toolkit==3.0.52
+    # via click-repl
 propcache==0.4.1
     # via
     #   aiohttp
     #   yarl
+psutil==7.1.3
+    # via edx-django-utils
+pycparser==2.23
+    # via cffi
 pydantic==2.11.10
     # via
     #   litellm
@@ -113,11 +227,30 @@ pydantic==2.11.10
 pydantic-core==2.33.2
     # via pydantic
 pymongo==4.12.0
-    # via edx-opaque-keys
+    # via
+    #   edx-opaque-keys
+    #   event-tracking
+pynacl==1.6.0
+    # via edx-django-utils
+python-dateutil==2.9.0.post0
+    # via
+    #   celery
+    #   edx-event-routing-backends
 python-dotenv==1.1.1
     # via litellm
+python-slugify==8.0.4
+    # via code-annotations
+pytz==2025.2
+    # via
+    #   edx-event-routing-backends
+    #   event-tracking
+    #   tincan
 pyyaml==6.0.3
-    # via huggingface-hub
+    # via
+    #   code-annotations
+    #   huggingface-hub
+redis==7.0.1
+    # via django-redis
 referencing==0.37.0
     # via
     #   jsonschema
@@ -126,12 +259,19 @@ regex==2025.9.18
     # via tiktoken
 requests==2.32.5
     # via
+    #   apache-libcloud
+    #   edx-event-routing-backends
     #   huggingface-hub
     #   tiktoken
 rpds-py==0.27.1
     # via
     #   jsonschema
     #   referencing
+six==1.17.0
+    # via
+    #   edx-ccx-keys
+    #   event-tracking
+    #   python-dateutil
 sniffio==1.3.1
     # via
     #   anyio
@@ -139,9 +279,18 @@ sniffio==1.3.1
 sqlparse==0.5.3
     # via django
 stevedore==5.4.1
-    # via edx-opaque-keys
+    # via
+    #   code-annotations
+    #   edx-django-utils
+    #   edx-opaque-keys
+text-unidecode==1.3
+    # via python-slugify
 tiktoken==0.12.0
     # via litellm
+tincan==1.0.0
+    # via
+    #   -r requirements/base.in
+    #   edx-event-routing-backends
 tokenizers==0.22.1
     # via litellm
 tqdm==4.67.1
@@ -161,8 +310,17 @@ typing-extensions==4.13.2
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
+tzdata==2025.2
+    # via kombu
 urllib3==2.5.0
     # via requests
+vine==5.1.0
+    # via
+    #   amqp
+    #   celery
+    #   kombu
+wcwidth==0.2.14
+    # via prompt-toolkit
 yarl==1.22.0
     # via aiohttp
 zipp==3.23.0
