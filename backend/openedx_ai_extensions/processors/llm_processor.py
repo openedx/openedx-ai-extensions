@@ -107,7 +107,7 @@ class LLMProcessor:
 
     def openai_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call OpenAI API via LiteLLM"""
-        message = f"Say hello world from OpenAI! key {self.api_key}"
+        message = "Say hello world from OpenAI! key"
 
         return {
             "response": message,
@@ -118,7 +118,7 @@ class LLMProcessor:
 
     def anthropic_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call Anthropic API via LiteLLM"""
-        message = f"Say hello world from Anthropic! key {self.api_key}"
+        message = "Say hello world from Anthropic! key"
 
         return {
             "response": message,
