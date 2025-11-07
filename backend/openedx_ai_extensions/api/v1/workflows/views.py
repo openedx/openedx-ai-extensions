@@ -141,17 +141,19 @@ class AIWorkflowConfigView(APIView):
         Retrieve workflow configuration for a given action and context
         """
         # Extract query parameters
+        context = json.loads(request.query_params.get("context"))
+        unit_id = context.get("unitId")
         action = request.query_params.get("action")
         course_id = request.query_params.get("courseId")
 
         try:
             # Get workflow configuration
-            config = AIWorkflowConfig.get_config(action=action, course_id=course_id)
+            config = AIWorkflowConfig.get_config(action=action, course_id=course_id, unit_id=unit_id)
 
             if not config:
                 return Response(
                     {
-                        "error": f"No workflow configuration found for current context.",
+                        "error": "No workflow configuration found for current context.",
                         "status": "not_found",
                     },
                     status=status.HTTP_404_NOT_FOUND,

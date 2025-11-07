@@ -9,5 +9,18 @@
     }
   },
   "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "GetAIAssistanceButton",
+        "config": {
+          "buttonText": "Ask AI [config api]",
+          "requestMessage": "ChatGPT will say hello [config api]"
+        },
+        "metadata": {
+            "version": 0.1,
+            "provider": "config_api"
+        }
+      }
+    }
   }
 }

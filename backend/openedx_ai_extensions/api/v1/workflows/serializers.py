@@ -20,3 +20,11 @@ class AIWorkflowConfigSerializer(serializers.Serializer):
         """Extract UIComponents from actuator_config"""
         actuator_config = obj.actuator_config or {}
         return actuator_config.get('UIComponents', {})
+
+    def create(self, validated_data):
+        """Read-only serializer — creation not supported."""
+        raise NotImplementedError("AIWorkflowConfigSerializer is read-only")
+
+    def update(self, instance, validated_data):
+        """Read-only serializer — update not supported."""
+        raise NotImplementedError("AIWorkflowConfigSerializer is read-only")
