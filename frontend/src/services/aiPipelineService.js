@@ -207,13 +207,12 @@ export const validateEndpoint = (endpoint) => {
 
 /**
  * Get default API endpoint based on environment
- * Uses Open edX standard configuration system
- * @returns {string} Default endpoint URL
+ * @param {string} endpoint - Endpoint type: 'workflows' (default) or 'config'
  */
-export const getDefaultEndpoint = () => {
+export const getDefaultEndpoint = (endpoint = 'workflows') => {
   const config = getConfig();
   const lmsBaseUrl = config.LMS_BASE_URL;
-  return `${lmsBaseUrl}/openedx-ai-extensions/v1/workflows/`;
+  return `${lmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
 };
 
 /**

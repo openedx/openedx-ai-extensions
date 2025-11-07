@@ -5,6 +5,7 @@ import { Spinner, Alert } from '@openedx/paragon';
 // Import services
 import {
   fetchConfiguration,
+  getDefaultEndpoint,
   mergeProps,
 } from './services';
 
@@ -43,6 +44,8 @@ const ConfigurableAIAssistance = ({
   const [error, setError] = useState(null);
   const [config, setConfig] = useState(null);
 
+  const endpoint = configEndpoint || getDefaultEndpoint('config');
+
   useEffect(() => {
     const loadConfiguration = async () => {
       setIsLoading(true);
@@ -50,7 +53,7 @@ const ConfigurableAIAssistance = ({
 
       try {
         const fetchedConfig = await fetchConfiguration({
-          configEndpoint,
+          configEndpoint: endpoint,
           courseId,
           unitId,
           useMock,
@@ -85,7 +88,7 @@ const ConfigurableAIAssistance = ({
     };
 
     loadConfiguration();
-  }, [configEndpoint, courseId, unitId, useMock, fallbackConfig, onConfigLoad, onConfigError]);
+  }, [endpoint, courseId, unitId, useMock, fallbackConfig, onConfigLoad, onConfigError]);
 
   if (isLoading) {
     return (
