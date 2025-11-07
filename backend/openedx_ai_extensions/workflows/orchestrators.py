@@ -3,7 +3,7 @@ Orchestrators
 Base classes to hold the logic of execution in ai workflows
 """
 
-from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
+from openedx_ai_extensions.processors import ResponsesProcessor, OpenEdXProcessor, LLMProcessor
 
 
 class BaseOrchestrator:
@@ -25,7 +25,40 @@ class MockResponse(BaseOrchestrator):
 
 
 class DirectLLMResponse(BaseOrchestrator):
-    """Orchestrator that provides direct LLM responses."""
+    def run(self, input_data):
+        # Prepare context
+        context = {
+            'course_id': self.workflow.course_id,
+            'extra_context': self.workflow.extra_context
+        }
+
+        # 1. Process with OpenEdX processor
+        openedx_processor = OpenEdXProcessor(self.config.processor_config)
+        content_result = openedx_processor.process(context)
+
+        if 'error' in content_result:
+            return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
+
+        # 2. Process with LLM processor
+        llm_processor = LLMProcessor(self.config.processor_config)
+        llm_result = llm_processor.process(str(content_result))
+
+        if 'error' in llm_result:
+            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
+
+        # 3. Return result
+        return {
+            'response': llm_result.get('response', 'No response available'),
+            'status': 'completed',
+            'metadata': {
+                'tokens_used': llm_result.get('tokens_used'),
+                'model_used': llm_result.get('model_used')
+            }
+        }
+
+
+class ThreadedLLMResponse(BaseOrchestrator):
+    """Orchestrator that provides LLM responses using threading (placeholder)."""
     def run(self, input_data):
         # Prepare context
         context = {
@@ -44,11 +77,11 @@ class DirectLLMResponse(BaseOrchestrator):
             }
 
         # 2. Process with LLM processor
-        llm_processor = LLMProcessor(self.config.processor_config)
+        llm_processor = ResponsesProcessor(self.config.processor_config, self.workflow.user, self.workflow.unit_id)
         llm_result = llm_processor.process(str(content_result))
 
         if "error" in llm_result:
-            return {"error": llm_result["error"], "status": "LLMProcessor error"}
+            return {"error": llm_result["error"], "status": "ResponsesProcessor error"}
 
         # 3. Return result
         return {
