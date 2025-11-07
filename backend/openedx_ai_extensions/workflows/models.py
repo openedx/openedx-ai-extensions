@@ -10,8 +10,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from openedx_ai_extensions.utils import _fake_get_config_from_file
 from openedx_ai_extensions.workflows import orchestrators
+from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
