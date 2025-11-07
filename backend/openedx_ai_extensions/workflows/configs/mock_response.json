@@ -1,0 +1,11 @@
+{
+  "orchestrator_class": "MockResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+    },
+    "LLMProcessor": {
+    }
+  },
+  "actuator_config": {
+  }
+}

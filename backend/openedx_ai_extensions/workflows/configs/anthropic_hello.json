@@ -1,0 +1,13 @@
+{
+  "orchestrator_class": "DirectLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+    },
+    "LLMProcessor": {
+      "function": "anthropic_hello",
+      "config": "anthropic"
+    }
+  },
+  "actuator_config": {
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "orchestrator_class": "DirectLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+    },
+    "LLMProcessor": {
+      "function": "openai_hello",
+      "config": "openai"
+    }
+  },
+  "actuator_config": {
+  }
+}

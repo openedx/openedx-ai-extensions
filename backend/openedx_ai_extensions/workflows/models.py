@@ -11,6 +11,7 @@ from django.db import models
 from django.utils import timezone
 
 from openedx_ai_extensions.workflows import orchestrators
+from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -30,6 +31,13 @@ class AIWorkflowConfig(models.Model):
         null=True,
         blank=True,
         help_text="Course this config applies to (null = global)",
+    )
+
+    unit_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Unit this config applies to (null = all units)",
     )
 
     # Orchestrator configuration
@@ -64,26 +72,15 @@ class AIWorkflowConfig(models.Model):
         return f"{self.action}{course_part}"
 
     @classmethod
-    def get_config(cls, action: str, course_id: Optional[str] = None):
-        """Get the best matching configuration for action and course"""
-        # Returns fixed in memory object for now
-        return cls(
-            action=action,
-            course_id=course_id,
-            orchestrator_class="DirectLLMResponse",
-            # orchestrator_class="MockResponse",
-            processor_config={
-                "OpenEdXProcessor": {
-                    "function": "get_unit_content",
-                    "char_limit": 300,
-                },
-                'LLMProcessor': {
-                    'function': "explain_like_five",
-                    'config': "default",
-                },
-            },
-            actuator_config={},  # TODO: first I must make the actuator selection dynamic
-        )
+    def get_config(cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None):
+        """
+        Get configuration for a specific action, course, and unit.
+
+        In real implementation, this would query the database.
+        Currently uses a fake method to simulate loading config from file.
+        """
+        # In real implementation, this would query the database
+        return _fake_get_config_from_file(cls, action=action, course_id=course_id, unit_id=unit_id)
 
 
 class AIWorkflow(models.Model):
@@ -168,15 +165,12 @@ class AIWorkflow(models.Model):
 
         Returns: (workflow_instance, created_boolean)
         """
-        logger.info(
-            f"🤖 WORKFLOW FINDER: Looking for workflow action='{action}', course='{course_id}', user='{user.username}'"
-        )
 
         # Extract unit_id from context if present
         unit_id = context.get("unitId")
 
         # Get workflow configuration
-        config = AIWorkflowConfig.get_config(action, course_id)
+        config = AIWorkflowConfig.get_config(action, course_id, unit_id)
         if not config:
             raise ValidationError(
                 f"No AIWorkflowConfiguration found for action '{action}' in course '{course_id}'"

@@ -21,9 +21,14 @@ class OpenEdXProcessor:
 
     def process(self, context):
         """Process based on configured function"""
-        function_name = self.config.get("function", "get_unit_content")
+        function_name = self.config.get("function", "no_context")
         function = getattr(self, function_name)
         return function(context)
+
+    def no_context(self, context):  # pylint: disable=unused-argument
+        return {
+            "display_name": "No context was provided."
+        }
 
     def get_unit_content(self, context):
         """Extract unit content from Open edX modulestore"""

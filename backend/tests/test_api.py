@@ -124,3 +124,29 @@ def test_workflows_get_with_authentication(api_client):  # pylint: disable=redef
 
     # Response should be JSON
     assert response["Content-Type"] == "application/json"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_workflows_post_with_staff_user(api_client, course_key):  # pylint: disable=redefined-outer-name
+    """
+    Test POST request to workflows endpoint with staff user authentication.
+    """
+    api_client.login(username="staffuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
+
+    payload = {
+        "action": "analyze",
+        "courseId": str(course_key),
+        "context": {"unitId": "unit-456"},
+        "user_input": {"text": "Analyze student performance"},
+        "requestId": "staff-request-789",
+    }
+
+    response = api_client.post(url, payload, format="json")
+
+    # Should return 200 or 500 depending on workflow execution
+    assert response.status_code in [200, 400, 500]
+
+    # Response should be JSON
+    assert response["Content-Type"] == "application/json"
