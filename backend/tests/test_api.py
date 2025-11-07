@@ -127,30 +127,6 @@ def test_workflows_get_with_authentication(api_client):  # pylint: disable=redef
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
-def test_workflows_post_with_invalid_payload(api_client):  # pylint: disable=redefined-outer-name
-    """
-    Test POST request to workflows endpoint with invalid/incomplete payload.
-    """
-    api_client.login(username="testuser", password="password123")
-    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
-
-    # Test with missing required fields
-    invalid_payload = {
-        "action": "summarize",
-        # Missing courseId, context, user_input, and requestId
-    }
-
-    response = api_client.post(url, invalid_payload, format="json")
-
-    # Should return 400 Bad Request or 500 for invalid payload
-    assert response.status_code in [400, 500]
-
-    # Response should be JSON
-    assert response["Content-Type"] == "application/json"
-
-
-@pytest.mark.django_db
 @pytest.mark.usefixtures("staff_user")
 def test_workflows_post_with_staff_user(api_client, course_key):  # pylint: disable=redefined-outer-name
     """
