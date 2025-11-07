@@ -11,5 +11,18 @@
     }
   },
   "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "GetAIAssistanceButton",
+        "config": {
+          "buttonText": "Ask AI [server config call]",
+          "requestMessage": "Explain me like I'm 5 [server config call]"
+        },
+        "metadata": {
+            "version": 0.1,
+            "provider": "config_api"
+        }
+      }
+    }
   }
 }
