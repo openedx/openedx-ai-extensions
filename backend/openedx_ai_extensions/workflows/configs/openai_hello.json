@@ -4,8 +4,8 @@
     "OpenEdXProcessor": {
     },
     "LLMProcessor": {
-      "function": "anthropic_hello",
-      "config": "anthropic"
+      "function": "openai_hello",
+      "config": "openai"
     }
   },
   "actuator_config": {
