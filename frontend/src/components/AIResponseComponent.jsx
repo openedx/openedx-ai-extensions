@@ -20,9 +20,6 @@ const AIResponseComponent = ({
   onClear,
   onError,
   showActions = true,
-  // allowCopy is defined for prop validation but not currently used in the component
-  // eslint-disable-next-line no-unused-vars
-  allowCopy,
   allowDownload,
 }) => {
   /**
@@ -176,7 +173,6 @@ AIResponseComponent.propTypes = {
   onClear: PropTypes.func,
   onError: PropTypes.func,
   showActions: PropTypes.bool,
-  allowCopy: PropTypes.bool,
   allowDownload: PropTypes.bool,
 };
 
@@ -188,7 +184,6 @@ AIResponseComponent.defaultProps = {
   onClear: null,
   onError: null,
   showActions: true,
-  allowCopy: true,
   allowDownload: false,
 };
 

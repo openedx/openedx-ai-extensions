@@ -32,10 +32,6 @@ const COMPONENT_REGISTRY = {
  * Advanced users can skip this wrapper and use GetAIAssistanceButton directly.
  */
 const ConfigurableAIAssistance = ({
-  configEndpoint,
-  courseId,
-  unitId,
-  sequence,
   fallbackConfig,
   onConfigLoad,
   onConfigError,
@@ -45,7 +41,7 @@ const ConfigurableAIAssistance = ({
   const [error, setError] = useState(null);
   const [config, setConfig] = useState(null);
 
-  const endpoint = configEndpoint || getDefaultEndpoint('config');
+  const endpoint = getDefaultEndpoint('config');
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -57,9 +53,6 @@ const ConfigurableAIAssistance = ({
       setError(null);
 
       const contextData = prepareContextData({
-        sequence,
-        courseId,
-        unitId,
         ...additionalProps,
       });
 
@@ -155,13 +148,7 @@ const ConfigurableAIAssistance = ({
       );
     }
 
-    const mergedProps = mergeProps(additionalProps, componentConfig);
-    const finalProps = {
-      ...mergedProps,
-      sequence,
-      courseId,
-      unitId,
-    };
+    const finalProps = mergeProps(additionalProps, componentConfig);
 
     // eslint-disable-next-line no-console
     console.log('[ConfigurableAIAssistance] Rendering component:', componentName, 'with props:', finalProps);
@@ -183,14 +170,6 @@ const ConfigurableAIAssistance = ({
 };
 
 ConfigurableAIAssistance.propTypes = {
-  configEndpoint: PropTypes.string,
-  courseId: PropTypes.string,
-  unitId: PropTypes.string,
-  sequence: PropTypes.shape({
-    id: PropTypes.string,
-    displayName: PropTypes.string,
-    unitBlocks: PropTypes.arrayOf(PropTypes.shape({})),
-  }),
   fallbackConfig: PropTypes.shape({
     component: PropTypes.string.isRequired,
     config: PropTypes.shape({}),
@@ -200,10 +179,6 @@ ConfigurableAIAssistance.propTypes = {
 };
 
 ConfigurableAIAssistance.defaultProps = {
-  configEndpoint: null,
-  courseId: null,
-  unitId: null,
-  sequence: null,
   fallbackConfig: null,
   onConfigLoad: null,
   onConfigError: null,
