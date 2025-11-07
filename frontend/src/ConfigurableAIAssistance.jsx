@@ -7,6 +7,7 @@ import {
   fetchConfiguration,
   getDefaultEndpoint,
   mergeProps,
+  prepareContextData,
 } from './services';
 
 // Import available components
@@ -32,9 +33,9 @@ const COMPONENT_REGISTRY = {
  */
 const ConfigurableAIAssistance = ({
   configEndpoint,
-  useMock,
   courseId,
   unitId,
+  sequence,
   fallbackConfig,
   onConfigLoad,
   onConfigError,
@@ -51,12 +52,17 @@ const ConfigurableAIAssistance = ({
       setIsLoading(true);
       setError(null);
 
+      const contextData = prepareContextData({
+        sequence,
+        courseId,
+        unitId,
+        ...additionalProps,
+      });
+
       try {
         const fetchedConfig = await fetchConfiguration({
           configEndpoint: endpoint,
-          courseId,
-          unitId,
-          useMock,
+          contextData,
         });
 
         setConfig(fetchedConfig);
@@ -88,13 +94,13 @@ const ConfigurableAIAssistance = ({
     };
 
     loadConfiguration();
-  }, [endpoint, courseId, unitId, useMock, fallbackConfig, onConfigLoad, onConfigError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endpoint]);
 
   if (isLoading) {
     return (
       <div className="d-flex align-items-center gap-2 p-3">
         <Spinner animation="border" size="sm" />
-        <span className="text-muted">Loading AI assistant configuration...</span>
       </div>
     );
   }
@@ -103,10 +109,7 @@ const ConfigurableAIAssistance = ({
     return (
       <Alert variant="danger">
         <Alert.Heading>Configuration Error</Alert.Heading>
-        <p>Failed to load AI assistance configuration: {error}</p>
-        <p className="mb-0 text-muted small">
-          Advanced users can use GetAIAssistanceButton component directly.
-        </p>
+        <p>Failed to load AI extensions configuration: {error}</p>
       </Alert>
     );
   }
@@ -130,6 +133,7 @@ const ConfigurableAIAssistance = ({
     const mergedProps = mergeProps(additionalProps, componentConfig);
     const finalProps = {
       ...mergedProps,
+      sequence,
       courseId,
       unitId,
     };
@@ -155,9 +159,13 @@ const ConfigurableAIAssistance = ({
 
 ConfigurableAIAssistance.propTypes = {
   configEndpoint: PropTypes.string,
-  useMock: PropTypes.bool,
   courseId: PropTypes.string,
   unitId: PropTypes.string,
+  sequence: PropTypes.shape({
+    id: PropTypes.string,
+    displayName: PropTypes.string,
+    unitBlocks: PropTypes.arrayOf(PropTypes.shape({})),
+  }),
   fallbackConfig: PropTypes.shape({
     component: PropTypes.string.isRequired,
     config: PropTypes.shape({}),
@@ -168,9 +176,9 @@ ConfigurableAIAssistance.propTypes = {
 
 ConfigurableAIAssistance.defaultProps = {
   configEndpoint: null,
-  useMock: true,
   courseId: null,
   unitId: null,
+  sequence: null,
   fallbackConfig: null,
   onConfigLoad: null,
   onConfigError: null,

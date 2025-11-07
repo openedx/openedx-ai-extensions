@@ -3,72 +3,38 @@
  * Handles fetching runtime configuration for AI assistance components
  */
 
-/**
- * Mock configuration data - simulates API response
- */
-const getMockConfig = () => ({
-  // The component to render (for now, only GetAIAssistanceButton)
-  component: 'GetAIAssistanceButton',
-
-  // Configuration/props to pass to the component
-  config: {
-    buttonText: 'Ask AI for Help [mock config call]',
-    requestMessage: 'Help me understand this topic [mock config call]',
-  },
-
-  // Metadata (optional)
-  metadata: {
-    version: '0.1',
-    provider: 'mock',
-  },
-});
+import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 
 /**
- * Fetch configuration from API (or mock)
+ * Fetch configuration from API
  */
 export const fetchConfiguration = async ({
   configEndpoint = null,
-  courseId = null,
-  unitId = null,
-  useMock = true,
+  contextData = null,
 } = {}) => {
-  if (useMock || !configEndpoint) {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 500);
-    });
-
-    // eslint-disable-next-line no-console
-    console.log('[ConfigService] Using mock configuration');
-
-    return getMockConfig();
-  }
+  // eslint-disable-next-line no-console
+  console.log('[ConfigService]', contextData, configEndpoint);
 
   try {
     // eslint-disable-next-line no-console
-    console.log('[ConfigService] Fetching from:', configEndpoint);
+    console.log('[ConfigService] Fetching from:', configEndpoint, 'with context:', contextData);
 
     const params = new URLSearchParams();
-    if (courseId) {
-      params.append('course_id', courseId);
-    }
-    if (unitId) {
-      params.append('unit_id', unitId);
+    if (contextData) {
+      params.append('context', JSON.stringify(contextData));
     }
 
     const url = `${configEndpoint}?${params.toString()}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const client = getAuthenticatedHttpClient();
+    const { data } = await client.get(url);
 
-    if (!response.ok) {
-      throw new Error(`Configuration fetch failed: ${response.status} ${response.statusText}`);
+    // Extract config from nested response structure
+    if (data.ui_components && data.ui_components.request) {
+      return data.ui_components.request;
     }
 
-    const config = await response.json();
-    return config;
+    // Fallback: return data as-is if structure is different
+    return data;
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[ConfigService] Error fetching configuration:', error);
