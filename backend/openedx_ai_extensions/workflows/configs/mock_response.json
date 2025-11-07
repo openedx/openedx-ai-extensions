@@ -1,9 +1,7 @@
 {
-  "orchestrator_class": "DirectLLMResponse",
+  "orchestrator_class": "MockResponse",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_unit_content",
-      "char_limit": 300
     },
     "LLMProcessor": {
     }

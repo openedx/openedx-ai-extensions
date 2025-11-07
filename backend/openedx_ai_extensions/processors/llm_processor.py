@@ -107,22 +107,15 @@ class LLMProcessor:
 
     def openai_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call OpenAI API via LiteLLM"""
-        message = "Say hello world from OpenAI! key"
+        system_role = "Greet the user and say hello world outlining which Llm model is being used!"
+        result = self._call_completion_api(system_role, content_text)
 
-        return {
-            "response": message,
-            "tokens_used": 0,
-            "model_used": self.model,
-            "status": "success",
-        }
+        return result
 
     def anthropic_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call Anthropic API via LiteLLM"""
-        message = "Say hello world from Anthropic! key"
+        system_role = "Greet the user and say hello world outlining which Llm model is being used!"
 
-        return {
-            "response": message,
-            "tokens_used": 0,
-            "model_used": self.model,
-            "status": "success",
-        }
+        result = self._call_completion_api(system_role, content_text)
+
+        return result

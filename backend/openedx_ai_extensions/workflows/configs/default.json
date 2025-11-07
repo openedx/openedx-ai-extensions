@@ -6,8 +6,8 @@
       "char_limit": 300
     },
     "LLMProcessor": {
-      "function": "openai_hello",
-      "config": "openai"
+      "function": "explain_like_five",
+      "config": "default"
     }
   },
   "actuator_config": {
