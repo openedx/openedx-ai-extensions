@@ -1,0 +1,13 @@
+{
+  "orchestrator_class": "DirectLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_unit_content",
+      "char_limit": 300
+    },
+    "LLMProcessor": {
+    }
+  },
+  "actuator_config": {
+  }
+}
