@@ -25,7 +25,7 @@ class OpenEdXProcessor:
         function = getattr(self, function_name)
         return function(context)
 
-    def no_context(self, context):
+    def no_context(self, context):  # pylint: disable=unused-argument
         return {
             "display_name": "No context was provided."
         }
