@@ -11,6 +11,7 @@ import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 export const fetchConfiguration = async ({
   configEndpoint = null,
   contextData = null,
+  signal = null,
 } = {}) => {
   // eslint-disable-next-line no-console
   console.log('[ConfigService]', contextData, configEndpoint);
@@ -26,7 +27,9 @@ export const fetchConfiguration = async ({
 
     const url = `${configEndpoint}?${params.toString()}`;
     const client = getAuthenticatedHttpClient();
-    const { data } = await client.get(url);
+    const { data } = await client.get(url, {
+      signal,
+    });
 
     // Extract config from nested response structure
     if (data.ui_components && data.ui_components.request) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Spinner, Alert } from '@openedx/paragon';
 
@@ -46,8 +46,12 @@ const ConfigurableAIAssistance = ({
   const [config, setConfig] = useState(null);
 
   const endpoint = configEndpoint || getDefaultEndpoint('config');
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const currentRequestId = ++requestIdRef.current;
+
     const loadConfiguration = async () => {
       setIsLoading(true);
       setError(null);
@@ -63,37 +67,58 @@ const ConfigurableAIAssistance = ({
         const fetchedConfig = await fetchConfiguration({
           configEndpoint: endpoint,
           contextData,
+          signal: abortController.signal,
         });
 
-        setConfig(fetchedConfig);
+        // Only update state if this is still the latest request
+        if (currentRequestId === requestIdRef.current) {
+          setConfig(fetchedConfig);
 
-        if (onConfigLoad) {
-          onConfigLoad(fetchedConfig);
-        }
+          if (onConfigLoad) {
+            onConfigLoad(fetchedConfig);
+          }
 
-        // eslint-disable-next-line no-console
-        console.log('[ConfigurableAIAssistance] Configuration loaded:', fetchedConfig);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[ConfigurableAIAssistance] Configuration error:', err);
-
-        setError(err.message);
-
-        if (fallbackConfig) {
-          setConfig(fallbackConfig);
           // eslint-disable-next-line no-console
-          console.log('[ConfigurableAIAssistance] Using fallback configuration');
+          console.log('[ConfigurableAIAssistance] Configuration loaded:', fetchedConfig);
+        }
+      } catch (err) {
+        // Ignore aborted requests
+        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+          // eslint-disable-next-line no-console
+          console.log('[ConfigurableAIAssistance] Request aborted');
+          return;
         }
 
-        if (onConfigError) {
-          onConfigError(err);
+        // Only update state if this is still the latest request
+        if (currentRequestId === requestIdRef.current) {
+          // eslint-disable-next-line no-console
+          console.error('[ConfigurableAIAssistance] Configuration error:', err);
+
+          setError(err.message);
+
+          if (fallbackConfig) {
+            setConfig(fallbackConfig);
+            // eslint-disable-next-line no-console
+            console.log('[ConfigurableAIAssistance] Using fallback configuration');
+          }
+
+          if (onConfigError) {
+            onConfigError(err);
+          }
         }
       } finally {
-        setIsLoading(false);
+        // Only update loading state if this is still the latest request
+        if (currentRequestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadConfiguration();
+
+    return () => {
+      abortController.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint]);
 
