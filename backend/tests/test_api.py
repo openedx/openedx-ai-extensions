@@ -133,7 +133,7 @@ def test_workflows_post_with_invalid_payload(api_client):  # pylint: disable=red
     Test POST request to workflows endpoint with invalid/incomplete payload.
     """
     api_client.login(username="testuser", password="password123")
-    url = reverse("openedx_ai_extensions:api:v1:ai_pipelines")
+    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
 
     # Test with missing required fields
     invalid_payload = {
@@ -157,7 +157,7 @@ def test_workflows_post_with_staff_user(api_client, course_key):  # pylint: disa
     Test POST request to workflows endpoint with staff user authentication.
     """
     api_client.login(username="staffuser", password="password123")
-    url = reverse("openedx_ai_extensions:api:v1:ai_pipelines")
+    url = reverse("openedx_ai_extensions:api:v1:ai_workflows")
 
     payload = {
         "action": "analyze",
