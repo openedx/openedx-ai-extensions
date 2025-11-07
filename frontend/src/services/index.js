@@ -6,3 +6,8 @@ export {
   validateEndpoint,
   getDefaultEndpoint,
 } from './aiPipelineService';
+
+export {
+  fetchConfiguration,
+  mergeProps,
+} from './configService';
