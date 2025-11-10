@@ -6,7 +6,6 @@ import logging
 
 from django.conf import settings
 from litellm import responses
-from openedx_ai_extensions.utils import _search_user_info_in_file, _update_file_with_user_info
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +13,12 @@ logger = logging.getLogger(__name__)
 class ResponsesProcessor:
     """Handles AI/LLM processing operations"""
 
-    def __init__(self, config=None, user=None, unit_id=None):
+    def __init__(self, config=None, user_session=None):
         config = config or {}
 
         class_name = self.__class__.__name__
         self.config = config.get(class_name, {})
-        self.user = user
-        self.unit_id = unit_id
+        self.user_session = user_session
 
         self.config_profile = self.config.get("config", "default")
 
@@ -71,9 +69,8 @@ class ResponsesProcessor:
                 ],
                 "api_key": self.api_key,
             }
-            user_info = _search_user_info_in_file(self.user, self.unit_id)
-            if user_info and "response_id" in user_info:
-                completion_params["previous_response_id"] = user_info["response_id"]
+            if self.user_session and self.user_session.last_response_id:
+                completion_params["previous_response_id"] = self.user_session.last_response_id
 
             # Add optional parameters only if configured
             if self.temperature is not None:
@@ -85,7 +82,8 @@ class ResponsesProcessor:
 
             response_id = getattr(response, "id", None)
             if response_id:
-                _update_file_with_user_info(self.user, self.unit_id, {"response_id": response_id})
+                self.user_session.last_response_id = response_id
+                self.user_session.save()
 
             content = self._extract_response_content(response)
 

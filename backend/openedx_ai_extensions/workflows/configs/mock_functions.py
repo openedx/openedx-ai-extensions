@@ -8,8 +8,13 @@ import os
 import pprint
 import re
 from typing import Optional
+from uuid import uuid4
+
+from django.contrib.auth import get_user_model
 
 from django.conf import settings
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -68,3 +73,52 @@ def _fake_get_config_from_file(cls, action: str, course_id: Optional[str] = None
         processor_config=configs.get("processor_config", {}),
         actuator_config=configs.get("actuator_config", {}),
     )
+
+def _fake_get_or_create_session(cls, user, curse_id: str):
+    """
+    Fake method to simulate getting or creating a session.
+    """
+    path = os.path.join(os.path.dirname(__file__), f"session-{user.id}-{curse_id}.json")
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            session_data = json.load(f)
+            user = User.objects.get(id=session_data["user_id"])
+            return cls(
+                id=session_data["id"],
+                user=user,
+                course_id=session_data["course_id"],
+                last_response_id=session_data.get("last_response_id"),
+                metadata=session_data.get("metadata", {}),
+            )
+    else:
+        user = User.objects.get(id=user.id)
+        new_session = cls(
+            id=str(uuid4()),
+            user=user,
+            course_id=curse_id,
+            last_response_id=None,
+            metadata={},
+        )
+        with open(path, "w") as f:
+            json.dump({
+                "id": new_session.id,
+                "user_id": new_session.user.id,
+                "course_id": new_session.course_id,
+                "last_response_id": new_session.last_response_id,
+                "metadata": new_session.metadata,
+            }, f)
+        return new_session
+
+def _fake_save_session(self):
+    """
+    Fake method to simulate saving a session.
+    """
+    path = os.path.join(os.path.dirname(__file__), f"session-{self.user.id}-{self.course_id}.json")
+    with open(path, "w") as f:
+        json.dump({
+            "id": self.id,
+            "user_id": self.user.id,
+            "course_id": self.course_id,
+            "last_response_id": self.last_response_id,
+            "metadata": self.metadata,
+        }, f)
