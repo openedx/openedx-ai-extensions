@@ -61,10 +61,14 @@ class ThreadedLLMResponse(BaseOrchestrator):
     """Orchestrator that provides LLM responses using threading (placeholder)."""
     def run(self, input_data):
         # Prepare context
+        from openedx_ai_extensions.workflows.models import AIWorkflowSession # pylint: disable=import-outside-toplevel
+
         context = {
             "course_id": self.workflow.course_id,
             "extra_context": self.workflow.extra_context,
         }
+
+        session = AIWorkflowSession.get_or_create_session(self.workflow.user, self.workflow.course_id)
 
         # 1. Process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
@@ -77,7 +81,7 @@ class ThreadedLLMResponse(BaseOrchestrator):
             }
 
         # 2. Process with LLM processor
-        llm_processor = ResponsesProcessor(self.config.processor_config, self.workflow.user, self.workflow.unit_id)
+        llm_processor = ResponsesProcessor(self.config.processor_config, session)
         llm_result = llm_processor.process(str(content_result))
 
         if "error" in llm_result:
