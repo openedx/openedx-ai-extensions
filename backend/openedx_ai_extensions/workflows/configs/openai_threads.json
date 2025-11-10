@@ -1,0 +1,13 @@
+{
+  "orchestrator_class": "ThreadedLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+    },
+    "ResponsesProcessor": {
+      "function": "explain_like_five",
+      "config": "openai"
+    }
+  },
+  "actuator_config": {
+  }
+}
