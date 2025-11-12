@@ -6,6 +6,8 @@ import logging
 
 from django.conf import settings
 from litellm import completion
+from .library_utils import create_container, create_block, modify_block_olx, publish_changes
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +15,12 @@ logger = logging.getLogger(__name__)
 class LLMProcessor:
     """Handles AI/LLM processing operations"""
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, user=None):
         config = config or {}
 
         class_name = self.__class__.__name__
         self.config = config.get(class_name, {})
+        self.user = user
 
         self.config_profile = self.config.get("config", "default")
 
@@ -107,10 +110,59 @@ class LLMProcessor:
 
     def openai_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call OpenAI API via LiteLLM"""
-        system_role = "Greet the user and say hello world outlining which Llm model is being used!"
-        result = self._call_completion_api(system_role, content_text)
 
-        return result
+        lib_name = "demo1:demo1"
+        lib_key_str = f"lib:{lib_name}"
+        # data = {
+        #     "container_type": "unit",
+        #     "display_name": "Test Library Unit from LLM"
+        # }
+        # unit = create_container(lib_key_str, self.user, data)
+        # logger.info(f"TEST Created library container: {unit}")
+
+        block_data = {
+          "block_type": "problem",
+          "definition_id": str(uuid4()),
+          "can_stand_alone": True,
+        }
+        problem = create_block(lib_key_str, self.user, block_data)
+        logger.info(f"TEST Created library block: {problem}")
+
+        problem_data = {
+          "category": "problem",
+          "courseKey": lib_key_str,
+          "data": "<problem><choiceresponse>\n<div>question2</div><checkboxgroup><choice correct=\"true\"><div>1</div></choice><choice correct=\"false\"><div>2</div></choice><choice correct=\"false\"><div>3</div></choice></checkboxgroup><solution><div class=\"detailed-solution\"><p>Explanation</p><p>explanation</p></div></solution></choiceresponse>\n</problem>",
+          "has_changes": True,
+          "metadata": {
+            "display_name": "Multi-select",
+            "max_attempts": None,
+            "weight": 1,
+            "showanswer": None,
+            "show_reset_button": None,
+            "rerandomize": None,
+            "markdown_edited": False
+          }
+        }
+        modify_block_olx(usage_key=problem.usage_key, data=problem_data, user=self.user)
+        publish_changes(lib_key_str, self.user)
+        logger.info("TEST Created problem content in library block")
+
+        # append_children_to_container(
+        #     container_key=unit.container_key,
+        #     problem_key=problem.usage_key,
+        #     user=self.user
+        # )
+
+
+        # system_role = "Greet the user and say hello world outlining which Llm model is being used!"
+        # result = self._call_completion_api(system_role, content_text)
+
+        return {
+            "response": f"Hello world from OpenAI model {self.model}!",
+            "tokens_used": 0,
+            "model_used": self.model,
+            "status": "success",
+        }
 
     def anthropic_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call Anthropic API via LiteLLM"""
