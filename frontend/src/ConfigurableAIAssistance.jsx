@@ -19,6 +19,7 @@ import {
 import {
   AIRequestComponent,
   AIResponseComponent,
+  AISidebarResponse,
 } from './components';
 
 /**
@@ -28,6 +29,7 @@ import {
 const COMPONENT_REGISTRY = {
   AIRequestComponent,
   AIResponseComponent,
+  AISidebarResponse,
   // Future components can be added here
 };
 

@@ -16,9 +16,9 @@
         }
       },
       "response": {
-        "component": "AIResponseComponent",
+        "component": "AISidebarResponse",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "AI Assistant Sidebar Response [config api]"
         }
       },
       "metadata": {
