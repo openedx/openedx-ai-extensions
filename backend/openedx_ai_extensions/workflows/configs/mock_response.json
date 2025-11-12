@@ -7,5 +7,24 @@
     }
   },
   "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "Ask AI [config api]",
+          "customMessage": "A mocked response from the server [config api]"
+        }
+      },
+      "response": {
+        "component": "AISidebarResponse",
+        "config": {
+          "customMessage": "AI Assistant Sidebar Response [config api]"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
+      }
+    }
   }
 }
