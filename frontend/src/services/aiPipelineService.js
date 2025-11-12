@@ -145,29 +145,11 @@ export const callAIService = async ({
     },
   };
 
-  // Log the request for debugging (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
-    console.log('AI Service Request:', {
-      endpoint: apiEndpoint,
-      payload: requestPayload,
-    });
-  }
-
   try {
     // Use Open edX authenticated HTTP client
     // This automatically handles JWT cookies and CSRF tokens
     const { data } = await getAuthenticatedHttpClient()
-      .post(apiEndpoint, requestPayload)
-      .catch((error) => {
-        throw error;
-      });
-
-    // Log successful response (only in development)
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.log('AI Service Response Data:', data);
-    }
+      .post(apiEndpoint, requestPayload);
 
     // Very flexible response validation - accept any structure
     if (!data) {
@@ -176,17 +158,12 @@ export const callAIService = async ({
 
     return data;
   } catch (error) {
-    // Enhanced error logging
+    // Log error for debugging
     // eslint-disable-next-line no-console
-    console.error('AI Service Error:', {
-      error: error.message,
-      endpoint: apiEndpoint,
-      requestId: requestPayload.requestId,
-      contextAvailable: Object.keys(contextData),
-    });
+    console.error('AI Service Error:', error);
 
-    // Re-throw with additional context
-    throw new Error(`AI Service Error: ${error.message}`);
+    // Re-throw the original error
+    throw error;
   }
 };
 

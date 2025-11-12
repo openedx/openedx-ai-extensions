@@ -16,7 +16,7 @@
         "component": "AIRequestComponent",
         "config": {
           "buttonText": "Ask AI [config api]",
-          "requestMessage": "Explain me like I'm 5 [config api]"
+          "customMessage": "Explain me like I'm 5 [config api]"
         }
       },
       "response": {

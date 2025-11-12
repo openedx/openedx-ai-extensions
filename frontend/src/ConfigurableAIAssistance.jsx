@@ -88,15 +88,10 @@ const ConfigurableAIAssistance = ({
           if (onConfigLoad) {
             onConfigLoad(fetchedConfig);
           }
-
-          // eslint-disable-next-line no-console
-          console.log('[ConfigurableAIAssistance] Configuration loaded:', fetchedConfig);
         }
       } catch (err) {
         // Ignore aborted requests
         if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-          // eslint-disable-next-line no-console
-          console.log('[ConfigurableAIAssistance] Request aborted');
           return;
         }
 
@@ -109,8 +104,6 @@ const ConfigurableAIAssistance = ({
 
           if (fallbackConfig) {
             setConfig(fallbackConfig);
-            // eslint-disable-next-line no-console
-            console.log('[ConfigurableAIAssistance] Using fallback configuration');
           }
 
           if (onConfigError) {
@@ -152,9 +145,6 @@ const ConfigurableAIAssistance = ({
       const contextData = prepareContextData({
         ...additionalProps,
       });
-
-      // eslint-disable-next-line no-console
-      console.log('[ConfigurableAIAssistance] Prepared context data:', contextData);
 
       // Get request message from config
       const requestMessage = config?.config?.customMessage
@@ -294,15 +284,6 @@ const ConfigurableAIAssistance = ({
     // Merge props with config
     const requestProps = mergeProps(additionalProps, requestComponentConfig);
     const responseProps = mergeProps({}, responseComponentConfig);
-
-    // eslint-disable-next-line no-console
-    console.log('[ConfigurableAIAssistance] Rendering:', {
-      request: requestComponentName,
-      response: responseComponentName,
-      metadata: config.metadata,
-      requestProps,
-      responseProps,
-    });
 
     return (
       <div className="configurable-ai-assistance" style={{ maxWidth: '100%' }}>

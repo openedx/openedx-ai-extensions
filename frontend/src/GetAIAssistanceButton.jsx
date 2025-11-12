@@ -23,8 +23,6 @@ import {
 const GetAIAssistanceButton = ({
   requestMessage,
   buttonText,
-  showResponseActions,
-  allowDownload,
   ...props
 }) => {
   // Core state management
@@ -57,9 +55,6 @@ const GetAIAssistanceButton = ({
       const contextData = prepareContextData({
         ...props,
       });
-
-      // eslint-disable-next-line no-console
-      console.log('Prepared context data:', contextData);
 
       // Make API call with flexible parameters
       const data = await callAIService({
@@ -150,8 +145,6 @@ const GetAIAssistanceButton = ({
         onAskAgain={handleAskAI}
         onClear={handleReset}
         onError={handleClearError}
-        showActions={showResponseActions}
-        allowDownload={allowDownload}
       />
 
       {/* Development debug info */}
@@ -172,15 +165,11 @@ const GetAIAssistanceButton = ({
 GetAIAssistanceButton.propTypes = {
   requestMessage: PropTypes.string,
   buttonText: PropTypes.string,
-  showResponseActions: PropTypes.bool,
-  allowDownload: PropTypes.bool,
 };
 
 GetAIAssistanceButton.defaultProps = {
   requestMessage: 'Need help understanding this content?',
   buttonText: 'Get AI Assistance',
-  showResponseActions: true,
-  allowDownload: false,
 };
 
 export default GetAIAssistanceButton;

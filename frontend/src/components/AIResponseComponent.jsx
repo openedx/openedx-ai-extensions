@@ -5,7 +5,6 @@ import {
   Send,
   CheckCircle,
   Warning,
-  Download,
 } from '@openedx/paragon/icons';
 
 /**
@@ -19,25 +18,8 @@ const AIResponseComponent = ({
   onAskAgain,
   onClear,
   onError,
-  showActions = true,
-  allowDownload,
   customMessage,
 }) => {
-  /**
-   * Download response as text file
-   */
-  const handleDownload = () => {
-    const blob = new Blob([response], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ai-assistance-${new Date().getTime()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   /**
    * Format response text for display
    */
@@ -109,55 +91,33 @@ const AIResponseComponent = ({
               />
 
               {/* Action buttons */}
-              {showActions && (
-                <div className="response-actions d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-                  <small className="text-muted d-flex align-items-center">
-                    {customMessage}
-                  </small>
+              <div className="response-actions d-flex justify-content-end align-items-center mt-3 pt-2 border-top gap-2">
+                {/* Clear button */}
+                {onClear && (
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={onClear}
+                    className="py-1 px-2"
+                  >
+                    Clear
+                  </Button>
+                )}
 
-                  <div className="action-buttons d-flex gap-2">
-
-                    {/* Download button */}
-                    {allowDownload && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        onClick={handleDownload}
-                        className="p-1 text-muted"
-                        title="Download response"
-                      >
-                        <Download style={{ width: '14px', height: '14px' }} />
-                      </Button>
-                    )}
-
-                    {/* Clear button */}
-                    {onClear && (
-                      <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        onClick={onClear}
-                        className="py-1 px-2"
-                      >
-                        Clear
-                      </Button>
-                    )}
-
-                    {/* Ask again button */}
-                    {onAskAgain && (
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        onClick={onAskAgain}
-                        disabled={isLoading}
-                        iconBefore={Send}
-                        className="py-1 px-2"
-                      >
-                        Ask Again
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
+                {/* Ask again button */}
+                {onAskAgain && (
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={onAskAgain}
+                    disabled={isLoading}
+                    iconBefore={Send}
+                    className="py-1 px-2"
+                  >
+                    Ask Again
+                  </Button>
+                )}
+              </div>
             </div>
           </Collapsible>
         </div>
@@ -173,8 +133,6 @@ AIResponseComponent.propTypes = {
   onAskAgain: PropTypes.func,
   onClear: PropTypes.func,
   onError: PropTypes.func,
-  showActions: PropTypes.bool,
-  allowDownload: PropTypes.bool,
   customMessage: PropTypes.string,
 };
 
@@ -185,8 +143,6 @@ AIResponseComponent.defaultProps = {
   onAskAgain: null,
   onClear: null,
   onError: null,
-  showActions: true,
-  allowDownload: false,
   customMessage: 'AI Assistant Response',
 };
 
