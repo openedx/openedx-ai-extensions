@@ -9,15 +9,21 @@
   "actuator_config": {
     "UIComponents": {
       "request": {
-        "component": "GetAIAssistanceButton",
+        "component": "AIRequestComponent",
         "config": {
           "buttonText": "Ask AI [config api]",
-          "requestMessage": "A mocked response from the server [config api]"
-        },
-        "metadata": {
-            "version": 0.1,
-            "provider": "config_api"
+          "customMessage": "A mocked response from the server [config api]"
         }
+      },
+      "response": {
+        "component": "AIResponseComponent",
+        "config": {
+          "customMessage": "AI Assistant Response [config api]"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
       }
     }
   }

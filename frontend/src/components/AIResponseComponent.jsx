@@ -21,6 +21,7 @@ const AIResponseComponent = ({
   onError,
   showActions = true,
   allowDownload,
+  customMessage,
 }) => {
   /**
    * Download response as text file
@@ -40,11 +41,11 @@ const AIResponseComponent = ({
   /**
    * Format response text for display
    */
-  const formatResponse = (text) => {
-    if (!text) { return ''; }
+  const formatResponse = (responseText) => {
+    if (!responseText) { return ''; }
 
     // Convert newlines to break tags
-    let formatted = text.replace(/\n/g, '<br>');
+    let formatted = responseText.replace(/\n/g, '<br>');
 
     // Basic markdown-like formatting
     formatted = formatted
@@ -85,7 +86,7 @@ const AIResponseComponent = ({
             title={(
               <div className="d-flex align-items-center">
                 <CheckCircle className="text-success me-2" style={{ width: '16px', height: '16px' }} />
-                <small className="text-success fw-semibold">AI Assistant Response</small>
+                <small className="text-success fw-semibold">{customMessage}</small>
               </div>
             )}
             defaultOpen
@@ -111,7 +112,7 @@ const AIResponseComponent = ({
               {showActions && (
                 <div className="response-actions d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                   <small className="text-muted d-flex align-items-center">
-                    💡 AI-generated assistance
+                    {customMessage}
                   </small>
 
                   <div className="action-buttons d-flex gap-2">
@@ -174,6 +175,7 @@ AIResponseComponent.propTypes = {
   onError: PropTypes.func,
   showActions: PropTypes.bool,
   allowDownload: PropTypes.bool,
+  customMessage: PropTypes.string,
 };
 
 AIResponseComponent.defaultProps = {
@@ -185,6 +187,7 @@ AIResponseComponent.defaultProps = {
   onError: null,
   showActions: true,
   allowDownload: false,
+  customMessage: 'AI Assistant Response',
 };
 
 export default AIResponseComponent;

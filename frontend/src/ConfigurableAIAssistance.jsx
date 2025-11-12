@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {
+  useState, useEffect, useRef, useCallback,
+} from 'react';
 import PropTypes from 'prop-types';
 import { Spinner, Alert } from '@openedx/paragon';
 
@@ -8,28 +10,33 @@ import {
   getDefaultEndpoint,
   mergeProps,
   prepareContextData,
+  callAIService,
+  formatErrorMessage,
+  validateEndpoint,
 } from './services';
 
 // Import available components
-import GetAIAssistanceButton from './GetAIAssistanceButton';
+import {
+  AIRequestComponent,
+  AIResponseComponent,
+} from './components';
 
 /**
  * Component Registry
  * Maps component names from config to actual React components
  */
 const COMPONENT_REGISTRY = {
-  GetAIAssistanceButton,
+  AIRequestComponent,
+  AIResponseComponent,
   // Future components can be added here
-  // 'CustomAIComponent': CustomAIComponent,
 };
 
 /**
  * Configurable AI Assistance Wrapper Component
  *
  * Fetches runtime configuration from an API and dynamically renders
- * the appropriate AI assistance component with the specified configuration.
- *
- * Advanced users can skip this wrapper and use GetAIAssistanceButton directly.
+ * AIRequestComponent and AIResponseComponent with configuration.
+ * Manages state and orchestrates the AI interaction flow.
  */
 const ConfigurableAIAssistance = ({
   fallbackConfig,
@@ -37,20 +44,29 @@ const ConfigurableAIAssistance = ({
   onConfigError,
   ...additionalProps
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Configuration state
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [configError, setConfigError] = useState(null);
   const [config, setConfig] = useState(null);
 
-  const endpoint = getDefaultEndpoint('config');
+  // AI interaction state
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState('');
+  const [error, setError] = useState('');
+  const [hasAsked, setHasAsked] = useState(false);
+
+  const configEndpoint = getDefaultEndpoint('config');
+  const apiEndpoint = getDefaultEndpoint();
   const requestIdRef = useRef(0);
 
+  // Load configuration on mount
   useEffect(() => {
     const abortController = new AbortController();
     const currentRequestId = ++requestIdRef.current;
 
     const loadConfiguration = async () => {
-      setIsLoading(true);
-      setError(null);
+      setIsLoadingConfig(true);
+      setConfigError(null);
 
       const contextData = prepareContextData({
         ...additionalProps,
@@ -58,7 +74,7 @@ const ConfigurableAIAssistance = ({
 
       try {
         const fetchedConfig = await fetchConfiguration({
-          configEndpoint: endpoint,
+          configEndpoint,
           contextData,
           signal: abortController.signal,
         });
@@ -87,7 +103,7 @@ const ConfigurableAIAssistance = ({
           // eslint-disable-next-line no-console
           console.error('[ConfigurableAIAssistance] Configuration error:', err);
 
-          setError(err.message);
+          setConfigError(err.message);
 
           if (fallbackConfig) {
             setConfig(fallbackConfig);
@@ -102,7 +118,7 @@ const ConfigurableAIAssistance = ({
       } finally {
         // Only update loading state if this is still the latest request
         if (currentRequestId === requestIdRef.current) {
-          setIsLoading(false);
+          setIsLoadingConfig(false);
         }
       }
     };
@@ -113,9 +129,91 @@ const ConfigurableAIAssistance = ({
       abortController.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endpoint]);
+  }, [configEndpoint]);
 
-  if (isLoading) {
+  /**
+   * Handle AI assistant request
+   */
+  const handleAskAI = useCallback(async () => {
+    // Validate endpoint
+    if (!validateEndpoint(apiEndpoint)) {
+      setError('Invalid API endpoint configuration');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setResponse('');
+
+    try {
+      // Prepare context data
+      const contextData = prepareContextData({
+        ...additionalProps,
+      });
+
+      // eslint-disable-next-line no-console
+      console.log('[ConfigurableAIAssistance] Prepared context data:', contextData);
+
+      // Get request message from config
+      const requestMessage = config?.config?.customMessage
+        || config?.config?.requestMessage
+        || 'Provide learning assistance for this content';
+
+      // Make API call
+      const data = await callAIService({
+        contextData,
+        apiEndpoint,
+        courseId: contextData.courseId,
+        userQuery: requestMessage,
+      });
+
+      // Handle response
+      if (data.response) {
+        setResponse(data.response);
+        setHasAsked(true);
+      } else if (data.message) {
+        setResponse(data.message);
+        setHasAsked(true);
+      } else if (data.content) {
+        setResponse(data.content);
+        setHasAsked(true);
+      } else if (data.result) {
+        setResponse(data.result);
+        setHasAsked(true);
+      } else if (data.error) {
+        throw new Error(data.error);
+      } else {
+        setResponse(JSON.stringify(data, null, 2));
+        setHasAsked(true);
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[ConfigurableAIAssistance] AI Assistant Error:', err);
+      const userFriendlyError = formatErrorMessage(err);
+      setError(userFriendlyError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiEndpoint, config, additionalProps]);
+
+  /**
+   * Reset component state for new request
+   */
+  const handleReset = useCallback(() => {
+    setResponse('');
+    setError('');
+    setHasAsked(false);
+  }, []);
+
+  /**
+   * Clear error state but keep button available
+   */
+  const handleClearError = useCallback((errorMessage = '') => {
+    setError(errorMessage);
+  }, []);
+
+  // Show loading spinner while loading configuration
+  if (isLoadingConfig) {
     return (
       <div className="d-flex align-items-center gap-2 p-3">
         <Spinner animation="border" size="sm" />
@@ -123,24 +221,51 @@ const ConfigurableAIAssistance = ({
     );
   }
 
-  if (error && !config) {
+  // Show error if configuration failed and no fallback
+  if (configError && !config) {
     return (
       <Alert variant="danger">
         <Alert.Heading>Configuration Error</Alert.Heading>
-        <p>Failed to load AI extensions configuration: {error}</p>
+        <p>Failed to load AI extensions configuration: {configError}</p>
       </Alert>
     );
   }
 
+  // Render configured components
   if (config) {
-    const { component: componentName, config: componentConfig = {} } = config;
-    const ComponentToRender = COMPONENT_REGISTRY[componentName];
+    // Both request and response configs are required
+    const requestConfig = config.request;
+    const responseConfig = config.response;
 
-    if (!ComponentToRender) {
+    // Validate request config
+    if (!requestConfig) {
       return (
-        <Alert variant="warning">
+        <Alert variant="danger">
+          <Alert.Heading>Invalid Configuration</Alert.Heading>
+          <p>Request component configuration is missing.</p>
+        </Alert>
+      );
+    }
+
+    // Validate response config
+    if (!responseConfig) {
+      return (
+        <Alert variant="danger">
+          <Alert.Heading>Invalid Configuration</Alert.Heading>
+          <p>Response component configuration is missing.</p>
+        </Alert>
+      );
+    }
+
+    // Get request component
+    const { component: requestComponentName, config: requestComponentConfig = {} } = requestConfig;
+    const RequestComponent = COMPONENT_REGISTRY[requestComponentName];
+
+    if (!RequestComponent) {
+      return (
+        <Alert variant="danger">
           <Alert.Heading>Unknown Component</Alert.Heading>
-          <p>Component &quot;{componentName}&quot; is not available.</p>
+          <p>Request component &quot;{requestComponentName}&quot; is not available.</p>
           <p className="mb-0 text-muted small">
             Available components: {Object.keys(COMPONENT_REGISTRY).join(', ')}
           </p>
@@ -148,20 +273,62 @@ const ConfigurableAIAssistance = ({
       );
     }
 
-    const finalProps = mergeProps(additionalProps, componentConfig);
+    // Get response component
+    const { component: responseComponentName, config: responseComponentConfig = {} } = responseConfig;
+    const ResponseComponent = COMPONENT_REGISTRY[responseComponentName];
+
+    if (!ResponseComponent) {
+      return (
+        <Alert variant="danger">
+          <Alert.Heading>Unknown Component</Alert.Heading>
+          <p>Response component &quot;{responseComponentName}&quot; is not available.</p>
+          <p className="mb-0 text-muted small">
+            Available components: {Object.keys(COMPONENT_REGISTRY).join(', ')}
+          </p>
+        </Alert>
+      );
+    }
+
+    // Merge props with config
+    const requestProps = mergeProps(additionalProps, requestComponentConfig);
+    const responseProps = mergeProps({}, responseComponentConfig);
 
     // eslint-disable-next-line no-console
-    console.log('[ConfigurableAIAssistance] Rendering component:', componentName, 'with props:', finalProps);
+    console.log('[ConfigurableAIAssistance] Rendering:', {
+      request: requestComponentName,
+      response: responseComponentName,
+      metadata: config.metadata,
+      requestProps,
+      responseProps,
+    });
 
     return (
-      <div className="configurable-ai-assistance">
-        {error && (
+      <div className="configurable-ai-assistance" style={{ maxWidth: '100%' }}>
+        {configError && (
           <Alert variant="warning" dismissible className="mb-2">
-            <small>Using fallback configuration due to error: {error}</small>
+            <small>Using fallback configuration due to error: {configError}</small>
           </Alert>
         )}
 
-        <ComponentToRender {...finalProps} />
+        {/* Request Interface */}
+        <RequestComponent
+          isLoading={isLoading}
+          hasAsked={hasAsked && !error}
+          onAskAI={handleAskAI}
+          disabled={false}
+          {...requestProps}
+        />
+
+        {/* Response Interface - Now dynamic! */}
+        <ResponseComponent
+          response={response}
+          error={error}
+          isLoading={isLoading}
+          onAskAgain={handleAskAI}
+          onClear={handleReset}
+          onError={handleClearError}
+          {...responseProps}
+        />
       </div>
     );
   }

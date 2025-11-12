@@ -32,8 +32,13 @@ export const fetchConfiguration = async ({
     });
 
     // Extract config from nested response structure
-    if (data.ui_components && data.ui_components.request) {
-      return data.ui_components.request;
+    if (data.ui_components) {
+      // Return both request and response configurations
+      return {
+        request: data.ui_components.request || null,
+        response: data.ui_components.response || null,
+        metadata: data.ui_components.metadata || null,
+      };
     }
 
     // Fallback: return data as-is if structure is different
