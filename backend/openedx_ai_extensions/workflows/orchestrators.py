@@ -44,7 +44,7 @@ class DirectLLMResponse(BaseOrchestrator):
             }
 
         # 2. Process with LLM processor
-        llm_processor = LLMProcessor(self.config.processor_config)
+        llm_processor = LLMProcessor(self.config.processor_config, self.workflow.user)
         llm_result = llm_processor.process(str(content_result))
 
         if "error" in llm_result:
