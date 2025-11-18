@@ -5,6 +5,7 @@ export {
   formatErrorMessage,
   validateEndpoint,
   getDefaultEndpoint,
+  getStudioDefaultEndpoint,
 } from './aiPipelineService';
 
 export {

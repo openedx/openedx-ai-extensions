@@ -6,13 +6,12 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor, ResponsesProcessor, SubmissionProcessor
+from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor, ResponsesProcessor, SubmissionProcessor, EducatorAssistantProcessor
 
 if TYPE_CHECKING:
     from openedx_ai_extensions.workflows.models import AIWorkflowSession
 
 logger = logging.getLogger(__name__)
-
 
 class BaseOrchestrator:
     """Base class for workflow orchestrators."""
@@ -36,6 +35,72 @@ class MockResponse(BaseOrchestrator):
 class DirectLLMResponse(BaseOrchestrator):
     """Orchestrator that provides direct LLM responses."""
 
+    def run(self, input_data):
+        # Prepare context
+        context = {
+            'course_id': self.workflow.course_id,
+            'extra_context': self.workflow.extra_context
+        }
+
+        # 1. Process with OpenEdX processor
+        openedx_processor = OpenEdXProcessor(self.config.processor_config)
+        content_result = openedx_processor.process(context)
+
+        if 'error' in content_result:
+            return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
+
+        # 2. Process with LLM processor
+        llm_processor = LLMProcessor(self.config.processor_config)
+        llm_result = llm_processor.process(str(content_result))
+
+        if 'error' in llm_result:
+            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
+
+        # 3. Return result
+        return {
+            'response': llm_result.get('response', 'No response available'),
+            'status': 'completed',
+            'metadata': {
+                'tokens_used': llm_result.get('tokens_used'),
+                'model_used': llm_result.get('model_used')
+            }
+        }
+
+class EducatorAssistantOrchestrator(BaseOrchestrator):
+    def run(self, input_data):
+        # Prepare context
+        context = {
+            'course_id': self.workflow.course_id,
+            'extra_context': self.workflow.extra_context
+        }
+
+        # 1. Process with OpenEdX processor
+        openedx_processor = OpenEdXProcessor(self.config.processor_config)
+        content_result = openedx_processor.process(context)
+
+        if 'error' in content_result:
+            return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
+
+        # 2. Process with LLM processor
+        llm_processor = EducatorAssistantProcessor(config=self.config.processor_config, user=self.workflow.user, context=content_result)
+        llm_result = llm_processor.process(str(content_result))
+
+        if 'error' in llm_result:
+            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
+
+        # 3. Return result
+        return {
+            'response': llm_result.get('response', 'No response available'),
+            'status': 'completed',
+            'metadata': {
+                'tokens_used': llm_result.get('tokens_used'),
+                'model_used': llm_result.get('model_used')
+            }
+        }
+
+
+class ThreadedLLMResponse(BaseOrchestrator):
+    """Orchestrator that provides LLM responses using threading (placeholder)."""
     def run(self, input_data):
         # Prepare context
         context = {

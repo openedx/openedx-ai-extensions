@@ -193,6 +193,12 @@ export const getDefaultEndpoint = (endpoint = 'workflows') => {
   return `${lmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
 };
 
+export const getStudioDefaultEndpoint = (endpoint = 'workflows') => {
+  const config = getConfig();
+  const cmsBaseUrl = config.STUDIO_BASE_URL;
+  return `${cmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
+}
+
 /**
  * Format error message for user display
  * @param {Error} error - Error object
