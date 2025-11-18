@@ -8,6 +8,7 @@ import { Spinner, Alert } from '@openedx/paragon';
 import {
   fetchConfiguration,
   getDefaultEndpoint,
+  getStudioDefaultEndpoint,
   mergeProps,
   prepareContextData,
   callAIService,
@@ -58,7 +59,7 @@ const ConfigurableAIAssistance = ({
   const [hasAsked, setHasAsked] = useState(false);
 
   const configEndpoint = getDefaultEndpoint('config');
-  const apiEndpoint = getDefaultEndpoint();
+  const apiEndpoint = getStudioDefaultEndpoint();
   const requestIdRef = useRef(0);
 
   // Load configuration on mount
