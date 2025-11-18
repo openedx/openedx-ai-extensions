@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -136,12 +137,18 @@ class AIWorkflowConfigView(APIView):
     API endpoint to retrieve workflow configuration
     """
 
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         """
         Retrieve workflow configuration for a given action and context
         """
         # Extract query parameters
-        context = json.loads(request.query_params.get("context"))
+        context_str = request.query_params.get("context", "{}")
+        try:
+            context = json.loads(context_str)
+        except (json.JSONDecodeError, TypeError):
+            context = {}
         unit_id = context.get("unitId")
         action = request.query_params.get("action")
         course_id = request.query_params.get("courseId")
