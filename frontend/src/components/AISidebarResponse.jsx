@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Button, Alert, IconButton } from '@openedx/paragon';
 import {
@@ -7,6 +7,14 @@ import {
   Warning,
   Close,
 } from '@openedx/paragon/icons';
+
+// Import AI services
+import {
+  callAIService,
+  prepareContextData,
+  getDefaultEndpoint,
+  formatErrorMessage,
+} from '../services';
 
 /**
  * AI Sidebar Response Component
@@ -21,15 +29,38 @@ const AISidebarResponse = ({
   onError,
   showActions = true,
   customMessage,
+  contextData = {},
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [followUpQuestion, setFollowUpQuestion] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+  const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
+  const chatEndRef = useRef(null);
+  const initialResponseAdded = useRef(false);
 
-  // Show sidebar when response or error arrives
+  // Show sidebar when response or error arrives (but not while just loading)
   useEffect(() => {
-    if (response || error) {
+    if (response && !initialResponseAdded.current) {
+      setIsOpen(true);
+      setChatMessages([{
+        type: 'ai',
+        content: response,
+        timestamp: new Date().toISOString(),
+      }]);
+      initialResponseAdded.current = true;
+    }
+    
+    if (error) {
       setIsOpen(true);
     }
   }, [response, error]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isSendingFollowUp]);
 
   /**
    * Format response text for display
@@ -54,13 +85,99 @@ const AISidebarResponse = ({
    */
   const handleClearAndClose = () => {
     setIsOpen(false);
+    setFollowUpQuestion('');
+    setChatMessages([]);
+    initialResponseAdded.current = false;
     if (onClear) {
       onClear();
     }
   };
 
-  // Don't render if no response or error
-  if (!response && !error) {
+  /**
+   * Handle follow-up question submission
+   * Makes direct API call instead of using onAskAgain
+   */
+  const handleFollowUpSubmit = async () => {
+    if (!followUpQuestion.trim()) return;
+
+    const userMessage = followUpQuestion.trim();
+    
+    // Add user message to chat
+    setChatMessages(prev => [...prev, {
+      type: 'user',
+      content: userMessage,
+      timestamp: new Date().toISOString(),
+    }]);
+
+    setFollowUpQuestion('');
+    setIsSendingFollowUp(true);
+
+    try {
+      // Get API endpoint
+      const apiEndpoint = getDefaultEndpoint();
+
+      // Prepare context data
+      const preparedContext = prepareContextData({
+        ...contextData,
+      });
+
+      // Make API call
+      const data = await callAIService({
+        contextData: preparedContext,
+        apiEndpoint,
+        courseId: preparedContext.courseId,
+        userQuery: userMessage,
+      });
+
+      // Extract response from various possible fields
+      let aiResponse = '';
+      if (data.response) {
+        aiResponse = data.response;
+      } else if (data.message) {
+        aiResponse = data.message;
+      } else if (data.content) {
+        aiResponse = data.content;
+      } else if (data.result) {
+        aiResponse = data.result;
+      } else {
+        aiResponse = JSON.stringify(data, null, 2);
+      }
+
+      // Add AI response to chat
+      setChatMessages(prev => [...prev, {
+        type: 'ai',
+        content: aiResponse,
+        timestamp: new Date().toISOString(),
+      }]);
+
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[AISidebarResponse] Follow-up error:', err);
+      const userFriendlyError = formatErrorMessage(err);
+      
+      // Add error message to chat
+      setChatMessages(prev => [...prev, {
+        type: 'error',
+        content: userFriendlyError,
+        timestamp: new Date().toISOString(),
+      }]);
+    } finally {
+      setIsSendingFollowUp(false);
+    }
+  };
+
+  /**
+   * Handle Enter key press in input
+   */
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleFollowUpSubmit();
+    }
+  };
+
+  // Don't render if no response or error (loading state is handled by parent component)
+  if (!response && !error && chatMessages.length === 0) {
     return null;
   }
 
@@ -147,35 +264,67 @@ const AISidebarResponse = ({
             </Alert>
           )}
 
-          {/* Success response */}
-          {response && !isLoading && (
-            <div
-              className="response-text"
-              style={{
-                fontSize: '0.95rem',
-                lineHeight: '1.6',
-                color: '#212529',
-              }}
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{
-                __html: formatResponse(response),
-              }}
-            />
+          {/* Chat messages */}
+          {chatMessages.length > 0 && (
+            <div className="chat-messages">
+              {chatMessages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`message-bubble mb-3 ${message.type === 'user' ? 'user-message' : message.type === 'error' ? 'error-message' : 'ai-message'}`}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    backgroundColor: message.type === 'user' 
+                      ? '#007bff' 
+                      : message.type === 'error'
+                      ? '#f8d7da'
+                      : '#f8f9fa',
+                    color: message.type === 'user' ? '#fff' : message.type === 'error' ? '#721c24' : '#212529',
+                    marginLeft: message.type === 'user' ? '20%' : '0',
+                    marginRight: message.type === 'user' ? '0' : '20%',
+                  }}
+                >
+                  <div
+                    className="message-content"
+                    style={{
+                      fontSize: '0.9rem',
+                      lineHeight: '1.5',
+                    }}
+                    // eslint-disable-next-line react/no-danger
+                    dangerouslySetInnerHTML={{
+                      __html: formatResponse(message.content),
+                    }}
+                  />
+                  <div
+                    className="message-time text-muted"
+                    style={{
+                      fontSize: '0.7rem',
+                      marginTop: '6px',
+                      opacity: 0.7,
+                    }}
+                  >
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              ))}
+              {/* Scroll anchor */}
+              <div ref={chatEndRef} />
+            </div>
           )}
 
-          {/* Loading state */}
-          {isLoading && (
-            <div className="text-center py-4">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-              <p className="text-muted mt-2 mb-0">Generating response...</p>
+          {/* Loading state for follow-up */}
+          {isSendingFollowUp && (
+            <div className="d-flex align-items-center justify-content-center py-3 gap-2">
+              <div className="spinner-border spinner-border-sm text-primary" role="status" aria-label="Loading" />
+              <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                Thinking...
+              </span>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        {showActions && (response || error) && (
+        {showActions && (response || error || chatMessages.length > 0) && (
           <div
             style={{
               padding: '16px 20px',
@@ -183,35 +332,45 @@ const AISidebarResponse = ({
               backgroundColor: '#f8f9fa',
             }}
           >
-            <div className="d-flex justify-content-between align-items-center">
-              <small className="text-muted">💡 AI-generated assistance</small>
-
-              <div className="d-flex gap-2">
+            <div className="d-flex flex-column gap-2">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Type your follow-up question..."
+                value={followUpQuestion}
+                onChange={(e) => setFollowUpQuestion(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading || isSendingFollowUp}
+                style={{ 
+                  fontSize: '0.9rem',
+                  borderRadius: '6px',
+                }}
+              />
+              
+              <div className="d-flex justify-content-end gap-2">
                 {/* Clear button */}
                 {onClear && (
                   <Button
                     variant="outline-secondary"
                     size="sm"
                     onClick={handleClearAndClose}
-                    className="py-1 px-2"
+                    className="py-1 px-3"
                   >
                     Clear
                   </Button>
                 )}
 
-                {/* Ask again button */}
-                {onAskAgain && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={onAskAgain}
-                    disabled={isLoading}
-                    iconBefore={Send}
-                    className="py-1 px-2"
-                  >
-                    Ask Again
-                  </Button>
-                )}
+                {/* Send follow-up button */}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleFollowUpSubmit}
+                  disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
+                  iconBefore={Send}
+                  className="py-1 px-3"
+                >
+                  Send
+                </Button>
               </div>
             </div>
           </div>
@@ -230,6 +389,7 @@ AISidebarResponse.propTypes = {
   onError: PropTypes.func,
   showActions: PropTypes.bool,
   customMessage: PropTypes.string,
+  contextData: PropTypes.shape({}),
 };
 
 AISidebarResponse.defaultProps = {
@@ -241,6 +401,7 @@ AISidebarResponse.defaultProps = {
   onError: null,
   showActions: true,
   customMessage: 'AI Assistant Response',
+  contextData: {},
 };
 
 export default AISidebarResponse;

@@ -1,0 +1,35 @@
+{
+  "orchestrator_class": "ThreadedLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_unit_content",
+      "char_limit": 300
+    },
+    "ResponsesProcessor": {
+      "function": "chat_with_context",
+      "config": "openai"
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "OpenChat",
+          "customMessage": "Open Chat",
+          "action": null
+        }
+      },
+      "response": {
+        "component": "AISidebarResponse",
+        "config": {
+          "customMessage": "AI Assistant Sidebar Response [config api]"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
+      }
+    }
+  }
+}

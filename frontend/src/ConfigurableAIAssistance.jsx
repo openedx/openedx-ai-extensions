@@ -149,7 +149,7 @@ const ConfigurableAIAssistance = ({
       // Get request message from config
       const requestMessage = config?.config?.customMessage
         || config?.config?.requestMessage
-        || 'Provide learning assistance for this content';
+        || null;
 
       // Make API call
       const data = await callAIService({
@@ -310,6 +310,7 @@ const ConfigurableAIAssistance = ({
           onAskAgain={handleAskAI}
           onClear={handleReset}
           onError={handleClearError}
+          contextData={additionalProps}
           {...responseProps}
         />
       </div>
