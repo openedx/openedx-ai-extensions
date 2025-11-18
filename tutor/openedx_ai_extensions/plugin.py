@@ -61,7 +61,7 @@ PLUGIN_SLOTS.add_items(
                 id: 'ai-assist-button',
                 priority: 10,
                 type: DIRECT_PLUGIN,
-                RenderWidget: GetAIAssistanceButton,
+                RenderWidget: ConfigurableAIAssistance,
             },
           }""",
         ),

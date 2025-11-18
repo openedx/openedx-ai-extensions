@@ -13,10 +13,15 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from openedx_ai_extensions.workflows.models import AIWorkflow
+from openedx_ai_extensions.workflows.models import AIWorkflow, AIWorkflowConfig
 
-# Configure logger for this module
+from .serializers import AIWorkflowConfigSerializer
+
 logger = logging.getLogger(__name__)
 
 
@@ -124,4 +129,74 @@ class AIGenericWorkflowView(View):
                     "timestamp": datetime.now().isoformat(),
                 },
                 status=500,
+            )
+
+
+class AIWorkflowConfigView(APIView):
+    """
+    API endpoint to retrieve workflow configuration
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Retrieve workflow configuration for a given action and context
+        """
+        # Extract query parameters
+        context_str = request.query_params.get("context", "{}")
+        try:
+            context = json.loads(context_str)
+        except (json.JSONDecodeError, TypeError):
+            context = {}
+        unit_id = context.get("unitId")
+        action = request.query_params.get("action")
+        course_id = request.query_params.get("courseId")
+
+        try:
+            # Get workflow configuration
+            config = AIWorkflowConfig.get_config(action=action, course_id=course_id, unit_id=unit_id)
+
+            if not config:
+                return Response(
+                    {
+                        "error": "No workflow configuration found for current context.",
+                        "status": "not_found",
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Serialize the configuration
+            serializer = AIWorkflowConfigSerializer(config)
+
+            response_data = serializer.data
+            response_data["timestamp"] = datetime.now().isoformat()
+
+            logger.info(
+                "🤖 CONFIG RESPONSE:\n%s",
+                pprint.pformat(response_data, indent=2, width=100),
+            )
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except ValidationError as e:
+            logger.warning("🤖 CONFIG VALIDATION ERROR: %s", str(e))
+            return Response(
+                {
+                    "error": str(e),
+                    "status": "validation_error",
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("🤖 CONFIG ERROR: %s", str(e))
+            return Response(
+                {
+                    "error": str(e),
+                    "status": "error",
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

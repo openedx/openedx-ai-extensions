@@ -35,15 +35,16 @@ def _fake_get_config_from_file(cls, action: str, course_id: Optional[str] = None
     location = unit_id
 
     # Try to find a matching config file from proxy settings
-    for proxy in settings.AI_EXTENSIONS_MODEL_PROXY:
-        location_regex = proxy.get("location_regex")
-        file_path = proxy.get("file")
-        full_path = os.path.join(os.path.dirname(__file__), file_path)
+    if location:
+        for proxy in settings.AI_EXTENSIONS_MODEL_PROXY:
+            location_regex = proxy.get("location_regex")
+            file_path = proxy.get("file")
+            full_path = os.path.join(os.path.dirname(__file__), file_path)
 
-        if os.path.exists(full_path) and (re.match(location_regex, location)):
-            with open(full_path, "r") as f:
-                configs = json.load(f)
-                break
+            if os.path.exists(full_path) and (re.match(location_regex, location)):
+                with open(full_path, "r") as f:
+                    configs = json.load(f)
+                    break
 
     # If no config found, use the default file
     if configs is None:

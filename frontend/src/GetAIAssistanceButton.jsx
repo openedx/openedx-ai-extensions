@@ -21,15 +21,8 @@ import {
  * Orchestrates the AI assistance flow using modular components
  */
 const GetAIAssistanceButton = ({
-  sequence,
-  courseId,
-  unitId,
-  apiEndpoint,
   requestMessage,
   buttonText,
-  showResponseActions,
-  allowCopy,
-  allowDownload,
   ...props
 }) => {
   // Core state management
@@ -39,8 +32,7 @@ const GetAIAssistanceButton = ({
   const [hasAsked, setHasAsked] = useState(false);
   const [requestId, setRequestId] = useState(null);
 
-  // Get API endpoint with fallback
-  const endpoint = apiEndpoint || getDefaultEndpoint();
+  const endpoint = getDefaultEndpoint();
 
   /**
    * Handle AI assistant request
@@ -61,21 +53,14 @@ const GetAIAssistanceButton = ({
     try {
       // Prepare context data - captures everything available
       const contextData = prepareContextData({
-        sequence,
-        courseId,
-        unitId,
-        // Pass any additional props that might be useful
         ...props,
       });
-
-      // eslint-disable-next-line no-console
-      console.log('Prepared context data:', contextData);
 
       // Make API call with flexible parameters
       const data = await callAIService({
         contextData,
         apiEndpoint: endpoint,
-        courseId,
+        courseId: contextData.courseId,
         userQuery: requestMessage || 'Provide learning assistance for this content',
       });
 
@@ -111,7 +96,7 @@ const GetAIAssistanceButton = ({
     } finally {
       setIsLoading(false);
     }
-  }, [sequence, courseId, unitId, endpoint, requestMessage, props]);
+  }, [endpoint, requestMessage, props]);
 
   /**
    * Reset component state for new request
@@ -133,9 +118,6 @@ const GetAIAssistanceButton = ({
 
   // Debug info for development
   const debugInfo = process.env.NODE_ENV === 'development' ? {
-    courseId,
-    unitId,
-    sequenceId: sequence?.id,
     endpoint,
     requestId,
     hasAsked,
@@ -163,9 +145,6 @@ const GetAIAssistanceButton = ({
         onAskAgain={handleAskAI}
         onClear={handleReset}
         onError={handleClearError}
-        showActions={showResponseActions}
-        allowCopy={allowCopy}
-        allowDownload={allowDownload}
       />
 
       {/* Development debug info */}
@@ -184,31 +163,13 @@ const GetAIAssistanceButton = ({
 };
 
 GetAIAssistanceButton.propTypes = {
-  sequence: PropTypes.shape({
-    id: PropTypes.string,
-    displayName: PropTypes.string,
-    unitBlocks: PropTypes.arrayOf(PropTypes.shape({})),
-  }),
-  courseId: PropTypes.string,
-  unitId: PropTypes.string,
-  apiEndpoint: PropTypes.string,
   requestMessage: PropTypes.string,
   buttonText: PropTypes.string,
-  showResponseActions: PropTypes.bool,
-  allowCopy: PropTypes.bool,
-  allowDownload: PropTypes.bool,
 };
 
 GetAIAssistanceButton.defaultProps = {
-  sequence: null,
-  courseId: null,
-  unitId: null,
-  apiEndpoint: null,
   requestMessage: 'Need help understanding this content?',
   buttonText: 'Get AI Assistance',
-  showResponseActions: true,
-  allowCopy: true,
-  allowDownload: false,
 };
 
 export default GetAIAssistanceButton;
