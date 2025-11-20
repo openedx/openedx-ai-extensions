@@ -23,7 +23,7 @@
       "response": {
         "component": "AISidebarResponse",
         "config": {
-          "customMessage": "AI Assistant Sidebar Response [config api]"
+          "customMessage": "Chat with AI"
         }
       },
       "metadata": {

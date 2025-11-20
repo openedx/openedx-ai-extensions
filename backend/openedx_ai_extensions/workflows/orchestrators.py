@@ -87,6 +87,14 @@ class ThreadedLLMResponse(BaseOrchestrator):
             self.workflow.user, self.workflow.course_id, self.workflow.unit_id
         )
 
+        # 0. If action = "clear_session", just remove session and return
+        if self.workflow.action == "clear_session":
+            session.delete()
+            return {
+                "response": "",
+                "status": "session_cleared",
+            }
+
         # 1. get chat history if there is user session
         submission_processor = SubmissionProcessor(
             self.config.processor_config, session

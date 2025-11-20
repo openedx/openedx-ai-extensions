@@ -96,10 +96,35 @@ const AISidebarResponse = ({
     return formatted;
   };
 
+  const handleClearSession = async () => {
+    try {
+      // Get API endpoint
+      const apiEndpoint = getDefaultEndpoint();
+
+      // Prepare context data
+      const preparedContext = prepareContextData({
+        ...contextData,
+      });
+
+      // Make API call
+      await callAIService({
+        contextData: preparedContext,
+        action: 'clear_session',
+        apiEndpoint,
+        courseId: preparedContext.courseId,
+      });
+
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[AISidebarResponse] Clear session error:', err);
+    }
+  }
+
   /**
    * Clear response and close sidebar (shows request component again)
    */
-  const handleClearAndClose = () => {
+  const handleClearAndClose = async () => {
+    await handleClearSession();
     setIsOpen(false);
     setFollowUpQuestion('');
     setChatMessages([]);

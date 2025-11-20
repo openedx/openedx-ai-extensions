@@ -146,3 +146,14 @@ def _fake_save_session(self):
             },
             f,
         )
+
+def _fake_delete_session(self):
+    """
+    Fake method to simulate deleting a session.
+    """
+    path = os.path.join(
+        os.path.dirname(__file__),
+        f"session-{self.user.id}-{self.course_id}-{self.unit_id}.json",
+    )
+    if os.path.exists(path):
+        os.remove(path)
