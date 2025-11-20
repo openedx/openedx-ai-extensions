@@ -2,12 +2,10 @@
 LLM Processing using LiteLLM for multiple providers
 """
 
-import json
 import logging
 
 from django.conf import settings
 from litellm import responses
-from submissions import api as submissions_api
 
 logger = logging.getLogger(__name__)
 

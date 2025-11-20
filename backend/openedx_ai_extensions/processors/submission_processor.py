@@ -26,7 +26,7 @@ class SubmissionProcessor:
         function = getattr(self, function_name)
         return function(context, input_data)
 
-    def get_chat_history(self, context, user_query=None):
+    def get_chat_history(self, _context, _user_query=None):
         """
         Retrieve chat history for the user session.
         """
