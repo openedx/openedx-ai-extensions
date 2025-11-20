@@ -4,15 +4,18 @@ AI Workflow models for managing flexible AI workflow execution
 
 import logging
 from typing import Any, Dict, Optional
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from uuid import uuid4
 
-from openedx_ai_extensions.workflows import orchestrators
-from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file, _fake_get_or_create_session, _fake_save_session
+from openedx_ai_extensions.workflows.configs.mock_functions import (
+    _fake_get_config_from_file,
+    _fake_get_or_create_session,
+    _fake_save_session,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -212,6 +215,8 @@ class AIWorkflow(models.Model):
 
         try:
             # Load the orchestrator for this workflow
+            from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
+
             orchestrator_name = self.config.orchestrator_class  # "DirectLLMResponse"
             orchestrator = getattr(orchestrators, orchestrator_name)(workflow=self)
 
@@ -262,6 +267,8 @@ class AIWorkflow(models.Model):
         """Load the orchestrator for this workflow"""
         # This method is currently unused - orchestrator loading happens in execute()
         # TODO: Refactor to use this method or remove it
+        from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
+
         orchestrator_name = self.config.orchestrator_class
         return getattr(orchestrators, orchestrator_name)(workflow=self)
 
@@ -299,23 +306,34 @@ class AIWorkflowSession(models.Model):
     course_id = models.CharField(
         max_length=255, help_text="Course associated with this session"
     )
-    last_response_id = models.CharField(
+    unit_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Unit associated with this session",
+    )
+    local_submission_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="ID of the submission associated with this session",
+    )
+
+    remote_response_id = models.CharField(
         max_length=255,
         null=True,
         blank=True,
         help_text="ID of the last response sent to the user",
     )
-    metadata = models.JSONField(
-        default=dict, help_text="Additional session metadata"
-    )
+    metadata = models.JSONField(default=dict, help_text="Additional session metadata")
 
     @classmethod
-    def get_or_create_session(cls, user, course_id: str) -> "AIWorkflowSession":
+    def get_or_create_session(
+        cls, user, course_id: str, unit_id: str
+    ) -> "AIWorkflowSession":
         """Get or create a session for the user and course"""
-        return _fake_get_or_create_session(cls, user, course_id)
+        return _fake_get_or_create_session(cls, user, course_id, unit_id)
 
     def save(self, *args, **kwargs):
         """Override save to log session saves"""
-        logger.info(f"TEST saving session for user {self.user} in course {self.course_id}")
         _fake_save_session(self)
-        logger.info(f"TEST saved session for user {self.user} in course {self.course_id}")

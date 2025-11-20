@@ -2,10 +2,12 @@
 LLM Processing using LiteLLM for multiple providers
 """
 
+import json
 import logging
 
 from django.conf import settings
 from litellm import responses
+from submissions import api as submissions_api
 
 logger = logging.getLogger(__name__)
 
@@ -23,18 +25,20 @@ class ResponsesProcessor:
         self.config_profile = self.config.get("config", "default")
 
         # Extract API configuration once during initialization
-        self.api_key = settings.AI_EXTENSIONS[self.config_profile]['API_KEY']
-        self.model = settings.AI_EXTENSIONS[self.config_profile]['LITELLM_MODEL']
-        self.timeout = settings.AI_EXTENSIONS[self.config_profile]['TIMEOUT']
-        self.temperature = float(settings.AI_EXTENSIONS[self.config_profile]['TEMPERATURE'])
-        self.max_tokens = settings.AI_EXTENSIONS[self.config_profile]['MAX_TOKENS']
+        self.api_key = settings.AI_EXTENSIONS[self.config_profile]["API_KEY"]
+        self.model = settings.AI_EXTENSIONS[self.config_profile]["LITELLM_MODEL"]
+        self.timeout = settings.AI_EXTENSIONS[self.config_profile]["TIMEOUT"]
+        self.temperature = float(
+            settings.AI_EXTENSIONS[self.config_profile]["TEMPERATURE"]
+        )
+        self.max_tokens = settings.AI_EXTENSIONS[self.config_profile]["MAX_TOKENS"]
 
         if not self.api_key:
             logger.error("AI API key not configured")
 
     def process(self, context, input_data):
         """Process based on configured function"""
-        function_name = self.config.get("function", "explain_like_five")
+        function_name = self.config.get("function", "chat_with_context")
         function = getattr(self, function_name)
         return function(context, input_data)
 
@@ -60,26 +64,20 @@ class ResponsesProcessor:
             if not self.api_key:
                 return {"error": "AI API key not configured"}
 
-            if self.user_session and self.user_session.last_response_id and not user_query:
-                return {"error": "No user query provided for ongoing session"}
-
-            if not self.user_session or not self.user_session.last_response_id and not system_role:
-                return {"error": "No system role provided for new session"}
-
             # Build completion parameters
             completion_params = {
                 "model": self.model,
                 "api_key": self.api_key,
             }
-            if self.user_session and self.user_session.last_response_id:
-                completion_params["previous_response_id"] = self.user_session.last_response_id
-                completion_params["input"] = [
-                  {"role": "user", "content": user_query}
-                ]
+            if self.user_session and self.user_session.remote_response_id:
+                completion_params["previous_response_id"] = (
+                    self.user_session.remote_response_id
+                )
+                completion_params["input"] = [{"role": "user", "content": user_query}]
             else:
                 completion_params["input"] = [
-                  {"role": "system", "content": system_role},
-                  {"role": "system", "content": context}
+                    {"role": "system", "content": system_role},
+                    {"role": "system", "content": context},
                 ]
 
             # Add optional parameters only if configured
@@ -91,11 +89,10 @@ class ResponsesProcessor:
             response = responses(**completion_params)
 
             response_id = getattr(response, "id", None)
-            if response_id:
-                self.user_session.last_response_id = response_id
-                self.user_session.save()
-
             content = self._extract_response_content(response)
+            if response_id:
+                self.user_session.remote_response_id = response_id
+                self.user_session.save()
 
             return {
                 "response": content,
@@ -108,7 +105,7 @@ class ResponsesProcessor:
             logger.error(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
-    def chat_with_context(self, context, user_query=None):  # pylint: disable=unused-argument
+    def chat_with_context(self, context, user_query=None):
         """
         Chat with Context given from OpenEdx course content
         """

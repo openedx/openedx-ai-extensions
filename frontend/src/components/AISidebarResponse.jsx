@@ -24,7 +24,6 @@ const AISidebarResponse = ({
   response,
   error,
   isLoading,
-  onAskAgain,
   onClear,
   onError,
   showActions = true,
@@ -42,6 +41,23 @@ const AISidebarResponse = ({
   useEffect(() => {
     if (response && !initialResponseAdded.current) {
       setIsOpen(true);
+      try {
+        const parsed = JSON.parse(response);
+        if (Array.isArray(parsed)) {
+          const formattedMessages = parsed.map((msg) => ({
+            type: msg.role === 'user' ? 'user' : 'ai',
+            content: msg.content,
+            timestamp: new Date().toISOString(),
+          }));
+          setChatMessages(formattedMessages);
+          initialResponseAdded.current = true;
+          return;
+        }
+      } catch (e) {
+        // Not JSON, proceed to add as single message
+      }
+
+      // Add single response message
       setChatMessages([{
         type: 'ai',
         content: response,
@@ -49,7 +65,7 @@ const AISidebarResponse = ({
       }]);
       initialResponseAdded.current = true;
     }
-    
+
     if (error) {
       setIsOpen(true);
     }
@@ -98,10 +114,12 @@ const AISidebarResponse = ({
    * Makes direct API call instead of using onAskAgain
    */
   const handleFollowUpSubmit = async () => {
-    if (!followUpQuestion.trim()) return;
+    if (!followUpQuestion.trim()) {
+      return;
+    }
 
     const userMessage = followUpQuestion.trim();
-    
+
     // Add user message to chat
     setChatMessages(prev => [...prev, {
       type: 'user',
@@ -149,12 +167,10 @@ const AISidebarResponse = ({
         content: aiResponse,
         timestamp: new Date().toISOString(),
       }]);
-
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[AISidebarResponse] Follow-up error:', err);
       const userFriendlyError = formatErrorMessage(err);
-      
       // Add error message to chat
       setChatMessages(prev => [...prev, {
         type: 'error',
@@ -267,46 +283,59 @@ const AISidebarResponse = ({
           {/* Chat messages */}
           {chatMessages.length > 0 && (
             <div className="chat-messages">
-              {chatMessages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`message-bubble mb-3 ${message.type === 'user' ? 'user-message' : message.type === 'error' ? 'error-message' : 'ai-message'}`}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    backgroundColor: message.type === 'user' 
-                      ? '#007bff' 
-                      : message.type === 'error'
-                      ? '#f8d7da'
-                      : '#f8f9fa',
-                    color: message.type === 'user' ? '#fff' : message.type === 'error' ? '#721c24' : '#212529',
-                    marginLeft: message.type === 'user' ? '20%' : '0',
-                    marginRight: message.type === 'user' ? '0' : '20%',
-                  }}
-                >
+              {chatMessages.map((message, index) => {
+                const messageKey = `${message.timestamp}-${index}`;
+                let bgColor = '#f8f9fa';
+                let textColor = '#212529';
+                let className = 'ai-message';
+
+                if (message.type === 'user') {
+                  bgColor = '#007bff';
+                  textColor = '#fff';
+                  className = 'user-message';
+                } else if (message.type === 'error') {
+                  bgColor = '#f8d7da';
+                  textColor = '#721c24';
+                  className = 'error-message';
+                }
+
+                return (
                   <div
-                    className="message-content"
+                    key={messageKey}
+                    className={`message-bubble mb-3 ${className}`}
                     style={{
-                      fontSize: '0.9rem',
-                      lineHeight: '1.5',
-                    }}
-                    // eslint-disable-next-line react/no-danger
-                    dangerouslySetInnerHTML={{
-                      __html: formatResponse(message.content),
-                    }}
-                  />
-                  <div
-                    className="message-time text-muted"
-                    style={{
-                      fontSize: '0.7rem',
-                      marginTop: '6px',
-                      opacity: 0.7,
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      backgroundColor: bgColor,
+                      color: textColor,
+                      marginLeft: message.type === 'user' ? '20%' : '0',
+                      marginRight: message.type === 'user' ? '0' : '20%',
                     }}
                   >
-                    {new Date(message.timestamp).toLocaleTimeString()}
+                    <div
+                      className="message-content"
+                      style={{
+                        fontSize: '0.9rem',
+                        lineHeight: '1.5',
+                      }}
+                      // eslint-disable-next-line react/no-danger
+                      dangerouslySetInnerHTML={{
+                        __html: formatResponse(message.content),
+                      }}
+                    />
+                    <div
+                      className="message-time text-muted"
+                      style={{
+                        fontSize: '0.7rem',
+                        marginTop: '6px',
+                        opacity: 0.7,
+                      }}
+                    >
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {/* Scroll anchor */}
               <div ref={chatEndRef} />
             </div>
@@ -341,12 +370,12 @@ const AISidebarResponse = ({
                 onChange={(e) => setFollowUpQuestion(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={isLoading || isSendingFollowUp}
-                style={{ 
+                style={{
                   fontSize: '0.9rem',
                   borderRadius: '6px',
                 }}
               />
-              
+
               <div className="d-flex justify-content-end gap-2">
                 {/* Clear button */}
                 {onClear && (
@@ -384,7 +413,6 @@ AISidebarResponse.propTypes = {
   response: PropTypes.string,
   error: PropTypes.string,
   isLoading: PropTypes.bool,
-  onAskAgain: PropTypes.func,
   onClear: PropTypes.func,
   onError: PropTypes.func,
   showActions: PropTypes.bool,
@@ -396,7 +424,6 @@ AISidebarResponse.defaultProps = {
   response: null,
   error: null,
   isLoading: false,
-  onAskAgain: null,
   onClear: null,
   onError: null,
   showActions: true,
