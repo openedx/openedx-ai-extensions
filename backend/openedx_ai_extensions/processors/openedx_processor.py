@@ -26,9 +26,7 @@ class OpenEdXProcessor:
         return function(context)
 
     def no_context(self, context):  # pylint: disable=unused-argument
-        return {
-            "display_name": "No context was provided."
-        }
+        return {"display_name": "No context was provided."}
 
     def get_unit_content(self, context):
         """Extract unit content from Open edX modulestore"""

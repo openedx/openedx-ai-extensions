@@ -31,5 +31,5 @@ def plugin_settings(settings):
         # Make first profile also default
         settings.AI_EXTENSIONS = {
             "default": {**LITELLM_BASE, **settings.AI_EXTENSIONS[first_key]},
-            **merged_extensions
+            **merged_extensions,
         }

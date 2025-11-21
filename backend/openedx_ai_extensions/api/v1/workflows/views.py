@@ -77,7 +77,7 @@ class AIGenericWorkflowView(View):
                 },
                 indent=2,
                 width=100,
-            )
+            ),
         )
 
         try:
@@ -155,7 +155,9 @@ class AIWorkflowConfigView(APIView):
 
         try:
             # Get workflow configuration
-            config = AIWorkflowConfig.get_config(action=action, course_id=course_id, unit_id=unit_id)
+            config = AIWorkflowConfig.get_config(
+                action=action, course_id=course_id, unit_id=unit_id
+            )
 
             if not config:
                 return Response(
