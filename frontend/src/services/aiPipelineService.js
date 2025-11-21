@@ -23,8 +23,11 @@ const extractCourseIdFromUrl = () => {
  */
 const extractUnitIdFromUrl = () => {
   try {
-    const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
-    return pathMatch ? pathMatch[1] : null;
+    // Temporary regex to match unit in studio URL structure
+    // const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
+    const pathMatch = window.location.pathname.match(/block-v1:[^\/]+$/);
+    const response = pathMatch ? pathMatch[0] : null;
+    return response;
   } catch {
     return null;
   }

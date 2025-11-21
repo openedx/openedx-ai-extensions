@@ -2,6 +2,8 @@
   "orchestrator_class": "EducatorAssistantOrchestrator",
   "processor_config": {
     "OpenEdXProcessor": {
+      "function": "get_unit_content",
+      "char_limit": 300
     },
     "EducatorAssistantProcessor": {
       "function": "generate_quiz_questions",
