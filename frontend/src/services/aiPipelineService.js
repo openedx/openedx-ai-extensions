@@ -23,8 +23,11 @@ const extractCourseIdFromUrl = () => {
  */
 const extractUnitIdFromUrl = () => {
   try {
-    const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
-    return pathMatch ? pathMatch[1] : null;
+    // Temporary regex to match unit in studio URL structure
+    // const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
+    const pathMatch = window.location.pathname.match(/block-v1:[^\/]+$/);
+    const response = pathMatch ? pathMatch[0] : null;
+    return response;
   } catch {
     return null;
   }
@@ -191,6 +194,12 @@ export const getDefaultEndpoint = (endpoint = 'workflows') => {
   const lmsBaseUrl = config.LMS_BASE_URL;
   return `${lmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
 };
+
+export const getStudioDefaultEndpoint = (endpoint = 'workflows') => {
+  const config = getConfig();
+  const cmsBaseUrl = config.STUDIO_BASE_URL;
+  return `${cmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
+}
 
 /**
  * Format error message for user display
