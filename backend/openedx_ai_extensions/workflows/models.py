@@ -72,7 +72,9 @@ class AIWorkflowConfig(models.Model):
         return f"{self.action}{course_part}"
 
     @classmethod
-    def get_config(cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None):
+    def get_config(
+        cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None
+    ):
         """
         Get configuration for a specific action, course, and unit.
 
@@ -80,7 +82,9 @@ class AIWorkflowConfig(models.Model):
         Currently uses a fake method to simulate loading config from file.
         """
         # In real implementation, this would query the database
-        return _fake_get_config_from_file(cls, action=action, course_id=course_id, unit_id=unit_id)
+        return _fake_get_config_from_file(
+            cls, action=action, course_id=course_id, unit_id=unit_id
+        )
 
 
 class AIWorkflow(models.Model):
@@ -249,7 +253,7 @@ class AIWorkflow(models.Model):
                 "workflow_info": {
                     "natural_key": self.get_natural_key(),
                     "status": self.status,
-                    'current_step': self.current_step
+                    "current_step": self.current_step,
                 },
             }
 
@@ -275,7 +279,7 @@ class AIWorkflow(models.Model):
     def complete(self, **final_context):
         """Mark workflow as completed with final context"""
         self.status = "completed"
-        self.current_step = 'completed'  # pylint: disable=attribute-defined-outside-init
+        self.current_step = "completed"  # pylint: disable=attribute-defined-outside-init
         self.completed_at = timezone.now()
         if final_context:
             self.context_data.update(final_context)

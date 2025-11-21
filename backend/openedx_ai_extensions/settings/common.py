@@ -1,6 +1,7 @@
 """
 Common settings for the openedx_ai_extensions application.
 """
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,5 @@ def plugin_settings(settings):
 
     if not hasattr(settings, "AI_EXTENSIONS_MODEL_PROXY"):
         settings.AI_EXTENSIONS_MODEL_PROXY = [
-            {
-                "location_regex": ".*",
-                "file": "configs/default.json"
-            },
+            {"location_regex": ".*", "file": "configs/default.json"},
         ]

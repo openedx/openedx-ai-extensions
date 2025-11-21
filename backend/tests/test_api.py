@@ -192,7 +192,8 @@ def test_config_endpoint_get_with_action_and_course(api_client, course_key):  # 
     url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
 
     response = api_client.get(
-        url, {"action": "explain_like_five", "courseId": str(course_key), "context": "{}"}
+        url,
+        {"action": "explain_like_five", "courseId": str(course_key), "context": "{}"},
     )
 
     assert response.status_code in [200, 404]

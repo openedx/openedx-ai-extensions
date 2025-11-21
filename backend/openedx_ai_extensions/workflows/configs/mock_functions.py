@@ -2,6 +2,7 @@
 This module replaces calling a model temporarily.
 Once the interfaces for configs are more stable they will move into a proper model.
 """
+
 import json
 import logging
 import os
@@ -14,7 +15,9 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def _fake_get_config_from_file(cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None):
+def _fake_get_config_from_file(
+    cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None
+):
     """
     Fake method to simulate loading config from file.
 
@@ -58,7 +61,7 @@ def _fake_get_config_from_file(cls, action: str, course_id: Optional[str] = None
         pprint.pformat(
             configs,
             indent=2,
-        )
+        ),
     )
 
     return cls(

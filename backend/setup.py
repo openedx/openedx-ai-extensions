@@ -141,10 +141,10 @@ if sys.argv[-1] == "tag":
     os.system("git push --tags")
     sys.exit()
 
-readme_path = Path(__file__).parent.parent / 'README.rst'
+readme_path = Path(__file__).parent.parent / "README.rst"
 README = readme_path.read_text(encoding="utf8") if readme_path.exists() else ""
 
-changelog_path = Path(__file__).parent.parent / 'CHANGELOG.rst'
+changelog_path = Path(__file__).parent.parent / "CHANGELOG.rst"
 CHANGELOG = changelog_path.read_text(encoding="utf8") if changelog_path.exists() else ""
 
 setup(
