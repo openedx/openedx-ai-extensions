@@ -122,7 +122,7 @@ export const callAIService = async ({
   const requestPayload = {
     // Request metadata
     requestId: requestId || generateRequestId(),
-    action: action,
+    action,
     courseId: courseId || extractCourseIdFromUrl(),
     timestamp: new Date().toISOString(),
 

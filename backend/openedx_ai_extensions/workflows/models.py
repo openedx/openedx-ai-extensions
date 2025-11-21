@@ -12,10 +12,10 @@ from django.db import models
 from django.utils import timezone
 
 from openedx_ai_extensions.workflows.configs.mock_functions import (
+    _fake_delete_session,
     _fake_get_config_from_file,
     _fake_get_or_create_session,
     _fake_save_session,
-    _fake_delete_session,
 )
 
 User = get_user_model()

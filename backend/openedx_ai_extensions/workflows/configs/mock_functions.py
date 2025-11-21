@@ -147,6 +147,7 @@ def _fake_save_session(self):
             f,
         )
 
+
 def _fake_delete_session(self):
     """
     Fake method to simulate deleting a session.

@@ -113,12 +113,11 @@ const AISidebarResponse = ({
         apiEndpoint,
         courseId: preparedContext.courseId,
       });
-
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[AISidebarResponse] Clear session error:', err);
     }
-  }
+  };
 
   /**
    * Clear response and close sidebar (shows request component again)
