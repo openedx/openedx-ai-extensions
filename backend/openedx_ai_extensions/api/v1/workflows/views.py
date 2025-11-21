@@ -86,7 +86,7 @@ class AIGenericWorkflowView(View):
                 action=action, course_id=course_id, user=user, context=context
             )
 
-            result = workflow.execute(body_data.get("user_input", {}))
+            result = workflow.execute(body_data.get("user_query", {}))
 
             # TODO: this should go through a serializer so that every UI actuator receives a compatible object
             request_id = body_data.get("requestId", "no-request-id")

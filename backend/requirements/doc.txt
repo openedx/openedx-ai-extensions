@@ -87,9 +87,13 @@ django==4.2.20
     #   django-crum
     #   django-extensions
     #   django-filter
+    #   django-model-utils
     #   django-waffle
     #   djangorestframework
+    #   edx-django-release-util
     #   edx-django-utils
+    #   edx-submissions
+    #   jsonfield
 django-crum==0.7.9
     # via
     #   -r requirements/test.txt
@@ -98,12 +102,18 @@ django-extensions==4.1
     # via -r requirements/test.txt
 django-filter==25.1
     # via -r requirements/test.txt
+django-model-utils==5.0.0
+    # via
+    #   -r requirements/test.txt
+    #   edx-submissions
 django-waffle==4.2.0
     # via
     #   -r requirements/test.txt
     #   edx-django-utils
 djangorestframework==3.16.0
-    # via -r requirements/test.txt
+    # via
+    #   -r requirements/test.txt
+    #   edx-submissions
 dnspython==2.7.0
     # via
     #   -r requirements/test.txt
@@ -117,9 +127,15 @@ docutils==0.21.2
     #   readme-renderer
     #   restructuredtext-lint
     #   sphinx
+edx-django-release-util==1.5.0
+    # via
+    #   -r requirements/test.txt
+    #   edx-submissions
 edx-django-utils==7.4.0
     # via -r requirements/test.txt
 edx-opaque-keys==2.12.0
+    # via -r requirements/test.txt
+edx-submissions==3.12.1
     # via -r requirements/test.txt
 fastuuid==0.13.5
     # via
@@ -198,6 +214,10 @@ jiter==0.11.0
     # via
     #   -r requirements/test.txt
     #   openai
+jsonfield==3.2.0
+    # via
+    #   -r requirements/test.txt
+    #   edx-submissions
 jsonschema==4.25.1
     # via
     #   -r requirements/test.txt
@@ -315,10 +335,15 @@ python-slugify==8.0.4
     # via
     #   -r requirements/test.txt
     #   code-annotations
+pytz==2025.2
+    # via
+    #   -r requirements/test.txt
+    #   edx-submissions
 pyyaml==6.0.3
     # via
     #   -r requirements/test.txt
     #   code-annotations
+    #   edx-django-release-util
     #   huggingface-hub
 readme-renderer==44.0
     # via twine
@@ -355,6 +380,10 @@ rpds-py==0.27.1
     #   referencing
 secretstorage==3.3.3
     # via keyring
+six==1.17.0
+    # via
+    #   -r requirements/test.txt
+    #   edx-django-release-util
 sniffio==1.3.1
     # via
     #   -r requirements/test.txt
