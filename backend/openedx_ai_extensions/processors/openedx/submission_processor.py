@@ -49,7 +49,7 @@ class SubmissionProcessor:
         student_item_dict = {
             "student_id": self.user_session.user.id,
             "course_id": self.user_session.course_id,
-            "item_id": self.user_session.unit_id,
+            "item_id": self.user_session.location_id,
             "item_type": "openedx_ai_extensions_chat",
         }
 

@@ -83,8 +83,11 @@ class ThreadedLLMResponse(BaseOrchestrator):
             "extra_context": self.workflow.extra_context,
         }
 
-        session = AIWorkflowSession.get_or_create_session(
-            self.workflow.user, self.workflow.course_id, self.workflow.unit_id
+        session, _ = AIWorkflowSession.objects.get_or_create(
+            user=self.workflow.user,
+            course_id=self.workflow.course_id,
+            location_id=self.workflow.location_id,
+            defaults={},
         )
 
         # 0. If action = "clear_session", just remove session and return

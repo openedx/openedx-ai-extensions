@@ -10,12 +10,10 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
 from openedx_ai_extensions.workflows.configs.mock_functions import (
-    _fake_delete_session,
     _fake_get_config_from_file,
-    _fake_get_or_create_session,
-    _fake_save_session,
 )
 
 User = get_user_model()
@@ -38,11 +36,11 @@ class AIWorkflowConfig(models.Model):
         help_text="Course this config applies to (null = global)",
     )
 
-    unit_id = models.CharField(
+    location_id = UsageKeyField(
         max_length=255,
         null=True,
         blank=True,
-        help_text="Unit this config applies to (null = all units)",
+        help_text="Location this config applies to",
     )
 
     # Orchestrator configuration
@@ -78,17 +76,17 @@ class AIWorkflowConfig(models.Model):
 
     @classmethod
     def get_config(
-        cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None
+        cls, action: str, course_id: Optional[str] = None, location_id: Optional[str] = None
     ):
         """
-        Get configuration for a specific action, course, and unit.
+        Get configuration for a specific action, course, and location.
 
         In real implementation, this would query the database.
         Currently uses a fake method to simulate loading config from file.
         """
         # In real implementation, this would query the database
         return _fake_get_config_from_file(
-            cls, action=action, course_id=course_id, unit_id=unit_id
+            cls, action=action, course_id=course_id, location_id=location_id
         )
 
 
@@ -107,8 +105,8 @@ class AIWorkflow(models.Model):
     course_id = models.CharField(
         max_length=255, null=True, blank=True, help_text="Course context"
     )
-    unit_id = models.CharField(
-        max_length=255, null=True, blank=True, help_text="Unit context"
+    location_id = UsageKeyField(
+        max_length=255, null=True, blank=True, help_text="Location context"
     )
 
     # Workflow execution state
@@ -146,7 +144,7 @@ class AIWorkflow(models.Model):
 
     class Meta:
         # Unique constraint on the natural key
-        unique_together = ["user", "action", "course_id", "unit_id"]
+        unique_together = ["user", "action", "course_id", "location_id"]
         indexes = [
             models.Index(fields=["user", "action", "status"]),
             models.Index(fields=["created_at"]),
@@ -159,9 +157,9 @@ class AIWorkflow(models.Model):
         """Get natural identification key for this workflow"""
         parts = [str(self.user.id), self.action]
         if self.course_id:
-            parts.append(self.course_id)
-        if self.unit_id:
-            parts.append(self.unit_id)
+            parts.append(str(self.course_id))
+        if self.location_id:
+            parts.append(str(self.location_id))
         return "__".join(parts)
 
     @classmethod
@@ -175,11 +173,11 @@ class AIWorkflow(models.Model):
         Returns: (workflow_instance, created_boolean)
         """
 
-        # Extract unit_id from context if present
-        unit_id = context.get("unitId")
+        # Extract location_id from context if present
+        location_id = context.get("unitId")
 
         # Get workflow configuration
-        config = AIWorkflowConfig.get_config(action, course_id, unit_id)
+        config = AIWorkflowConfig.get_config(action, course_id, location_id)
         if not config:
             raise ValidationError(
                 f"No AIWorkflowConfiguration found for action '{action}' in course '{course_id}'"
@@ -191,7 +189,7 @@ class AIWorkflow(models.Model):
             user=user,
             action=action,
             course_id=course_id,
-            unit_id=unit_id,
+            location_id=location_id,
             config=config,  # Asignar directamente
             extra_context=context,
             context_data={},
@@ -304,14 +302,17 @@ class AIWorkflowSession(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, help_text="User associated with this session"
     )
-    course_id = models.CharField(
-        max_length=255, help_text="Course associated with this session"
-    )
-    unit_id = models.CharField(
+    course_id = CourseKeyField(
         max_length=255,
         null=True,
         blank=True,
-        help_text="Unit associated with this session",
+        help_text="Course associated with this session"
+    )
+    location_id = UsageKeyField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Location associated with this session",
     )
     local_submission_id = models.CharField(
         max_length=255,
@@ -327,18 +328,3 @@ class AIWorkflowSession(models.Model):
         help_text="ID of the last response sent to the user",
     )
     metadata = models.JSONField(default=dict, help_text="Additional session metadata")
-
-    @classmethod
-    def get_or_create_session(
-        cls, user, course_id: str, unit_id: str
-    ) -> "AIWorkflowSession":
-        """Get or create a session for the user and course"""
-        return _fake_get_or_create_session(cls, user, course_id, unit_id)
-
-    def save(self, *args, **kwargs):
-        """Override save to log session saves"""
-        _fake_save_session(self)
-
-    def delete(self, *args, **kwargs):
-        """Override delete to log session deletions"""
-        _fake_delete_session(self)

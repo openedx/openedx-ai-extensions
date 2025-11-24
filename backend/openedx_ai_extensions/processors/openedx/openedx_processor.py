@@ -34,15 +34,15 @@ class OpenEdXProcessor:
             # pylint: disable=import-error,import-outside-toplevel
             from xmodule.modulestore.django import modulestore
 
-            unit_id = context.get("extra_context", {}).get("unitId")
+            location_id = context.get("extra_context", {}).get("unitId")
 
-            if not unit_id:
+            if not location_id:
                 return {"error": "Missing unitId in context"}
 
             # Get char_limit from config. Useful during development
             char_limit = self.config.get("char_limit", None)
 
-            unit_key = UsageKey.from_string(unit_id)
+            unit_key = UsageKey.from_string(location_id)
             store = modulestore()
             unit = store.get_item(unit_key)
 

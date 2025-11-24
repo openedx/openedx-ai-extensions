@@ -57,7 +57,7 @@ def workflow_config(db):  # pylint: disable=unused-argument
     config.pk = 1
     config.action = "summarize"
     config.course_id = "course-v1:edX+DemoX+Demo_Course"
-    config.unit_id = None
+    config.location_id = None
     config.orchestrator_class = "MockResponse"
     config.processor_config = {"LLMProcessor": {"function": "summarize_content"}}
     config.actuator_config = {"UIComponents": {"request": {"component": "Button"}}}
@@ -77,7 +77,7 @@ def workflow_instance(user, workflow_config):  # pylint: disable=redefined-outer
         user=user,
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
-        unit_id="block-v1:edX+DemoX+Demo_Course+type@vertical+block@test_unit",
+        location_id="block-v1:edX+DemoX+Demo_Course+type@vertical+block@test_unit",
         config=workflow_config,
         extra_context={"unitId": "test-unit"},
         context_data={},
@@ -122,7 +122,7 @@ def test_workflow_config_get_config(mock_get_config):
     result = AIWorkflowConfig.get_config(
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
-        unit_id="unit-123",
+        location_id="unit-123",
     )
 
     assert result == mock_config
@@ -130,7 +130,7 @@ def test_workflow_config_get_config(mock_get_config):
         AIWorkflowConfig,
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
-        unit_id="unit-123",
+        location_id="unit-123",
     )
 
 
@@ -160,19 +160,19 @@ def test_workflow_get_natural_key(workflow_instance):  # pylint: disable=redefin
     assert str(workflow_instance.user.id) in natural_key
     assert workflow_instance.action in natural_key
     assert workflow_instance.course_id in natural_key
-    assert workflow_instance.unit_id in natural_key
+    assert workflow_instance.location_id in natural_key
 
 
 @pytest.mark.django_db
 def test_workflow_get_natural_key_no_unit(user, workflow_config):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflow.get_natural_key without unit_id.
+    Test AIWorkflow.get_natural_key without location_id.
     """
     workflow = AIWorkflow(
         user=user,
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
-        unit_id=None,
+        location_id=None,
         config=workflow_config,
     )
 
@@ -343,11 +343,11 @@ def test_workflow_session_get_or_create(mock_get_or_create, user):  # pylint: di
     mock_session = Mock(spec=AIWorkflowSession)
     mock_session.user = user
     mock_session.course_id = "course-v1:edX+DemoX+Demo_Course"
-    mock_session.unit_id = "unit-123"
+    mock_session.location_id = "unit-123"
     mock_get_or_create.return_value = mock_session
 
     session = AIWorkflowSession.get_or_create_session(
-        user=user, course_id="course-v1:edX+DemoX+Demo_Course", unit_id="unit-123"
+        user=user, course_id="course-v1:edX+DemoX+Demo_Course", location_id="unit-123"
     )
 
     assert session == mock_session
@@ -365,7 +365,7 @@ def test_workflow_session_save(mock_save, user):  # pylint: disable=redefined-ou
     session = AIWorkflowSession(
         user=user,
         course_id="course-v1:edX+DemoX+Demo_Course",
-        unit_id="unit-123",
+        location_id="unit-123",
         local_submission_id="submission-uuid",
     )
 
@@ -383,7 +383,7 @@ def test_workflow_session_delete(mock_delete, user):  # pylint: disable=redefine
     session = AIWorkflowSession(
         user=user,
         course_id="course-v1:edX+DemoX+Demo_Course",
-        unit_id="unit-123",
+        location_id="unit-123",
     )
 
     session.delete()
@@ -443,7 +443,7 @@ def test_direct_llm_response_orchestrator_success(
     # Mock OpenEdXProcessor
     mock_openedx = Mock()
     mock_openedx.process.return_value = {
-        "unit_id": "unit-123",
+        "location_id": "unit-123",
         "display_name": "Test Unit",
         "blocks": [],
     }
@@ -495,7 +495,7 @@ def test_direct_llm_response_orchestrator_llm_error(
     Test DirectLLMResponse orchestrator with LLMProcessor error.
     """
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"unit_id": "unit-123"}
+    mock_openedx.process.return_value = {"location_id": "unit-123"}
     mock_openedx_processor_class.return_value = mock_openedx
 
     mock_llm = Mock()
@@ -532,7 +532,7 @@ def test_threaded_llm_response_orchestrator_new_session(
 
     # Mock OpenEdXProcessor
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"unit_id": "unit-123"}
+    mock_openedx.process.return_value = {"location_id": "unit-123"}
     mock_openedx_processor_class.return_value = mock_openedx
 
     # Mock ResponsesProcessor
