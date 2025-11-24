@@ -82,8 +82,12 @@ class EducatorAssistantOrchestrator(BaseOrchestrator):
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
 
         # 2. Process with LLM processor
-        llm_processor = EducatorAssistantProcessor(config=self.config.processor_config, user=self.workflow.user, context=content_result)
-        llm_result = llm_processor.process(str(content_result))
+        llm_processor = EducatorAssistantProcessor(
+            config=self.config.processor_config,
+            user=self.workflow.user,
+            context=content_result
+        )
+        llm_result = llm_processor.process(input_data)
 
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}

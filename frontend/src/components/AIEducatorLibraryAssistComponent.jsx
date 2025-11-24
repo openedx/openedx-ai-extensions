@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   Button,
@@ -8,7 +8,9 @@ import {
   Card,
 } from '@openedx/paragon';
 import { AutoAwesome, Close } from '@openedx/paragon/icons';
-import { callWorkflowService } from '../services';
+import { getConfig } from '@edx/frontend-platform';
+import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
+import { callWorkflowService, prepareContextData } from '../services';
 
 /**
  * AI Educator Library Assist Component
@@ -18,7 +20,7 @@ import { callWorkflowService } from '../services';
 const AIEducatorLibraryAssistComponent = ({
   courseId,
   unitId,
-  libraries,
+  libraries: librariesProp,
   titleText,
   buttonText,
   customMessage,
@@ -30,10 +32,65 @@ const AIEducatorLibraryAssistComponent = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Libraries state
+  const [libraries, setLibraries] = useState(librariesProp || []);
+  const [isLoadingLibraries, setIsLoadingLibraries] = useState(false);
+  const [librariesFetched, setLibrariesFetched] = useState(false);
+
   // Form state
   const [selectedLibrary, setSelectedLibrary] = useState('');
   const [numberOfQuestions, setNumberOfQuestions] = useState(5);
   const [additionalInstructions, setAdditionalInstructions] = useState('');
+
+  /**
+   * Fetch libraries from API
+   * Only called when user opens the form
+   */
+  const fetchLibraries = async () => {
+    // Don't fetch if already fetched or if libraries provided as prop
+    if (librariesFetched || (librariesProp && librariesProp.length > 0)) {
+      return;
+    }
+
+    setIsLoadingLibraries(true);
+    try {
+      const config = getConfig();
+      const baseUrl = config.STUDIO_BASE_URL;
+      const endpoint = `${baseUrl}/api/libraries/v2/?pagination=false&order=title`;
+
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log('Fetching libraries from:', endpoint);
+      }
+
+      const { data } = await getAuthenticatedHttpClient().get(endpoint);
+
+      // Extract libraries from response
+      // API returns array directly (not nested in results)
+      const fetchedLibraries = Array.isArray(data) ? data : (data?.results || []);
+      setLibraries(fetchedLibraries);
+      setLibrariesFetched(true);
+
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log('Fetched libraries:', fetchedLibraries);
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Error fetching libraries:', err);
+      setError('Failed to load libraries. Please try again.');
+    } finally {
+      setIsLoadingLibraries(false);
+    }
+  };
+
+  // Update libraries when prop changes
+  useEffect(() => {
+    if (librariesProp && librariesProp.length > 0) {
+      setLibraries(librariesProp);
+      setLibrariesFetched(true);
+    }
+  }, [librariesProp]);
 
   /**
    * Handle form submission
@@ -48,7 +105,7 @@ const AIEducatorLibraryAssistComponent = ({
     }
 
     if (numberOfQuestions < 1 || numberOfQuestions > 20) {
-      setError('Number of questions must be between 1 and 50');
+      setError('Number of questions must be between 1 and 20');
       return;
     }
 
@@ -56,22 +113,24 @@ const AIEducatorLibraryAssistComponent = ({
     setError('');
 
     try {
-      const payload = {
-        library_id: selectedLibrary,
-        num_questions: numberOfQuestions,
-        additional_instructions: additionalInstructions || undefined,
-        course_id: courseId,
-        unit_id: unitId,
-      };
-
-      if (debug) {
-        // eslint-disable-next-line no-console
-        console.log('Submitting library question generation request:', payload);
-      }
+      // Prepare context data (same as AIRequestComponent)
+      const contextData = prepareContextData({
+        courseId,
+        unitId,
+      });
 
       await callWorkflowService({
-        workflowType: 'generate_library_questions',
-        payload,
+        context: contextData,
+        action: 'generate_library_questions',
+        payload: {
+          requestId: `ai-request-${Date.now()}`,
+          courseId,
+          user_input: {
+            library_id: selectedLibrary,
+            num_questions: numberOfQuestions,
+            extra_instructions: '',
+          },
+        },
       });
 
       setShowForm(false);
@@ -110,10 +169,17 @@ const AIEducatorLibraryAssistComponent = ({
 
   /**
    * Toggle form visibility
+   * Fetch libraries when opening the form
    */
   const handleToggleForm = () => {
-    setShowForm(!showForm);
+    const newShowForm = !showForm;
+    setShowForm(newShowForm);
     setError('');
+
+    // Fetch libraries when opening form
+    if (newShowForm) {
+      fetchLibraries();
+    }
   };
 
   return (
@@ -166,23 +232,28 @@ const AIEducatorLibraryAssistComponent = ({
                   as="select"
                   value={selectedLibrary}
                   onChange={(e) => setSelectedLibrary(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading || isLoadingLibraries}
                   required
                   size="sm"
                 >
-                  <option value="">Select a library...</option>
-                  {libraries && libraries.length > 0 ? (
+                  <option value="">
+                    {isLoadingLibraries ? 'Loading libraries...' : 'Select a library...'}
+                  </option>
+                  {libraries && libraries.length > 0 && (
                     libraries.map((library) => (
                       <option key={library.id} value={library.id}>
-                        {library.name || library.id}
+                        {`${library.id} - ${library.title}`}
                       </option>
                     ))
-                  ) : (
+                  )}
+                  {!isLoadingLibraries && (!libraries || libraries.length === 0) && (
                     <option disabled>No libraries available</option>
                   )}
                 </Form.Control>
                 <Form.Text className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  Select the library where questions will be added
+                  {isLoadingLibraries
+                    ? 'Loading available libraries...'
+                    : 'Select the library where questions will be added'}
                 </Form.Text>
               </Form.Group>
 
@@ -275,9 +346,9 @@ AIEducatorLibraryAssistComponent.propTypes = {
   libraries: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,
-      name: PropTypes.string,
+      title: PropTypes.string.isRequired,
     }),
-  ).isRequired,
+  ),
   titleText: PropTypes.string,
   buttonText: PropTypes.string,
   customMessage: PropTypes.string,
@@ -287,6 +358,7 @@ AIEducatorLibraryAssistComponent.propTypes = {
 };
 
 AIEducatorLibraryAssistComponent.defaultProps = {
+  libraries: null,
   titleText: 'AI Assistant',
   buttonText: 'Start',
   customMessage: 'Use an AI workflow to create multiple answer questions from this unit in a content library',

@@ -38,7 +38,7 @@ class EducatorAssistantProcessor:
 
     def process(self, input_data):
         """Process based on configured function"""
-        function_name = self.config.get("function", "summarize_content")
+        function_name = self.config.get("function")
         function = getattr(self, function_name)
         return function(input_data)
 
@@ -82,13 +82,11 @@ class EducatorAssistantProcessor:
             logger.error(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
-    def generate_quiz_questions(self, content_text, user_query=""):  # pylint: disable=unused-argument
+    def generate_quiz_questions(self, input_data):  # pylint: disable=unused-argument
         """Generate quiz questions based on the content provided"""
-
-        lib_name = "demo1:demo1"
-        lib_key_str = f"lib:{lib_name}"
-
-        requested_questions = 2
+        lib_key_str = input_data.get('library_id')
+        requested_questions = input_data.get('num_questions')
+        extra_instructions = input_data.get('extra_instructions')
 
         prompt = f"""
           You must generate a set of assessment questions in valid OLX format based on the following context about an unit of online course:
@@ -143,6 +141,10 @@ class EducatorAssistantProcessor:
           }}
 
           Now generate the JSON array of [{requested_questions}] OLX questions.
+
+          Finally some notes passed by the working course author: --------
+            {extra_instructions}
+          --------
         """
 
         result = self._call_completion_api(prompt)
