@@ -14,8 +14,12 @@ logger = logging.getLogger(__name__)
 class ResponsesProcessor(LitellmProcessor):
     """Handles threaded AI conversations using LiteLLM responses API"""
 
-    def process(self, context, input_data):
+    def process(self, *args, **kwargs):
         """Process based on configured function"""
+        # Accept flexible arguments to match base class signature
+        context = args[0] if len(args) > 0 else kwargs.get('context')
+        input_data = args[1] if len(args) > 1 else kwargs.get('input_data')
+
         function_name = self.config.get("function", "chat_with_context")
         function = getattr(self, function_name)
         return function(context, input_data)

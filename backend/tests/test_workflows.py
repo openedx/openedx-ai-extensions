@@ -346,8 +346,11 @@ def test_workflow_session_get_or_create(mock_get_or_create, user):  # pylint: di
     mock_session.location_id = "unit-123"
     mock_get_or_create.return_value = mock_session
 
-    session = AIWorkflowSession.get_or_create_session(
-        user=user, course_id="course-v1:edX+DemoX+Demo_Course", location_id="unit-123"
+    session, _ = AIWorkflowSession.objects.get_or_create(
+        user=user,
+        course_id="course-v1:edX+DemoX+Demo_Course",
+        location_id="unit-123",
+        defaults={},
     )
 
     assert session == mock_session
