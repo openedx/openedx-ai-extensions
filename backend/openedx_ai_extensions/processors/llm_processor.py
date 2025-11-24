@@ -4,32 +4,15 @@ LLM Processing using LiteLLM for multiple providers
 
 import logging
 
-from django.conf import settings
 from litellm import completion
+
+from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
 
 logger = logging.getLogger(__name__)
 
 
-class LLMProcessor:
-    """Handles AI/LLM processing operations"""
-
-    def __init__(self, config=None):
-        config = config or {}
-
-        class_name = self.__class__.__name__
-        self.config = config.get(class_name, {})
-
-        self.config_profile = self.config.get("config", "default")
-
-        # Extract API configuration once during initialization
-        self.api_key = settings.AI_EXTENSIONS[self.config_profile]["API_KEY"]
-        self.model = settings.AI_EXTENSIONS[self.config_profile]["LITELLM_MODEL"]
-        self.timeout = settings.AI_EXTENSIONS[self.config_profile]["TIMEOUT"]
-        self.temperature = settings.AI_EXTENSIONS[self.config_profile]["TEMPERATURE"]
-        self.max_tokens = settings.AI_EXTENSIONS[self.config_profile]["MAX_TOKENS"]
-
-        if not self.api_key:
-            logger.error("AI API key not configured")
+class LLMProcessor(LitellmProcessor):
+    """Handles AI/LLM processing operations using completion API"""
 
     def process(self, input_data):
         """Process based on configured function"""

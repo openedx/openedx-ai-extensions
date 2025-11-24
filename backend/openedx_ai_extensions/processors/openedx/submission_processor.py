@@ -1,5 +1,5 @@
 """
-LLM Processing using LiteLLM for multiple providers
+Submission processor for handling OpenEdX submissions
 """
 
 import json
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class SubmissionProcessor:
-    """Handles AI/LLM processing operations"""
+    """Handles OpenEdX submission operations for chat history and persistence"""
 
     def __init__(self, config=None, user_session=None):
         config = config or {}

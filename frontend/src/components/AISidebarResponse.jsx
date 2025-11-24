@@ -133,6 +133,16 @@ const AISidebarResponse = ({
     }
   };
 
+  const handleClose = () => {
+    setIsOpen(false);
+    setFollowUpQuestion('');
+    setChatMessages([]);
+    initialResponseAdded.current = false;
+    if (onClear) {
+      onClear();
+    }
+  };
+
   /**
    * Handle follow-up question submission
    * Makes direct API call instead of using onAskAgain
@@ -236,10 +246,10 @@ const AISidebarResponse = ({
             zIndex: 1040,
             transition: 'opacity 0.3s ease',
           }}
-          onClick={handleClearAndClose}
+          onClick={handleClose}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Escape' && handleClearAndClose()}
+          onKeyDown={(e) => e.key === 'Escape' && handleClose()}
           aria-label="Close sidebar"
         />
       )}
