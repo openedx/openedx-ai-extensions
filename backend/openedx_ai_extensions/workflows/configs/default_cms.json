@@ -13,10 +13,11 @@
   "actuator_config": {
     "UIComponents": {
       "request": {
-        "component": "AIRequestComponent",
+        "component": "AIEducatorLibraryAssistComponent",
         "config": {
-          "buttonText": "Launch",
-          "customMessage": "Get AI-generated questions from this content"
+          "titleText": "AI Assistant",
+          "buttonText": "Start",
+          "customMessage": "Use an AI workflow to create multiple answer questions from this unit in a content library"
         }
       },
       "response": {

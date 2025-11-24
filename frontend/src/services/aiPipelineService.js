@@ -25,7 +25,7 @@ const extractUnitIdFromUrl = () => {
   try {
     // Temporary regex to match unit in studio URL structure
     // const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
-    const pathMatch = window.location.pathname.match(/block-v1:[^\/]+$/);
+    const pathMatch = window.location.pathname.match(/block-v1:[^/]+$/);
     const response = pathMatch ? pathMatch[0] : null;
     return response;
   } catch {
@@ -197,6 +197,43 @@ export const getDefaultEndpoint = (endpoint = 'workflows') => {
     baseUrl = config.STUDIO_BASE_URL;
   }
   return `${baseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
+};
+
+/**
+ * Call workflow service endpoint
+ * Used for AI-powered workflows like question generation
+ * @param {Object} params - Request parameters
+ * @returns {Promise<Object>} API response data
+ */
+export const callWorkflowService = async ({
+  workflowType = 'generate_library_questions',
+  payload = {},
+  options = {},
+}) => {
+  const endpoint = getDefaultEndpoint('workflows');
+
+  const requestPayload = {
+    workflow_type: workflowType,
+    timestamp: new Date().toISOString(),
+    ...payload,
+    ...options,
+  };
+
+  try {
+    // Use Open edX authenticated HTTP client
+    const { data } = await getAuthenticatedHttpClient()
+      .post(endpoint, requestPayload);
+
+    if (!data) {
+      throw new Error('Empty response from workflow service');
+    }
+
+    return data;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Workflow Service Error:', error);
+    throw error;
+  }
 };
 
 /**
