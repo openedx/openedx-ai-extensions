@@ -4,10 +4,8 @@ import PropTypes from 'prop-types';
 // Import service modules
 import {
   prepareContextData,
-  callAIService,
+  callWorkflowService,
   formatErrorMessage,
-  getDefaultEndpoint,
-  validateEndpoint,
 } from './services';
 
 // Import UI components
@@ -32,19 +30,11 @@ const GetAIAssistanceButton = ({
   const [hasAsked, setHasAsked] = useState(false);
   const [requestId, setRequestId] = useState(null);
 
-  const endpoint = getDefaultEndpoint();
-
   /**
    * Handle AI assistant request
    * Now completely flexible - works with any available context
    */
   const handleAskAI = useCallback(async () => {
-    // Validate endpoint
-    if (!validateEndpoint(endpoint)) {
-      setError('Invalid API endpoint configuration');
-      return;
-    }
-
     setIsLoading(true);
     setError('');
     setResponse('');
@@ -57,11 +47,14 @@ const GetAIAssistanceButton = ({
       });
 
       // Make API call with flexible parameters
-      const data = await callAIService({
-        contextData,
-        apiEndpoint: endpoint,
-        courseId: contextData.courseId,
+      const data = await callWorkflowService({
+        context: contextData,
+        action: 'simple_button_assistance',
         userQuery: requestMessage || 'Provide learning assistance for this content',
+        payload: {
+          requestId: `ai-request-${Date.now()}`,
+          courseId: contextData.courseId,
+        },
       });
 
       // Store request ID for tracking
@@ -96,7 +89,7 @@ const GetAIAssistanceButton = ({
     } finally {
       setIsLoading(false);
     }
-  }, [endpoint, requestMessage, props]);
+  }, [requestMessage, props]);
 
   /**
    * Reset component state for new request
@@ -118,7 +111,6 @@ const GetAIAssistanceButton = ({
 
   // Debug info for development
   const debugInfo = process.env.NODE_ENV === 'development' ? {
-    endpoint,
     requestId,
     hasAsked,
     hasError: !!error,

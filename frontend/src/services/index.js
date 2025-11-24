@@ -1,6 +1,5 @@
 export {
   prepareContextData,
-  callAIService,
   callWorkflowService,
   generateRequestId,
   formatErrorMessage,

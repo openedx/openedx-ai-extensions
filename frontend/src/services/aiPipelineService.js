@@ -108,70 +108,6 @@ export const generateRequestId = () => {
 };
 
 /**
- * Make API call to AI assistance service
- * Flexible API call that works with any available context
- * @param {Object} params - Request parameters
- * @returns {Promise<Object>} API response data
- */
-export const callAIService = async ({
-  contextData = {},
-  userQuery = 'Provide learning assistance for this content',
-  action = 'run',
-  courseId = '',
-  apiEndpoint = '',
-  requestId = null,
-  options = {},
-}) => {
-  const requestPayload = {
-    // Request metadata
-    requestId: requestId || generateRequestId(),
-    action,
-    courseId: courseId || extractCourseIdFromUrl(),
-    timestamp: new Date().toISOString(),
-
-    // AI request data
-    context: contextData,
-    user_query: userQuery,
-
-    // Flexible options
-    options: {
-      responseFormat: 'text',
-      maxTokens: 1000,
-      temperature: 0.7,
-      ...options, // Allow override of defaults
-    },
-
-    // Include any additional data
-    metadata: {
-      source: 'openedx-ai-extensions',
-      version: '1.0.0',
-      mfe: 'learning',
-    },
-  };
-
-  try {
-    // Use Open edX authenticated HTTP client
-    // This automatically handles JWT cookies and CSRF tokens
-    const { data } = await getAuthenticatedHttpClient()
-      .post(apiEndpoint, requestPayload);
-
-    // Very flexible response validation - accept any structure
-    if (!data) {
-      throw new Error('Empty response from AI service');
-    }
-
-    return data;
-  } catch (error) {
-    // Log error for debugging
-    // eslint-disable-next-line no-console
-    console.error('AI Service Error:', error);
-
-    // Re-throw the original error
-    throw error;
-  }
-};
-
-/**
  * Validate API endpoint configuration
  * @param {string} endpoint - API endpoint URL
  * @returns {boolean} Whether endpoint is valid
@@ -200,29 +136,59 @@ export const getDefaultEndpoint = (endpoint = 'workflows') => {
 };
 
 /**
- * Call workflow service endpoint
- * Used for AI-powered workflows like question generation
+ * Make API call to workflow service endpoint
+ * Unified function for all workflow API calls
  * @param {Object} params - Request parameters
+ * @param {string} params.endpoint - API endpoint URL or endpoint type ('workflows', 'config')
+ * @param {Object} params.payload - Request payload (flexible structure)
+ * @param {Object} params.context - Context data (optional, will be added to payload)
+ * @param {string} params.action - Action type (optional)
+ * @param {string} params.userQuery - User query (optional)
+ * @param {string} params.workflowType - Workflow type (optional)
+ * @param {Object} params.options - Additional options (optional)
  * @returns {Promise<Object>} API response data
  */
 export const callWorkflowService = async ({
-  workflowType = 'generate_library_questions',
+  endpoint = 'workflows',
   payload = {},
-  options = {},
+  context = null,
+  action = null,
+  userQuery = null,
+  workflowType = null,
+  options = null,
 }) => {
-  const endpoint = getDefaultEndpoint('workflows');
+  // Determine the actual endpoint URL
+  const apiEndpoint = endpoint.startsWith('http')
+    ? endpoint
+    : getDefaultEndpoint(endpoint);
 
+  // Build the request payload flexibly
   const requestPayload = {
-    workflow_type: workflowType,
     timestamp: new Date().toISOString(),
-    ...payload,
-    ...options,
+    ...payload, // Spread user-provided payload first
   };
+
+  // Add optional fields if provided
+  if (context) {
+    requestPayload.context = context;
+  }
+  if (action) {
+    requestPayload.action = action;
+  }
+  if (userQuery) {
+    requestPayload.user_query = userQuery;
+  }
+  if (workflowType) {
+    requestPayload.workflow_type = workflowType;
+  }
+  if (options) {
+    requestPayload.options = options;
+  }
 
   try {
     // Use Open edX authenticated HTTP client
     const { data } = await getAuthenticatedHttpClient()
-      .post(endpoint, requestPayload);
+      .post(apiEndpoint, requestPayload);
 
     if (!data) {
       throw new Error('Empty response from workflow service');
