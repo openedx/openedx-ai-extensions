@@ -192,15 +192,12 @@ export const validateEndpoint = (endpoint) => {
  */
 export const getDefaultEndpoint = (endpoint = 'workflows') => {
   const config = getConfig();
-  const lmsBaseUrl = config.LMS_BASE_URL;
-  return `${lmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
+  let baseUrl = config.LMS_BASE_URL;
+  if (['authoring'].includes(config.APP_ID)) {
+    baseUrl = config.STUDIO_BASE_URL;
+  }
+  return `${baseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
 };
-
-export const getStudioDefaultEndpoint = (endpoint = 'workflows') => {
-  const config = getConfig();
-  const cmsBaseUrl = config.STUDIO_BASE_URL;
-  return `${cmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
-}
 
 /**
  * Format error message for user display

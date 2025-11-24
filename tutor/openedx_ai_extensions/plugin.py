@@ -34,7 +34,7 @@ hooks.Filters.DOCKER_BUILD_COMMAND.add_items([
 ])
 
 @hooks.Filters.IMAGES_BUILD_MOUNTS.add()
-def _mount_sample_plugin(mounts, path):
+def _mount_plugin(mounts, path):
     """Mount the sample plugin source code for development."""
     mounts += [("openedx-ai-extensions-backend", "/openedx/openedx-ai-extensions/backend")]
     return mounts

@@ -7,7 +7,6 @@ import {
   callAIService,
   formatErrorMessage,
   getDefaultEndpoint,
-  getStudioDefaultEndpoint,
   validateEndpoint,
 } from './services';
 
@@ -33,7 +32,7 @@ const GetAIAssistanceButton = ({
   const [hasAsked, setHasAsked] = useState(false);
   const [requestId, setRequestId] = useState(null);
 
-  const endpoint = getStudioDefaultEndpoint();
+  const endpoint = getDefaultEndpoint();
 
   /**
    * Handle AI assistant request

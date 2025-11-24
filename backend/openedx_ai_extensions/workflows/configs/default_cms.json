@@ -1,10 +1,12 @@
 {
-  "orchestrator_class": "DirectLLMResponse",
+  "orchestrator_class": "EducatorAssistantOrchestrator",
   "processor_config": {
     "OpenEdXProcessor": {
+      "function": "get_unit_content",
+      "char_limit": 300
     },
-    "LLMProcessor": {
-      "function": "openai_hello",
+    "EducatorAssistantProcessor": {
+      "function": "generate_quiz_questions",
       "config": "openai"
     }
   },
@@ -13,14 +15,14 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Ask AI [config api]",
-          "customMessage": "ChatGPT will say hello [config api]"
+          "buttonText": "Launch",
+          "customMessage": "Get AI-generated questions from this content"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "AI Assistant Response"
         }
       },
       "metadata": {

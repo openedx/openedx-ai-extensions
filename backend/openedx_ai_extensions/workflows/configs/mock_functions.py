@@ -37,6 +37,9 @@ def _fake_get_config_from_file(
     """
     # Define the default configuration file path
     DEFAULT_CONFIG_FILE = "default.json"
+    if settings.SERVICE_VARIANT == "cms":
+        DEFAULT_CONFIG_FILE = "default_cms.json"
+
     configs = None
     location = location_id
 
