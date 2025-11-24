@@ -217,8 +217,11 @@ class AIWorkflow(models.Model):
             orchestrator_name = self.config.orchestrator_class  # "DirectLLMResponse"
             orchestrator = getattr(orchestrators, orchestrator_name)(workflow=self)
 
-            # Execute the orchestrator
-            result = orchestrator.run(user_input)
+            if not hasattr(orchestrator, self.action):
+                raise NotImplementedError(
+                    f"Orchestrator '{orchestrator_name}' does not implement action '{self.action}'"
+                )
+            result = getattr(orchestrator, self.action)(user_input)
 
             logger.info(
                 f"🤖 WORKFLOW EXECUTOR: Completed execution for {self.get_natural_key()}, status={self.status}"

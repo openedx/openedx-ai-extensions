@@ -74,35 +74,35 @@ class DirectLLMResponse(BaseOrchestrator):
 class ThreadedLLMResponse(BaseOrchestrator):
     """Orchestrator that provides LLM responses using threading (placeholder)."""
 
-    def run(self, input_data):
-        # Prepare context
+    def __init__(self, workflow):
         from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
 
-        context = {
-            "course_id": self.workflow.course_id,
-            "extra_context": self.workflow.extra_context,
-        }
-
-        session, _ = AIWorkflowSession.objects.get_or_create(
+        super().__init__(workflow)
+        self.session, _ = AIWorkflowSession.objects.get_or_create(
             user=self.workflow.user,
             course_id=self.workflow.course_id,
             location_id=self.workflow.location_id,
             defaults={},
         )
 
-        # 0. If action = "clear_session", just remove session and return
-        if self.workflow.action == "clear_session":
-            session.delete()
-            return {
-                "response": "",
-                "status": "session_cleared",
-            }
+    def clear_session(self, _):
+        self.session.delete()
+        return {
+            "response": "",
+            "status": "session_cleared",
+        }
+
+    def run(self, input_data):
+        context = {
+            "course_id": self.workflow.course_id,
+            "extra_context": self.workflow.extra_context,
+        }
 
         # 1. get chat history if there is user session
         submission_processor = SubmissionProcessor(
-            self.config.processor_config, session
+            self.config.processor_config, self.session
         )
-        if session and session.local_submission_id and not input_data:
+        if self.session and self.session.local_submission_id and not input_data:
             history_result = submission_processor.process(context)
 
             if "error" in history_result:
@@ -126,7 +126,7 @@ class ThreadedLLMResponse(BaseOrchestrator):
             }
 
         # 3. Process with LLM processor
-        llm_processor = ResponsesProcessor(self.config.processor_config, session)
+        llm_processor = ResponsesProcessor(self.config.processor_config, self.session)
         llm_result = llm_processor.process(
             context=str(content_result), input_data=input_data
         )
