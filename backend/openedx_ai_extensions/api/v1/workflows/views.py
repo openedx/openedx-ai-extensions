@@ -53,13 +53,14 @@ class AIGenericWorkflowView(View):
                 {"error": "Invalid JSON in request body", "status": "error"}, status=400
             )
 
-        context = body_data.get("context", {})
-
-        # Extract obligatory workflow identification fields
-        action = body_data.get("action")  # This value is set at the UI trigger
-        course_id = body_data.get("courseId")
         user = request.user
-        context = body_data.get("context", {})
+        # Use standardized get_context
+        context_data = AIWorkflow.get_context_from_request(body_data, user)
+
+        action = context_data["action"]
+        course_id = context_data["course_id"]
+        unit_id = context_data["unit_id"]
+        extra_context = context_data["extra_context"]
 
         # TODO: Remove verbose logging
         logger.info(
@@ -83,7 +84,11 @@ class AIGenericWorkflowView(View):
         try:
             # Get or create workflow based on context
             workflow, created = AIWorkflow.find_workflow_for_context(
-                action=action, course_id=course_id, user=user, context=context
+                action=action,
+                course_id=course_id,
+                user=user,
+                unit_id=unit_id,
+                extra_context=extra_context,
             )
 
             result = workflow.execute(body_data.get("user_input", {}))
@@ -144,14 +149,23 @@ class AIWorkflowConfigView(APIView):
         Retrieve workflow configuration for a given action and context
         """
         # Extract query parameters
-        context_str = request.query_params.get("context", "{}")
         try:
+            context_str = request.query_params.get("context", "{}")
             context = json.loads(context_str)
         except (json.JSONDecodeError, TypeError):
             context = {}
-        unit_id = context.get("unitId")
-        action = request.query_params.get("action")
-        course_id = request.query_params.get("courseId")
+
+        request_body = {
+            "action": request.query_params.get("action"),
+            "courseId": request.query_params.get("courseId"),
+            "context": context,
+        }
+
+        context_data = AIWorkflow.get_context_from_request(request_body, request.user)
+
+        action = context_data["action"]
+        course_id = context_data["course_id"]
+        unit_id = context_data["unit_id"]
 
         try:
             # Get workflow configuration
