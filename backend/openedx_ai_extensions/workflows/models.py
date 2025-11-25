@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 class AIWorkflowConfig(models.Model):
     """
     Configuration templates for different AI workflows
+
+    .. no_pii:
     """
 
     action = models.CharField(
@@ -91,6 +93,10 @@ class AIWorkflowConfig(models.Model):
 class AIWorkflow(models.Model):
     """
     Individual AI workflow instances with state management
+
+    .. pii: This model contains a user reference
+    .. pii_types: id
+    .. pii_retirement: retained
     """
 
     # Core identification fields
@@ -297,6 +303,10 @@ class AIWorkflow(models.Model):
 class AIWorkflowSession(models.Model):
     """
     Sessions for tracking user interactions within AI workflows
+
+    .. pii: This model contains a user reference
+    .. pii_types: id
+    .. pii_retirement: retained
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
