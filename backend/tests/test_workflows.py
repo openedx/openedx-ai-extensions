@@ -9,6 +9,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from opaque_keys.edx.keys import CourseKey
+from opaque_keys.edx.locator import BlockUsageLocator
 
 # Mock the submissions module before any imports that depend on it
 sys.modules['submissions'] = MagicMock()
@@ -69,17 +70,22 @@ def workflow_config(db):  # pylint: disable=unused-argument
 
 
 @pytest.fixture
-def workflow_instance(user, workflow_config):  # pylint: disable=redefined-outer-name
+def workflow_instance(user, workflow_config, course_key):  # pylint: disable=redefined-outer-name
     """
     Create a mock workflow instance.
     """
+    location = BlockUsageLocator(
+        course_key,
+        block_type="vertical",
+        block_id="test_unit"
+    )
     workflow = AIWorkflow(
         user=user,
         action="summarize",
-        course_id="course-v1:edX+DemoX+Demo_Course",
-        location_id="block-v1:edX+DemoX+Demo_Course+type@vertical+block@test_unit",
+        course_id=str(course_key),
+        location_id=location,
         config=workflow_config,
-        extra_context={"unitId": "test-unit"},
+        extra_context={"unitId": str(location)},
         context_data={},
     )
     return workflow
@@ -160,7 +166,7 @@ def test_workflow_get_natural_key(workflow_instance):  # pylint: disable=redefin
     assert str(workflow_instance.user.id) in natural_key
     assert workflow_instance.action in natural_key
     assert workflow_instance.course_id in natural_key
-    assert workflow_instance.location_id in natural_key
+    assert str(workflow_instance.location_id) in natural_key
 
 
 @pytest.mark.django_db
@@ -193,7 +199,13 @@ def test_workflow_find_workflow_for_context(
     """
     mock_get_config.return_value = workflow_config
 
-    context = {"unitId": "block-v1:edX+DemoX+Demo_Course+type@vertical+block@unit1"}
+    course_key_obj = CourseKey.from_string("course-v1:edX+DemoX+Demo_Course")
+    location = BlockUsageLocator(
+        course_key_obj,
+        block_type="vertical",
+        block_id="unit1"
+    )
+    context = {"unitId": str(location)}
 
     workflow, created = AIWorkflow.find_workflow_for_context(
         action="summarize",
@@ -236,10 +248,12 @@ def test_workflow_execute_success(mock_orchestrator_class, workflow_instance):  
     """
     # Mock orchestrator instance
     mock_orchestrator = Mock()
-    mock_orchestrator.run.return_value = {
+    # Mock the action method directly (e.g., 'summarize')
+    mock_action_method = Mock(return_value={
         "response": "Summary generated",
         "status": "completed",
-    }
+    })
+    setattr(mock_orchestrator, workflow_instance.action, mock_action_method)
     mock_orchestrator_class.return_value = mock_orchestrator
 
     # Execute the workflow - the orchestrator is already mocked by the decorator
@@ -258,7 +272,9 @@ def test_workflow_execute_error(workflow_instance):  # pylint: disable=redefined
     # Patch orchestrator to raise an exception
     with patch("openedx_ai_extensions.workflows.orchestrators.MockResponse") as mock_orch_class:
         mock_orchestrator = Mock()
-        mock_orchestrator.run.side_effect = Exception("Orchestrator error")
+        # Mock the action method to raise exception
+        mock_action_method = Mock(side_effect=Exception("Orchestrator error"))
+        setattr(mock_orchestrator, workflow_instance.action, mock_action_method)
         mock_orch_class.return_value = mock_orchestrator
 
         result = workflow_instance.execute("Test input")
@@ -335,63 +351,93 @@ def test_workflow_complete_without_context(workflow_instance):  # pylint: disabl
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models._fake_get_or_create_session")
-def test_workflow_session_get_or_create(mock_get_or_create, user):  # pylint: disable=redefined-outer-name
+def test_workflow_session_get_or_create(user, course_key):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflowSession.get_or_create_session class method.
+    Test AIWorkflowSession.objects.get_or_create with real Django ORM.
     """
-    mock_session = Mock(spec=AIWorkflowSession)
-    mock_session.user = user
-    mock_session.course_id = "course-v1:edX+DemoX+Demo_Course"
-    mock_session.location_id = "unit-123"
-    mock_get_or_create.return_value = mock_session
+    location = BlockUsageLocator(
+        course_key,
+        block_type="vertical",
+        block_id="unit-123"
+    )
 
-    session, _ = AIWorkflowSession.objects.get_or_create(
+    session, created = AIWorkflowSession.objects.get_or_create(
         user=user,
-        course_id="course-v1:edX+DemoX+Demo_Course",
-        location_id="unit-123",
+        course_id=course_key,
+        location_id=location,
         defaults={},
     )
 
-    assert session == mock_session
-    mock_get_or_create.assert_called_once_with(
-        AIWorkflowSession, user, "course-v1:edX+DemoX+Demo_Course", "unit-123"
+    assert session.user == user
+    assert session.course_id == course_key
+    assert session.location_id == location
+    assert created is True
+
+    # Test retrieving existing session
+    session2, created2 = AIWorkflowSession.objects.get_or_create(
+        user=user,
+        course_id=course_key,
+        location_id=location,
+        defaults={},
     )
+
+    assert session.id == session2.id
+    assert created2 is False
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models._fake_save_session")
-def test_workflow_session_save(mock_save, user):  # pylint: disable=redefined-outer-name
+def test_workflow_session_save(user, course_key):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflowSession.save method.
+    Test AIWorkflowSession.save method with real Django ORM.
     """
+    location = BlockUsageLocator(
+        course_key,
+        block_type="vertical",
+        block_id="unit-123"
+    )
+
     session = AIWorkflowSession(
         user=user,
-        course_id="course-v1:edX+DemoX+Demo_Course",
-        location_id="unit-123",
+        course_id=course_key,
+        location_id=location,
         local_submission_id="submission-uuid",
     )
 
     session.save()
 
-    mock_save.assert_called_once_with(session)
+    # Verify session was saved to database
+    assert session.id is not None
+    retrieved_session = AIWorkflowSession.objects.get(id=session.id)
+    assert retrieved_session.user == user
+    assert retrieved_session.local_submission_id == "submission-uuid"
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models._fake_delete_session")
-def test_workflow_session_delete(mock_delete, user):  # pylint: disable=redefined-outer-name
+def test_workflow_session_delete(user, course_key):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflowSession.delete method.
+    Test AIWorkflowSession.delete method with real Django ORM.
     """
+    location = BlockUsageLocator(
+        course_key,
+        block_type="vertical",
+        block_id="unit-123"
+    )
+
     session = AIWorkflowSession(
         user=user,
-        course_id="course-v1:edX+DemoX+Demo_Course",
-        location_id="unit-123",
+        course_id=course_key,
+        location_id=location,
     )
+    session.save()
+    session_id = session.id
+
+    # Verify session exists
+    assert AIWorkflowSession.objects.filter(id=session_id).exists()
 
     session.delete()
 
-    mock_delete.assert_called_once_with(session)
+    # Verify session was deleted
+    assert not AIWorkflowSession.objects.filter(id=session_id).exists()
 
 
 # ============================================================================
@@ -513,7 +559,6 @@ def test_direct_llm_response_orchestrator_llm_error(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models.AIWorkflowSession.get_or_create_session")
 @patch("openedx_ai_extensions.workflows.orchestrators.OpenEdXProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
@@ -521,17 +566,12 @@ def test_threaded_llm_response_orchestrator_new_session(
     mock_submission_processor_class,
     mock_responses_processor_class,
     mock_openedx_processor_class,
-    mock_get_session,
     workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
     Test ThreadedLLMResponse orchestrator with new session and user input.
     """
-    # Mock session
-    mock_session = Mock()
-    mock_session.local_submission_id = None
-    mock_session.remote_response_id = None
-    mock_get_session.return_value = mock_session
+    # Session will be created automatically by Django ORM
 
     # Mock OpenEdXProcessor
     mock_openedx = Mock()
@@ -561,42 +601,63 @@ def test_threaded_llm_response_orchestrator_new_session(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models.AIWorkflowSession.get_or_create_session")
+@patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
 def test_threaded_llm_response_orchestrator_clear_session(
-    mock_get_session, workflow_instance  # pylint: disable=redefined-outer-name
+    mock_responses_processor_class,
+    mock_submission_processor_class,
+    workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
     Test ThreadedLLMResponse orchestrator with clear_session action.
     """
+    # Create a real session first
+    session = AIWorkflowSession.objects.create(
+        user=workflow_instance.user,
+        course_id=workflow_instance.course_id,
+        location_id=workflow_instance.location_id,
+    )
+
     # Change workflow action to clear_session
     workflow_instance.action = "clear_session"
 
-    # Mock session
-    mock_session = Mock()
-    mock_session.delete = Mock()
-    mock_get_session.return_value = mock_session
+    # Mock ResponsesProcessor and SubmissionProcessor to prevent initialization errors
+    mock_responses = Mock()
+    mock_responses_processor_class.return_value = mock_responses
+    mock_submission = Mock()
+    mock_submission_processor_class.return_value = mock_submission
 
     orchestrator = ThreadedLLMResponse(workflow=workflow_instance)
-    result = orchestrator.run(None)
+    result = orchestrator.clear_session(None)
 
     assert result["status"] == "session_cleared"
     assert result["response"] == ""
-    mock_session.delete.assert_called_once()
+    # Verify session was actually deleted from database
+    assert not AIWorkflowSession.objects.filter(id=session.id).exists()
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models.AIWorkflowSession.get_or_create_session")
+@patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
 def test_threaded_llm_response_orchestrator_get_history(
-    mock_submission_processor_class, mock_get_session, workflow_instance  # pylint: disable=redefined-outer-name
+    mock_submission_processor_class,
+    mock_responses_processor_class,
+    workflow_instance  # pylint: disable=redefined-outer-name
 ):
     """
     Test ThreadedLLMResponse orchestrator retrieving chat history.
     """
-    # Mock session with existing submission
-    mock_session = Mock()
-    mock_session.local_submission_id = "submission-uuid-123"
-    mock_get_session.return_value = mock_session
+    # Create a real session with existing submission
+    AIWorkflowSession.objects.create(
+        user=workflow_instance.user,
+        course_id=workflow_instance.course_id,
+        location_id=workflow_instance.location_id,
+        local_submission_id="submission-uuid-123",
+    )
+
+    # Mock ResponsesProcessor
+    mock_responses = Mock()
+    mock_responses_processor_class.return_value = mock_responses
 
     # Mock SubmissionProcessor
     mock_submission = Mock()
@@ -614,18 +675,29 @@ def test_threaded_llm_response_orchestrator_get_history(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models.AIWorkflowSession.get_or_create_session")
+@patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
 def test_threaded_llm_response_orchestrator_history_error(
-    mock_submission_processor_class, mock_get_session, workflow_instance  # pylint: disable=redefined-outer-name
+    mock_submission_processor_class,
+    mock_responses_processor_class,
+    workflow_instance  # pylint: disable=redefined-outer-name
 ):
     """
     Test ThreadedLLMResponse orchestrator with error retrieving history.
     """
-    mock_session = Mock()
-    mock_session.local_submission_id = "submission-uuid-123"
-    mock_get_session.return_value = mock_session
+    # Create a real session with existing submission
+    AIWorkflowSession.objects.create(
+        user=workflow_instance.user,
+        course_id=workflow_instance.course_id,
+        location_id=workflow_instance.location_id,
+        local_submission_id="submission-uuid-123",
+    )
 
+    # Mock ResponsesProcessor
+    mock_responses = Mock()
+    mock_responses_processor_class.return_value = mock_responses
+
+    # Mock SubmissionProcessor
     mock_submission = Mock()
     mock_submission.process.return_value = {"error": "Submission not found"}
     mock_submission_processor_class.return_value = mock_submission

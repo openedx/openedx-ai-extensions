@@ -20,7 +20,6 @@ def plugin_settings(settings):
             {"location_regex": ".*", "file": "configs/default.json"},
         ]
 
-    # Maximum number of message pairs (user + assistant) to keep in context for chat history
     # This prevents context window from growing too large while maintaining conversation continuity
     if not hasattr(settings, "AI_EXTENSIONS_MAX_CONTEXT_MESSAGES"):
         settings.AI_EXTENSIONS_MAX_CONTEXT_MESSAGES = 3

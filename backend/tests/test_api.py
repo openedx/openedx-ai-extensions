@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from opaque_keys.edx.keys import CourseKey
+from opaque_keys.edx.locator import BlockUsageLocator
 from rest_framework.test import APIClient
 
 User = get_user_model()
@@ -89,10 +90,17 @@ def test_workflows_post_with_authentication(api_client, course_key):  # pylint: 
     api_client.login(username="testuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
+    # Create a proper BlockUsageLocator for the unitId
+    location = BlockUsageLocator(
+        course_key,
+        block_type="vertical",
+        block_id="unit-123"
+    )
+
     payload = {
         "action": "summarize",
         "courseId": str(course_key),
-        "context": {"unitId": "unit-123"},
+        "context": {"unitId": str(location)},
         "user_input": {"text": "Explain quantum physics"},
         "requestId": "test-request-123",
     }
@@ -139,10 +147,17 @@ def test_workflows_post_with_staff_user(api_client, course_key):  # pylint: disa
     api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
+    # Create a proper BlockUsageLocator for the unitId
+    location = BlockUsageLocator(
+        course_key,
+        block_type="vertical",
+        block_id="unit-456"
+    )
+
     payload = {
         "action": "analyze",
         "courseId": str(course_key),
-        "context": {"unitId": "unit-456"},
+        "context": {"unitId": str(location)},
         "user_input": {"text": "Analyze student performance"},
         "requestId": "staff-request-789",
     }
