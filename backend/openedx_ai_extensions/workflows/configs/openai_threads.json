@@ -8,6 +8,10 @@
     "ResponsesProcessor": {
       "function": "chat_with_context",
       "config": "openai"
+    },
+    "SubmissionProcessor": {
+      "function": "get_chat_history",
+      "max_context_messages": 3
     }
   },
   "actuator_config": {

@@ -92,6 +92,38 @@ class ThreadedLLMResponse(BaseOrchestrator):
             "status": "session_cleared",
         }
 
+    def lazy_load_chat_history(self, input_data):
+        """
+        Load older messages from previous submission IDs for infinite scroll.
+        Expects input_data to contain the submission_id to load from.
+        """
+        submission_processor = SubmissionProcessor(
+            self.config.processor_config, self.session
+        )
+
+        # Extract submission_id from input_data if provided
+        submission_id = input_data if isinstance(input_data, str) else None
+
+        if not submission_id:
+            return {
+                "error": "No submission_id provided for lazy loading",
+                "status": "error",
+            }
+
+        result = submission_processor.get_previous_messages(submission_id)
+
+        if "error" in result:
+            return {
+                "error": result["error"],
+                "status": "error",
+            }
+
+        return {
+            "response": result.get("response", "{}"),
+            "status": "completed",
+            "metadata": result.get("metadata", {}),
+        }
+
     def run(self, input_data):
         context = {
             "course_id": self.workflow.course_id,

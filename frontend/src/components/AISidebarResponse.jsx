@@ -34,8 +34,15 @@ const AISidebarResponse = ({
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [previousSubmissionIds, setPreviousSubmissionIds] = useState([]);
   const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
   const initialResponseAdded = useRef(false);
+  const hasScrolledToBottom = useRef(false);
+  const isLoadingOlderMessages = useRef(false);
+  const previousMessageCount = useRef(0);
 
   // Show sidebar when response or error arrives (but not while just loading)
   useEffect(() => {
@@ -43,6 +50,27 @@ const AISidebarResponse = ({
       setIsOpen(true);
       try {
         const parsed = JSON.parse(response);
+
+        // Check if response has metadata structure
+        if (parsed.messages && Array.isArray(parsed.messages)) {
+          const formattedMessages = parsed.messages.map((msg) => ({
+            type: msg.role === 'user' ? 'user' : 'ai',
+            content: msg.content,
+            timestamp: new Date().toISOString(),
+          }));
+          setChatMessages(formattedMessages);
+
+          // Store metadata for lazy loading
+          if (parsed.metadata) {
+            setHasMoreHistory(parsed.metadata.has_more || false);
+            setPreviousSubmissionIds(parsed.metadata.previous_submission_ids || []);
+          }
+
+          initialResponseAdded.current = true;
+          return;
+        }
+
+        // Fallback: check if it's just an array of messages
         if (Array.isArray(parsed)) {
           const formattedMessages = parsed.map((msg) => ({
             type: msg.role === 'user' ? 'user' : 'ai',
@@ -71,10 +99,17 @@ const AISidebarResponse = ({
     }
   }, [response, error]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (but not when loading older messages)
   useEffect(() => {
-    if (chatEndRef.current) {
+    // Only scroll to bottom if we're not currently loading older messages
+    if (chatEndRef.current && !isLoadingOlderMessages.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      // Mark that we've scrolled to bottom after initial load
+      if (!hasScrolledToBottom.current) {
+        setTimeout(() => {
+          hasScrolledToBottom.current = true;
+        }, 500); // Wait for smooth scroll to complete
+      }
     }
   }, [chatMessages, isSendingFollowUp]);
 
@@ -120,6 +155,99 @@ const AISidebarResponse = ({
   };
 
   /**
+   * Load older messages when scrolling up
+   */
+  const handleLoadMoreHistory = async () => {
+    if (!hasMoreHistory || isLoadingHistory || previousSubmissionIds.length === 0) {
+      return;
+    }
+
+    setIsLoadingHistory(true);
+    isLoadingOlderMessages.current = true;
+
+    try {
+      // Save current scroll position before loading
+      const scrollContainer = chatContainerRef.current;
+      const scrollHeightBefore = scrollContainer?.scrollHeight || 0;
+      const scrollTopBefore = scrollContainer?.scrollTop || 0;
+
+      // Get the oldest submission ID to load from
+      const oldestSubmissionId = previousSubmissionIds[previousSubmissionIds.length - 1];
+
+      // Get API endpoint
+      const apiEndpoint = getDefaultEndpoint();
+
+      // Prepare context data
+      const preparedContext = prepareContextData({
+        ...contextData,
+      });
+
+      // Make API call with lazy_load_chat_history action
+      const data = await callAIService({
+        contextData: preparedContext,
+        action: 'lazy_load_chat_history',
+        apiEndpoint,
+        courseId: preparedContext.courseId,
+        userQuery: oldestSubmissionId, // Pass submission ID as userQuery
+      });
+
+      // Parse response
+      const parsed = JSON.parse(data.response || '[]');
+
+      // Format older messages
+      const olderMessages = (Array.isArray(parsed) ? parsed : []).map((msg) => ({
+        type: msg.role === 'user' ? 'user' : 'ai',
+        content: msg.content,
+        timestamp: new Date().toISOString(),
+      }));
+
+      // Prepend older messages to current messages
+      setChatMessages(prev => [...olderMessages, ...prev]);
+
+      // Restore scroll position after messages are added
+      // Use setTimeout to wait for DOM update
+      setTimeout(() => {
+        if (scrollContainer) {
+          const scrollHeightAfter = scrollContainer.scrollHeight;
+          const scrollDiff = scrollHeightAfter - scrollHeightBefore;
+          scrollContainer.scrollTop = scrollTopBefore + scrollDiff;
+        }
+      }, 0);
+
+      // Update metadata from response
+      if (data.metadata) {
+        setHasMoreHistory(data.metadata.has_more || false);
+        setPreviousSubmissionIds(data.metadata.previous_submission_ids || []);
+      } else {
+        setHasMoreHistory(false);
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[AISidebarResponse] Load more history error:', err);
+      setHasMoreHistory(false);
+    } finally {
+      setIsLoadingHistory(false);
+      // Reset flag after a small delay to ensure scroll position is restored
+      setTimeout(() => {
+        isLoadingOlderMessages.current = false;
+      }, 100);
+    }
+  };
+
+  /**
+   * Handle scroll event to detect when user reaches top
+   */
+  const handleScroll = (e) => {
+    const { scrollTop } = e.target;
+
+    // Only trigger lazy load after initial scroll to bottom is complete
+    // This prevents loading during the initial auto-scroll
+    if (scrollTop < 50 && hasMoreHistory && !isLoadingHistory && hasScrolledToBottom.current) {
+      handleLoadMoreHistory();
+    }
+  };
+
+  /**
    * Clear response and close sidebar (shows request component again)
    */
   const handleClearAndClose = async () => {
@@ -127,7 +255,13 @@ const AISidebarResponse = ({
     setIsOpen(false);
     setFollowUpQuestion('');
     setChatMessages([]);
+    setHasMoreHistory(false);
+    setPreviousSubmissionIds([]);
+    setIsLoadingHistory(false);
     initialResponseAdded.current = false;
+    hasScrolledToBottom.current = false;
+    isLoadingOlderMessages.current = false;
+    previousMessageCount.current = 0;
     if (onClear) {
       onClear();
     }
@@ -137,7 +271,13 @@ const AISidebarResponse = ({
     setIsOpen(false);
     setFollowUpQuestion('');
     setChatMessages([]);
+    setHasMoreHistory(false);
+    setPreviousSubmissionIds([]);
+    setIsLoadingHistory(false);
     initialResponseAdded.current = false;
+    hasScrolledToBottom.current = false;
+    isLoadingOlderMessages.current = false;
+    previousMessageCount.current = 0;
     if (onClear) {
       onClear();
     }
@@ -298,7 +438,36 @@ const AISidebarResponse = ({
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <div
+          ref={chatContainerRef}
+          style={{ flex: 1, overflowY: 'auto', padding: '20px' }}
+          onScroll={handleScroll}
+        >
+          {/* Loading indicator for lazy loading at top */}
+          {isLoadingHistory && (
+            <div className="d-flex align-items-center justify-content-center py-3 gap-2">
+              <div className="spinner-border spinner-border-sm text-primary" role="status" aria-label="Loading history" />
+              <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                Loading older messages...
+              </span>
+            </div>
+          )}
+
+          {/* Load more button (alternative to auto-load on scroll) */}
+          {hasMoreHistory && !isLoadingHistory && (
+            <div className="text-center mb-3">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={handleLoadMoreHistory}
+                className="text-muted"
+                style={{ fontSize: '0.85rem', textDecoration: 'none' }}
+              >
+                Load older messages ↑
+              </Button>
+            </div>
+          )}
+
           {/* Error state */}
           {error && (
             <Alert
