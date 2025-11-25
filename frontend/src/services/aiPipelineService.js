@@ -31,19 +31,21 @@ const extractUnitIdFromUrl = () => {
 };
 
 /**
- * Prepare context data from Open edX learning environment
- * Captures ALL available information without requiring anything specific
- * @param {Object} params - Learning context parameters (all optional)
- * @returns {Object} Formatted context for AI service
+ * Prepare standardized context data (Backend requires context.unitId + extra info)
  */
 export const prepareContextData = ({
   sequence = null,
-  courseId = null,
-  unitId = null,
+  // eslint-disable-next-line no-unused-vars
+  courseId = null, // not included directly in context
+  unitId = null, // included in context
   ...extraProps
 } = {}) => {
-  // Base context that's always available
+  const resolvedUnitId = unitId || extractUnitIdFromUrl();
+
   const contextData = {
+    // Context that the backend expects
+    unitId: resolvedUnitId,
+
     // Environment info
     timestamp: new Date().toISOString(),
     userAgent: navigator.userAgent,
@@ -51,16 +53,12 @@ export const prepareContextData = ({
     url: window.location.href,
     pathname: window.location.pathname,
 
-    // User info (if available)
+    // User info
     userId: window.user?.id || null,
     username: window.user?.username || null,
     isStaff: window.user?.is_staff || false,
 
-    // Course context (if available)
-    courseId: courseId || extractCourseIdFromUrl(),
-    unitId: unitId || extractUnitIdFromUrl(),
-
-    // Sequence context (if available)
+    // Sequence details
     sequence: sequence ? {
       id: sequence.id,
       displayName: sequence.displayName,
@@ -75,17 +73,16 @@ export const prepareContextData = ({
       })) || [],
     } : null,
 
-    // Browser context
+    // Browser viewport
     viewport: {
       width: window.innerWidth,
       height: window.innerHeight,
     },
 
-    // Language/locale
+    // Language
     language: navigator.language || 'en',
 
-    // Any extra props passed in
-    ...extraProps,
+    ...extraProps, // additional UI-provided context
   };
 
   // Remove null/undefined values to keep payload clean
@@ -105,36 +102,34 @@ export const generateRequestId = () => {
 };
 
 /**
- * Make API call to AI assistance service
- * Flexible API call that works with any available context
- * @param {Object} params - Request parameters
- * @returns {Promise<Object>} API response data
+ * Main AI Workflow API call
  */
 export const callAIService = async ({
   contextData = {},
-  userQuery = 'Provide learning assistance for this content',
+  userQuery = '',
+  action = 'simple_button_assistance',
   courseId = '',
   apiEndpoint = '',
   requestId = null,
   options = {},
 }) => {
+  const resolvedCourseId = courseId || extractCourseIdFromUrl();
+
   const requestPayload = {
-    // Request metadata
     requestId: requestId || generateRequestId(),
-    action: 'simple_button_assistance',
-    courseId: courseId || extractCourseIdFromUrl(),
+    action,
+    courseId: resolvedCourseId,
     timestamp: new Date().toISOString(),
 
-    // AI request data
+    // Standardized field names (backend uses user_input + context)
+    user_input: { query: userQuery },
     context: contextData,
-    user_query: userQuery,
 
-    // Flexible options
     options: {
       responseFormat: 'text',
       maxTokens: 1000,
       temperature: 0.7,
-      ...options, // Allow override of defaults
+      ...options,
     },
 
     // Include any additional data
@@ -214,7 +209,7 @@ export const formatErrorMessage = (error) => {
   }
 
   if (errorMessage.includes('timeout')) {
-    return 'Request timed out. The AI service may be busy, please try again.';
+    return 'Request timed out. Please try again.';
   }
 
   return 'Failed to get AI assistance. Please try again.';

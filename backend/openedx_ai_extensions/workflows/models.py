@@ -176,8 +176,13 @@ class AIWorkflow(models.Model):
 
     @classmethod
     def find_workflow_for_context(
-        cls, action: str, course_id: Optional[str], user, unit_id: Optional[str] = None,
-        extra_context: Optional[dict] = None
+        cls,
+        *,
+        action: str,
+        course_id: Optional[str] = None,
+        user,
+        unit_id: Optional[str] = None,
+        extra_context: Optional[dict] = None,
     ) -> tuple["AIWorkflow", bool]:
         """
         Find or create workflow based on action, course, user and context

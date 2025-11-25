@@ -60,7 +60,7 @@ const GetAIAssistanceButton = ({
       const data = await callAIService({
         contextData,
         apiEndpoint: endpoint,
-        courseId: contextData.courseId,
+        courseId: props.courseId,
         userQuery: requestMessage || 'Provide learning assistance for this content',
       });
 
@@ -165,6 +165,7 @@ const GetAIAssistanceButton = ({
 GetAIAssistanceButton.propTypes = {
   requestMessage: PropTypes.string,
   buttonText: PropTypes.string,
+  courseId: PropTypes.string,
 };
 
 GetAIAssistanceButton.defaultProps = {
