@@ -35,7 +35,6 @@ const COMPONENT_REGISTRY = {
 
 /**
  * Configurable AI Assistance Wrapper Component
- *
  * Fetches runtime configuration from an API and dynamically renders
  * AIRequestComponent and AIResponseComponent with configuration.
  * Manages state and orchestrates the AI interaction flow.
@@ -155,7 +154,7 @@ const ConfigurableAIAssistance = ({
       const data = await callAIService({
         contextData,
         apiEndpoint,
-        courseId: contextData.courseId,
+        courseId: additionalProps.courseId,
         userQuery: requestMessage,
       });
 
