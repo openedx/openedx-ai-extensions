@@ -30,10 +30,14 @@ const COMPONENT_REGISTRY = {
   AIRequestComponent,
   AIResponseComponent,
   AISidebarResponse,
+  // Future components can be added here
 };
 
 /**
  * Configurable AI Assistance Wrapper Component
+ * Fetches runtime configuration from an API and dynamically renders
+ * AIRequestComponent and AIResponseComponent with configuration.
+ * Manages state and orchestrates the AI interaction flow.
  */
 const ConfigurableAIAssistance = ({
   fallbackConfig,
