@@ -6,6 +6,8 @@ import logging
 
 from opaque_keys.edx.keys import UsageKey
 
+from openedx_ai_extensions.processors.component_extractors import COMPONENT_EXTRACTORS, extract_generic_info
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,28 +55,25 @@ class OpenEdXProcessor:
                 "blocks": [],
             }
 
-            if hasattr(unit, "children") and unit.children:
-                for child_key in unit.children:
-                    try:
-                        child = store.get_item(child_key)
-                        block_info = {
-                            "block_id": str(child.location),
-                            "display_name": child.display_name,
-                            "category": child.category,
-                        }
+            for child_key in getattr(unit, "children", []):
+                try:
+                    block = store.get_item(child_key)
+                    block_type = block.category.lower()
+                    extractor = COMPONENT_EXTRACTORS.get(block_type, extract_generic_info)
+                    info = extractor(block)
+                    unit_info["blocks"].append(info)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.warning(f"Could not load block {child_key}: {e}")
 
-                        if child.category == "html":
-                            block_info["content"] = getattr(child, "data", "")
-                        elif child.category == "problem":
-                            block_info["content"] = getattr(child, "data", "")
-
-                        unit_info["blocks"].append(block_info)
-                    except Exception as e:  # pylint: disable=broad-exception-caught
-                        logger.warning(f"Could not load block {child_key}: {e}")
-
-            # limit for dev
-            if char_limit and len(unit_info) > char_limit:
-                unit_info = unit_info[:char_limit]
+            # Optional char limit truncation
+            if char_limit:
+                import json
+                s = json.dumps(unit_info)
+                if len(s) > char_limit:
+                    for block in unit_info["blocks"]:
+                        if "text" in block and block["text"]:
+                            block["text"] = block["text"][: char_limit // max(1, len(unit_info["blocks"]))]
+                    unit_info["truncated"] = True
 
             return unit_info
 
