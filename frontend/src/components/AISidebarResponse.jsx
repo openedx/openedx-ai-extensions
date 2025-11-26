@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
-import { Button, Alert, IconButton } from '@openedx/paragon';
+import { Button, Alert, IconButton, Dropdown } from '@openedx/paragon';
 import {
   Send,
   CheckCircle,
   Warning,
   Close,
+  Settings,
 } from '@openedx/paragon/icons';
 
 // Import AI services
@@ -40,10 +41,12 @@ const AISidebarResponse = ({
   const [previousSubmissionIds, setPreviousSubmissionIds] = useState([]);
   const chatEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const textareaRef = useRef(null);
   const initialResponseAdded = useRef(false);
   const hasScrolledToBottom = useRef(false);
   const isLoadingOlderMessages = useRef(false);
   const previousMessageCount = useRef(0);
+  const [textareaRows, setTextareaRows] = useState(1);
 
   // Show sidebar when response or error arrives (but not while just loading)
   useEffect(() => {
@@ -286,6 +289,7 @@ const AISidebarResponse = ({
     }]);
 
     setFollowUpQuestion('');
+    setTextareaRows(1); // Reset textarea to 1 row
     setIsSendingFollowUp(true);
 
     try {
@@ -341,7 +345,35 @@ const AISidebarResponse = ({
   };
 
   /**
-   * Handle Enter key press in input
+   * Handle textarea auto-resize based on content
+   */
+  const handleTextareaChange = (e) => {
+    const { value } = e.target;
+    setFollowUpQuestion(value);
+
+    // If content is empty, reset to 1 row
+    if (!value.trim()) {
+      setTextareaRows(1);
+      return;
+    }
+
+    // Calculate number of rows needed (max 10)
+    const lineHeight = 24; // Approximate line height in pixels
+    const maxRows = 10;
+    const minRows = 1;
+
+    // Reset height to auto to get accurate scrollHeight
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const calculatedRows = Math.floor(scrollHeight / lineHeight);
+      const rows = Math.min(Math.max(calculatedRows, minRows), maxRows);
+      setTextareaRows(rows);
+    }
+  };
+
+  /**
+   * Handle Enter key press in textarea
    */
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -411,14 +443,35 @@ const AISidebarResponse = ({
             <CheckCircle className="text-success me-2" style={{ width: '20px', height: '20px' }} />
             <strong style={{ fontSize: '1rem' }}>{customMessage || 'AI Assistant Response'}</strong>
           </div>
-          <IconButton
-            src={Close}
-            iconAs="svg"
-            alt="Close"
-            onClick={handleClearAndClose}
-            size="sm"
-            variant="secondary"
-          />
+          <div className="d-flex align-items-center gap-2">
+            {/* Settings dropdown with Clear option */}
+            <Dropdown>
+              <Dropdown.Toggle
+                variant="light"
+                size="sm"
+                id="sidebar-settings-dropdown"
+                className="p-2"
+                style={{ minWidth: 'auto' }}
+              >
+                <Settings style={{ width: '16px', height: '16px' }} />
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                <Dropdown.Item onClick={handleClearAndClose}>
+                  Clear Chat
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={handleClose}
+              className="btn btn-secondary btn-sm p-2"
+              style={{ minWidth: 'auto' }}
+              aria-label="Close sidebar"
+            >
+              <Close style={{ width: '16px', height: '16px' }} />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -548,46 +601,48 @@ const AISidebarResponse = ({
               backgroundColor: '#f8f9fa',
             }}
           >
-            <div className="d-flex flex-column gap-2">
-              <input
-                type="text"
+            {/* Textarea with send button inside */}
+            <div style={{ position: 'relative' }}>
+              <textarea
+                ref={textareaRef}
                 className="form-control"
                 placeholder="Type your follow-up question..."
                 value={followUpQuestion}
-                onChange={(e) => setFollowUpQuestion(e.target.value)}
+                onChange={handleTextareaChange}
                 onKeyPress={handleKeyPress}
                 disabled={isLoading || isSendingFollowUp}
+                rows={textareaRows}
                 style={{
                   fontSize: '0.9rem',
                   borderRadius: '6px',
+                  paddingRight: '50px',
+                  resize: 'none',
+                  overflowY: textareaRows >= 10 ? 'auto' : 'hidden',
+                  lineHeight: '1.5',
                 }}
               />
-
-              <div className="d-flex justify-content-end gap-2">
-                {/* Clear button */}
-                {onClear && (
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    onClick={handleClearAndClose}
-                    className="py-1 px-3"
-                  >
-                    Clear
-                  </Button>
-                )}
-
-                {/* Send follow-up button */}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleFollowUpSubmit}
-                  disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
-                  iconBefore={Send}
-                  className="py-1 px-3"
-                >
-                  Send
-                </Button>
-              </div>
+              {/* Send button positioned inside textarea */}
+              <button
+                type="button"
+                onClick={handleFollowUpSubmit}
+                disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
+                className="btn btn-primary btn-sm"
+                aria-label="Send message"
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  bottom: textareaRows > 1 ? '8px' : '50%',
+                  transform: textareaRows > 1 ? 'none' : 'translateY(50%)',
+                  padding: '6px 8px',
+                  minWidth: 'auto',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Send style={{ width: '16px', height: '16px' }} />
+              </button>
             </div>
           </div>
         )}
