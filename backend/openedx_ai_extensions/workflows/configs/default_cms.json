@@ -21,9 +21,11 @@
         }
       },
       "response": {
-        "component": "AIResponseComponent",
+        "component": "AIEducatorLibraryResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response"
+          "titleText": "AI Assistant",
+          "customMessage": "You can find the generated questions in your content library.",
+          "hyperlinkText": "View content"
         }
       },
       "metadata": {

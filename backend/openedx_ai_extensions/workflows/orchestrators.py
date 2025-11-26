@@ -66,7 +66,10 @@ class DirectLLMResponse(BaseOrchestrator):
             }
         }
 
+
 class EducatorAssistantOrchestrator(BaseOrchestrator):
+    """Orchestrator for educator assistant workflows."""
+
     def run(self, input_data):
         # Prepare context
         context = {

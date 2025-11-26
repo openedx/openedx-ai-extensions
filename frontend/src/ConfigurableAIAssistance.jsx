@@ -20,6 +20,7 @@ import {
   AIResponseComponent,
   AISidebarResponse,
   AIEducatorLibraryAssistComponent,
+  AIEducatorLibraryResponseComponent,
 } from './components';
 
 /**
@@ -31,6 +32,7 @@ const COMPONENT_REGISTRY = {
   AIResponseComponent,
   AISidebarResponse,
   AIEducatorLibraryAssistComponent,
+  AIEducatorLibraryResponseComponent,
   // Future components can be added here
 };
 
@@ -294,6 +296,8 @@ const ConfigurableAIAssistance = ({
         <RequestComponent
           isLoading={isLoading}
           hasAsked={hasAsked && !error}
+          setResponse={setResponse}
+          setHasAsked={setHasAsked}
           onAskAI={handleAskAI}
           disabled={false}
           {...requestProps}

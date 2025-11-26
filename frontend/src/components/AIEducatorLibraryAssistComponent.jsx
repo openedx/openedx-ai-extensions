@@ -20,6 +20,9 @@ import { callWorkflowService, prepareContextData } from '../services';
 const AIEducatorLibraryAssistComponent = ({
   courseId,
   unitId,
+  setResponse,
+  hasAsked,
+  setHasAsked,
   libraries: librariesProp,
   titleText,
   buttonText,
@@ -92,6 +95,11 @@ const AIEducatorLibraryAssistComponent = ({
     }
   }, [librariesProp]);
 
+  // Early return after all hooks have been called
+  if (hasAsked && !isLoading) {
+    return null;
+  }
+
   /**
    * Handle form submission
    */
@@ -119,7 +127,7 @@ const AIEducatorLibraryAssistComponent = ({
         unitId,
       });
 
-      await callWorkflowService({
+      const data = await callWorkflowService({
         context: contextData,
         action: 'generate_library_questions',
         payload: {
@@ -128,11 +136,30 @@ const AIEducatorLibraryAssistComponent = ({
           user_input: {
             library_id: selectedLibrary,
             num_questions: numberOfQuestions,
-            extra_instructions: '',
+            extra_instructions: additionalInstructions,
           },
         },
       });
 
+      // Handle response
+      if (data.response) {
+        setResponse(data.response);
+        setHasAsked(true);
+      } else if (data.message) {
+        setResponse(data.message);
+        setHasAsked(true);
+      } else if (data.content) {
+        setResponse(data.content);
+        setHasAsked(true);
+      } else if (data.result) {
+        setResponse(data.result);
+        setHasAsked(true);
+      } else if (data.error) {
+        throw new Error(data.error);
+      } else {
+        setResponse(JSON.stringify(data, null, 2));
+        setHasAsked(true);
+      }
       setShowForm(false);
 
       // Reset form
@@ -343,6 +370,9 @@ const AIEducatorLibraryAssistComponent = ({
 AIEducatorLibraryAssistComponent.propTypes = {
   courseId: PropTypes.string.isRequired,
   unitId: PropTypes.string.isRequired,
+  hasAsked: PropTypes.bool.isRequired,
+  setResponse: PropTypes.func.isRequired,
+  setHasAsked: PropTypes.func.isRequired,
   libraries: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,
