@@ -4,6 +4,7 @@ LLM Processing using LiteLLM for multiple providers
 
 import json
 import logging
+import os
 
 from django.conf import settings
 from litellm import completion
@@ -89,132 +90,24 @@ class EducatorAssistantProcessor:
         requested_questions = input_data.get('num_questions')
         extra_instructions = input_data.get('extra_instructions')
 
-        prompt = f"""
-          You must generate a set of assessment questions in valid OLX format based on
-          the following context about an unit of online course:
+        prompt_file_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'prompts',
+            'default_generate_quiz_questions.txt'
+        )
+        try:
+            with open(prompt_file_path, "r") as f:
+                prompt = f.read()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error loading prompt template: {e}")
+            return {"error": "Failed to load prompt template."}
 
-          CONTEXT: --------
-            {self.context}
-          --------
-
-          Generate exactly [{requested_questions}] questions.
-
-          The following rules are MANDATORY:
-
-          1. The output must be a VALID JSON. No text outside the JSON. following output structure:
-            {{
-              'collection': 'Name of the collection based on the course context',
-              'items': [
-                {{
-                  "category": "problem",
-                  "data": "<OLX markup here>"
-                }},
-                ...
-              ]
-            }}
-          2. Each item in the array must be an object with EXACTLY these fields:
-            - "category": always "problem"
-            - "data": the OLX markup for the problem
-          3. All OLX markup must strictly follow the Open edX OLX specification:
-            https://docs.openedx.org/en/latest/educators/olx/front_matter/read_me.html
-          4. Each question must be complete, including:
-            - A <div> containing the question prompt
-            - A valid OLX response type such as:
-              - <multiplechoiceresponse> with <choicegroup> and <choice>
-              - <choiceresponse> with <checkboxgroup>
-              - <optionresponse> with <optioninput>
-              - or any other valid OLX problem format
-            - A <solution> element with explanation paragraphs
-          5. Do NOT use any different formats, only the given example formats. You can look for reference at:
-                https://github.com/openedx/training-courses/tree/main/olx_example_course/course/problem
-          5. Ensure the JSON contains no markdown, no escaping, and no additional comments.
-
-          Example formats you may follow:
-
-          Dropdown example:
-          {{
-            "category": "problem",
-            "data": "<problem display_name=\"Dropdown\" markdown_edited=\"false\" rerandomize=\"never\" \
-show_reset_button=\"false\" showanswer=\"finished\" weight=\"1.0\">
-              <optionresponse>
-                <div>What is the correct answer?</div>
-                <optioninput>
-                  <option correct="false">Incorrect</option>
-                  <option correct="true">Correct</option>
-                  <option correct="false">Incorrect</option>
-                </optioninput>
-                <solution>
-                  <div class="detailed-solution">
-                    <p>Explanation</p>
-                    <p>The correct answer is called "correct"</p>
-                  </div>
-                </solution>
-              </optionresponse>
-            </problem>"
-          }}
-
-          Multi Select example:
-          {{
-            "category": "problem",
-            "data": "<problem display_name=\"Multi-select\" markdown_edited=\"false\" max_attempts=\"2\" \
-rerandomize=\"never\" show_reset_button=\"false\" showanswer=\"finished\" weight=\"5.0\">
-              <choiceresponse>
-                <div>What are the correct answers?</div>
-                <checkboxgroup>
-                  <choice correct="true">
-                    <div>Correct</div>
-                  </choice>
-                  <choice correct="false">
-                    <div>Incorrect</div>
-                  </choice>
-                  <choice correct="true">
-                    <div>Correct</div>
-                  </choice>
-                </checkboxgroup>
-                <solution>
-                  <div class="detailed-solution">
-                    <p>Explanation</p>
-                    <p>The correct answers are marked with "correct"</p>
-                  </div>
-                </solution>
-              </choiceresponse>
-            </problem>"
-          }}
-
-          Single Select example:
-          {{
-            "category": "problem",
-            "data": "<problem display_name=\"Single select\" markdown_edited=\"false\" rerandomize=\"never\" \
-show_reset_button=\"false\" showanswer=\"finished\" submission_wait_seconds=\"0\" weight=\"2.0\">
-              <multiplechoiceresponse>
-                <div>What is the correct answer?</div>
-                <choicegroup>
-                  <choice correct="false">
-                    <div>Incorrect</div>
-                  </choice>
-                  <choice correct="false">
-                    <div>Incorrect</div>
-                  </choice>
-                  <choice correct="true">
-                    <div>Correct</div>
-                  </choice>
-                </choicegroup>
-                <solution>
-                  <div class="detailed-solution">
-                    <p>Explanation</p>
-                    <p>The correct answer is called "Correct"</p>
-                  </div>
-                </solution>
-              </multiplechoiceresponse>
-            </problem>"
-          }}
-
-          Now generate the JSON of [{requested_questions}] OLX questions.
-
-          Finally some notes passed by the working course author: --------
-            {extra_instructions}
-          --------
-        """
+        if '{{NUM_QUESTIONS}}' in prompt:
+            prompt = prompt.replace("{{NUM_QUESTIONS}}", str(requested_questions))
+        if '{{CONTEXT}}' in prompt:
+            prompt = prompt.replace("{{CONTEXT}}", str(self.context))
+        if '{{EXTRA_INSTRUCTIONS}}' in prompt:
+            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions)
 
         result = self._call_completion_api(prompt)
         tokens_used = result.get("tokens_used", 0)

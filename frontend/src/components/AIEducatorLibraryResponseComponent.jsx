@@ -73,7 +73,10 @@ const AIEducatorLibraryResponseComponent = ({
                 </small>
               </div>
               {onClear && (
-                <div className="d-flex justify-content-end">
+                <div className="d-flex justify-content-between align-items-center">
+                  <small className="text-muted fst-italic" style={{ fontSize: '0.7rem' }}>
+                    *Note: The generated questions are not published.
+                  </small>
                   <Button
                     variant="outline-secondary"
                     size="sm"
