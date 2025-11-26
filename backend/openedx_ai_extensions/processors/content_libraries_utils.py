@@ -6,8 +6,6 @@ from uuid import uuid4
 
 from django.db import transaction
 from opaque_keys.edx.locator import LibraryLocatorV2
-from openedx.core.djangoapps.content_libraries import api, permissions  # pylint: disable=import-error
-from openedx.core.djangoapps.content_libraries.rest_api import serializers  # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +46,10 @@ class ContentLibraryHelper:
 
     def create_block(self, data):
         """Create a library block."""
+        # pylint: disable=import-error, import-outside-toplevel
+        from openedx.core.djangoapps.content_libraries import api
+        from openedx.core.djangoapps.content_libraries.rest_api import serializers
+
         serializer = serializers.LibraryXBlockCreationSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
@@ -60,10 +62,16 @@ class ContentLibraryHelper:
 
     def modify_block_olx(self, usage_key, data):
         """Modify the OLX of a library block."""
+        # pylint: disable=import-error, import-outside-toplevel
+        from openedx.core.djangoapps.content_libraries import api
+
         api.set_library_block_olx(usage_key, data)
 
     def create_collection(self, title, description="") -> None:
         """Create a collection in the library."""
+        # pylint: disable=import-error, import-outside-toplevel
+        from openedx.core.djangoapps.content_libraries import api, permissions
+
         content_library = api.require_permission_for_library_key(
             self.library_key, self.user, permissions.CAN_EDIT_THIS_CONTENT_LIBRARY
         )
@@ -81,6 +89,9 @@ class ContentLibraryHelper:
         return collection
 
     def update_library_collection_items(self, collection_key, item_keys) -> None:
+        # pylint: disable=import-error, import-outside-toplevel
+        from openedx.core.djangoapps.content_libraries import api
+
         api.update_library_collection_items(
             library_key=self.library_key,
             collection_key=collection_key,
