@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
-import { Button, Alert, IconButton, Dropdown } from '@openedx/paragon';
+import {
+  Button,
+  Alert,
+  Dropdown,
+} from '@openedx/paragon';
 import {
   Send,
   CheckCircle,
@@ -116,7 +120,6 @@ const AISidebarResponse = ({
       }
     }
   }, [chatMessages, isSendingFollowUp]);
-
 
   const handleClearSession = async () => {
     try {
@@ -365,7 +368,7 @@ const AISidebarResponse = ({
     // Reset height to auto to get accurate scrollHeight
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const scrollHeight = textareaRef.current.scrollHeight;
+      const { scrollHeight } = textareaRef.current;
       const calculatedRows = Math.floor(scrollHeight / lineHeight);
       const rows = Math.min(Math.max(calculatedRows, minRows), maxRows);
       setTextareaRows(rows);
