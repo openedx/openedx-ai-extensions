@@ -19,15 +19,15 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "OpenChat",
-          "customMessage": "Open Chat",
+          "buttonText": "Open Chat",
+          "customMessage": "Chat with an AI teaching assistant",
           "action": null
         }
       },
       "response": {
         "component": "AISidebarResponse",
         "config": {
-          "customMessage": "Chat with AI"
+          "customMessage": "AI powered assistant"
         }
       },
       "metadata": {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import ReactMarkdown from 'react-markdown';
 import { Button, Alert, IconButton } from '@openedx/paragon';
 import {
   Send,
@@ -113,23 +114,6 @@ const AISidebarResponse = ({
     }
   }, [chatMessages, isSendingFollowUp]);
 
-  /**
-   * Format response text for display
-   */
-  const formatResponse = (responseText) => {
-    if (!responseText) { return ''; }
-
-    // Convert newlines to break tags
-    let formatted = responseText.replace(/\n/g, '<br>');
-
-    // Basic markdown-like formatting
-    formatted = formatted
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code>$1</code>');
-
-    return formatted;
-  };
 
   const handleClearSession = async () => {
     try {
@@ -521,11 +505,11 @@ const AISidebarResponse = ({
                         fontSize: '0.9rem',
                         lineHeight: '1.5',
                       }}
-                      // eslint-disable-next-line react/no-danger
-                      dangerouslySetInnerHTML={{
-                        __html: formatResponse(message.content),
-                      }}
-                    />
+                    >
+                      <ReactMarkdown>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                     <div
                       className="message-time text-muted"
                       style={{
