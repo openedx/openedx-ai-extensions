@@ -24,8 +24,8 @@
         "component": "AIEducatorLibraryResponseComponent",
         "config": {
           "titleText": "AI Assistant",
-          "customMessage": "You can find the generated questions in your content library.",
-          "hyperlinkText": "View content"
+          "customMessage": "Assistance completed successfully",
+          "hyperlinkText": "View content >"
         }
       },
       "metadata": {

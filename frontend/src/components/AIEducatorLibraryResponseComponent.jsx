@@ -2,7 +2,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Button, Alert, Card } from '@openedx/paragon';
 import {
-  CheckCircle,
   Warning,
 } from '@openedx/paragon/icons';
 
@@ -61,22 +60,22 @@ const AIEducatorLibraryResponseComponent = ({
           {/* Success response */}
           {response && !isLoading && (
             <div className="response-container">
-              <div className="d-flex align-items-center mb-2">
-                <CheckCircle className="text-success me-2" style={{ width: '16px', height: '16px' }} />
-                <small className="text-success">
-                  {customMessage}{' '}
-                  {hyperlinkUrl && (
-                    <a href={hyperlinkUrl} target="_blank" rel="noopener noreferrer" className="fw-semibold">
-                      {hyperlinkText || 'View content'}
-                    </a>
-                  )}
-                </small>
+              <div className="mb-2">
+                <p className="mb-2" style={{ fontSize: '0.875rem' }}>
+                  The generated questions have been added to your Content Library.
+                </p>
+                <p className="mb-2" style={{ fontSize: '0.875rem' }}>
+                  They are saved in an <strong>unpublished</strong> state for you to review before making them
+                  available to learners.
+                </p>
+                {hyperlinkUrl && (
+                  <a href={hyperlinkUrl} target="_blank" rel="noopener noreferrer" className="fw-semibold">
+                    {hyperlinkText || 'View content ›'}
+                  </a>
+                )}
               </div>
               {onClear && (
-                <div className="d-flex justify-content-between align-items-center">
-                  <small className="text-muted fst-italic" style={{ fontSize: '0.7rem' }}>
-                    *Note: The generated questions are not published.
-                  </small>
+                <div className="d-flex justify-content-end mt-3">
                   <Button
                     variant="outline-secondary"
                     size="sm"
@@ -112,9 +111,9 @@ AIEducatorLibraryResponseComponent.defaultProps = {
   isLoading: false,
   onClear: null,
   onError: null,
-  customMessage: 'You can find the generated questions in your content library.',
+  customMessage: 'Question generation success.',
   titleText: 'AI Assistant',
-  hyperlinkText: 'View content',
+  hyperlinkText: 'View content ›',
 };
 
 export default AIEducatorLibraryResponseComponent;
