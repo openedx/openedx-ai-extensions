@@ -2,7 +2,7 @@
 Orchestrators
 Base classes to hold the logic of execution in ai workflows
 """
-
+import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -108,8 +108,6 @@ class ThreadedLLMResponse(BaseOrchestrator):
             current_messages_count = input_data.get("current_messages", 0)
         elif isinstance(input_data, str):
             try:
-                import json  # pylint: disable=import-outside-toplevel
-
                 parsed_data = json.loads(input_data)
                 current_messages_count = parsed_data.get("current_messages", 0)
             except (json.JSONDecodeError, AttributeError):
