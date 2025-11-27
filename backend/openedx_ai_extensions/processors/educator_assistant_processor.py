@@ -9,8 +9,6 @@ import os
 from django.conf import settings
 from litellm import completion
 
-from .content_libraries_utils import ContentLibraryHelper
-
 logger = logging.getLogger(__name__)
 
 
@@ -86,7 +84,6 @@ class EducatorAssistantProcessor:
 
     def generate_quiz_questions(self, input_data):
         """Generate quiz questions based on the content provided"""
-        lib_key_str = input_data.get('library_id')
         requested_questions = input_data.get('num_questions')
         extra_instructions = input_data.get('extra_instructions')
 
@@ -112,8 +109,6 @@ class EducatorAssistantProcessor:
         result = self._call_completion_api(prompt)
         tokens_used = result.get("tokens_used", 0)
 
-        library_helper = ContentLibraryHelper(library_key=lib_key_str, user=self.user)
-
         # if response is not json serializable, try 3 times to fix it
         response = []
         for attempt in range(3):
@@ -130,14 +125,8 @@ class EducatorAssistantProcessor:
                         "model_used": self.model,
                     }
 
-        collection_key = library_helper.create_collection_and_add_items(
-            title=response.get("collection", "AI Generated Questions"),
-            description="AI-generated quiz questions",
-            items=response["items"]
-        )
-
         return {
-            "response": f"authoring/library/{lib_key_str}/collection/{collection_key}",
+            "response": response,
             "tokens_used": tokens_used,
             "model_used": self.model,
             "status": "success",

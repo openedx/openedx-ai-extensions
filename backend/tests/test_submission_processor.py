@@ -2,9 +2,8 @@
 Tests for the SubmissionProcessor module.
 """
 
-import json
 import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from django.conf import settings
@@ -18,9 +17,7 @@ sys.modules["submissions.api"] = MagicMock()
 from openedx_ai_extensions.processors.openedx.submission_processor import (  # noqa: E402 pylint: disable=wrong-import-position
     SubmissionProcessor,
 )
-from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
-    AIWorkflowSession,
-)
+from openedx_ai_extensions.workflows.models import AIWorkflowSession  # noqa: E402 pylint: disable=wrong-import-position
 
 User = get_user_model()
 

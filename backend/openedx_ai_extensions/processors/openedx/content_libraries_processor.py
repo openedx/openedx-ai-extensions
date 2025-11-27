@@ -10,14 +10,18 @@ from opaque_keys.edx.locator import LibraryLocatorV2
 logger = logging.getLogger(__name__)
 
 
-class ContentLibraryHelper:
+class ContentLibraryProcessor:
     """
     Helper class for content library operations
     """
-
-    def __init__(self, library_key: str, user) -> None:
+    def __init__(self, library_key: str, user, config=None) -> None:
+        config = config or {}
         self.library_key = LibraryLocatorV2.from_string(library_key)
         self.user = user
+
+        # Find specific config using class name
+        class_name = self.__class__.__name__
+        self.config = config.get(class_name, {})
 
     def create_collection_and_add_items(self, items, title, description="") -> str:
         """Create a collection and add items to it."""

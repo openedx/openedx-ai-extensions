@@ -7,6 +7,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from openedx_ai_extensions.processors import (
+    ContentLibraryProcessor,
     EducatorAssistantProcessor,
     LLMProcessor,
     OpenEdXProcessor,
@@ -102,9 +103,23 @@ class EducatorAssistantOrchestrator(BaseOrchestrator):
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
 
+        lib_key_str = input_data.get('library_id')
+
+        library_processor = ContentLibraryProcessor(
+            library_key=lib_key_str,
+            user=self.workflow.user,
+            config=self.config.processor_config
+        )
+
+        collection_key = library_processor.create_collection_and_add_items(
+            title=llm_result["response"].get("collection", "AI Generated Questions"),
+            description="AI-generated quiz questions",
+            items=llm_result["response"]["items"]
+        )
+
         # 3. Return result
         return {
-            'response': llm_result.get('response', 'No response available'),
+            'response': f"authoring/library/{lib_key_str}/collection/{collection_key}",
             'status': 'completed',
             'metadata': {
                 'tokens_used': llm_result.get('tokens_used'),

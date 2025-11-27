@@ -26,9 +26,7 @@ from openedx_ai_extensions.api.v1.workflows.views import (  # noqa: E402 pylint:
     AIGenericWorkflowView,
     AIWorkflowConfigView,
 )
-from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
-    AIWorkflowConfig,
-)
+from openedx_ai_extensions.workflows.models import AIWorkflowConfig  # noqa: E402 pylint: disable=wrong-import-position
 
 User = get_user_model()
 
