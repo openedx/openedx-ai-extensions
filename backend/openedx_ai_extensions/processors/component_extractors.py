@@ -7,13 +7,17 @@ import logging
 from typing import Optional
 
 from bs4 import BeautifulSoup  # pylint: disable=import-error
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-
+filters = settings.AI_EXTENSIONS_FIELD_FILTERS
+ALLOWED_FIELDS = filters.get("allowed_fields", [])
+ALLOWED_FIELD_SUBSTRINGS = filters.get("allowed_field_substrings", [])
 # -----------------------------
 # Embedded content helpers
 # -----------------------------
+
 
 def _extract_iframes(soup: BeautifulSoup) -> list[str]:
     """
@@ -275,15 +279,48 @@ def extract_discussion_info(block) -> dict:
     }
 
 
+def _is_field_allowed(field_name: str) -> bool:
+    """
+    Returns True if field_name is explicitly allowed or matches an allowed substring.
+    """
+    fname = field_name.lower()
+
+    # 1. Exact allow-list
+    if fname in ALLOWED_FIELDS:
+        return True
+
+    # 2. Substring allow-list
+    for substring in ALLOWED_FIELD_SUBSTRINGS:
+        if substring in fname:
+            return True
+
+    return False
+
+
 def extract_generic_info(block) -> dict:
-    """Catch-all extractor for unknown block types with clean formatting."""
+    """
+    Catch-all extractor for unknown block types with allow-list filtering.
+    Only fields explicitly allowed or matching allowed substrings are included.
+    """
     logger.debug("extract_generic_info: processing %s", block.location)
 
     safe_fields = {}
     for field in getattr(block, "fields", []):
+        if not _is_field_allowed(field):
+            logger.debug("extract_generic_info: excluded field '%s' (not allowed)", field)
+            continue
+
         value = getattr(block, field, None)
+
+        # Only safe primitive-like values are included
         if isinstance(value, (str, int, float, bool, list, dict, type(None))):
             safe_fields[field] = value
+        else:
+            logger.debug(
+                "extract_generic_info: excluded field '%s' (unsupported type %s)",
+                field,
+                type(value)
+            )
 
     return {
         "type": getattr(block, "category", "unknown"),

@@ -26,3 +26,19 @@ AI_EXTENSIONS_MODEL_PROXY:
     file: "{{ proxy.file }}"
   {%- endfor %}
 {%- endif %}
+{%- if AI_EXTENSIONS_FIELD_FILTERS is defined %}
+AI_EXTENSIONS_FIELD_FILTERS:
+  {%- if AI_EXTENSIONS_FIELD_FILTERS.allowed_fields is defined %}
+  allowed_fields:
+    {%- for f in AI_EXTENSIONS_FIELD_FILTERS.allowed_fields %}
+    - "{{ f }}"
+    {%- endfor %}
+  {%- endif %}
+
+  {%- if AI_EXTENSIONS_FIELD_FILTERS.allowed_field_substrings is defined %}
+  allowed_field_substrings:
+    {%- for s in AI_EXTENSIONS_FIELD_FILTERS.allowed_field_substrings %}
+    - "{{ s }}"
+    {%- endfor %}
+  {%- endif %}
+{%- endif %}
