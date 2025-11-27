@@ -129,7 +129,7 @@ const AIEducatorLibraryAssistComponent = ({
 
       const data = await callWorkflowService({
         context: contextData,
-        action: 'generate_library_questions',
+        action: 'run',
         payload: {
           requestId: `ai-request-${Date.now()}`,
           courseId,

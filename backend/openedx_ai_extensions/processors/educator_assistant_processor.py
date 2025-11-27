@@ -107,7 +107,7 @@ class EducatorAssistantProcessor:
         if '{{CONTEXT}}' in prompt:
             prompt = prompt.replace("{{CONTEXT}}", str(self.context))
         if '{{EXTRA_INSTRUCTIONS}}' in prompt:
-            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions)
+            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions or "")
 
         result = self._call_completion_api(prompt)
         tokens_used = result.get("tokens_used", 0)

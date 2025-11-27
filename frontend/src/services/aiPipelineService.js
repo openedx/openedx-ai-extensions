@@ -23,11 +23,16 @@ const extractCourseIdFromUrl = () => {
  */
 const extractUnitIdFromUrl = () => {
   try {
-    // Temporary regex to match unit in studio URL structure
-    // const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
-    const pathMatch = window.location.pathname.match(/block-v1:[^/]+$/);
-    const response = pathMatch ? pathMatch[0] : null;
-    return response;
+    const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
+    const StudioPathMatch = window.location.pathname.match(/block-v1:[^/]+$/);
+
+    if (pathMatch) {
+      return pathMatch[0];
+    }
+    if (StudioPathMatch) {
+      return StudioPathMatch[0];
+    }
+    return null;
   } catch {
     return null;
   }
@@ -143,7 +148,7 @@ export const getDefaultEndpoint = (endpoint = 'workflows') => {
  * @param {Object} params.payload - Request payload (flexible structure)
  * @param {Object} params.context - Context data (optional, will be added to payload)
  * @param {string} params.action - Action type (optional)
- * @param {string} params.userQuery - User query (optional)
+ * @param {string} params.userInput - User input (optional)
  * @param {string} params.workflowType - Workflow type (optional)
  * @param {Object} params.options - Additional options (optional)
  * @returns {Promise<Object>} API response data
@@ -153,7 +158,7 @@ export const callWorkflowService = async ({
   payload = {},
   context = null,
   action = null,
-  userQuery = null,
+  userInput = null,
   workflowType = null,
   options = null,
 }) => {
@@ -175,8 +180,8 @@ export const callWorkflowService = async ({
   if (action) {
     requestPayload.action = action;
   }
-  if (userQuery) {
-    requestPayload.user_query = userQuery;
+  if (userInput) {
+    requestPayload.user_input = userInput;
   }
   if (workflowType) {
     requestPayload.workflow_type = workflowType;

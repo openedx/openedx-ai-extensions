@@ -150,8 +150,8 @@ const ConfigurableAIAssistance = ({
       // Make API call
       const data = await callWorkflowService({
         context: contextData,
-        action: 'simple_button_assistance',
-        userQuery: requestMessage,
+        action: 'run',
+        userInput: requestMessage,
         payload: {
           requestId: `ai-request-${Date.now()}`,
           courseId: contextData.courseId,

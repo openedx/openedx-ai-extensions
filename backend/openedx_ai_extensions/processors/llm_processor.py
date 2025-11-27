@@ -43,12 +43,7 @@ class LLMProcessor(LitellmProcessor):
             }
 
             # Add optional parameters only if configured
-            if self.temperature is not None:
-                completion_params["temperature"] = self.temperature
-            if self.max_tokens is not None:
-                completion_params["max_tokens"] = self.max_tokens
-            if self.timeout is not None:
-                completion_params["timeout"] = self.timeout
+            completion_params.update(self.extra_params)
 
             response = completion(**completion_params)
             content = response.choices[0].message.content

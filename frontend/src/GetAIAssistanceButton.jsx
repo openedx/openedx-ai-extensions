@@ -50,7 +50,7 @@ const GetAIAssistanceButton = ({
       const data = await callWorkflowService({
         context: contextData,
         action: 'simple_button_assistance',
-        userQuery: requestMessage || 'Provide learning assistance for this content',
+        userInput: requestMessage || 'Provide learning assistance for this content',
         payload: {
           requestId: `ai-request-${Date.now()}`,
           courseId: contextData.courseId,
