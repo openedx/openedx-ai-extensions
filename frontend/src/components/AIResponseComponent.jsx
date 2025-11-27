@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import ReactMarkdown from 'react-markdown';
 import { Button, Alert, Collapsible } from '@openedx/paragon';
 import {
   Send,
@@ -20,24 +21,6 @@ const AIResponseComponent = ({
   onError,
   customMessage,
 }) => {
-  /**
-   * Format response text for display
-   */
-  const formatResponse = (responseText) => {
-    if (!responseText) { return ''; }
-
-    // Convert newlines to break tags
-    let formatted = responseText.replace(/\n/g, '<br>');
-
-    // Basic markdown-like formatting
-    formatted = formatted
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code>$1</code>');
-
-    return formatted;
-  };
-
   // Don't render if no response or error
   if (!response && !error) {
     return null;
@@ -82,13 +65,11 @@ const AIResponseComponent = ({
               }}
             >
               {/* Response text */}
-              <div
-                className="response-text"
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{
-                  __html: formatResponse(response),
-                }}
-              />
+              <div className="response-text">
+                <ReactMarkdown>
+                  {response}
+                </ReactMarkdown>
+              </div>
 
               {/* Action buttons */}
               <div className="response-actions d-flex justify-content-end align-items-center mt-3 pt-2 border-top gap-2">

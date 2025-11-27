@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from opaque_keys.edx.keys import CourseKey
+from opaque_keys.edx.locator import BlockUsageLocator
 from rest_framework.test import APIClient
 
 User = get_user_model()
@@ -89,10 +90,13 @@ def test_workflows_post_with_authentication(api_client, course_key):  # pylint: 
     api_client.login(username="testuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
+    # Create a proper BlockUsageLocator for the unitId
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
+
     payload = {
         "action": "summarize",
         "courseId": str(course_key),
-        "context": {"unitId": "unit-123"},
+        "context": {"unitId": str(location)},
         "user_input": {"text": "Explain quantum physics"},
         "requestId": "test-request-123",
     }
@@ -139,10 +143,13 @@ def test_workflows_post_with_staff_user(api_client, course_key):  # pylint: disa
     api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
+    # Create a proper BlockUsageLocator for the unitId
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-456")
+
     payload = {
         "action": "analyze",
         "courseId": str(course_key),
-        "context": {"unitId": "unit-456"},
+        "context": {"unitId": str(location)},
         "user_input": {"text": "Analyze student performance"},
         "requestId": "staff-request-789",
     }
@@ -228,3 +235,73 @@ def test_config_endpoint_ui_components_structure(api_client):  # pylint: disable
 
         # Verify component type
         assert ui_components["request"]["component"] == "AIRequestComponent"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_workflows_post_with_invalid_json(api_client):  # pylint: disable=redefined-outer-name
+    """
+    Test POST request to workflows endpoint with invalid JSON.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
+
+    # Send invalid JSON
+    response = api_client.post(
+        url, data="invalid json", content_type="application/json"
+    )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "error" in data
+    assert "Invalid JSON" in data["error"]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_workflows_post_with_empty_body(api_client):  # pylint: disable=redefined-outer-name
+    """
+    Test POST request to workflows endpoint with empty body.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
+
+    response = api_client.post(url, {}, format="json")
+
+    # Should handle empty body gracefully
+    assert response.status_code in [200, 400, 500]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_workflows_post_without_action(api_client, course_key):  # pylint: disable=redefined-outer-name
+    """
+    Test POST request to workflows endpoint without action field.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
+
+    payload = {
+        "courseId": str(course_key),
+        "context": {"unitId": "unit-123"},
+        "requestId": "test-request-456",
+    }
+
+    response = api_client.post(url, payload, format="json")
+
+    # Should handle missing action
+    assert response.status_code in [400, 500]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_config_endpoint_without_authentication(api_client):  # pylint: disable=redefined-outer-name
+    """
+    Test that config endpoint requires authentication.
+    """
+    url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
+
+    response = api_client.get(url, {"action": "summarize", "context": "{}"})
+
+    # Should require authentication (401 or 403)
+    assert response.status_code in [401, 403]

@@ -113,6 +113,7 @@ export const generateRequestId = () => {
 export const callAIService = async ({
   contextData = {},
   userQuery = 'Provide learning assistance for this content',
+  action = 'run',
   courseId = '',
   apiEndpoint = '',
   requestId = null,
@@ -121,7 +122,7 @@ export const callAIService = async ({
   const requestPayload = {
     // Request metadata
     requestId: requestId || generateRequestId(),
-    action: 'simple_button_assistance',
+    action,
     courseId: courseId || extractCourseIdFromUrl(),
     timestamp: new Date().toISOString(),
 

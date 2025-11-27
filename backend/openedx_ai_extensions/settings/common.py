@@ -19,3 +19,7 @@ def plugin_settings(settings):
         settings.AI_EXTENSIONS_MODEL_PROXY = [
             {"location_regex": ".*", "file": "configs/default.json"},
         ]
+
+    # This prevents context window from growing too large while maintaining conversation continuity
+    if not hasattr(settings, "AI_EXTENSIONS_MAX_CONTEXT_MESSAGES"):
+        settings.AI_EXTENSIONS_MAX_CONTEXT_MESSAGES = 3

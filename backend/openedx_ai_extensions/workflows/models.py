@@ -4,13 +4,14 @@ AI Workflow models for managing flexible AI workflow execution
 
 import logging
 from typing import Any, Dict, Optional
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
-from openedx_ai_extensions.workflows import orchestrators
 from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file
 
 User = get_user_model()
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 class AIWorkflowConfig(models.Model):
     """
     Configuration templates for different AI workflows
+
+    .. no_pii:
     """
 
     action = models.CharField(
@@ -33,11 +36,11 @@ class AIWorkflowConfig(models.Model):
         help_text="Course this config applies to (null = global)",
     )
 
-    unit_id = models.CharField(
+    location_id = UsageKeyField(
         max_length=255,
         null=True,
         blank=True,
-        help_text="Unit this config applies to (null = all units)",
+        help_text="Location this config applies to",
     )
 
     # Orchestrator configuration
@@ -73,23 +76,27 @@ class AIWorkflowConfig(models.Model):
 
     @classmethod
     def get_config(
-        cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None
+        cls, action: str, course_id: Optional[str] = None, location_id: Optional[str] = None
     ):
         """
-        Get configuration for a specific action, course, and unit.
+        Get configuration for a specific action, course, and location.
 
         In real implementation, this would query the database.
         Currently uses a fake method to simulate loading config from file.
         """
         # In real implementation, this would query the database
         return _fake_get_config_from_file(
-            cls, action=action, course_id=course_id, unit_id=unit_id
+            cls, action=action, course_id=course_id, location_id=location_id
         )
 
 
 class AIWorkflow(models.Model):
     """
     Individual AI workflow instances with state management
+
+    .. pii: This model contains a user reference
+    .. pii_types: id
+    .. pii_retirement: retained
     """
 
     # Core identification fields
@@ -102,8 +109,8 @@ class AIWorkflow(models.Model):
     course_id = models.CharField(
         max_length=255, null=True, blank=True, help_text="Course context"
     )
-    unit_id = models.CharField(
-        max_length=255, null=True, blank=True, help_text="Unit context"
+    location_id = UsageKeyField(
+        max_length=255, null=True, blank=True, help_text="Location context"
     )
 
     # Workflow execution state
@@ -141,7 +148,7 @@ class AIWorkflow(models.Model):
 
     class Meta:
         # Unique constraint on the natural key
-        unique_together = ["user", "action", "course_id", "unit_id"]
+        unique_together = ["user", "action", "course_id", "location_id"]
         indexes = [
             models.Index(fields=["user", "action", "status"]),
             models.Index(fields=["created_at"]),
@@ -154,9 +161,9 @@ class AIWorkflow(models.Model):
         """Get natural identification key for this workflow"""
         parts = [str(self.user.id), self.action]
         if self.course_id:
-            parts.append(self.course_id)
-        if self.unit_id:
-            parts.append(self.unit_id)
+            parts.append(str(self.course_id))
+        if self.location_id:
+            parts.append(str(self.location_id))
         return "__".join(parts)
 
     @classmethod
@@ -170,11 +177,11 @@ class AIWorkflow(models.Model):
         Returns: (workflow_instance, created_boolean)
         """
 
-        # Extract unit_id from context if present
-        unit_id = context.get("unitId")
+        # Extract location_id from context if present
+        location_id = context.get("unitId")
 
         # Get workflow configuration
-        config = AIWorkflowConfig.get_config(action, course_id, unit_id)
+        config = AIWorkflowConfig.get_config(action, course_id, location_id)
         if not config:
             raise ValidationError(
                 f"No AIWorkflowConfiguration found for action '{action}' in course '{course_id}'"
@@ -186,7 +193,7 @@ class AIWorkflow(models.Model):
             user=user,
             action=action,
             course_id=course_id,
-            unit_id=unit_id,
+            location_id=location_id,
             config=config,  # Asignar directamente
             extra_context=context,
             context_data={},
@@ -211,11 +218,16 @@ class AIWorkflow(models.Model):
 
         try:
             # Load the orchestrator for this workflow
+            from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
+
             orchestrator_name = self.config.orchestrator_class  # "DirectLLMResponse"
             orchestrator = getattr(orchestrators, orchestrator_name)(workflow=self)
 
-            # Execute the orchestrator
-            result = orchestrator.run(user_input)
+            if not hasattr(orchestrator, self.action):
+                raise NotImplementedError(
+                    f"Orchestrator '{orchestrator_name}' does not implement action '{self.action}'"
+                )
+            result = getattr(orchestrator, self.action)(user_input)
 
             logger.info(
                 f"🤖 WORKFLOW EXECUTOR: Completed execution for {self.get_natural_key()}, status={self.status}"
@@ -261,6 +273,8 @@ class AIWorkflow(models.Model):
         """Load the orchestrator for this workflow"""
         # This method is currently unused - orchestrator loading happens in execute()
         # TODO: Refactor to use this method or remove it
+        from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
+
         orchestrator_name = self.config.orchestrator_class
         return getattr(orchestrators, orchestrator_name)(workflow=self)
 
@@ -284,3 +298,44 @@ class AIWorkflow(models.Model):
         if final_context:
             self.context_data.update(final_context)
         # self.save(update_fields=['status', 'current_step', 'completed_at', 'context_data', 'updated_at'])
+
+
+class AIWorkflowSession(models.Model):
+    """
+    Sessions for tracking user interactions within AI workflows
+
+    .. pii: This model contains a user reference
+    .. pii_types: id
+    .. pii_retirement: retained
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, help_text="User associated with this session"
+    )
+    course_id = CourseKeyField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Course associated with this session"
+    )
+    location_id = UsageKeyField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Location associated with this session",
+    )
+    local_submission_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="ID of the submission associated with this session",
+    )
+
+    remote_response_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="ID of the last response sent to the user",
+    )
+    metadata = models.JSONField(default=dict, help_text="Additional session metadata")
