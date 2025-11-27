@@ -30,7 +30,7 @@ class SubmissionProcessor:
         # Get max_context_messages from config or settings
         self.max_context_messages = self.config.get(
             "max_context_messages",
-            getattr(settings, "AI_EXTENSIONS_MAX_CONTEXT_MESSAGES", 3),
+            getattr(settings, "AI_EXTENSIONS_MAX_CONTEXT_MESSAGES", 10),
         )
 
     def process(self, context, input_data=None):
