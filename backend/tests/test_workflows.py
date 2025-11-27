@@ -12,8 +12,8 @@ from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
 # Mock the submissions module before any imports that depend on it
-sys.modules['submissions'] = MagicMock()
-sys.modules['submissions.api'] = MagicMock()
+sys.modules["submissions"] = MagicMock()
+sys.modules["submissions.api"] = MagicMock()
 
 from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
     AIWorkflow,
@@ -64,7 +64,7 @@ def workflow_config(db):  # pylint: disable=unused-argument
     config.actuator_config = {"UIComponents": {"request": {"component": "Button"}}}
     # Add Django model state to make it work with ForeignKey
     config._state = Mock()  # pylint: disable=protected-access
-    config._state.db = 'default'  # pylint: disable=protected-access
+    config._state.db = "default"  # pylint: disable=protected-access
     config._state.adding = False  # pylint: disable=protected-access
     return config
 
@@ -75,9 +75,7 @@ def workflow_instance(user, workflow_config, course_key):  # pylint: disable=red
     Create a mock workflow instance.
     """
     location = BlockUsageLocator(
-        course_key,
-        block_type="vertical",
-        block_id="test_unit"
+        course_key, block_type="vertical", block_id="test_unit"
     )
     workflow = AIWorkflow(
         user=user,
@@ -201,9 +199,7 @@ def test_workflow_find_workflow_for_context(
 
     course_key_obj = CourseKey.from_string("course-v1:edX+DemoX+Demo_Course")
     location = BlockUsageLocator(
-        course_key_obj,
-        block_type="vertical",
-        block_id="unit1"
+        course_key_obj, block_type="vertical", block_id="unit1"
     )
     context = {"unitId": str(location)}
 
@@ -249,10 +245,12 @@ def test_workflow_execute_success(mock_orchestrator_class, workflow_instance):  
     # Mock orchestrator instance
     mock_orchestrator = Mock()
     # Mock the action method directly (e.g., 'summarize')
-    mock_action_method = Mock(return_value={
-        "response": "Summary generated",
-        "status": "completed",
-    })
+    mock_action_method = Mock(
+        return_value={
+            "response": "Summary generated",
+            "status": "completed",
+        }
+    )
     setattr(mock_orchestrator, workflow_instance.action, mock_action_method)
     mock_orchestrator_class.return_value = mock_orchestrator
 
@@ -270,7 +268,9 @@ def test_workflow_execute_error(workflow_instance):  # pylint: disable=redefined
     Test AIWorkflow.execute method with execution error.
     """
     # Patch orchestrator to raise an exception
-    with patch("openedx_ai_extensions.workflows.orchestrators.MockResponse") as mock_orch_class:
+    with patch(
+        "openedx_ai_extensions.workflows.orchestrators.MockResponse"
+    ) as mock_orch_class:
         mock_orchestrator = Mock()
         # Mock the action method to raise exception
         mock_action_method = Mock(side_effect=Exception("Orchestrator error"))
@@ -355,11 +355,7 @@ def test_workflow_session_get_or_create(user, course_key):  # pylint: disable=re
     """
     Test AIWorkflowSession.objects.get_or_create with real Django ORM.
     """
-    location = BlockUsageLocator(
-        course_key,
-        block_type="vertical",
-        block_id="unit-123"
-    )
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
 
     session, created = AIWorkflowSession.objects.get_or_create(
         user=user,
@@ -390,11 +386,7 @@ def test_workflow_session_save(user, course_key):  # pylint: disable=redefined-o
     """
     Test AIWorkflowSession.save method with real Django ORM.
     """
-    location = BlockUsageLocator(
-        course_key,
-        block_type="vertical",
-        block_id="unit-123"
-    )
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
 
     session = AIWorkflowSession(
         user=user,
@@ -417,11 +409,7 @@ def test_workflow_session_delete(user, course_key):  # pylint: disable=redefined
     """
     Test AIWorkflowSession.delete method with real Django ORM.
     """
-    location = BlockUsageLocator(
-        course_key,
-        block_type="vertical",
-        block_id="unit-123"
-    )
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
 
     session = AIWorkflowSession(
         user=user,
@@ -484,7 +472,9 @@ def test_mock_response_orchestrator(workflow_instance):  # pylint: disable=redef
 @patch("openedx_ai_extensions.workflows.orchestrators.OpenEdXProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 def test_direct_llm_response_orchestrator_success(
-    mock_llm_processor_class, mock_openedx_processor_class, workflow_instance  # pylint: disable=redefined-outer-name
+    mock_llm_processor_class,
+    mock_openedx_processor_class,
+    workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
     Test DirectLLMResponse orchestrator with successful execution.
@@ -518,7 +508,8 @@ def test_direct_llm_response_orchestrator_success(
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.workflows.orchestrators.OpenEdXProcessor")
 def test_direct_llm_response_orchestrator_openedx_error(
-    mock_openedx_processor_class, workflow_instance  # pylint: disable=redefined-outer-name
+    mock_openedx_processor_class,
+    workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
     Test DirectLLMResponse orchestrator with OpenEdXProcessor error.
@@ -538,7 +529,9 @@ def test_direct_llm_response_orchestrator_openedx_error(
 @patch("openedx_ai_extensions.workflows.orchestrators.OpenEdXProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 def test_direct_llm_response_orchestrator_llm_error(
-    mock_llm_processor_class, mock_openedx_processor_class, workflow_instance  # pylint: disable=redefined-outer-name
+    mock_llm_processor_class,
+    mock_openedx_processor_class,
+    workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
     Test DirectLLMResponse orchestrator with LLMProcessor error.
@@ -642,7 +635,7 @@ def test_threaded_llm_response_orchestrator_clear_session(
 def test_threaded_llm_response_orchestrator_get_history(
     mock_submission_processor_class,
     mock_responses_processor_class,
-    workflow_instance  # pylint: disable=redefined-outer-name
+    workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
     Test ThreadedLLMResponse orchestrator retrieving chat history.
@@ -680,7 +673,7 @@ def test_threaded_llm_response_orchestrator_get_history(
 def test_threaded_llm_response_orchestrator_history_error(
     mock_submission_processor_class,
     mock_responses_processor_class,
-    workflow_instance  # pylint: disable=redefined-outer-name
+    workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
     Test ThreadedLLMResponse orchestrator with error retrieving history.

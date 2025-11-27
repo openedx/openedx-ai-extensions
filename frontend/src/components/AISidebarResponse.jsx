@@ -42,7 +42,6 @@ const AISidebarResponse = ({
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
-  const [previousSubmissionIds, setPreviousSubmissionIds] = useState([]);
   const chatEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const textareaRef = useRef(null);
@@ -71,7 +70,6 @@ const AISidebarResponse = ({
           // Store metadata for lazy loading
           if (parsed.metadata) {
             setHasMoreHistory(parsed.metadata.has_more || false);
-            setPreviousSubmissionIds(parsed.metadata.previous_submission_ids || []);
           }
 
           initialResponseAdded.current = true;
@@ -148,7 +146,7 @@ const AISidebarResponse = ({
    * Load older messages when scrolling up
    */
   const handleLoadMoreHistory = async () => {
-    if (!hasMoreHistory || isLoadingHistory || previousSubmissionIds.length === 0) {
+    if (!hasMoreHistory || isLoadingHistory) {
       return;
     }
 
@@ -161,8 +159,8 @@ const AISidebarResponse = ({
       const scrollHeightBefore = scrollContainer?.scrollHeight || 0;
       const scrollTopBefore = scrollContainer?.scrollTop || 0;
 
-      // Get the oldest submission ID to load from
-      const oldestSubmissionId = previousSubmissionIds[previousSubmissionIds.length - 1];
+      // Get current message count
+      const currentMessageCount = chatMessages.length;
 
       // Get API endpoint
       const apiEndpoint = getDefaultEndpoint();
@@ -173,41 +171,56 @@ const AISidebarResponse = ({
       });
 
       // Make API call with lazy_load_chat_history action
+      // Pass current message count as user_query
       const data = await callAIService({
         contextData: preparedContext,
         action: 'lazy_load_chat_history',
         apiEndpoint,
         courseId: preparedContext.courseId,
-        userQuery: oldestSubmissionId, // Pass submission ID as userQuery
+        userQuery: JSON.stringify({ current_messages: currentMessageCount }),
       });
 
       // Parse response
-      const parsed = JSON.parse(data.response || '[]');
+      let parsed;
+      try {
+        parsed = JSON.parse(data.response || '{}');
+      } catch (e) {
+        parsed = {};
+      }
+
+      // Extract messages from response
+      const messages = parsed.messages || [];
 
       // Format older messages
-      const olderMessages = (Array.isArray(parsed) ? parsed : []).map((msg) => ({
+      const olderMessages = (Array.isArray(messages) ? messages : []).map((msg) => ({
         type: msg.role === 'user' ? 'user' : 'ai',
         content: msg.content,
         timestamp: new Date().toISOString(),
       }));
 
-      // Prepend older messages to current messages
-      setChatMessages(prev => [...olderMessages, ...prev]);
+      // Only prepend if we got new messages
+      if (olderMessages.length > 0) {
+        // Prepend older messages to current messages
+        setChatMessages(prev => [...olderMessages, ...prev]);
 
-      // Restore scroll position after messages are added
-      // Use setTimeout to wait for DOM update
-      setTimeout(() => {
-        if (scrollContainer) {
-          const scrollHeightAfter = scrollContainer.scrollHeight;
-          const scrollDiff = scrollHeightAfter - scrollHeightBefore;
-          scrollContainer.scrollTop = scrollTopBefore + scrollDiff;
-        }
-      }, 0);
+        // Restore scroll position after messages are added
+        // Use setTimeout to wait for DOM update
+        setTimeout(() => {
+          if (scrollContainer) {
+            const scrollHeightAfter = scrollContainer.scrollHeight;
+            const scrollDiff = scrollHeightAfter - scrollHeightBefore;
+            scrollContainer.scrollTop = scrollTopBefore + scrollDiff;
+          }
+        }, 0);
+      }
 
       // Update metadata from response
-      if (data.metadata) {
-        setHasMoreHistory(data.metadata.has_more || false);
-        setPreviousSubmissionIds(data.metadata.previous_submission_ids || []);
+      // If no messages were returned or metadata says no more, disable further loading
+      if (parsed.metadata) {
+        setHasMoreHistory(parsed.metadata.has_more || false);
+      } else if (olderMessages.length === 0) {
+        // If no metadata and no messages returned, no more history
+        setHasMoreHistory(false);
       } else {
         setHasMoreHistory(false);
       }
@@ -246,7 +259,6 @@ const AISidebarResponse = ({
     setFollowUpQuestion('');
     setChatMessages([]);
     setHasMoreHistory(false);
-    setPreviousSubmissionIds([]);
     setIsLoadingHistory(false);
     initialResponseAdded.current = false;
     hasScrolledToBottom.current = false;
@@ -262,7 +274,6 @@ const AISidebarResponse = ({
     setFollowUpQuestion('');
     setChatMessages([]);
     setHasMoreHistory(false);
-    setPreviousSubmissionIds([]);
     setIsLoadingHistory(false);
     initialResponseAdded.current = false;
     hasScrolledToBottom.current = false;

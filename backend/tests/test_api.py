@@ -91,11 +91,7 @@ def test_workflows_post_with_authentication(api_client, course_key):  # pylint: 
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
     # Create a proper BlockUsageLocator for the unitId
-    location = BlockUsageLocator(
-        course_key,
-        block_type="vertical",
-        block_id="unit-123"
-    )
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
 
     payload = {
         "action": "summarize",
@@ -148,11 +144,7 @@ def test_workflows_post_with_staff_user(api_client, course_key):  # pylint: disa
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
     # Create a proper BlockUsageLocator for the unitId
-    location = BlockUsageLocator(
-        course_key,
-        block_type="vertical",
-        block_id="unit-456"
-    )
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-456")
 
     payload = {
         "action": "analyze",

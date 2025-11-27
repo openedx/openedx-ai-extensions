@@ -17,7 +17,7 @@ class LLMProcessor(LitellmProcessor):
     def process(self, *args, **kwargs):
         """Process based on configured function"""
         # Accept flexible arguments to match base class signature
-        input_data = args[0] if len(args) > 0 else kwargs.get('input_data')
+        input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
 
         function_name = self.config.get("function", "summarize_content")
         function = getattr(self, function_name)

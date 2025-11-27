@@ -94,23 +94,30 @@ class ThreadedLLMResponse(BaseOrchestrator):
 
     def lazy_load_chat_history(self, input_data):
         """
-        Load older messages from previous submission IDs for infinite scroll.
-        Expects input_data to contain the submission_id to load from.
+        Load older messages for infinite scroll.
+        Expects input_data to contain current_messages (count) from frontend.
+        Returns only new messages not already loaded, limited by max_context_messages.
         """
         submission_processor = SubmissionProcessor(
             self.config.processor_config, self.session
         )
 
-        # Extract submission_id from input_data if provided
-        submission_id = input_data if isinstance(input_data, str) else None
+        # Extract current_messages_count from input_data
+        current_messages_count = 0
+        if isinstance(input_data, dict):
+            current_messages_count = input_data.get("current_messages", 0)
+        elif isinstance(input_data, str):
+            try:
+                import json  # pylint: disable=import-outside-toplevel
 
-        if not submission_id:
-            return {
-                "error": "No submission_id provided for lazy loading",
-                "status": "error",
-            }
+                parsed_data = json.loads(input_data)
+                current_messages_count = parsed_data.get("current_messages", 0)
+            except (json.JSONDecodeError, AttributeError):
+                current_messages_count = 0
+        elif isinstance(input_data, int):
+            current_messages_count = input_data
 
-        result = submission_processor.get_previous_messages(submission_id)
+        result = submission_processor.get_previous_messages(current_messages_count)
 
         if "error" in result:
             return {
@@ -121,7 +128,6 @@ class ThreadedLLMResponse(BaseOrchestrator):
         return {
             "response": result.get("response", "{}"),
             "status": "completed",
-            "metadata": result.get("metadata", {}),
         }
 
     def run(self, input_data):
@@ -144,7 +150,7 @@ class ThreadedLLMResponse(BaseOrchestrator):
                 }
             return {
                 "response": history_result.get("response", "No response available"),
-                "status": "completed"
+                "status": "completed",
             }
 
         # 2. else process with OpenEdX processor

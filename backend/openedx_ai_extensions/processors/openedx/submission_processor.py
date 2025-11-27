@@ -20,11 +20,17 @@ class SubmissionProcessor:
         class_name = self.__class__.__name__
         self.config = config.get(class_name, {})
         self.user_session = user_session
+        self.student_item_dict = {
+            "student_id": self.user_session.user.id,
+            "course_id": str(self.user_session.course_id),
+            "item_id": str(self.user_session.id),
+            "item_type": "openedx_ai_extensions_chat",
+        }
 
         # Get max_context_messages from config or settings
         self.max_context_messages = self.config.get(
             "max_context_messages",
-            getattr(settings, "AI_EXTENSIONS_MAX_CONTEXT_MESSAGES", 3)
+            getattr(settings, "AI_EXTENSIONS_MAX_CONTEXT_MESSAGES", 3),
         )
 
     def process(self, context, input_data=None):
@@ -33,76 +39,137 @@ class SubmissionProcessor:
         function = getattr(self, function_name)
         return function(context, input_data)
 
-    def _proccess_messages(self, local_submission_id):
+    def _proccess_messages(self, current_messages_count=0):
         """
-        Retrieve messages and previous submission IDs from a submission.
+        Retrieve messages from submissions.
+        If current_messages_count > 0, return only new messages not already loaded.
+        Otherwise, return the most recent messages up to max_context_messages.
+
+        Args:
+            current_messages_count: Number of messages already loaded in the frontend
+
+        Returns:
+            tuple: (new_messages, has_more) where new_messages is a list of messages
+                   and has_more is a boolean indicating if more messages are available
         """
-        submission = submissions_api.get_submission_and_student(local_submission_id)
-        messages = submission["answer"]
-        if messages and isinstance(messages, list):
-            # Remove metadata entry if present (it's always the last item)
-            if messages and isinstance(messages[-1], dict) and messages[-1].get("_metadata"):
-                metadata = messages.pop()
-                previous_submission_ids = metadata.get("previous_submission_ids", [])
-                # while messagges list < self.max_context_messages, get more from previous submissions
-                while len(messages) < self.max_context_messages and previous_submission_ids:
-                    prev_id = previous_submission_ids.pop()
-                    prev_submission = submissions_api.get_submission_and_student(prev_id)
-                    prev_messages = prev_submission["answer"]
-                    # Remove metadata if present
-                    if prev_messages and isinstance(prev_messages, list):
-                        if prev_messages and isinstance(prev_messages[-1], dict) and prev_messages[-1].get("_metadata"):
-                            prev_messages.pop()
-                    # Prepend previous messages
-                    messages = prev_messages + messages
-                return messages, previous_submission_ids
-        return messages, []
+        submissions = submissions_api.get_submissions(self.student_item_dict)
+        all_messages = []
+
+        # Extract all messages from all submissions
+        # get_submissions returns newest first, so we need to reverse to get chronological order
+        for submission in reversed(submissions):
+            submission_messages = submission["answer"]
+            # Remove metadata if present
+            if submission_messages and isinstance(submission_messages, list):
+                submission_messages_copy = submission_messages.copy()
+                if (
+                    submission_messages_copy
+                    and isinstance(submission_messages_copy[-1], dict)
+                    and submission_messages_copy[-1].get("_metadata")
+                ):
+                    submission_messages_copy.pop()
+                # Extend to maintain chronological order (oldest to newest)
+                all_messages.extend(submission_messages_copy)
+
+        if current_messages_count > 0:
+            # If current_messages_count provided, return the next batch of older messages
+            # Frontend has the most recent current_messages_count messages
+            # We need to return the next max_context_messages before those
+
+            if current_messages_count >= len(all_messages):
+                # No more messages available
+                return [], False
+
+            # Calculate how many messages are left to load
+            # Total messages - messages already shown = remaining older messages
+            remaining_message_count = len(all_messages) - current_messages_count
+
+            if remaining_message_count <= 0:
+                # No more messages available
+                return [], False
+
+            # Calculate the slice to get the next batch of older messages
+            # We want messages from [end - current_count - max_context : end - current_count]
+            start_index = max(
+                0,
+                len(all_messages) - current_messages_count - self.max_context_messages,
+            )
+            end_index = len(all_messages) - current_messages_count
+
+            new_messages = all_messages[start_index:end_index]
+            has_more = start_index > 0
+
+            if not new_messages:
+                has_more = False
+
+            return new_messages, has_more
+        else:
+            # Initial load: return most recent messages
+            messages = (
+                all_messages[-self.max_context_messages:] if all_messages else []
+            )
+            has_more = len(all_messages) > len(messages)
+
+            return messages, has_more
 
     def get_chat_history(self, _context, _user_query=None):
         """
-        Retrieve chat history for the user session.
-        Filters out metadata entries before returning messages.
-        Returns metadata separately to inform frontend about available history.
+        Retrieve initial chat history for the user session.
+        Returns the most recent messages up to max_context_messages.
         """
-
         if self.user_session.local_submission_id:
-            messages, previous_submission_ids = self._proccess_messages(self.user_session.local_submission_id)
+            messages, has_more = self._proccess_messages()
 
             return {
-                "response": json.dumps({
-                    "messages": messages,
-                    "metadata": {
-                        "previous_submission_ids": previous_submission_ids,
-                        "has_more": len(previous_submission_ids) > 0,
-                    },
-                }),
+                "response": json.dumps(
+                    {
+                        "messages": messages,
+                        "metadata": {
+                            "has_more": has_more,
+                            "current_count": len(messages),
+                        },
+                    }
+                ),
             }
         else:
             return {"error": "No submission ID associated with the session"}
 
-    def get_previous_messages(self, submission_id):
+    def get_previous_messages(self, current_messages_count=0):
         """
-        Retrieve messages from a specific previous submission ID.
-        Used for lazy loading older chat history when scrolling up.
+        Retrieve previous messages for lazy loading older chat history.
+        Takes the count of current messages from frontend and returns the next batch of older messages.
 
         Args:
-            submission_id: The UUID of the submission to retrieve
+            current_messages_count: Number of messages currently displayed in the frontend
 
         Returns:
-            dict: Contains 'response' (JSON string of messages) and 'metadata' (previous submission IDs)
+            dict: Contains 'response' (JSON string of new messages) and 'metadata' (has_more flag)
         """
         try:
-            messages, previous_submission_ids = self._proccess_messages(submission_id)
+            # Ensure current_messages_count is an integer
+            if isinstance(current_messages_count, str):
+                try:
+                    current_messages_count = int(current_messages_count)
+                except (ValueError, TypeError):
+                    current_messages_count = 0
+
+            new_messages, has_more = self._proccess_messages(
+                current_messages_count=current_messages_count
+            )
 
             return {
-                "response": json.dumps(messages),
-                "metadata": {
-                    "previous_submission_ids": previous_submission_ids,
-                    "has_more": len(previous_submission_ids) > 0,
-                },
+                "response": json.dumps(
+                    {
+                        "messages": new_messages,
+                        "metadata": {
+                            "has_more": has_more,
+                            "new_count": len(new_messages),
+                        },
+                    }
+                ),
             }
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error retrieving previous messages for submission {submission_id}: {e}")
+            logger.error(f"Error retrieving previous messages: {e}")
             return {"error": f"Failed to load previous messages: {str(e)}"}
 
     def update_submission(self, llm_response, user_query):
@@ -111,13 +178,6 @@ class SubmissionProcessor:
         Truncates message history to keep only the most recent messages while
         preserving references to previous submission IDs.
         """
-
-        student_item_dict = {
-            "student_id": self.user_session.user.id,
-            "course_id": self.user_session.course_id,
-            "item_id": self.user_session.location_id,
-            "item_type": "openedx_ai_extensions_chat",
-        }
 
         messages = [
             {"role": "assistant", "content": llm_response},
@@ -143,20 +203,28 @@ class SubmissionProcessor:
             # Extract metadata if it exists (for tracking previous submission IDs)
             if existing_messages and isinstance(existing_messages, list):
                 # Check if the last item is metadata
-                if existing_messages and isinstance(existing_messages[-1], dict) and \
-                   existing_messages[-1].get("_metadata"):
+                if (
+                    existing_messages
+                    and isinstance(existing_messages[-1], dict)
+                    and existing_messages[-1].get("_metadata")
+                ):
                     metadata = existing_messages.pop()
-                    previous_submission_ids = metadata.get("previous_submission_ids", []) + previous_submission_ids
+                    previous_submission_ids = (
+                        metadata.get("previous_submission_ids", [])
+                        + previous_submission_ids
+                    )
 
         # Add metadata to track previous submission IDs
         if previous_submission_ids:
-            messages.append({
-                "_metadata": True,
-                "previous_submission_ids": previous_submission_ids,
-            })
+            messages.append(
+                {
+                    "_metadata": True,
+                    "previous_submission_ids": previous_submission_ids,
+                }
+            )
 
         submission = submissions_api.create_submission(
-            student_item_dict=student_item_dict,
+            student_item_dict=self.student_item_dict,
             answer=messages,
             attempt_number=1,
         )
