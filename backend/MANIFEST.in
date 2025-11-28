@@ -3,4 +3,4 @@ include LICENSE.txt
 include README.rst
 include requirements/base.in
 include requirements/constraints.txt
-recursive-include openedx_ai_extensions *.html *.png *.gif *.js *.css *.jpg *.jpeg *.svg
+recursive-include openedx_ai_extensions *.html *.png *.gif *.js *.css *.jpg *.jpeg *.svg *.json *.txt
