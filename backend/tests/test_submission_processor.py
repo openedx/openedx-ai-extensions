@@ -147,3 +147,37 @@ def test_process_calls_get_chat_history_by_default(
 
     # Should call get_chat_history which returns a response with messages
     assert "response" in result or "error" in result
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
+def test_process_retrieves_existing_submissions(
+    mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that process() properly retrieves and processes existing submissions.
+    """
+    # Mock submission data
+    mock_submissions = [
+        {
+            "uuid": "submission-1",
+            "answer": {"messages": [{"role": "user", "content": "Hello"}]},
+            "created_at": "2025-01-01T00:00:00Z",
+        },
+        {
+            "uuid": "submission-2",
+            "answer": {"messages": [{"role": "assistant", "content": "Hi there!"}]},
+            "created_at": "2025-01-01T00:01:00Z",
+        },
+    ]
+    mock_submissions_api.get_submissions.return_value = mock_submissions
+
+    result = submission_processor.process(context={}, input_data=None)
+
+    # Verify get_submissions was called with correct student_item_dict
+    mock_submissions_api.get_submissions.assert_called_once()
+    call_args = mock_submissions_api.get_submissions.call_args
+    assert call_args[0][0] == submission_processor.student_item_dict
+
+    # Should return response with messages
+    assert "response" in result or "error" in result
