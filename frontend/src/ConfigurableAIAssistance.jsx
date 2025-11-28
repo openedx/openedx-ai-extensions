@@ -10,9 +10,8 @@ import {
   getDefaultEndpoint,
   mergeProps,
   prepareContextData,
-  callAIService,
+  callWorkflowService,
   formatErrorMessage,
-  validateEndpoint,
 } from './services';
 
 // Import available components
@@ -20,6 +19,8 @@ import {
   AIRequestComponent,
   AIResponseComponent,
   AISidebarResponse,
+  AIEducatorLibraryAssistComponent,
+  AIEducatorLibraryResponseComponent,
 } from './components';
 
 /**
@@ -30,6 +31,8 @@ const COMPONENT_REGISTRY = {
   AIRequestComponent,
   AIResponseComponent,
   AISidebarResponse,
+  AIEducatorLibraryAssistComponent,
+  AIEducatorLibraryResponseComponent,
   // Future components can be added here
 };
 
@@ -58,7 +61,6 @@ const ConfigurableAIAssistance = ({
   const [hasAsked, setHasAsked] = useState(false);
 
   const configEndpoint = getDefaultEndpoint('config');
-  const apiEndpoint = getDefaultEndpoint();
   const requestIdRef = useRef(0);
 
   // Load configuration on mount
@@ -130,12 +132,6 @@ const ConfigurableAIAssistance = ({
    * Handle AI assistant request
    */
   const handleAskAI = useCallback(async () => {
-    // Validate endpoint
-    if (!validateEndpoint(apiEndpoint)) {
-      setError('Invalid API endpoint configuration');
-      return;
-    }
-
     setIsLoading(true);
     setError('');
     setResponse('');
@@ -152,11 +148,14 @@ const ConfigurableAIAssistance = ({
         || null;
 
       // Make API call
-      const data = await callAIService({
-        contextData,
-        apiEndpoint,
-        courseId: contextData.courseId,
-        userQuery: requestMessage,
+      const data = await callWorkflowService({
+        context: contextData,
+        action: 'run',
+        userInput: requestMessage,
+        payload: {
+          requestId: `ai-request-${Date.now()}`,
+          courseId: contextData.courseId,
+        },
       });
 
       // Handle response
@@ -186,7 +185,7 @@ const ConfigurableAIAssistance = ({
     } finally {
       setIsLoading(false);
     }
-  }, [apiEndpoint, config, additionalProps]);
+  }, [config, additionalProps]);
 
   /**
    * Reset component state for new request
@@ -297,6 +296,8 @@ const ConfigurableAIAssistance = ({
         <RequestComponent
           isLoading={isLoading}
           hasAsked={hasAsked && !error}
+          setResponse={setResponse}
+          setHasAsked={setHasAsked}
           onAskAI={handleAskAI}
           disabled={false}
           {...requestProps}

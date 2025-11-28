@@ -1,0 +1,5 @@
+### POST NPM PATCH AUTHORING
+# Copying the plugins is necessary to avoid npm failing due to the "file:plugins/course-apps/*" deps
+COPY --from=authoring-src /plugins /openedx/app/plugins
+RUN npm install --legacy-peer-deps --install-links /openedx/ai-extensions-frontend
+##

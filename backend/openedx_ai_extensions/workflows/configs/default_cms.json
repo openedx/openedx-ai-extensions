@@ -1,0 +1,38 @@
+{
+  "orchestrator_class": "EducatorAssistantOrchestrator",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_unit_content",
+      "char_limit": 300
+    },
+    "EducatorAssistantProcessor": {
+      "function": "generate_quiz_questions",
+      "config": "openai"
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIEducatorLibraryAssistComponent",
+        "config": {
+          "titleText": "AI Assistant",
+          "buttonText": "Start",
+          "customMessage": "Use an AI workflow to create multiple answer questions from this unit in a content library",
+          "preloadPreviousSession": true
+        }
+      },
+      "response": {
+        "component": "AIEducatorLibraryResponseComponent",
+        "config": {
+          "titleText": "AI Assistant",
+          "customMessage": "Assistance completed successfully",
+          "hyperlinkText": "View content >"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
+      }
+    }
+  }
+}

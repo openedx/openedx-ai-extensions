@@ -172,7 +172,7 @@ class SubmissionProcessor:
             logger.error(f"Error retrieving previous messages: {e}")
             return {"error": f"Failed to load previous messages: {str(e)}"}
 
-    def update_submission(self, llm_response, user_query):
+    def update_chat_submission(self, llm_response, user_query):
         """
         Update the submission with the LLM response.
         Truncates message history to keep only the most recent messages while
@@ -223,10 +223,26 @@ class SubmissionProcessor:
                 }
             )
 
+        self.update_submission(messages)
+
+    def update_submission(self, data):
+        """
+        Update the submission with provided data.
+        """
         submission = submissions_api.create_submission(
             student_item_dict=self.student_item_dict,
-            answer=messages,
+            answer=data,
             attempt_number=1,
         )
         self.user_session.local_submission_id = submission["uuid"]
         self.user_session.save()
+
+    def get_submission(self):
+        """
+        Retrieve the current submission associated with the user session.
+        """
+        if self.user_session.local_submission_id:
+            return submissions_api.get_submission_and_student(
+                self.user_session.local_submission_id
+            )
+        return None

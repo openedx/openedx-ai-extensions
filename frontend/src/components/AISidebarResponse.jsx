@@ -16,9 +16,8 @@ import {
 
 // Import AI services
 import {
-  callAIService,
+  callWorkflowService,
   prepareContextData,
-  getDefaultEndpoint,
   formatErrorMessage,
 } from '../services';
 
@@ -121,20 +120,19 @@ const AISidebarResponse = ({
 
   const handleClearSession = async () => {
     try {
-      // Get API endpoint
-      const apiEndpoint = getDefaultEndpoint();
-
       // Prepare context data
       const preparedContext = prepareContextData({
         ...contextData,
       });
 
       // Make API call
-      await callAIService({
-        contextData: preparedContext,
+      await callWorkflowService({
+        context: preparedContext,
         action: 'clear_session',
-        apiEndpoint,
-        courseId: preparedContext.courseId,
+        payload: {
+          requestId: `ai-request-${Date.now()}`,
+          courseId: preparedContext.courseId || null,
+        },
       });
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -162,22 +160,21 @@ const AISidebarResponse = ({
       // Get current message count
       const currentMessageCount = chatMessages.length;
 
-      // Get API endpoint
-      const apiEndpoint = getDefaultEndpoint();
-
       // Prepare context data
       const preparedContext = prepareContextData({
         ...contextData,
       });
 
       // Make API call with lazy_load_chat_history action
-      // Pass current message count as user_query
-      const data = await callAIService({
-        contextData: preparedContext,
+      // Pass current message count as user input
+      const data = await callWorkflowService({
+        context: preparedContext,
         action: 'lazy_load_chat_history',
-        apiEndpoint,
-        courseId: preparedContext.courseId,
-        userQuery: JSON.stringify({ current_messages: currentMessageCount }),
+        userInput: JSON.stringify({ current_messages: currentMessageCount }),
+        payload: {
+          requestId: `ai-request-${Date.now()}`,
+          courseId: preparedContext.courseId || null,
+        },
       });
 
       // Parse response
@@ -307,20 +304,20 @@ const AISidebarResponse = ({
     setIsSendingFollowUp(true);
 
     try {
-      // Get API endpoint
-      const apiEndpoint = getDefaultEndpoint();
-
       // Prepare context data
       const preparedContext = prepareContextData({
         ...contextData,
       });
 
       // Make API call
-      const data = await callAIService({
-        contextData: preparedContext,
-        apiEndpoint,
-        courseId: preparedContext.courseId,
-        userQuery: userMessage,
+      const data = await callWorkflowService({
+        context: preparedContext,
+        action: 'run',
+        userInput: userMessage,
+        payload: {
+          requestId: `ai-request-${Date.now()}`,
+          courseId: preparedContext.courseId || null,
+        },
       });
 
       // Extract response from various possible fields

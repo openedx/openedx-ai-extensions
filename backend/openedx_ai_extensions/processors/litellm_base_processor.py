@@ -24,9 +24,14 @@ class LitellmProcessor:
         # Extract API configuration once during initialization
         self.api_key = settings.AI_EXTENSIONS[self.config_profile]["API_KEY"]
         self.model = settings.AI_EXTENSIONS[self.config_profile]["LITELLM_MODEL"]
-        self.timeout = settings.AI_EXTENSIONS[self.config_profile]["TIMEOUT"]
-        self.temperature = settings.AI_EXTENSIONS[self.config_profile]["TEMPERATURE"]
-        self.max_tokens = settings.AI_EXTENSIONS[self.config_profile]["MAX_TOKENS"]
+
+        self.extra_params = {}
+        if "TIMEOUT" in settings.AI_EXTENSIONS[self.config_profile]:
+            self.extra_params["timeout"] = settings.AI_EXTENSIONS[self.config_profile]["TIMEOUT"]
+        if "TEMPERATURE" in settings.AI_EXTENSIONS[self.config_profile]:
+            self.extra_params["temperature"] = settings.AI_EXTENSIONS[self.config_profile]["TEMPERATURE"]
+        if "MAX_TOKENS" in settings.AI_EXTENSIONS[self.config_profile]:
+            self.extra_params["max_tokens"] = settings.AI_EXTENSIONS[self.config_profile]["MAX_TOKENS"]
 
         if not self.api_key:
             logger.error("AI API key not configured")

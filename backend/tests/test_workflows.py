@@ -582,7 +582,7 @@ def test_threaded_llm_response_orchestrator_new_session(
 
     # Mock SubmissionProcessor
     mock_submission = Mock()
-    mock_submission.update_submission = Mock()
+    mock_submission.update_chat_submission = Mock()
     mock_submission_processor_class.return_value = mock_submission
 
     orchestrator = ThreadedLLMResponse(workflow=workflow_instance)
@@ -590,7 +590,7 @@ def test_threaded_llm_response_orchestrator_new_session(
 
     assert result["status"] == "completed"
     assert result["response"] == "AI chat response"
-    assert mock_submission.update_submission.called
+    assert mock_submission.update_chat_submission.called
 
 
 @pytest.mark.django_db

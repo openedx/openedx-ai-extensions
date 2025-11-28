@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
 import { Button, Alert, Collapsible } from '@openedx/paragon';
 import {
-  Send,
   CheckCircle,
   Warning,
 } from '@openedx/paragon/icons';
@@ -16,7 +15,6 @@ const AIResponseComponent = ({
   response,
   error,
   isLoading,
-  onAskAgain,
   onClear,
   onError,
   customMessage,
@@ -84,20 +82,6 @@ const AIResponseComponent = ({
                     Clear
                   </Button>
                 )}
-
-                {/* Ask again button */}
-                {onAskAgain && (
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    onClick={onAskAgain}
-                    disabled={isLoading}
-                    iconBefore={Send}
-                    className="py-1 px-2"
-                  >
-                    Ask Again
-                  </Button>
-                )}
               </div>
             </div>
           </Collapsible>
@@ -111,7 +95,6 @@ AIResponseComponent.propTypes = {
   response: PropTypes.string,
   error: PropTypes.string,
   isLoading: PropTypes.bool,
-  onAskAgain: PropTypes.func,
   onClear: PropTypes.func,
   onError: PropTypes.func,
   customMessage: PropTypes.string,
@@ -121,7 +104,6 @@ AIResponseComponent.defaultProps = {
   response: null,
   error: null,
   isLoading: false,
-  onAskAgain: null,
   onClear: null,
   onError: null,
   customMessage: 'AI Assistant Response',

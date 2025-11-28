@@ -24,7 +24,15 @@ const extractCourseIdFromUrl = () => {
 const extractUnitIdFromUrl = () => {
   try {
     const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
-    return pathMatch ? pathMatch[1] : null;
+    const StudioPathMatch = window.location.pathname.match(/block-v1:[^/]+$/);
+
+    if (pathMatch) {
+      return pathMatch[0];
+    }
+    if (StudioPathMatch) {
+      return StudioPathMatch[0];
+    }
+    return null;
   } catch {
     return null;
   }
@@ -105,70 +113,6 @@ export const generateRequestId = () => {
 };
 
 /**
- * Make API call to AI assistance service
- * Flexible API call that works with any available context
- * @param {Object} params - Request parameters
- * @returns {Promise<Object>} API response data
- */
-export const callAIService = async ({
-  contextData = {},
-  userQuery = 'Provide learning assistance for this content',
-  action = 'run',
-  courseId = '',
-  apiEndpoint = '',
-  requestId = null,
-  options = {},
-}) => {
-  const requestPayload = {
-    // Request metadata
-    requestId: requestId || generateRequestId(),
-    action,
-    courseId: courseId || extractCourseIdFromUrl(),
-    timestamp: new Date().toISOString(),
-
-    // AI request data
-    context: contextData,
-    user_query: userQuery,
-
-    // Flexible options
-    options: {
-      responseFormat: 'text',
-      maxTokens: 1000,
-      temperature: 0.7,
-      ...options, // Allow override of defaults
-    },
-
-    // Include any additional data
-    metadata: {
-      source: 'openedx-ai-extensions',
-      version: '1.0.0',
-      mfe: 'learning',
-    },
-  };
-
-  try {
-    // Use Open edX authenticated HTTP client
-    // This automatically handles JWT cookies and CSRF tokens
-    const { data } = await getAuthenticatedHttpClient()
-      .post(apiEndpoint, requestPayload);
-
-    // Very flexible response validation - accept any structure
-    if (!data) {
-      throw new Error('Empty response from AI service');
-    }
-
-    return data;
-  } catch (error) {
-    // Log error for debugging
-    // eslint-disable-next-line no-console
-    console.error('AI Service Error:', error);
-
-    // Re-throw the original error
-    throw error;
-  }
-};
-
-/**
  * Validate API endpoint configuration
  * @param {string} endpoint - API endpoint URL
  * @returns {boolean} Whether endpoint is valid
@@ -189,8 +133,78 @@ export const validateEndpoint = (endpoint) => {
  */
 export const getDefaultEndpoint = (endpoint = 'workflows') => {
   const config = getConfig();
-  const lmsBaseUrl = config.LMS_BASE_URL;
-  return `${lmsBaseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
+  let baseUrl = config.LMS_BASE_URL;
+  if (['authoring'].includes(config.APP_ID)) {
+    baseUrl = config.STUDIO_BASE_URL;
+  }
+  return `${baseUrl}/openedx-ai-extensions/v1/${endpoint}/`;
+};
+
+/**
+ * Make API call to workflow service endpoint
+ * Unified function for all workflow API calls
+ * @param {Object} params - Request parameters
+ * @param {string} params.endpoint - API endpoint URL or endpoint type ('workflows', 'config')
+ * @param {Object} params.payload - Request payload (flexible structure)
+ * @param {Object} params.context - Context data (optional, will be added to payload)
+ * @param {string} params.action - Action type (optional)
+ * @param {string} params.userInput - User input (optional)
+ * @param {string} params.workflowType - Workflow type (optional)
+ * @param {Object} params.options - Additional options (optional)
+ * @returns {Promise<Object>} API response data
+ */
+export const callWorkflowService = async ({
+  endpoint = 'workflows',
+  payload = {},
+  context = null,
+  action = null,
+  userInput = null,
+  workflowType = null,
+  options = null,
+}) => {
+  // Determine the actual endpoint URL
+  const apiEndpoint = endpoint.startsWith('http')
+    ? endpoint
+    : getDefaultEndpoint(endpoint);
+
+  // Build the request payload flexibly
+  const requestPayload = {
+    timestamp: new Date().toISOString(),
+    ...payload, // Spread user-provided payload first
+  };
+
+  // Add optional fields if provided
+  if (context) {
+    requestPayload.context = context;
+  }
+  if (action) {
+    requestPayload.action = action;
+  }
+  if (userInput) {
+    requestPayload.user_input = userInput;
+  }
+  if (workflowType) {
+    requestPayload.workflow_type = workflowType;
+  }
+  if (options) {
+    requestPayload.options = options;
+  }
+
+  try {
+    // Use Open edX authenticated HTTP client
+    const { data } = await getAuthenticatedHttpClient()
+      .post(apiEndpoint, requestPayload);
+
+    if (!data) {
+      throw new Error('Empty response from workflow service');
+    }
+
+    return data;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Workflow Service Error:', error);
+    throw error;
+  }
 };
 
 /**
