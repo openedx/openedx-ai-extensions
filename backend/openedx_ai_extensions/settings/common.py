@@ -14,7 +14,9 @@ def plugin_settings(settings):
     Args:
         settings (dict): Django settings object
     """
-    settings.CONTENT_LIBRARIES_MODULE_BACKEND = "openedx_ai_extensions.edxapp_wrapper.backends.content_libraries_module_t_v1"
+    settings.CONTENT_LIBRARIES_MODULE_BACKEND = (
+        "openedx_ai_extensions.edxapp_wrapper.backends.content_libraries_module_t_v1"
+    )
 
     if not hasattr(settings, "AI_EXTENSIONS_MODEL_PROXY"):
         settings.AI_EXTENSIONS_MODEL_PROXY = [
