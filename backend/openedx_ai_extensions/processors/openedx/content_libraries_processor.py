@@ -7,6 +7,8 @@ from uuid import uuid4
 from django.db import transaction
 from opaque_keys.edx.locator import LibraryLocatorV2
 
+from openedx_ai_extensions.edxapp_wrapper.content_libraries_module import get_content_libraries
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,9 +52,8 @@ class ContentLibraryProcessor:
 
     def create_block(self, data):
         """Create a library block."""
-        # pylint: disable=import-error, import-outside-toplevel
-        from openedx.core.djangoapps.content_libraries import api
-        from openedx.core.djangoapps.content_libraries.rest_api import serializers
+        api = get_content_libraries().api
+        serializers = get_content_libraries().rest_api.serializers
 
         serializer = serializers.LibraryXBlockCreationSerializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -66,15 +67,13 @@ class ContentLibraryProcessor:
 
     def modify_block_olx(self, usage_key, data):
         """Modify the OLX of a library block."""
-        # pylint: disable=import-error, import-outside-toplevel
-        from openedx.core.djangoapps.content_libraries import api
-
+        api = get_content_libraries().api
         api.set_library_block_olx(usage_key, data)
 
     def create_collection(self, title, description="") -> None:
         """Create a collection in the library."""
-        # pylint: disable=import-error, import-outside-toplevel
-        from openedx.core.djangoapps.content_libraries import api, permissions
+        api = get_content_libraries().api
+        permissions = get_content_libraries().permissions
 
         content_library = api.require_permission_for_library_key(
             self.library_key, self.user, permissions.CAN_EDIT_THIS_CONTENT_LIBRARY
@@ -93,8 +92,8 @@ class ContentLibraryProcessor:
         return collection
 
     def update_library_collection_items(self, collection_key, item_keys) -> None:
-        # pylint: disable=import-error, import-outside-toplevel
-        from openedx.core.djangoapps.content_libraries import api
+        """Modifies the list of items in a collection."""
+        api = get_content_libraries().api
 
         api.update_library_collection_items(
             library_key=self.library_key,
