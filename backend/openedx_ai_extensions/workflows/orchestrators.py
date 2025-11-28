@@ -88,7 +88,6 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             location_id=self.workflow.location_id,
             defaults={},
         )
-        self.submission_processor = self._get_submission_processor()
 
     def clear_session(self, _):
         self.session.delete()
@@ -96,10 +95,6 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             "response": "",
             "status": "session_cleared",
         }
-
-    def get_submission(self):
-        """Retrieve the current submission associated with the user session."""
-        return self.submission_processor.get_submission()
 
     def _get_submission_processor(self):
         return SubmissionProcessor(
@@ -115,9 +110,9 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
     def get_current_session_response(self, _):
         """Retrieve the current session's LLM response."""
-        submission = self.get_submission()
-        if submission and submission.get("answer"):
-            return {"response": submission["answer"]["collection_url"]}
+        metadata = self.session.metadata or {}
+        if metadata and "collection_url" in metadata:
+            return {"response": metadata["collection_url"]}
         return {"response": None}
 
     def run(self, input_data):
@@ -159,13 +154,13 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
             items=llm_result["response"]["items"]
         )
 
-        data = {
+        metadata = {
             "library_id": lib_key_str,
             "collection_url": f"authoring/library/{lib_key_str}/collection/{collection_key}",
             "collection_id": collection_key,
         }
-        self.submission_processor.update_submission(data)
-
+        self.session.metadata = metadata
+        self.session.save(update_fields=["metadata"])
         # 3. Return result
         return {
             'response': f"authoring/library/{lib_key_str}/collection/{collection_key}",
@@ -200,7 +195,8 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         elif isinstance(input_data, int):
             current_messages_count = input_data
 
-        result = self.submission_processor.get_previous_messages(current_messages_count)
+        submission_processor = self._get_submission_processor()
+        result = submission_processor.get_previous_messages(current_messages_count)
 
         if "error" in result:
             return {
@@ -218,10 +214,11 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             "course_id": self.workflow.course_id,
             "extra_context": self.workflow.extra_context,
         }
+        submission_processor = self._get_submission_processor()
 
         # 1. get chat history if there is user session
         if self.session and self.session.local_submission_id and not input_data:
-            history_result = self.submission_processor.process(context)
+            history_result = submission_processor.process(context)
 
             if "error" in history_result:
                 return {
@@ -249,7 +246,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             context=str(content_result), input_data=input_data
         )
 
-        self.submission_processor.update_chat_submission(llm_result.get("response"), input_data)
+        submission_processor.update_chat_submission(llm_result.get("response"), input_data)
 
         if "error" in llm_result:
             return {"error": llm_result["error"], "status": "ResponsesProcessor error"}
