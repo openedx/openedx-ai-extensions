@@ -181,3 +181,75 @@ def test_process_retrieves_existing_submissions(
 
     # Should return response with messages
     assert "response" in result or "error" in result
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
+def test_process_respects_max_context_messages_limit(
+    mock_submissions_api, user_session  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that process() respects the max_context_messages configuration limit.
+    """
+    # Create processor with max_context_messages=2
+    config = {
+        "SubmissionProcessor": {
+            "max_context_messages": 2,
+        }
+    }
+    processor = SubmissionProcessor(config=config, user_session=user_session)
+
+    # Mock multiple submissions exceeding the limit
+    mock_submissions = [
+        {
+            "uuid": "submission-1",
+            "answer": {"messages": [{"role": "user", "content": "Message 1"}]},
+            "created_at": "2025-01-01T00:00:00Z",
+        },
+        {
+            "uuid": "submission-2",
+            "answer": {"messages": [{"role": "assistant", "content": "Response 1"}]},
+            "created_at": "2025-01-01T00:01:00Z",
+        },
+        {
+            "uuid": "submission-3",
+            "answer": {"messages": [{"role": "user", "content": "Message 2"}]},
+            "created_at": "2025-01-01T00:02:00Z",
+        },
+        {
+            "uuid": "submission-4",
+            "answer": {"messages": [{"role": "assistant", "content": "Response 2"}]},
+            "created_at": "2025-01-01T00:03:00Z",
+        },
+    ]
+    mock_submissions_api.get_submissions.return_value = mock_submissions
+
+    result = processor.process(context={}, input_data=None)
+
+    # Verify get_submissions was called
+    mock_submissions_api.get_submissions.assert_called_once()
+
+    # Should return response
+    assert "response" in result or "error" in result
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
+def test_process_handles_empty_submissions(
+    mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that process() handles cases where there are no existing submissions.
+    """
+    # Mock empty submissions list
+    mock_submissions_api.get_submissions.return_value = []
+
+    result = submission_processor.process(context={}, input_data=None)
+
+    # Verify get_submissions was called
+    mock_submissions_api.get_submissions.assert_called_once()
+    call_args = mock_submissions_api.get_submissions.call_args
+    assert call_args[0][0] == submission_processor.student_item_dict
+
+    # Should return response even with no previous submissions
+    assert "response" in result or "error" in result

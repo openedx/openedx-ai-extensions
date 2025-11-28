@@ -113,6 +113,13 @@ class SessionBasedOrchestrator(BaseOrchestrator):
 class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
     """Orchestrator for educator assistant workflows."""
 
+    def get_current_session_response(self, _):
+        """Retrieve the current session's LLM response."""
+        submission = self.get_submission()
+        if submission and submission.get("answer"):
+            return {"response": submission["answer"]["collection_url"]}
+        return {"response": None}
+
     def run(self, input_data):
         # Prepare context
         context = {

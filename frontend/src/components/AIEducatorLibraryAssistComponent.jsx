@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   Button,
@@ -26,6 +26,7 @@ const AIEducatorLibraryAssistComponent = ({
   libraries: librariesProp,
   titleText,
   buttonText,
+  preloadPreviousSession,
   customMessage,
   onSuccess,
   onError,
@@ -44,6 +45,9 @@ const AIEducatorLibraryAssistComponent = ({
   const [selectedLibrary, setSelectedLibrary] = useState('');
   const [numberOfQuestions, setNumberOfQuestions] = useState(5);
   const [additionalInstructions, setAdditionalInstructions] = useState('');
+
+  // Track if we've already attempted to load previous session
+  const hasLoadedSession = useRef(false);
 
   /**
    * Fetch libraries from API
@@ -94,6 +98,53 @@ const AIEducatorLibraryAssistComponent = ({
       setLibrariesFetched(true);
     }
   }, [librariesProp]);
+
+  // Preload previous session if enabled
+  useEffect(() => {
+    const loadPreviousSession = async () => {
+      if (!preloadPreviousSession || hasAsked || hasLoadedSession.current) {
+        return;
+      }
+
+      hasLoadedSession.current = true;
+      setIsLoading(true);
+      try {
+        const contextData = prepareContextData({
+          courseId,
+          unitId,
+        });
+
+        const data = await callWorkflowService({
+          context: contextData,
+          action: 'get_current_session_response',
+          payload: {
+            requestId: `ai-request-${Date.now()}`,
+            courseId,
+          },
+        });
+
+        // Handle response - only set if there's actual data
+        if (data.response && data.response !== null) {
+          setResponse(data.response);
+          setHasAsked(true);
+        } else if (debug) {
+          // No previous session or empty response - do nothing, show normal component
+          // eslint-disable-next-line no-console
+          console.log('No previous session found or empty response');
+        }
+      } catch (err) {
+        // Silent fail - no previous session is not an error
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log('Error loading previous session:', err);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPreviousSession();
+  }, [preloadPreviousSession, hasAsked, courseId, unitId, setResponse, setHasAsked, debug]);
 
   // Early return after all hooks have been called
   if (hasAsked && !isLoading) {
@@ -381,6 +432,7 @@ AIEducatorLibraryAssistComponent.propTypes = {
   ),
   titleText: PropTypes.string,
   buttonText: PropTypes.string,
+  preloadPreviousSession: PropTypes.bool,
   customMessage: PropTypes.string,
   onSuccess: PropTypes.func,
   onError: PropTypes.func,
@@ -392,6 +444,7 @@ AIEducatorLibraryAssistComponent.defaultProps = {
   titleText: 'AI Assistant',
   buttonText: 'Start',
   customMessage: 'Use an AI workflow to create multiple answer questions from this unit in a content library',
+  preloadPreviousSession: false,
   onSuccess: null,
   onError: null,
   debug: false,

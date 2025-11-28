@@ -17,7 +17,8 @@
         "config": {
           "titleText": "AI Assistant",
           "buttonText": "Start",
-          "customMessage": "Use an AI workflow to create multiple answer questions from this unit in a content library"
+          "customMessage": "Use an AI workflow to create multiple answer questions from this unit in a content library",
+          "preloadPreviousSession": true
         }
       },
       "response": {

@@ -4,6 +4,7 @@ import { Button, Alert, Card } from '@openedx/paragon';
 import {
   Warning,
 } from '@openedx/paragon/icons';
+import { prepareContextData, callWorkflowService } from '../services';
 
 /**
  * AI Response Component
@@ -18,6 +19,7 @@ const AIEducatorLibraryResponseComponent = ({
   customMessage,
   titleText,
   hyperlinkText,
+  contextData,
 }) => {
   // Don't render if no response or error
   if (!response && !error) {
@@ -27,6 +29,35 @@ const AIEducatorLibraryResponseComponent = ({
   // set response with url
   const baseUrl = window.location.origin;
   const hyperlinkUrl = `${baseUrl}/${response}`;
+
+  const handleClearSession = async () => {
+    try {
+      // Prepare context data
+      const preparedContext = prepareContextData({
+        ...contextData,
+      });
+
+      // Make API call
+      await callWorkflowService({
+        context: preparedContext,
+        action: 'clear_session',
+        payload: {
+          requestId: `ai-request-${Date.now()}`,
+          courseId: preparedContext.courseId || null,
+        },
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[AISidebarResponse] Clear session error:', err);
+    }
+  };
+
+  const handleClearAndClose = async () => {
+    await handleClearSession();
+    if (onClear) {
+      onClear();
+    }
+  };
 
   return (
     <Card className="ai-educator-library-response mt-3 mb-3">
@@ -74,12 +105,12 @@ const AIEducatorLibraryResponseComponent = ({
                   </a>
                 )}
               </div>
-              {onClear && (
+              {handleClearAndClose && (
                 <div className="d-flex justify-content-end mt-3">
                   <Button
                     variant="outline-secondary"
                     size="sm"
-                    onClick={onClear}
+                    onClick={handleClearAndClose}
                     className="py-1 px-2"
                   >
                     Clear
@@ -103,6 +134,7 @@ AIEducatorLibraryResponseComponent.propTypes = {
   customMessage: PropTypes.string,
   titleText: PropTypes.string,
   hyperlinkText: PropTypes.string,
+  contextData: PropTypes.shape({}),
 };
 
 AIEducatorLibraryResponseComponent.defaultProps = {
@@ -114,6 +146,7 @@ AIEducatorLibraryResponseComponent.defaultProps = {
   customMessage: 'Question generation success.',
   titleText: 'AI Assistant',
   hyperlinkText: 'View content ›',
+  contextData: {},
 };
 
 export default AIEducatorLibraryResponseComponent;
