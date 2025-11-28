@@ -75,7 +75,42 @@ class DirectLLMResponse(BaseOrchestrator):
         }
 
 
-class EducatorAssistantOrchestrator(BaseOrchestrator):
+class SessionBasedOrchestrator(BaseOrchestrator):
+    """Orchestrator that provides session-based LLM responses."""
+
+    def __init__(self, workflow):
+        from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
+
+        super().__init__(workflow)
+        self.session, _ = AIWorkflowSession.objects.get_or_create(
+            user=self.workflow.user,
+            course_id=self.workflow.course_id,
+            location_id=self.workflow.location_id,
+            defaults={},
+        )
+        self.submission_processor = self._get_submission_processor()
+
+    def clear_session(self, _):
+        self.session.delete()
+        return {
+            "response": "",
+            "status": "session_cleared",
+        }
+
+    def get_submission(self):
+        """Retrieve the current submission associated with the user session."""
+        return self.submission_processor.get_submission()
+
+    def _get_submission_processor(self):
+        return SubmissionProcessor(
+            self.config.processor_config, self.session
+        )
+
+    def run(self, input_data):
+        raise NotImplementedError("Subclasses must implement run method")
+
+
+class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
     """Orchestrator for educator assistant workflows."""
 
     def run(self, input_data):
@@ -117,6 +152,13 @@ class EducatorAssistantOrchestrator(BaseOrchestrator):
             items=llm_result["response"]["items"]
         )
 
+        data = {
+            "library_id": lib_key_str,
+            "collection_url": f"authoring/library/{lib_key_str}/collection/{collection_key}",
+            "collection_id": collection_key,
+        }
+        self.submission_processor.update_submission(data)
+
         # 3. Return result
         return {
             'response': f"authoring/library/{lib_key_str}/collection/{collection_key}",
@@ -128,26 +170,8 @@ class EducatorAssistantOrchestrator(BaseOrchestrator):
         }
 
 
-class ThreadedLLMResponse(BaseOrchestrator):
-    """Orchestrator that provides LLM responses using threading (placeholder)."""
-
-    def __init__(self, workflow):
-        from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
-
-        super().__init__(workflow)
-        self.session, _ = AIWorkflowSession.objects.get_or_create(
-            user=self.workflow.user,
-            course_id=self.workflow.course_id,
-            location_id=self.workflow.location_id,
-            defaults={},
-        )
-
-    def clear_session(self, _):
-        self.session.delete()
-        return {
-            "response": "",
-            "status": "session_cleared",
-        }
+class ThreadedLLMResponse(SessionBasedOrchestrator):
+    """Orchestrator that provides LLM responses using threading."""
 
     def lazy_load_chat_history(self, input_data):
         """
@@ -155,9 +179,6 @@ class ThreadedLLMResponse(BaseOrchestrator):
         Expects input_data to contain current_messages (count) from frontend.
         Returns only new messages not already loaded, limited by max_context_messages.
         """
-        submission_processor = SubmissionProcessor(
-            self.config.processor_config, self.session
-        )
 
         # Extract current_messages_count from input_data
         current_messages_count = 0
@@ -172,7 +193,7 @@ class ThreadedLLMResponse(BaseOrchestrator):
         elif isinstance(input_data, int):
             current_messages_count = input_data
 
-        result = submission_processor.get_previous_messages(current_messages_count)
+        result = self.submission_processor.get_previous_messages(current_messages_count)
 
         if "error" in result:
             return {
@@ -192,11 +213,8 @@ class ThreadedLLMResponse(BaseOrchestrator):
         }
 
         # 1. get chat history if there is user session
-        submission_processor = SubmissionProcessor(
-            self.config.processor_config, self.session
-        )
         if self.session and self.session.local_submission_id and not input_data:
-            history_result = submission_processor.process(context)
+            history_result = self.submission_processor.process(context)
 
             if "error" in history_result:
                 return {
@@ -224,7 +242,7 @@ class ThreadedLLMResponse(BaseOrchestrator):
             context=str(content_result), input_data=input_data
         )
 
-        submission_processor.update_submission(llm_result.get("response"), input_data)
+        self.submission_processor.update_chat_submission(llm_result.get("response"), input_data)
 
         if "error" in llm_result:
             return {"error": llm_result["error"], "status": "ResponsesProcessor error"}
