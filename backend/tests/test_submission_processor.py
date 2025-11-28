@@ -253,3 +253,45 @@ def test_process_handles_empty_submissions(
 
     # Should return response even with no previous submissions
     assert "response" in result or "error" in result
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
+def test_process_handles_malformed_submission_data(
+    mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that process() handles malformed submission data gracefully.
+    """
+    # Mock submissions with various malformed data structures
+    mock_submissions = [
+        {
+            "uuid": "submission-1",
+            "answer": {"messages": [{"role": "user", "content": "Valid message"}]},
+            "created_at": "2025-01-01T00:00:00Z",
+        },
+        {
+            "uuid": "submission-2",
+            "answer": {},  # Missing messages key
+            "created_at": "2025-01-01T00:01:00Z",
+        },
+        {
+            "uuid": "submission-3",
+            "answer": {"messages": None},  # None messages
+            "created_at": "2025-01-01T00:02:00Z",
+        },
+        {
+            "uuid": "submission-4",
+            "answer": None,  # None answer
+            "created_at": "2025-01-01T00:03:00Z",
+        },
+    ]
+    mock_submissions_api.get_submissions.return_value = mock_submissions
+
+    result = submission_processor.process(context={}, input_data=None)
+
+    # Verify get_submissions was called
+    mock_submissions_api.get_submissions.assert_called_once()
+
+    # Should handle malformed data and still return a response
+    assert "response" in result or "error" in result
