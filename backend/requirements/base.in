@@ -6,6 +6,7 @@ djangorestframework  # REST API framework
 django-filter      # Filtering for DRF
 edx-opaque-keys        # Open edX CourseKeyField
 litellm            # LLM Gateway to provide model access
+beautifulsoup4     # HTML parsing for component extractors
 
 openedx-atlas
 edx-submissions
