@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Optional
 
-from bs4 import BeautifulSoup  # pylint: disable=import-error
+from bs4 import BeautifulSoup
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -255,6 +255,10 @@ def extract_html_info(block) -> dict:
     }
 
 
+# NOTE:
+# Problem blocks may include correctness (correct/incorrect) information in the data
+# returned by higher-level extractors or LMS APIs. Passing correctness to the LLM
+# is potentially sensitive and requires a future policy/architecture decision.
 def extract_problem_info(block) -> dict:
     logger.debug("extract_problem_info: processing %s", block.location)
     raw = getattr(block, "data", "") or ""
