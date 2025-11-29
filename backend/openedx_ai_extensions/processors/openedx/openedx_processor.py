@@ -6,6 +6,8 @@ import logging
 
 from opaque_keys.edx.keys import UsageKey
 
+from openedx_ai_extensions.processors.component_extractors import COMPONENT_EXTRACTORS, extract_generic_info
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,30 +55,49 @@ class OpenEdXProcessor:
                 "blocks": [],
             }
 
-            if hasattr(unit, "children") and unit.children:
-                for child_key in unit.children:
-                    try:
-                        child = store.get_item(child_key)
-                        block_info = {
-                            "block_id": str(child.location),
-                            "display_name": child.display_name,
-                            "category": child.category,
-                        }
+            for child_key in getattr(unit, "children", []):
+                block_info = self._extract_block(store, child_key)
+                if block_info:
+                    unit_info["blocks"].append(block_info)
 
-                        if child.category == "html":
-                            block_info["content"] = getattr(child, "data", "")
-                        elif child.category == "problem":
-                            block_info["content"] = getattr(child, "data", "")
-
-                        unit_info["blocks"].append(block_info)
-                    except Exception as e:  # pylint: disable=broad-exception-caught
-                        logger.warning(f"Could not load block {child_key}: {e}")
-
-            # limit for dev
-            if char_limit and len(unit_info) > char_limit:
-                unit_info = unit_info[:char_limit]
+            if char_limit:
+                self._truncate_unit_text(unit_info, char_limit)
 
             return unit_info
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return {"error": f"Error accessing content: {str(e)}"}
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            return {"error": f"Error accessing content: {str(exc)}"}
+
+    def _extract_block(self, store, block_key):
+        """Helper to extract block info safely"""
+        try:
+            block = store.get_item(block_key)
+            block_type = block.category.lower()
+            extractor = COMPONENT_EXTRACTORS.get(block_type, extract_generic_info)
+            return extractor(block)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.warning(f"Could not load block {block_key}: {exc}")
+            return None
+
+    def _truncate_unit_text(self, unit_info, char_limit):
+        """Helper to safely truncate text fields in unit blocks (dev-only)"""
+        try:
+            total_text = "".join(
+                b.get("text", "") for b in unit_info["blocks"] if isinstance(b.get("text"), str)
+            )
+
+            if len(total_text) <= char_limit:
+                return
+
+            logger.debug("char_limit=%s triggered, truncating text fields safely", char_limit)
+
+            blocks_with_text = [b for b in unit_info["blocks"] if isinstance(b.get("text"), str)]
+            per_block = char_limit // len(blocks_with_text)
+
+            for block in blocks_with_text:
+                block["text"] = block["text"][:per_block]
+
+            unit_info["truncated"] = True
+
+        except Exception as trunc_err:  # pylint: disable=broad-exception-caught
+            logger.debug("char_limit truncation skipped due to error: %s", trunc_err)
