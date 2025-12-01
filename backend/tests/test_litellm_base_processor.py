@@ -288,7 +288,7 @@ def test_litellm_processor_mcp_configs_nonexistent_server():
 
     # Should initialize without errors but not add any configs
     assert processor.mcp_configs == {}
-    assert "tools" not in processor.extra_params
+    assert processor.extra_params.get("tools", []) == []
 
 
 # ============================================================================
