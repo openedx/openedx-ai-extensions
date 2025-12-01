@@ -8,7 +8,7 @@ aiohappyeyeballs==2.6.1
     # via
     #   -r requirements/quality.txt
     #   aiohttp
-aiohttp==3.13.0
+aiohttp==3.13.2
     # via
     #   -r requirements/quality.txt
     #   litellm
@@ -20,11 +20,14 @@ annotated-types==0.7.0
     # via
     #   -r requirements/quality.txt
     #   pydantic
-anyio==4.11.0
+anyio==4.12.0
     # via
     #   -r requirements/quality.txt
     #   httpx
+    #   mcp
     #   openai
+    #   sse-starlette
+    #   starlette
 asgiref==3.8.1
     # via
     #   -r requirements/quality.txt
@@ -38,8 +41,15 @@ attrs==25.4.0
     # via
     #   -r requirements/quality.txt
     #   aiohttp
+    #   cyclopts
     #   jsonschema
     #   referencing
+authlib==1.6.5
+    # via
+    #   -r requirements/quality.txt
+    #   fastmcp
+beautifulsoup4==4.14.2
+    # via -r requirements/quality.txt
 build==1.3.0
     # via
     #   -r requirements/pip-tools.txt
@@ -48,15 +58,16 @@ cachetools==5.5.2
     # via
     #   -r requirements/ci.txt
     #   tox
-certifi==2025.10.5
+certifi==2025.11.12
     # via
     #   -r requirements/quality.txt
     #   httpcore
     #   httpx
     #   requests
-cffi==1.17.1
+cffi==2.0.0
     # via
     #   -r requirements/quality.txt
+    #   cryptography
     #   pynacl
 chardet==5.2.0
     # via
@@ -67,8 +78,9 @@ charset-normalizer==3.4.4
     # via
     #   -r requirements/quality.txt
     #   requests
-click==8.3.0
+click==8.3.1
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/pip-tools.txt
     #   -r requirements/quality.txt
     #   click-log
@@ -77,6 +89,8 @@ click==8.3.0
     #   edx-lint
     #   litellm
     #   pip-tools
+    #   typer-slim
+    #   uvicorn
 click-log==0.4.0
     # via
     #   -r requirements/quality.txt
@@ -93,6 +107,14 @@ coverage[toml]==7.8.0
     # via
     #   -r requirements/quality.txt
     #   pytest-cov
+cryptography==46.0.3
+    # via
+    #   -r requirements/quality.txt
+    #   authlib
+cyclopts==4.3.0
+    # via
+    #   -r requirements/quality.txt
+    #   fastmcp
 diff-cover==9.2.4
     # via -r requirements/dev.in
 dill==0.3.9
@@ -145,7 +167,17 @@ djangorestframework==3.16.0
 dnspython==2.7.0
     # via
     #   -r requirements/quality.txt
+    #   email-validator
     #   pymongo
+docstring-parser==0.17.0
+    # via
+    #   -r requirements/quality.txt
+    #   cyclopts
+docutils==0.21.2
+    # via
+    #   -c requirements/constraints.txt
+    #   -r requirements/quality.txt
+    #   rich-rst
 edx-django-release-util==1.5.0
     # via
     #   -r requirements/quality.txt
@@ -160,7 +192,17 @@ edx-opaque-keys==2.12.0
     # via -r requirements/quality.txt
 edx-submissions==3.12.1
     # via -r requirements/quality.txt
-fastuuid==0.13.5
+email-validator==2.3.0
+    # via
+    #   -r requirements/quality.txt
+    #   pydantic
+exceptiongroup==1.3.1
+    # via
+    #   -r requirements/quality.txt
+    #   fastmcp
+fastmcp==2.12.5
+    # via -r requirements/quality.txt
+fastuuid==0.14.0
     # via
     #   -r requirements/quality.txt
     #   litellm
@@ -176,15 +218,20 @@ frozenlist==1.8.0
     #   -r requirements/quality.txt
     #   aiohttp
     #   aiosignal
-fsspec==2025.9.0
+fsspec==2025.10.0
     # via
     #   -r requirements/quality.txt
     #   huggingface-hub
+grpcio==1.67.1
+    # via
+    #   -r requirements/quality.txt
+    #   litellm
 h11==0.16.0
     # via
     #   -r requirements/quality.txt
     #   httpcore
-hf-xet==1.1.10
+    #   uvicorn
+hf-xet==1.2.0
     # via
     #   -r requirements/quality.txt
     #   huggingface-hub
@@ -195,9 +242,16 @@ httpcore==1.0.9
 httpx==0.28.1
     # via
     #   -r requirements/quality.txt
+    #   fastmcp
+    #   huggingface-hub
     #   litellm
+    #   mcp
     #   openai
-huggingface-hub==0.35.3
+httpx-sse==0.4.3
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
+huggingface-hub==1.1.7
     # via
     #   -r requirements/quality.txt
     #   tokenizers
@@ -205,6 +259,7 @@ idna==3.11
     # via
     #   -r requirements/quality.txt
     #   anyio
+    #   email-validator
     #   httpx
     #   requests
     #   yarl
@@ -216,6 +271,10 @@ iniconfig==2.1.0
     # via
     #   -r requirements/quality.txt
     #   pytest
+isodate==0.7.2
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-core
 isort==6.0.1
     # via
     #   -r requirements/quality.txt
@@ -226,7 +285,7 @@ jinja2==3.1.6
     #   code-annotations
     #   diff-cover
     #   litellm
-jiter==0.11.0
+jiter==0.12.0
     # via
     #   -r requirements/quality.txt
     #   openai
@@ -238,11 +297,25 @@ jsonschema==4.25.1
     # via
     #   -r requirements/quality.txt
     #   litellm
+    #   mcp
+    #   openapi-core
+    #   openapi-schema-validator
+    #   openapi-spec-validator
+jsonschema-path==0.3.4
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-core
+    #   openapi-spec-validator
 jsonschema-specifications==2025.9.1
     # via
     #   -r requirements/quality.txt
     #   jsonschema
-litellm==1.78.2
+    #   openapi-schema-validator
+lazy-object-proxy==1.12.0
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-spec-validator
+litellm==1.80.7
     # via -r requirements/quality.txt
 lxml[html-clean]==5.3.2
     # via
@@ -250,14 +323,31 @@ lxml[html-clean]==5.3.2
     #   lxml-html-clean
 lxml-html-clean==0.4.2
     # via lxml
+markdown-it-py==4.0.0
+    # via
+    #   -r requirements/quality.txt
+    #   rich
 markupsafe==3.0.3
     # via
     #   -r requirements/quality.txt
     #   jinja2
+    #   werkzeug
 mccabe==0.7.0
     # via
     #   -r requirements/quality.txt
     #   pylint
+mcp==1.16.0
+    # via
+    #   -r requirements/quality.txt
+    #   fastmcp
+mdurl==0.1.2
+    # via
+    #   -r requirements/quality.txt
+    #   markdown-it-py
+more-itertools==10.8.0
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-core
 multidict==6.7.0
     # via
     #   -r requirements/quality.txt
@@ -267,10 +357,27 @@ newrelic==10.9.0
     # via
     #   -r requirements/quality.txt
     #   edx-django-utils
-openai==2.4.0
+openai==2.8.1
     # via
     #   -r requirements/quality.txt
     #   litellm
+openapi-core==0.19.5
+    # via
+    #   -r requirements/quality.txt
+    #   fastmcp
+openapi-pydantic==0.5.1
+    # via
+    #   -r requirements/quality.txt
+    #   fastmcp
+openapi-schema-validator==0.6.3
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-core
+    #   openapi-spec-validator
+openapi-spec-validator==0.7.2
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-core
 openedx-atlas==0.7.0
     # via -r requirements/quality.txt
 packaging==25.0
@@ -283,8 +390,16 @@ packaging==25.0
     #   pyproject-api
     #   pytest
     #   tox
+parse==1.20.2
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-core
 path==16.16.0
     # via edx-i18n-tools
+pathable==0.4.4
+    # via
+    #   -r requirements/quality.txt
+    #   jsonschema-path
 pbr==6.1.1
     # via
     #   -r requirements/quality.txt
@@ -318,23 +433,34 @@ psutil==7.0.0
     #   edx-django-utils
 pycodestyle==2.13.0
     # via -r requirements/quality.txt
-pycparser==2.22
+pycparser==2.23
     # via
     #   -r requirements/quality.txt
     #   cffi
-pydantic==2.11.10
+pydantic[email]==2.11.10
     # via
     #   -r requirements/quality.txt
+    #   fastmcp
     #   litellm
+    #   mcp
     #   openai
+    #   openapi-pydantic
+    #   pydantic-settings
 pydantic-core==2.33.2
     # via
     #   -r requirements/quality.txt
     #   pydantic
+pydantic-settings==2.12.0
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 pydocstyle==6.3.0
     # via -r requirements/quality.txt
-pygments==2.19.1
-    # via diff-cover
+pygments==2.19.2
+    # via
+    #   -r requirements/quality.txt
+    #   diff-cover
+    #   rich
 pylint==3.3.6
     # via
     #   -r requirements/quality.txt
@@ -363,6 +489,10 @@ pynacl==1.5.0
     # via
     #   -r requirements/quality.txt
     #   edx-django-utils
+pyperclip==1.11.0
+    # via
+    #   -r requirements/quality.txt
+    #   fastmcp
 pyproject-api==1.9.0
     # via
     #   -r requirements/ci.txt
@@ -381,10 +511,16 @@ pytest-cov==6.1.1
     # via -r requirements/quality.txt
 pytest-django==4.11.1
     # via -r requirements/quality.txt
-python-dotenv==1.1.1
+python-dotenv==1.2.1
     # via
     #   -r requirements/quality.txt
+    #   fastmcp
     #   litellm
+    #   pydantic-settings
+python-multipart==0.0.20
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 python-slugify==8.0.4
     # via
     #   -r requirements/quality.txt
@@ -400,43 +536,75 @@ pyyaml==6.0.3
     #   edx-django-release-util
     #   edx-i18n-tools
     #   huggingface-hub
-referencing==0.37.0
+    #   jsonschema-path
+referencing==0.36.2
     # via
     #   -r requirements/quality.txt
     #   jsonschema
+    #   jsonschema-path
     #   jsonschema-specifications
-regex==2025.9.18
+regex==2025.11.3
     # via
     #   -r requirements/quality.txt
     #   tiktoken
 requests==2.32.5
     # via
     #   -r requirements/quality.txt
-    #   huggingface-hub
+    #   jsonschema-path
     #   tiktoken
-rpds-py==0.27.1
+rfc3339-validator==0.1.4
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-schema-validator
+rich==14.2.0
+    # via
+    #   -r requirements/quality.txt
+    #   cyclopts
+    #   fastmcp
+    #   rich-rst
+rich-rst==1.3.2
+    # via
+    #   -r requirements/quality.txt
+    #   cyclopts
+rpds-py==0.30.0
     # via
     #   -r requirements/quality.txt
     #   jsonschema
     #   referencing
+shellingham==1.5.4
+    # via
+    #   -r requirements/quality.txt
+    #   huggingface-hub
 six==1.17.0
     # via
     #   -r requirements/quality.txt
     #   edx-django-release-util
     #   edx-lint
+    #   rfc3339-validator
 sniffio==1.3.1
     # via
     #   -r requirements/quality.txt
-    #   anyio
     #   openai
 snowballstemmer==2.2.0
     # via
     #   -r requirements/quality.txt
     #   pydocstyle
+soupsieve==2.8
+    # via
+    #   -r requirements/quality.txt
+    #   beautifulsoup4
 sqlparse==0.5.3
     # via
     #   -r requirements/quality.txt
     #   django
+sse-starlette==3.0.3
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
+starlette==0.50.0
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 stevedore==5.4.1
     # via
     #   -r requirements/quality.txt
@@ -466,30 +634,48 @@ tqdm==4.67.1
     #   -r requirements/quality.txt
     #   huggingface-hub
     #   openai
+typer-slim==0.20.0
+    # via
+    #   -r requirements/quality.txt
+    #   huggingface-hub
 typing-extensions==4.13.2
     # via
     #   -r requirements/quality.txt
     #   aiosignal
     #   anyio
+    #   beautifulsoup4
     #   edx-opaque-keys
+    #   exceptiongroup
     #   huggingface-hub
     #   openai
+    #   openapi-core
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
+    #   typer-slim
     #   typing-inspection
 typing-inspection==0.4.2
     # via
     #   -r requirements/quality.txt
     #   pydantic
+    #   pydantic-settings
 urllib3==2.5.0
     # via
     #   -r requirements/quality.txt
     #   requests
+uvicorn==0.38.0
+    # via
+    #   -r requirements/quality.txt
+    #   mcp
 virtualenv==20.30.0
     # via
     #   -r requirements/ci.txt
     #   tox
+werkzeug==3.1.1
+    # via
+    #   -r requirements/quality.txt
+    #   openapi-core
 wheel==0.45.1
     # via
     #   -r requirements/pip-tools.txt

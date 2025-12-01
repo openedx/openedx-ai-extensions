@@ -8,7 +8,7 @@ aiohappyeyeballs==2.6.1
     # via
     #   -r requirements/test.txt
     #   aiohttp
-aiohttp==3.13.0
+aiohttp==3.13.2
     # via
     #   -r requirements/test.txt
     #   litellm
@@ -20,11 +20,14 @@ annotated-types==0.7.0
     # via
     #   -r requirements/test.txt
     #   pydantic
-anyio==4.11.0
+anyio==4.12.0
     # via
     #   -r requirements/test.txt
     #   httpx
+    #   mcp
     #   openai
+    #   sse-starlette
+    #   starlette
 asgiref==3.8.1
     # via
     #   -r requirements/test.txt
@@ -37,30 +40,41 @@ attrs==25.4.0
     # via
     #   -r requirements/test.txt
     #   aiohttp
+    #   cyclopts
     #   jsonschema
     #   referencing
-certifi==2025.10.5
+authlib==1.6.5
+    # via
+    #   -r requirements/test.txt
+    #   fastmcp
+beautifulsoup4==4.14.2
+    # via -r requirements/test.txt
+certifi==2025.11.12
     # via
     #   -r requirements/test.txt
     #   httpcore
     #   httpx
     #   requests
-cffi==1.17.1
+cffi==2.0.0
     # via
     #   -r requirements/test.txt
+    #   cryptography
     #   pynacl
 charset-normalizer==3.4.4
     # via
     #   -r requirements/test.txt
     #   requests
-click==8.3.0
+click==8.3.1
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/test.txt
     #   click-log
     #   code-annotations
     #   edx-django-utils
     #   edx-lint
     #   litellm
+    #   typer-slim
+    #   uvicorn
 click-log==0.4.0
     # via edx-lint
 code-annotations==1.8.2
@@ -71,6 +85,14 @@ coverage[toml]==7.8.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
+cryptography==46.0.3
+    # via
+    #   -r requirements/test.txt
+    #   authlib
+cyclopts==4.3.0
+    # via
+    #   -r requirements/test.txt
+    #   fastmcp
 dill==0.3.9
     # via pylint
 distro==1.9.0
@@ -114,7 +136,17 @@ djangorestframework==3.16.0
 dnspython==2.7.0
     # via
     #   -r requirements/test.txt
+    #   email-validator
     #   pymongo
+docstring-parser==0.17.0
+    # via
+    #   -r requirements/test.txt
+    #   cyclopts
+docutils==0.21.2
+    # via
+    #   -c requirements/constraints.txt
+    #   -r requirements/test.txt
+    #   rich-rst
 edx-django-release-util==1.5.0
     # via
     #   -r requirements/test.txt
@@ -127,7 +159,17 @@ edx-opaque-keys==2.12.0
     # via -r requirements/test.txt
 edx-submissions==3.12.1
     # via -r requirements/test.txt
-fastuuid==0.13.5
+email-validator==2.3.0
+    # via
+    #   -r requirements/test.txt
+    #   pydantic
+exceptiongroup==1.3.1
+    # via
+    #   -r requirements/test.txt
+    #   fastmcp
+fastmcp==2.12.5
+    # via -r requirements/test.txt
+fastuuid==0.14.0
     # via
     #   -r requirements/test.txt
     #   litellm
@@ -140,15 +182,20 @@ frozenlist==1.8.0
     #   -r requirements/test.txt
     #   aiohttp
     #   aiosignal
-fsspec==2025.9.0
+fsspec==2025.10.0
     # via
     #   -r requirements/test.txt
     #   huggingface-hub
+grpcio==1.67.1
+    # via
+    #   -r requirements/test.txt
+    #   litellm
 h11==0.16.0
     # via
     #   -r requirements/test.txt
     #   httpcore
-hf-xet==1.1.10
+    #   uvicorn
+hf-xet==1.2.0
     # via
     #   -r requirements/test.txt
     #   huggingface-hub
@@ -159,9 +206,16 @@ httpcore==1.0.9
 httpx==0.28.1
     # via
     #   -r requirements/test.txt
+    #   fastmcp
+    #   huggingface-hub
     #   litellm
+    #   mcp
     #   openai
-huggingface-hub==0.35.3
+httpx-sse==0.4.3
+    # via
+    #   -r requirements/test.txt
+    #   mcp
+huggingface-hub==1.1.7
     # via
     #   -r requirements/test.txt
     #   tokenizers
@@ -169,6 +223,7 @@ idna==3.11
     # via
     #   -r requirements/test.txt
     #   anyio
+    #   email-validator
     #   httpx
     #   requests
     #   yarl
@@ -180,6 +235,10 @@ iniconfig==2.1.0
     # via
     #   -r requirements/test.txt
     #   pytest
+isodate==0.7.2
+    # via
+    #   -r requirements/test.txt
+    #   openapi-core
 isort==6.0.1
     # via
     #   -r requirements/quality.in
@@ -189,7 +248,7 @@ jinja2==3.1.6
     #   -r requirements/test.txt
     #   code-annotations
     #   litellm
-jiter==0.11.0
+jiter==0.12.0
     # via
     #   -r requirements/test.txt
     #   openai
@@ -201,18 +260,49 @@ jsonschema==4.25.1
     # via
     #   -r requirements/test.txt
     #   litellm
+    #   mcp
+    #   openapi-core
+    #   openapi-schema-validator
+    #   openapi-spec-validator
+jsonschema-path==0.3.4
+    # via
+    #   -r requirements/test.txt
+    #   openapi-core
+    #   openapi-spec-validator
 jsonschema-specifications==2025.9.1
     # via
     #   -r requirements/test.txt
     #   jsonschema
-litellm==1.78.2
+    #   openapi-schema-validator
+lazy-object-proxy==1.12.0
+    # via
+    #   -r requirements/test.txt
+    #   openapi-spec-validator
+litellm==1.80.7
     # via -r requirements/test.txt
+markdown-it-py==4.0.0
+    # via
+    #   -r requirements/test.txt
+    #   rich
 markupsafe==3.0.3
     # via
     #   -r requirements/test.txt
     #   jinja2
+    #   werkzeug
 mccabe==0.7.0
     # via pylint
+mcp==1.16.0
+    # via
+    #   -r requirements/test.txt
+    #   fastmcp
+mdurl==0.1.2
+    # via
+    #   -r requirements/test.txt
+    #   markdown-it-py
+more-itertools==10.8.0
+    # via
+    #   -r requirements/test.txt
+    #   openapi-core
 multidict==6.7.0
     # via
     #   -r requirements/test.txt
@@ -222,10 +312,27 @@ newrelic==10.9.0
     # via
     #   -r requirements/test.txt
     #   edx-django-utils
-openai==2.4.0
+openai==2.8.1
     # via
     #   -r requirements/test.txt
     #   litellm
+openapi-core==0.19.5
+    # via
+    #   -r requirements/test.txt
+    #   fastmcp
+openapi-pydantic==0.5.1
+    # via
+    #   -r requirements/test.txt
+    #   fastmcp
+openapi-schema-validator==0.6.3
+    # via
+    #   -r requirements/test.txt
+    #   openapi-core
+    #   openapi-spec-validator
+openapi-spec-validator==0.7.2
+    # via
+    #   -r requirements/test.txt
+    #   openapi-core
 openedx-atlas==0.7.0
     # via -r requirements/test.txt
 packaging==25.0
@@ -233,6 +340,14 @@ packaging==25.0
     #   -r requirements/test.txt
     #   huggingface-hub
     #   pytest
+parse==1.20.2
+    # via
+    #   -r requirements/test.txt
+    #   openapi-core
+pathable==0.4.4
+    # via
+    #   -r requirements/test.txt
+    #   jsonschema-path
 pbr==6.1.1
     # via
     #   -r requirements/test.txt
@@ -254,21 +369,33 @@ psutil==7.0.0
     #   edx-django-utils
 pycodestyle==2.13.0
     # via -r requirements/quality.in
-pycparser==2.22
+pycparser==2.23
     # via
     #   -r requirements/test.txt
     #   cffi
-pydantic==2.11.10
+pydantic[email]==2.11.10
     # via
     #   -r requirements/test.txt
+    #   fastmcp
     #   litellm
+    #   mcp
     #   openai
+    #   openapi-pydantic
+    #   pydantic-settings
 pydantic-core==2.33.2
     # via
     #   -r requirements/test.txt
     #   pydantic
+pydantic-settings==2.12.0
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 pydocstyle==6.3.0
     # via -r requirements/quality.in
+pygments==2.19.2
+    # via
+    #   -r requirements/test.txt
+    #   rich
 pylint==3.3.6
     # via
     #   edx-lint
@@ -291,6 +418,10 @@ pynacl==1.5.0
     # via
     #   -r requirements/test.txt
     #   edx-django-utils
+pyperclip==1.11.0
+    # via
+    #   -r requirements/test.txt
+    #   fastmcp
 pytest==8.3.5
     # via
     #   -r requirements/test.txt
@@ -300,10 +431,16 @@ pytest-cov==6.1.1
     # via -r requirements/test.txt
 pytest-django==4.11.1
     # via -r requirements/test.txt
-python-dotenv==1.1.1
+python-dotenv==1.2.1
     # via
     #   -r requirements/test.txt
+    #   fastmcp
     #   litellm
+    #   pydantic-settings
+python-multipart==0.0.20
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 python-slugify==8.0.4
     # via
     #   -r requirements/test.txt
@@ -318,41 +455,73 @@ pyyaml==6.0.3
     #   code-annotations
     #   edx-django-release-util
     #   huggingface-hub
-referencing==0.37.0
+    #   jsonschema-path
+referencing==0.36.2
     # via
     #   -r requirements/test.txt
     #   jsonschema
+    #   jsonschema-path
     #   jsonschema-specifications
-regex==2025.9.18
+regex==2025.11.3
     # via
     #   -r requirements/test.txt
     #   tiktoken
 requests==2.32.5
     # via
     #   -r requirements/test.txt
-    #   huggingface-hub
+    #   jsonschema-path
     #   tiktoken
-rpds-py==0.27.1
+rfc3339-validator==0.1.4
+    # via
+    #   -r requirements/test.txt
+    #   openapi-schema-validator
+rich==14.2.0
+    # via
+    #   -r requirements/test.txt
+    #   cyclopts
+    #   fastmcp
+    #   rich-rst
+rich-rst==1.3.2
+    # via
+    #   -r requirements/test.txt
+    #   cyclopts
+rpds-py==0.30.0
     # via
     #   -r requirements/test.txt
     #   jsonschema
     #   referencing
+shellingham==1.5.4
+    # via
+    #   -r requirements/test.txt
+    #   huggingface-hub
 six==1.17.0
     # via
     #   -r requirements/test.txt
     #   edx-django-release-util
     #   edx-lint
+    #   rfc3339-validator
 sniffio==1.3.1
     # via
     #   -r requirements/test.txt
-    #   anyio
     #   openai
 snowballstemmer==2.2.0
     # via pydocstyle
+soupsieve==2.8
+    # via
+    #   -r requirements/test.txt
+    #   beautifulsoup4
 sqlparse==0.5.3
     # via
     #   -r requirements/test.txt
     #   django
+sse-starlette==3.0.3
+    # via
+    #   -r requirements/test.txt
+    #   mcp
+starlette==0.50.0
+    # via
+    #   -r requirements/test.txt
+    #   mcp
 stevedore==5.4.1
     # via
     #   -r requirements/test.txt
@@ -378,26 +547,44 @@ tqdm==4.67.1
     #   -r requirements/test.txt
     #   huggingface-hub
     #   openai
+typer-slim==0.20.0
+    # via
+    #   -r requirements/test.txt
+    #   huggingface-hub
 typing-extensions==4.13.2
     # via
     #   -r requirements/test.txt
     #   aiosignal
     #   anyio
+    #   beautifulsoup4
     #   edx-opaque-keys
+    #   exceptiongroup
     #   huggingface-hub
     #   openai
+    #   openapi-core
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
+    #   typer-slim
     #   typing-inspection
 typing-inspection==0.4.2
     # via
     #   -r requirements/test.txt
     #   pydantic
+    #   pydantic-settings
 urllib3==2.5.0
     # via
     #   -r requirements/test.txt
     #   requests
+uvicorn==0.38.0
+    # via
+    #   -r requirements/test.txt
+    #   mcp
+werkzeug==3.1.1
+    # via
+    #   -r requirements/test.txt
+    #   openapi-core
 yarl==1.22.0
     # via
     #   -r requirements/test.txt
