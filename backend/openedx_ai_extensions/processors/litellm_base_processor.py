@@ -36,6 +36,27 @@ class LitellmProcessor:
         for key, value in settings.AI_EXTENSIONS[self.config_profile].items():
             self.extra_params[key.lower()] = value
 
+        self.mcp_configs = {}
+        if hasattr(settings, "AI_EXTENSIONS_MCP_CONFIGS"):
+            allowed_mcp_configs = self.config.get("mcp_configs", [])
+            if allowed_mcp_configs:
+                self.mcp_configs = {
+                    key: value
+                    for key, value in settings.AI_EXTENSIONS_MCP_CONFIGS.items()
+                    if key in allowed_mcp_configs
+                }
+                self.extra_params["tools"] = [
+                    {
+                        "type": "mcp",
+                        "server_label": key,
+                        **value,
+                    }
+                    for key, value in self.mcp_configs.items()
+                ]
+
+        if not self.api_key:
+            logger.error("AI API key not configured")
+
     def process(self, *args, **kwargs):
         """Process based on configured function - must be implemented by subclasses"""
         raise NotImplementedError("Subclasses must implement process method")
