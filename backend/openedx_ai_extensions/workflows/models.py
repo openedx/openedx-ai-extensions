@@ -12,7 +12,9 @@ from django.db import models
 from django.utils import timezone
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
+from openedx_ai_extensions.utils import emit_event
 from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file
+from openedx_ai_extensions.workflows.processors.xapi.constants import EVENT_NAME_WORKFLOW_COMPLETED
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -247,6 +249,14 @@ class AIWorkflow(models.Model):
                     }
                 }
             )
+
+            event_data = {
+                "workflow_id": self.get_natural_key(),
+                "action": self.action,
+                "course_id": self.course_id,
+            }
+
+            emit_event(EVENT_NAME_WORKFLOW_COMPLETED, self.course_id, event_data)
 
             return result
 
