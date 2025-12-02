@@ -15,3 +15,8 @@ def plugin_settings(settings):
 
     # Apply common settings
     common_settings(settings)
+
+    # Override with test-specific backends
+    settings.TRACK_MODULE_BACKEND = (
+        "openedx_ai_extensions.edxapp_wrapper.backends.track_module_test"
+    )
