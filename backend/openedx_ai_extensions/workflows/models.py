@@ -12,9 +12,9 @@ from django.db import models
 from django.utils import timezone
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
-from openedx_ai_extensions.utils import emit_event
 from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file
 from openedx_ai_extensions.workflows.processors.xapi.constants import EVENT_NAME_WORKFLOW_COMPLETED
+from openedx_ai_extensions.xapi_event import emit_event
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
