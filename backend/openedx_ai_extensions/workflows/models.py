@@ -237,6 +237,11 @@ class AIWorkflow(models.Model):
                 )
             result = getattr(orchestrator, self.action)(user_input)
 
+            # Emit event - will be filtered by whitelist processor and routed to xapi backend
+            config_filename = self.config.processor_config.get("_config_filename", self.action)
+            # Build a clean workflow ID using config filename and action
+            workflow_id = f"{config_filename}__{self.action}"
+
             return result
 
         except Exception as e:  # pylint: disable=broad-exception-caught

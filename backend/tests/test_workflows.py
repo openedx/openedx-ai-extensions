@@ -235,7 +235,9 @@ def test_workflow_find_workflow_for_context_no_config(mock_get_config, user):  #
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.workflows.orchestrators.MockResponse")
-def test_workflow_execute_success(mock_orchestrator_class, workflow_instance):  # pylint: disable=redefined-outer-name
+def test_workflow_execute_success(
+    mock_orchestrator_class, workflow_instance
+):  # pylint: disable=redefined-outer-name
     """
     Test AIWorkflow.execute method with successful execution.
     """

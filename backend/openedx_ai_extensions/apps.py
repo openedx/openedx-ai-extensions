@@ -17,6 +17,17 @@ class OpenedxAIExtensionsConfig(AppConfig):
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "openedx_ai_extensions"
+
+    def ready(self):
+        """
+        Import xAPI transformers to register them with the XApiTransformersRegistry.
+
+        This ensures that our custom event transformers are available when the
+        event-routing-backends processor looks them up.
+        """
+        # Import the transformers module to trigger the @register decorators
+        from openedx_ai_extensions.xapi import transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
+
     plugin_app = {
         "url_config": {
             "lms.djangoapp": {
