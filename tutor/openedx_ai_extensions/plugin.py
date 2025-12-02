@@ -34,7 +34,7 @@ hooks.Filters.DOCKER_BUILD_COMMAND.add_items([
 ])
 
 @hooks.Filters.IMAGES_BUILD_MOUNTS.add()
-def _mount_sample_plugin(mounts, path):
+def _mount_plugin(mounts, path):
     """Mount the sample plugin source code for development."""
     mounts += [("openedx-ai-extensions-backend", "/openedx/openedx-ai-extensions/backend")]
     return mounts
@@ -60,6 +60,20 @@ PLUGIN_SLOTS.add_items(
             widget: {
                 id: 'ai-assist-button',
                 priority: 10,
+                type: DIRECT_PLUGIN,
+                RenderWidget: ConfigurableAIAssistance,
+            },
+          }""",
+        ),
+        (
+            "authoring",
+            "org.openedx.frontend.authoring.course_unit_sidebar.v2",
+            """
+          {
+            op: PLUGIN_OPERATIONS.Insert,
+            widget: {
+                id: 'ai-assist-button-course-outline-sidebar',
+                priority: 60,
                 type: DIRECT_PLUGIN,
                 RenderWidget: ConfigurableAIAssistance,
             },

@@ -1,0 +1,39 @@
+{
+  "orchestrator_class": "ThreadedLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_unit_content",
+      "char_limit": 300
+    },
+    "ResponsesProcessor": {
+      "function": "chat_with_context",
+      "config": "openai"
+    },
+    "SubmissionProcessor": {
+      "function": "get_chat_history",
+      "max_context_messages": 3
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "Open Chat",
+          "customMessage": "Chat with an AI teaching assistant",
+          "action": null
+        }
+      },
+      "response": {
+        "component": "AISidebarResponse",
+        "config": {
+          "customMessage": "AI powered assistant"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
+      }
+    }
+  }
+}

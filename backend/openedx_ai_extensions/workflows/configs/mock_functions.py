@@ -11,12 +11,15 @@ import re
 from typing import Optional
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
 
 def _fake_get_config_from_file(
-    cls, action: str, course_id: Optional[str] = None, unit_id: Optional[str] = None
+    cls, action: str, course_id: Optional[str] = None, location_id: Optional[str] = None
 ):
     """
     Fake method to simulate loading config from file.
@@ -34,8 +37,11 @@ def _fake_get_config_from_file(
     """
     # Define the default configuration file path
     DEFAULT_CONFIG_FILE = "default.json"
+    if getattr(settings, "SERVICE_VARIANT", "lms") == "cms":
+        DEFAULT_CONFIG_FILE = "default_cms.json"
+
     configs = None
-    location = unit_id
+    location = location_id
 
     # Try to find a matching config file from proxy settings
     if location:
@@ -67,7 +73,7 @@ def _fake_get_config_from_file(
     return cls(
         action=action,
         course_id=course_id,
-        unit_id=unit_id,
+        location_id=location_id,
         orchestrator_class=configs["orchestrator_class"],
         processor_config=configs.get("processor_config", {}),
         actuator_config=configs.get("actuator_config", {}),

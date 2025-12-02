@@ -8,3 +8,5 @@ edx-opaque-keys        # Open edX CourseKeyField
 litellm            # LLM Gateway to provide model access
 
 openedx-atlas
+edx-submissions
+beautifulsoup4

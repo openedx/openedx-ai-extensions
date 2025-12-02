@@ -4,35 +4,21 @@ LLM Processing using LiteLLM for multiple providers
 
 import logging
 
-from django.conf import settings
 from litellm import completion
+
+from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
 
 logger = logging.getLogger(__name__)
 
 
-class LLMProcessor:
-    """Handles AI/LLM processing operations"""
+class LLMProcessor(LitellmProcessor):
+    """Handles AI/LLM processing operations using completion API"""
 
-    def __init__(self, config=None):
-        config = config or {}
-
-        class_name = self.__class__.__name__
-        self.config = config.get(class_name, {})
-
-        self.config_profile = self.config.get("config", "default")
-
-        # Extract API configuration once during initialization
-        self.api_key = settings.AI_EXTENSIONS[self.config_profile]["API_KEY"]
-        self.model = settings.AI_EXTENSIONS[self.config_profile]["LITELLM_MODEL"]
-        self.timeout = settings.AI_EXTENSIONS[self.config_profile]["TIMEOUT"]
-        self.temperature = settings.AI_EXTENSIONS[self.config_profile]["TEMPERATURE"]
-        self.max_tokens = settings.AI_EXTENSIONS[self.config_profile]["MAX_TOKENS"]
-
-        if not self.api_key:
-            logger.error("AI API key not configured")
-
-    def process(self, input_data):
+    def process(self, *args, **kwargs):
         """Process based on configured function"""
+        # Accept flexible arguments to match base class signature
+        input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
+
         function_name = self.config.get("function", "summarize_content")
         function = getattr(self, function_name)
         return function(input_data)
@@ -57,12 +43,7 @@ class LLMProcessor:
             }
 
             # Add optional parameters only if configured
-            if self.temperature is not None:
-                completion_params["temperature"] = self.temperature
-            if self.max_tokens is not None:
-                completion_params["max_tokens"] = self.max_tokens
-            if self.timeout is not None:
-                completion_params["timeout"] = self.timeout
+            completion_params.update(self.extra_params)
 
             response = completion(**completion_params)
             content = response.choices[0].message.content
