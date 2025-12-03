@@ -2,6 +2,7 @@
 Tests for the SubmissionProcessor module.
 """
 
+import json
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -161,12 +162,12 @@ def test_process_retrieves_existing_submissions(
     mock_submissions = [
         {
             "uuid": "submission-1",
-            "answer": {"messages": [{"role": "user", "content": "Hello"}]},
+            "answer": json.dumps([{"role": "user", "content": "Hello"}]),
             "created_at": "2025-01-01T00:00:00Z",
         },
         {
             "uuid": "submission-2",
-            "answer": {"messages": [{"role": "assistant", "content": "Hi there!"}]},
+            "answer": json.dumps([{"role": "assistant", "content": "Hi there!"}]),
             "created_at": "2025-01-01T00:01:00Z",
         },
     ]
@@ -203,22 +204,22 @@ def test_process_respects_max_context_messages_limit(
     mock_submissions = [
         {
             "uuid": "submission-1",
-            "answer": {"messages": [{"role": "user", "content": "Message 1"}]},
+            "answer": json.dumps([{"role": "user", "content": "Message 1"}]),
             "created_at": "2025-01-01T00:00:00Z",
         },
         {
             "uuid": "submission-2",
-            "answer": {"messages": [{"role": "assistant", "content": "Response 1"}]},
+            "answer": json.dumps([{"role": "assistant", "content": "Response 1"}]),
             "created_at": "2025-01-01T00:01:00Z",
         },
         {
             "uuid": "submission-3",
-            "answer": {"messages": [{"role": "user", "content": "Message 2"}]},
+            "answer": json.dumps([{"role": "user", "content": "Message 2"}]),
             "created_at": "2025-01-01T00:02:00Z",
         },
         {
             "uuid": "submission-4",
-            "answer": {"messages": [{"role": "assistant", "content": "Response 2"}]},
+            "answer": json.dumps([{"role": "assistant", "content": "Response 2"}]),
             "created_at": "2025-01-01T00:03:00Z",
         },
     ]
@@ -267,22 +268,22 @@ def test_process_handles_malformed_submission_data(
     mock_submissions = [
         {
             "uuid": "submission-1",
-            "answer": {"messages": [{"role": "user", "content": "Valid message"}]},
+            "answer": json.dumps([{"role": "user", "content": "Valid message"}]),
             "created_at": "2025-01-01T00:00:00Z",
         },
         {
             "uuid": "submission-2",
-            "answer": {},  # Missing messages key
+            "answer": json.dumps({}),  # Missing messages key
             "created_at": "2025-01-01T00:01:00Z",
         },
         {
             "uuid": "submission-3",
-            "answer": {"messages": None},  # None messages
+            "answer": json.dumps({"messages": None}),  # None messages
             "created_at": "2025-01-01T00:02:00Z",
         },
         {
             "uuid": "submission-4",
-            "answer": None,  # None answer
+            "answer": "null",  # JSON null
             "created_at": "2025-01-01T00:03:00Z",
         },
     ]

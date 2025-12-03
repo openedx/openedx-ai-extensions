@@ -97,9 +97,6 @@ class ResponsesProcessor(LitellmProcessor):
                 self.user_session.remote_response_id = response_id
                 self.user_session.save()
 
-            if initialize:
-                system_msgs = [msg for msg in completion_params.get("input", []) if msg["role"] == "system"]
-
             response = {
                 "response": content,
                 "params_used": completion_params,
@@ -107,7 +104,9 @@ class ResponsesProcessor(LitellmProcessor):
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
+            # Include system messages when initializing a new thread to add it to submissions for non-OpenAI providers
             if initialize:
+                system_msgs = [msg for msg in completion_params.get("input", []) if msg["role"] == "system"]
                 response["system_messages"] = system_msgs
             return response
 

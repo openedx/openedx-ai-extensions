@@ -91,7 +91,6 @@ class EducatorAssistantProcessor(LitellmProcessor):
             prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions or "")
 
         result = self._call_completion_api(prompt)
-        logger.info(f"LLM quiz generation result: {result}")
         tokens_used = result.get("tokens_used", 0)
 
         # if response is not json serializable, try 3 times to fix it
