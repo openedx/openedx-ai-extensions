@@ -142,11 +142,11 @@ const ConfigurableAIAssistance = ({
         ...additionalProps,
       });
 
-      // Get request message from config
       const requestMessage = config?.config?.customMessage
         || config?.config?.requestMessage
-        || null;
+        || 'Provide learning assistance for this content';
 
+      let buffer = '';
       // Make API call
       const data = await callWorkflowService({
         context: contextData,
@@ -156,8 +156,13 @@ const ConfigurableAIAssistance = ({
           requestId: `ai-request-${Date.now()}`,
           courseId: contextData.courseId,
         },
+        onStreamChunk: (chunk) => {
+          setIsLoading(false);
+          setHasAsked(true);
+          buffer += chunk;
+          setResponse(buffer);
+        },
       });
-
       // Handle response
       if (data.response) {
         setResponse(data.response);
@@ -177,6 +182,8 @@ const ConfigurableAIAssistance = ({
         setResponse(JSON.stringify(data, null, 2));
         setHasAsked(true);
       }
+
+      setHasAsked(true);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[ConfigurableAIAssistance] AI Assistant Error:', err);

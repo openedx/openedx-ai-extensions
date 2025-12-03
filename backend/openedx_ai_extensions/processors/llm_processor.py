@@ -20,38 +20,69 @@ class LLMProcessor(LitellmProcessor):
         input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
 
         function_name = self.config.get("function", "summarize_content")
+        stream = self.config.get("stream", False)
         function = getattr(self, function_name)
-        return function(input_data)
+        return function(input_data, stream=stream)
 
-    def _call_completion_api(self, system_role, user_content):
-        """
-        General method to call LiteLLM completion API
-        Handles configuration and returns standardized response
-        """
+    def _handle_streaming_completion(self, response):
+        """Handles the streaming logic, yielding byte strings."""
         try:
-            # Build completion parameters
-            completion_params = {
-                "messages": [
-                    {"role": "system", "content": system_role},
-                    {"role": "user", "content": user_content},
-                ],
-            }
+            for chunk in response:
+                content = chunk.choices[0].delta.content or ""
+                if content:
+                    yield content.encode('utf-8')
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            error_message = f"Error during AI streaming: {e}"
+            logger.error(error_message, exc_info=True)
+            yield f"\n[AI Error: {e}]".encode('utf-8')
 
-            # Add optional parameters only if configured
-            completion_params.update(self.extra_params)
+    def _handle_non_streaming_completion(self, response):
+        """Handles the non-streaming logic, returning a response dict."""
+        content = response.choices[0].message.content
+        return {
+            "response": content,
+            "tokens_used": response.usage.total_tokens if response.usage else 0,
+            "model_used": self.model,
+            "status": "success",
+        }
 
+    def _call_completion_api(self, system_role, user_content, stream):
+        """
+        General method to call LiteLLM completion API.
+        Returns either a generator (if stream=True) or a response dict.
+        """
+        if not self.api_key:
+            # Return an error dictionary if the API key is not configured
+            return {"error": "AI API key not configured"}
+
+        # Build completion parameters
+        completion_params = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_role},
+                {"role": "user", "content": user_content},
+            ],
+            "api_key": self.api_key,
+            "stream": stream,
+        }
+        # Add optional extra parameters
+        completion_params.update(self.extra_params)
+
+        try:
+            # 1. Call the LiteLLM API
             response = completion(**completion_params)
-            content = response.choices[0].message.content
 
-            return {
-                "response": content,
-                "tokens_used": response.usage.total_tokens if response.usage else 0,
-                "model_used": self.extra_params.get("model", "unknown"),
-                "status": "success",
-            }
+            # 2. Handle streaming response (Generator)
+            if stream:
+                return self._handle_streaming_completion(response)  # Return the generator object
+            else:
+                return self._handle_non_streaming_completion(response)  # Return the dictionary
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error calling LiteLLM: {e}")
+            # Catch errors that occur during the INITIAL API call (before streaming starts)
+            error_message = f"Error during initial AI completion call: {e}"
+            logger.error(error_message, exc_info=True)
+            # Always return a dictionary error in this outer block
             return {"error": f"AI processing failed: {str(e)}"}
 
     def summarize_content(self, content_text, user_query=""):  # pylint: disable=unused-argument
