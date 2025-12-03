@@ -33,6 +33,7 @@ const GetAIAssistanceButton = ({
   /**
    * Handle AI assistant request
    * Now completely flexible - works with any available context
+   * Streaming logic
    */
   const handleAskAI = useCallback(async () => {
     setIsLoading(true);
@@ -46,6 +47,7 @@ const GetAIAssistanceButton = ({
         ...props,
       });
 
+      let buffer = '';
       // Make API call with flexible parameters
       const data = await callWorkflowService({
         context: contextData,
@@ -55,12 +57,15 @@ const GetAIAssistanceButton = ({
           requestId: `ai-request-${Date.now()}`,
           courseId: contextData.courseId,
         },
+        onStreamChunk: (chunk) => {
+          setIsLoading(false);
+          setHasAsked(true);
+          buffer += chunk;
+          setResponse(buffer);
+        },
       });
 
-      // Store request ID for tracking
-      setRequestId(data.requestId);
-
-      // Flexible response handling - API decides what to return
+      if (data.requestId) { setRequestId(data.requestId); }
       if (data.response) {
         setResponse(data.response);
         setHasAsked(true); // Only set hasAsked on successful response
@@ -80,11 +85,14 @@ const GetAIAssistanceButton = ({
         setResponse(JSON.stringify(data, null, 2));
         setHasAsked(true);
       }
+
+      // Set final accumulated response text
+      setResponse(data.response || buffer);
+      setHasAsked(true);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('AI Assistant Error:', err);
-      const userFriendlyError = formatErrorMessage(err);
-      setError(userFriendlyError);
+      setError(formatErrorMessage(err));
       // DON'T set hasAsked to true on error - keep button available
     } finally {
       setIsLoading(false);

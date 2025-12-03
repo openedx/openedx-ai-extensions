@@ -216,7 +216,7 @@ class AIWorkflow(models.Model):
 
         return workflow, created
 
-    def execute(self, user_input) -> Dict[str, Any]:
+    def execute(self, user_input) -> dict[str, str | dict[str, str]] | Any:
         """
         Execute this workflow using its configured orchestrator
         This is where the actual AI processing happens
@@ -236,17 +236,6 @@ class AIWorkflow(models.Model):
                     f"Orchestrator '{orchestrator_name}' does not implement action '{self.action}'"
                 )
             result = getattr(orchestrator, self.action)(user_input)
-
-            # Add workflow metadata to result
-            result.update(
-                {
-                    "workflow_info": {
-                        # 'natural_key': self.get_natural_key(),
-                        # 'status': self.status,
-                        # 'current_step': self.current_step,
-                    }
-                }
-            )
 
             return result
 

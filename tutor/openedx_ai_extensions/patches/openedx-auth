@@ -11,12 +11,12 @@ AI_EXTENSIONS:
   {%- if AI_EXTENSIONS_OPENAI_API_KEY is defined %}
   openai:
     API_KEY: "{{ AI_EXTENSIONS_OPENAI_API_KEY }}"
-    LITELLM_MODEL: "{{ AI_EXTENSIONS_OPENAI_MODEL | default("gpt-4.1-mini") }}"
+    MODEL: "{{ AI_EXTENSIONS_OPENAI_MODEL | default("gpt-4.1-mini") }}"
   {%- endif %}
   {%- if AI_EXTENSIONS_ANTHROPIC_API_KEY is defined %}
   anthropic:
     API_KEY: "{{ AI_EXTENSIONS_ANTHROPIC_API_KEY }}"
-    LITELLM_MODEL: "{{ AI_EXTENSIONS_ANTHROPIC_MODEL | default("claude-3-haiku-20240307") }}"
+    MODEL: "{{ AI_EXTENSIONS_ANTHROPIC_MODEL | default("claude-3-haiku-20240307") }}"
   {%- endif %}
 {% endif %}
 {%- if AI_EXTENSIONS_MODEL_PROXY is defined %}

@@ -13,6 +13,7 @@ from openedx_ai_extensions.processors import (
     OpenEdXProcessor,
     SubmissionProcessor,
 )
+from openedx_ai_extensions.utils import is_generator
 
 if TYPE_CHECKING:
     from openedx_ai_extensions.workflows.models import AIWorkflowSession
@@ -44,22 +45,45 @@ class DirectLLMResponse(BaseOrchestrator):
     """Orchestrator that provides direct LLM responses."""
 
     def run(self, input_data):
-        # 1. Process with OpenEdX processor
+        """
+        Executes the content fetching, LLM processing, and handles streaming
+        or structured response return.
+        """
+
+        # --- 1. Process with OpenEdX processor (Content Fetching) ---
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
         content_result = openedx_processor.process(location_id=self.location_id)
 
-        if 'error' in content_result:
-            return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
+        # Early return on error during content fetching
+        if content_result and 'error' in content_result:
+            return {
+                'error': content_result['error'],
+                'status': 'OpenEdXProcessor error'
+            }
 
-        # 2. Process with LLM processor
+        # Convert fetched content to a string format suitable for the LLM
+        llm_input_content = str(content_result)
+
+        # --- 2. Process with LLM processor ---
         llm_processor = LLMProcessor(self.config.processor_config)
-        llm_result = llm_processor.process(context=str(content_result))
+        llm_result = llm_processor.process(context=llm_input_content)
 
-        if 'error' in llm_result:
-            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
+        # --- 4. Handle Streaming Response (Generator) ---
+        if is_generator(llm_result):
+            # If the LLM returns a generator, return its directly.
+            return llm_result
 
-        # 3. Return result
-        return {
+        # --- 5. Handle LLM Error (Non-Streaming) ---
+        if llm_result and 'error' in llm_result:
+            # Early return on error during non-streaming LLM processing
+            return {
+                'error': llm_result['error'],
+                'status': 'LLMProcessor error'
+            }
+
+        # --- 6. Return Structured Non-Streaming Result ---
+        # If execution reaches this point, we have a successful, non-streaming result (Dict).
+        response_data = {
             'response': llm_result.get('response', 'No response available'),
             'status': 'completed',
             'metadata': {
@@ -67,6 +91,7 @@ class DirectLLMResponse(BaseOrchestrator):
                 'model_used': llm_result.get('model_used')
             }
         }
+        return response_data
 
 
 class SessionBasedOrchestrator(BaseOrchestrator):
