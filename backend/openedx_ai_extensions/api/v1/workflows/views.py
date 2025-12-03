@@ -10,7 +10,7 @@ from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from rest_framework import status
@@ -18,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.workflows.models import AIWorkflow, AIWorkflowConfig
 
 from .serializers import AIWorkflowConfigSerializer
@@ -53,13 +54,13 @@ class AIGenericWorkflowView(View):
                 {"error": "Invalid JSON in request body", "status": "error"}, status=400
             )
 
-        context = body_data.get("context", {})
-
         # Extract obligatory workflow identification fields
         action = body_data.get("action")  # This value is set at the UI trigger
         course_id = body_data.get("courseId")
         user = request.user
         context = body_data.get("context", {})
+        user_input = body_data.get("user_input", {})
+        request_id = body_data.get("requestId", "no-request-id")
 
         # TODO: Remove verbose logging
         logger.info(
@@ -86,10 +87,15 @@ class AIGenericWorkflowView(View):
                 action=action, course_id=course_id, user=user, context=context
             )
 
-            result = workflow.execute(body_data.get("user_input", {}))
+            result = workflow.execute(user_input)
+
+            if is_generator(result):
+                return StreamingHttpResponse(
+                    result,
+                    content_type="text/plain"
+                )
 
             # TODO: this should go through a serializer so that every UI actuator receives a compatible object
-            request_id = body_data.get("requestId", "no-request-id")
             result.update(
                 {
                     "requestId": request_id,
