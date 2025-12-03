@@ -3,6 +3,7 @@ LLM Processing using LiteLLM for multiple providers
 """
 
 import logging
+import time
 
 from litellm import completion
 
@@ -20,57 +21,83 @@ class LLMProcessor(LitellmProcessor):
         input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
 
         function_name = self.config.get("function", "summarize_content")
+        stream = self.config.get("stream", False)
         function = getattr(self, function_name)
-        return function(input_data)
+        return function(input_data, stream=stream)
 
-    def _call_completion_api(self, system_role, user_content):
-        """
-        General method to call LiteLLM completion API
-        Handles configuration and returns standardized response
-        """
+    def _handle_streaming_completion(self, response):
+        """Handles the streaming logic, yielding byte strings."""
         try:
-            if not self.api_key:
-                return {"error": "AI API key not configured"}
+            for chunk in response:
+                content = chunk.choices[0].delta.content or ""
+                if content:
+                    yield content.encode('utf-8')
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            error_message = f"Error during AI streaming: {e}"
+            logger.error(error_message, exc_info=True)
+            yield f"\n[AI Error: {e}]".encode('utf-8')
 
-            # Build completion parameters
-            completion_params = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system_role},
-                    {"role": "user", "content": user_content},
-                ],
-                "api_key": self.api_key,
-            }
+    def _handle_non_streaming_completion(self, response):
+        """Handles the non-streaming logic, returning a response dict."""
+        content = response.choices[0].message.content
+        return {
+            "response": content,
+            "tokens_used": response.usage.total_tokens if response.usage else 0,
+            "model_used": self.model,
+            "status": "success",
+        }
 
-            # Add optional parameters only if configured
-            completion_params.update(self.extra_params)
+    def _call_completion_api(self, system_role, user_content, stream):
+        """
+        General method to call LiteLLM completion API.
+        Returns either a generator (if stream=True) or a response dict.
+        """
+        if not self.api_key:
+            # Return an error dictionary if the API key is not configured
+            return {"error": "AI API key not configured"}
 
+        # Build completion parameters
+        completion_params = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_role},
+                {"role": "user", "content": user_content},
+            ],
+            "api_key": self.api_key,
+            "stream": stream,
+        }
+        # Add optional extra parameters
+        completion_params.update(self.extra_params)
+
+        try:
+            # 1. Call the LiteLLM API
             response = completion(**completion_params)
-            content = response.choices[0].message.content
 
-            return {
-                "response": content,
-                "tokens_used": response.usage.total_tokens if response.usage else 0,
-                "model_used": self.model,
-                "status": "success",
-            }
+            # 2. Handle streaming response (Generator)
+            if stream:
+                return self._handle_streaming_completion(response)  # Return the generator object
+            else:
+                return self._handle_non_streaming_completion(response)  # Return the dictionary
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error calling LiteLLM: {e}")
+            # Catch errors that occur during the INITIAL API call (before streaming starts)
+            error_message = f"Error during initial AI completion call: {e}"
+            logger.error(error_message, exc_info=True)
+            # Always return a dictionary error in this outer block
             return {"error": f"AI processing failed: {str(e)}"}
 
-    def summarize_content(self, content_text, user_query=""):  # pylint: disable=unused-argument
+    def summarize_content(self, content_text, stream, user_query=""):  # pylint: disable=unused-argument
         """Summarize content using LiteLLM"""
         system_role = (
             "You are an academic assistant which helps students briefly "
             "summarize a unit of content of an online course."
         )
 
-        result = self._call_completion_api(system_role, content_text)
+        result = self._call_completion_api(system_role, content_text, stream=stream)
 
         return result
 
-    def explain_like_five(self, content_text, user_query=""):  # pylint: disable=unused-argument
+    def explain_like_five(self, content_text, stream, user_query=""):  # pylint: disable=unused-argument
         """
         Explain content in very simple terms, like explaining to a 5-year-old
         Short, simple language that anyone can understand
@@ -82,21 +109,43 @@ class LLMProcessor(LitellmProcessor):
             "Keep your explanation very brief - no more than 3-4 simple sentences."
         )
 
-        result = self._call_completion_api(system_role, content_text)
+        result = self._call_completion_api(system_role, content_text, stream=stream)
 
         return result
 
-    def openai_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
+    def openai_hello(self, content_text, stream, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call OpenAI API via LiteLLM"""
         system_role = "Greet the user and say hello world outlining which Llm model is being used!"
-        result = self._call_completion_api(system_role, content_text)
+        result = self._call_completion_api(system_role, content_text, stream=stream)
 
         return result
 
-    def anthropic_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
+    def anthropic_hello(self, content_text, stream, user_query=""):  # pylint: disable=unused-argument
         """Simple test function to call Anthropic API via LiteLLM"""
         system_role = "Greet the user and say hello world outlining which Llm model is being used!"
 
-        result = self._call_completion_api(system_role, content_text)
+        result = self._call_completion_api(system_role, content_text, stream=stream)
 
         return result
+
+    def long_streaming_test(self, content_text, stream, delay=0.5):  # pylint: disable=unused-argument
+        """
+        Test function to simulate long response generation in chunks.
+        Yields parts of the response over time to mimic streaming.
+        """
+        fake_chunks = [
+            "Hello, this is a test of the streaming response. ",
+            "We are sending the text in multiple parts, ",
+            "so the frontend can render it incrementally. ",
+            "Each part is sent with a delay to simulate token-by-token generation. ",
+            "This helps verify that your streaming UI works correctly."
+            "Hello, this is a test of the streaming response. ",
+            "We are sending the text in multiple parts, ",
+            "so the frontend can render it incrementally. ",
+            "Each part is sent with a delay to simulate token-by-token generation. ",
+            "This helps verify that your streaming UI works correctly."
+        ]
+
+        for chunk in fake_chunks:
+            yield chunk
+            time.sleep(delay)
