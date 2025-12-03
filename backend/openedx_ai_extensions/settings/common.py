@@ -35,6 +35,12 @@ def plugin_settings(settings):
     Args:
         settings (dict): Django settings object
     """
+
+    if not hasattr(settings, "AI_EXTENSIONS_MCP_CONFIGS"):
+        # Here we cannot update AI_EXTENSIONS_MCP_CONFIGS if we're already setting it with Tutor configs
+        # because 'openedx-common-settings' will override it
+        settings.AI_EXTENSIONS_MCP_CONFIGS = {}
+
     settings.CONTENT_LIBRARIES_MODULE_BACKEND = (
         "openedx_ai_extensions.edxapp_wrapper.backends.content_libraries_module_t_v1"
     )
