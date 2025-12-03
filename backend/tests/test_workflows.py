@@ -60,7 +60,7 @@ def workflow_config(db):  # pylint: disable=unused-argument
     config.course_id = "course-v1:edX+DemoX+Demo_Course"
     config.location_id = None
     config.orchestrator_class = "MockResponse"
-    config.processor_config = {"CompletionProcessor": {"function": "summarize_content"}}
+    config.processor_config = {"LLMProcessor": {"function": "summarize_content"}}
     config.actuator_config = {"UIComponents": {"request": {"component": "Button"}}}
     # Add Django model state to make it work with ForeignKey
     config._state = Mock()  # pylint: disable=protected-access
@@ -470,7 +470,7 @@ def test_mock_response_orchestrator(workflow_instance):  # pylint: disable=redef
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.workflows.orchestrators.OpenEdXProcessor")
-@patch("openedx_ai_extensions.workflows.orchestrators.CompletionProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 def test_direct_llm_response_orchestrator_success(
     mock_llm_processor_class,
     mock_openedx_processor_class,
@@ -488,7 +488,7 @@ def test_direct_llm_response_orchestrator_success(
     }
     mock_openedx_processor_class.return_value = mock_openedx
 
-    # Mock CompletionProcessor
+    # Mock LLMProcessor
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": "This is a summary",
@@ -527,14 +527,14 @@ def test_direct_llm_response_orchestrator_openedx_error(
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.workflows.orchestrators.OpenEdXProcessor")
-@patch("openedx_ai_extensions.workflows.orchestrators.CompletionProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 def test_direct_llm_response_orchestrator_llm_error(
     mock_llm_processor_class,
     mock_openedx_processor_class,
     workflow_instance,  # pylint: disable=redefined-outer-name
 ):
     """
-    Test DirectLLMResponse orchestrator with CompletionProcessor error.
+    Test DirectLLMResponse orchestrator with LLMProcessor error.
     """
     mock_openedx = Mock()
     mock_openedx.process.return_value = {"location_id": "unit-123"}
@@ -548,7 +548,7 @@ def test_direct_llm_response_orchestrator_llm_error(
     result = orchestrator.run({})
 
     assert "error" in result
-    assert result["status"] == "CompletionProcessor error"
+    assert result["status"] == "LLMProcessor error"
 
 
 @pytest.mark.django_db

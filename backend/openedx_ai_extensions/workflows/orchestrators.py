@@ -7,9 +7,9 @@ import logging
 from typing import TYPE_CHECKING
 
 from openedx_ai_extensions.processors import (
-    CompletionProcessor,
     ContentLibraryProcessor,
     EducatorAssistantProcessor,
+    LLMProcessor,
     OpenEdXProcessor,
     ResponsesProcessor,
     SubmissionProcessor,
@@ -58,11 +58,11 @@ class DirectLLMResponse(BaseOrchestrator):
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
 
         # 2. Process with LLM processor
-        llm_processor = CompletionProcessor(self.config.processor_config)
+        llm_processor = LLMProcessor(self.config.processor_config)
         llm_result = llm_processor.process(str(content_result))
 
         if 'error' in llm_result:
-            return {'error': llm_result['error'], 'status': 'CompletionProcessor error'}
+            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
 
         # 3. Return result
         return {
@@ -138,7 +138,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         llm_result = llm_processor.process(input_data)
 
         if 'error' in llm_result:
-            return {'error': llm_result['error'], 'status': 'CompletionProcessor error'}
+            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
 
         lib_key_str = input_data.get('library_id')
 

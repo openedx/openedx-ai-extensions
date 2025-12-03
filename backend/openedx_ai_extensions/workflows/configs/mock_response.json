@@ -3,7 +3,7 @@
   "processor_config": {
     "OpenEdXProcessor": {
     },
-    "CompletionProcessor": {
+    "LLMProcessor": {
     }
   },
   "actuator_config": {

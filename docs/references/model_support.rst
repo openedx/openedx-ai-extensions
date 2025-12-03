@@ -61,7 +61,7 @@ The following table shows which processors have been tested with each provider:
      - ✅
      - ✅
      - ✅
-   * - CompletionProcessor
+   * - LLMProcessor
      - ✅
      - ✅
      - ✅

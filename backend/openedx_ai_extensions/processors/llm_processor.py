@@ -11,7 +11,7 @@ from openedx_ai_extensions.processors.litellm_base_processor import LitellmProce
 logger = logging.getLogger(__name__)
 
 
-class CompletionProcessor(LitellmProcessor):
+class LLMProcessor(LitellmProcessor):
     """Handles AI/LLM processing operations using completion API"""
 
     def process(self, *args, **kwargs):
