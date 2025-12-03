@@ -56,9 +56,7 @@ class ResponsesProcessor(LitellmProcessor):
             chat_history.append({"role": "user", "content": user_query})
             completion_params["input"] = chat_history
         elif self.user_session and self.user_session.remote_response_id and self.provider == "openai":
-            completion_params["previous_response_id"] = (
-                self.user_session.remote_response_id
-            )
+            completion_params["previous_response_id"] = self.user_session.remote_response_id
             completion_params["input"] = [{"role": "user", "content": user_query}]
         else:
             # Initialize new thread with system role and context
@@ -66,9 +64,11 @@ class ResponsesProcessor(LitellmProcessor):
                 {"role": "system", "content": system_role},
                 {"role": "system", "content": context},
             ]
-            # requires a user message to start the thread
-            if self.provider != "openai":
-                completion_params["input"] += [{"role": "user", "content": "Hello"}]
+            # anthropic requires a user message to start the thread
+            if self.provider == "anthropic":
+                completion_params["input"] += [
+                    {"role": "user", "content": "Please provide the requested information based on the context above."}
+                ]
 
         # Add optional parameters only if configured
         completion_params.update(self.extra_params)

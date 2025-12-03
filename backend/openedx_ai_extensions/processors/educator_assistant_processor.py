@@ -6,7 +6,6 @@ import json
 import logging
 import os
 
-from django.conf import settings
 from litellm import completion
 
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
@@ -22,8 +21,10 @@ class EducatorAssistantProcessor(LitellmProcessor):
         self.context = context
         self.user = user
 
-    def process(self, input_data):
+    def process(self, *args, **kwargs):
         """Process based on configured function"""
+        # Accept flexible arguments to match base class signature
+        input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
         function_name = self.config.get("function")
         function = getattr(self, function_name)
         return function(input_data)
@@ -40,6 +41,11 @@ class EducatorAssistantProcessor(LitellmProcessor):
                     {"role": "system", "content": system_role},
                 ],
             }
+
+            if self.provider == "anthropic":
+                completion_params["messages"] += [
+                    {"role": "user", "content": "Please provide the requested information based on the context above."}
+                ]
 
             # Add optional parameters only if configured
             if self.extra_params:
@@ -84,6 +90,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
             prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions or "")
 
         result = self._call_completion_api(prompt)
+        logger.info(f"LLM quiz generation result: {result}")
         tokens_used = result.get("tokens_used", 0)
 
         # if response is not json serializable, try 3 times to fix it

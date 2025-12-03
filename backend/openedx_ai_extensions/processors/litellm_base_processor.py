@@ -27,8 +27,10 @@ class LitellmProcessor:
             )
         try:
             self.provider = settings.AI_EXTENSIONS[self.config_profile].get("MODEL").split("/")[0]
-        except Exception as e:
-            raise ValueError("MODEL setting must be in the format 'provider/model_name'. e.g., 'openai/gpt-4'")
+        except Exception as exc:
+            raise ValueError(
+                "MODEL setting must be in the format 'provider/model_name'. e.g., 'openai/gpt-4'"
+            ) from exc
 
         self.extra_params = {}
         for key, value in settings.AI_EXTENSIONS[self.config_profile].items():

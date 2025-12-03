@@ -7,9 +7,9 @@ import logging
 from typing import TYPE_CHECKING
 
 from openedx_ai_extensions.processors import (
+    CompletionProcessor,
     ContentLibraryProcessor,
     EducatorAssistantProcessor,
-    CompletionProcessor,
     OpenEdXProcessor,
     ResponsesProcessor,
     SubmissionProcessor,
