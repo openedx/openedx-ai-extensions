@@ -6,8 +6,11 @@
       "char_limit": 300
     },
     "LLMProcessor": {
-      "function": "explain_like_five",
-      "config": "default"
+      "function": "roll_me_dice",
+      "config": "default",
+      "mcp_configs": [
+        "dice_server"
+      ]
     }
   },
   "actuator_config": {
