@@ -26,12 +26,10 @@ class LitellmProcessor:
         self.model = settings.AI_EXTENSIONS[self.config_profile]["LITELLM_MODEL"]
 
         self.extra_params = {}
-        if "TIMEOUT" in settings.AI_EXTENSIONS[self.config_profile]:
-            self.extra_params["timeout"] = settings.AI_EXTENSIONS[self.config_profile]["TIMEOUT"]
-        if "TEMPERATURE" in settings.AI_EXTENSIONS[self.config_profile]:
-            self.extra_params["temperature"] = settings.AI_EXTENSIONS[self.config_profile]["TEMPERATURE"]
-        if "MAX_TOKENS" in settings.AI_EXTENSIONS[self.config_profile]:
-            self.extra_params["max_tokens"] = settings.AI_EXTENSIONS[self.config_profile]["MAX_TOKENS"]
+        for key, value in settings.AI_EXTENSIONS[self.config_profile].items():
+            self.extra_params[key.lower()] = value
+
+        logger.info(f"TEST {self.extra_params}")
 
         if not self.api_key:
             logger.error("AI API key not configured")
