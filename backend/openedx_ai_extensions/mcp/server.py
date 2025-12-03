@@ -5,17 +5,18 @@ This module provides a Model Context Protocol (MCP) server that exposes
 tools and resources for AI assistants to interact with the OpenEdx system.
 """
 import logging
-from typing import Any
-from fastmcp import FastMCP, Context
-from starlette.responses import PlainTextResponse
-from starlette.requests import Request
 import random
-from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
+from datetime import datetime
+from typing import Any
+
+from fastmcp import FastMCP, Context
 from fastmcp.server.auth import BearerAuthProvider
-from fastmcp.server.auth.providers.jwt import JWTVerifier
-from fastmcp.server.dependencies import get_access_token, AccessToken
-from fastmcp.server.middleware.logging import LoggingMiddleware
+from fastmcp.server.auth.providers.jwt import JWTVerifier, StaticTokenVerifier
+from fastmcp.server.dependencies import AccessToken, get_access_token
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
+from fastmcp.server.middleware.logging import LoggingMiddleware
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
 logger = logging.getLogger(__name__)
 
@@ -41,4 +42,6 @@ mcp.add_middleware(ErrorHandlingMiddleware(
 @mcp.tool()
 def roll_dice(n_dice: int) -> list[int]:
     """Roll `n_dice` 6-sided dice and return the results."""
-    return [random.randint(1, 6) for _ in range(n_dice)]
+    roll = [random.randint(1, 6) for _ in range(n_dice)]
+    print(f'{datetime.now()}: roll {roll}')
+    return roll
