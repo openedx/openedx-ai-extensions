@@ -250,13 +250,12 @@ class AIWorkflow(models.Model):
                 }
             )
 
-            event_data = {
+            # Emit event - will be filtered by whitelist processor and routed to xapi backend
+            emit_event(EVENT_NAME_WORKFLOW_COMPLETED, self.course_id, {
                 "workflow_id": self.get_natural_key(),
                 "action": self.action,
                 "course_id": self.course_id,
-            }
-
-            emit_event(EVENT_NAME_WORKFLOW_COMPLETED, self.course_id, event_data)
+            })
 
             return result
 
