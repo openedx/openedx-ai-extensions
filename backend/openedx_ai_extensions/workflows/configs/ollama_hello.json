@@ -1,9 +1,11 @@
 {
-  "orchestrator_class": "MockResponse",
+  "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
     },
     "CompletionProcessor": {
+      "function": "greet_from_llm",
+      "config": "ollama"
     }
   },
   "actuator_config": {
@@ -11,14 +13,14 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Ask AI [config api]",
-          "customMessage": "A mocked response from the server [config api]"
+          "buttonText": "Hello [config api]",
+          "customMessage": "Ollama will say hello [config api]"
         }
       },
       "response": {
-        "component": "AISidebarResponse",
+        "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Sidebar Response [config api]"
+          "customMessage": "AI Assistant Response [config api]"
         }
       },
       "metadata": {

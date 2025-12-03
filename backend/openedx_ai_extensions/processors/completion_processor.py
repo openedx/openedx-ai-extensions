@@ -11,7 +11,7 @@ from openedx_ai_extensions.processors.litellm_base_processor import LitellmProce
 logger = logging.getLogger(__name__)
 
 
-class LLMProcessor(LitellmProcessor):
+class CompletionProcessor(LitellmProcessor):
     """Handles AI/LLM processing operations using completion API"""
 
     def process(self, *args, **kwargs):
@@ -29,17 +29,12 @@ class LLMProcessor(LitellmProcessor):
         Handles configuration and returns standardized response
         """
         try:
-            if not self.api_key:
-                return {"error": "AI API key not configured"}
-
             # Build completion parameters
             completion_params = {
-                "model": self.model,
                 "messages": [
                     {"role": "system", "content": system_role},
                     {"role": "user", "content": user_content},
                 ],
-                "api_key": self.api_key,
             }
 
             # Add optional parameters only if configured
@@ -51,7 +46,7 @@ class LLMProcessor(LitellmProcessor):
             return {
                 "response": content,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
-                "model_used": self.model,
+                "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
 

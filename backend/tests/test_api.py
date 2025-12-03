@@ -82,7 +82,7 @@ def workflow_config():
     config.course_id = "course-v1:edX+DemoX+Demo_Course"
     config.location_id = None
     config.orchestrator_class = "MockResponse"
-    config.processor_config = {"LLMProcessor": {"function": "summarize_content"}}
+    config.processor_config = {"CompletionProcessor": {"function": "summarize_content"}}
     config.actuator_config = {
         "UIComponents": {
             "request": {"component": "AIRequestComponent", "config": {"type": "text"}}

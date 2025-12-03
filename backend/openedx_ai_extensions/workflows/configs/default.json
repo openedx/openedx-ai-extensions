@@ -5,7 +5,7 @@
       "function": "get_unit_content",
       "char_limit": 300
     },
-    "LLMProcessor": {
+    "CompletionProcessor": {
       "function": "explain_like_five",
       "config": "default"
     }

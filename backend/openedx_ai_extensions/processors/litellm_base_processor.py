@@ -21,19 +21,23 @@ class LitellmProcessor:
 
         self.config_profile = self.config.get("config", "default")
 
-        # Extract API configuration once during initialization
-        self.api_key = settings.AI_EXTENSIONS[self.config_profile]["API_KEY"]
-        self.model = settings.AI_EXTENSIONS[self.config_profile]["LITELLM_MODEL"]
+        if "MODEL" not in settings.AI_EXTENSIONS[self.config_profile]:
+            raise ValueError(
+                f"AI_EXTENSIONS config '{self.config_profile}' missing 'MODEL' setting."
+            )
+        try:
+            self.provider = settings.AI_EXTENSIONS[self.config_profile].get("MODEL").split("/")[0]
+        except Exception as e:
+            raise ValueError("MODEL setting must be in the format 'provider/model_name'. e.g., 'openai/gpt-4'")
 
         self.extra_params = {}
         for key, value in settings.AI_EXTENSIONS[self.config_profile].items():
             self.extra_params[key.lower()] = value
 
-        logger.info(f"TEST {self.extra_params}")
-
-        if not self.api_key:
-            logger.error("AI API key not configured")
-
     def process(self, *args, **kwargs):
         """Process based on configured function - must be implemented by subclasses"""
         raise NotImplementedError("Subclasses must implement process method")
+
+    def get_provider(self):
+        """Return the configured provider"""
+        return self.provider

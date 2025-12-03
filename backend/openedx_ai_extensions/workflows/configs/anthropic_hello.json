@@ -3,7 +3,7 @@
   "processor_config": {
     "OpenEdXProcessor": {
     },
-    "LLMProcessor": {
+    "CompletionProcessor": {
       "function": "greet_from_llm",
       "config": "anthropic"
     }
