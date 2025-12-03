@@ -1,9 +1,8 @@
 """xAPI transformers for AI workflow events."""
 
-from event_routing_backends.processors.xapi.registry import XApiTransformersRegistry
-from event_routing_backends.processors.xapi.transformer import XApiTransformer
 from tincan import Activity, ActivityDefinition, LanguageMap, Verb
 
+from openedx_ai_extensions.edxapp_wrapper.event_routing_module import XApiTransformer, XApiTransformersRegistry
 from openedx_ai_extensions.workflows.processors.xapi import constants
 
 
@@ -24,8 +23,8 @@ class AIWorkflowCompletedTransformer(XApiTransformer):
         Returns:
             `Activity`
         """
-        workflow_id = self.get_data("data.workflow_id", True)
-        action = self.get_data("data.action") or "unknown_action"
+        workflow_id = self.get_data("workflow_id", True)
+        action = self.get_data("action") or "unknown_action"
 
         return Activity(
             id=self.get_object_iri("ai_workflow", workflow_id),
@@ -35,22 +34,3 @@ class AIWorkflowCompletedTransformer(XApiTransformer):
                 description=LanguageMap({constants.EN: "AI-powered workflow completed by learner"}),
             ),
         )
-
-    def get_context_activities(self):
-        """
-        Optionally include course context.
-        """
-        context_activities = super().get_context_activities()
-
-        course_id = self.get_data("data.course_id")
-        if course_id:
-            context_activities.grouping = [
-                Activity(
-                    id=self.get_object_iri("course", course_id),
-                    definition=ActivityDefinition(
-                        type="http://adlnet.gov/expapi/activities/course",
-                        name=LanguageMap({constants.EN: course_id}),
-                    ),
-                )
-            ]
-        return context_activities
