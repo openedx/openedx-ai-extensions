@@ -143,7 +143,7 @@ const ConfigurableAIAssistance = ({
 
       const requestMessage = config?.config?.customMessage
         || config?.config?.requestMessage
-        || null;
+        || 'Provide learning assistance for this content';
 
       let buffer = '';
       // Make API call
