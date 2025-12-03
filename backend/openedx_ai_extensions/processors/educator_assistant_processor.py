@@ -42,6 +42,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
                 ],
             }
 
+            # anthropic requires a user message
             if self.provider == "anthropic":
                 completion_params["messages"] += [
                     {"role": "user", "content": "Please provide the requested information based on the context above."}

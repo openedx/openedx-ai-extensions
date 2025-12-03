@@ -64,7 +64,8 @@ class ResponsesProcessor(LitellmProcessor):
                 {"role": "system", "content": system_role},
                 {"role": "system", "content": context},
             ]
-            # anthropic requires a user message to start the thread
+
+            # anthropic requires a user message
             if self.provider == "anthropic":
                 completion_params["input"] += [
                     {"role": "user", "content": "Please provide the requested information based on the context above."}

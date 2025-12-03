@@ -82,7 +82,7 @@ class CompletionProcessor(LitellmProcessor):
         return result
 
     def greet_from_llm(self, content_text, user_query=""):  # pylint: disable=unused-argument
-        """Simple test function to call OpenAI API via LiteLLM"""
+        """Simple test to greet from the LLM and mention which model is being used."""
         system_role = "Greet the user and say hello world outlining which Llm model is being used!"
         result = self._call_completion_api(system_role, content_text)
 
