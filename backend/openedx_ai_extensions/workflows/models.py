@@ -199,7 +199,7 @@ class AIWorkflow(models.Model):
         """
 
         # Extract location_id from context if present
-        location_id = extra_context.get("unitId")
+        location_id = unit_id
 
         # Get workflow configuration
         config = AIWorkflowConfig.get_config(action, course_id, location_id)
