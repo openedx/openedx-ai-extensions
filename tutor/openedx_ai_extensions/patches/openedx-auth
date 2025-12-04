@@ -19,13 +19,6 @@ AI_EXTENSIONS:
     LITELLM_MODEL: "{{ AI_EXTENSIONS_ANTHROPIC_MODEL | default("claude-3-haiku-20240307") }}"
   {%- endif %}
 {% endif %}
-{%- if AI_EXTENSIONS_MODEL_PROXY is defined %}
-AI_EXTENSIONS_MODEL_PROXY:
-  {%- for proxy in AI_EXTENSIONS_MODEL_PROXY %}
-  - location_regex: "{{ proxy.location_regex }}"
-    file: "{{ proxy.file }}"
-  {%- endfor %}
-{%- endif %}
 {%- if AI_EXTENSIONS_FIELD_FILTERS is defined %}
 AI_EXTENSIONS_FIELD_FILTERS:
   {%- if AI_EXTENSIONS_FIELD_FILTERS.allowed_fields is defined %}

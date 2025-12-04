@@ -143,11 +143,6 @@ class AIWorkflowConfig(models.Model):
         """
         service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
 
-        logger.info(
-            f"Looking for config: course_id={course_id}, location_id={location_id}, "
-            f"service_variant={service_variant}"
-        )
-
         # First, try to find a config with location_regex matching the location_id
         if location_id:
             # Get all configs for this course and service that have a location_regex
@@ -162,10 +157,8 @@ class AIWorkflowConfig(models.Model):
             for config in configs:
                 try:
                     if re.search(config.location_regex, location_id):
-                        logger.info(f"Found matching config with location_regex: {config.location_regex}")
                         return config
                 except re.error as e:
-                    logger.warning(f"Invalid regex pattern '{config.location_regex}': {e}")
                     continue
 
         # Fallback: try to find a general config (no location_regex)
@@ -176,10 +169,9 @@ class AIWorkflowConfig(models.Model):
                 course_id=course_id,
                 location_regex__isnull=True
             )
-            logger.info("Found general course config (no location_regex)")
             return response
         except cls.DoesNotExist:
-            logger.warning(f"No config found for course_id={course_id}, service_variant={service_variant}")
+            pass
 
         # Fallback: try to find a global config (no course_id, no location_regex)
         try:
@@ -189,10 +181,8 @@ class AIWorkflowConfig(models.Model):
                 course_id=CourseKeyField.Empty,
                 location_regex__isnull=True
             )
-            logger.info("Found global config (no course_id, no location_regex)")
             return response
         except cls.DoesNotExist:
-            logger.warning(f"No global config found for service_variant={service_variant}")
             return None
 
 

@@ -39,11 +39,6 @@ def plugin_settings(settings):
         "openedx_ai_extensions.edxapp_wrapper.backends.content_libraries_module_t_v1"
     )
 
-    if not hasattr(settings, "AI_EXTENSIONS_MODEL_PROXY"):
-        settings.AI_EXTENSIONS_MODEL_PROXY = [
-            {"location_regex": ".*", "file": "configs/default.json"},
-        ]
-
     # This prevents context window from growing too large while maintaining conversation continuity
     if not hasattr(settings, "AI_EXTENSIONS_MAX_CONTEXT_MESSAGES"):
         settings.AI_EXTENSIONS_MAX_CONTEXT_MESSAGES = 3
