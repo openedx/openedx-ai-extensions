@@ -29,17 +29,12 @@ class LLMProcessor(LitellmProcessor):
         Handles configuration and returns standardized response
         """
         try:
-            if not self.api_key:
-                return {"error": "AI API key not configured"}
-
             # Build completion parameters
             completion_params = {
-                "model": self.model,
                 "messages": [
                     {"role": "system", "content": system_role},
                     {"role": "user", "content": user_content},
                 ],
-                "api_key": self.api_key,
             }
 
             # Add optional parameters only if configured
@@ -51,7 +46,7 @@ class LLMProcessor(LitellmProcessor):
             return {
                 "response": content,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
-                "model_used": self.model,
+                "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
 
@@ -86,17 +81,9 @@ class LLMProcessor(LitellmProcessor):
 
         return result
 
-    def openai_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
-        """Simple test function to call OpenAI API via LiteLLM"""
+    def greet_from_llm(self, content_text, user_query=""):  # pylint: disable=unused-argument
+        """Simple test to greet from the LLM and mention which model is being used."""
         system_role = "Greet the user and say hello world outlining which Llm model is being used!"
-        result = self._call_completion_api(system_role, content_text)
-
-        return result
-
-    def anthropic_hello(self, content_text, user_query=""):  # pylint: disable=unused-argument
-        """Simple test function to call Anthropic API via LiteLLM"""
-        system_role = "Greet the user and say hello world outlining which Llm model is being used!"
-
         result = self._call_completion_api(system_role, content_text)
 
         return result

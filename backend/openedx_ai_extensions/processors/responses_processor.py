@@ -19,10 +19,11 @@ class ResponsesProcessor(LitellmProcessor):
         # Accept flexible arguments to match base class signature
         context = args[0] if len(args) > 0 else kwargs.get("context")
         input_data = args[1] if len(args) > 1 else kwargs.get("input_data")
+        chat_history = kwargs.get("chat_history", None)
 
         function_name = self.config.get("function", "chat_with_context")
         function = getattr(self, function_name)
-        return function(context, input_data)
+        return function(context, input_data, chat_history)
 
     def _extract_response_content(self, response):
         """Extract text content from LiteLLM response."""
@@ -37,7 +38,7 @@ class ResponsesProcessor(LitellmProcessor):
                     return content_item.text
         return ""
 
-    def _build_completion_params(self, system_role=None, context=None, user_query=None):
+    def _build_completion_params(self, system_role=None, context=None, user_query=None, chat_history=None):
         """
         Build completion parameters for LiteLLM responses API.
 
@@ -49,16 +50,13 @@ class ResponsesProcessor(LitellmProcessor):
         Returns:
             dict: Completion parameters ready for responses() call
         """
-        completion_params = {
-            "model": self.model,
-            "api_key": self.api_key,
-        }
+        completion_params = {}
 
-        # If we have an existing thread, continue it with user query
-        if self.user_session and self.user_session.remote_response_id:
-            completion_params["previous_response_id"] = (
-                self.user_session.remote_response_id
-            )
+        if chat_history:
+            chat_history.append({"role": "user", "content": user_query})
+            completion_params["input"] = chat_history
+        elif self.user_session and self.user_session.remote_response_id and self.provider == "openai":
+            completion_params["previous_response_id"] = self.user_session.remote_response_id
             completion_params["input"] = [{"role": "user", "content": user_query}]
         else:
             # Initialize new thread with system role and context
@@ -67,12 +65,18 @@ class ResponsesProcessor(LitellmProcessor):
                 {"role": "system", "content": context},
             ]
 
+            # anthropic requires a user message
+            if self.provider == "anthropic":
+                completion_params["input"] += [
+                    {"role": "user", "content": "Please provide the requested information based on the context above."}
+                ]
+
         # Add optional parameters only if configured
         completion_params.update(self.extra_params)
 
         return completion_params
 
-    def _call_responses_wrapper(self, completion_params):
+    def _call_responses_wrapper(self, completion_params, initialize=False):
         """
         Wrapper around LiteLLM responses() call that handles the API call and session updates.
 
@@ -83,9 +87,6 @@ class ResponsesProcessor(LitellmProcessor):
             dict: Standardized response with content, tokens_used, model_used, and status
         """
         try:
-            if not self.api_key:
-                return {"error": "AI API key not configured"}
-
             response = responses(**completion_params)
 
             response_id = getattr(response, "id", None)
@@ -96,12 +97,18 @@ class ResponsesProcessor(LitellmProcessor):
                 self.user_session.remote_response_id = response_id
                 self.user_session.save()
 
-            return {
+            response = {
                 "response": content,
+                "params_used": completion_params,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
-                "model_used": self.model,
+                "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
+            # Include system messages when initializing a new thread to add it to submissions for non-OpenAI providers
+            if initialize:
+                system_msgs = [msg for msg in completion_params.get("input", []) if msg["role"] == "system"]
+                response["system_messages"] = system_msgs
+            return response
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error calling LiteLLM: {e}")
@@ -121,9 +128,9 @@ class ResponsesProcessor(LitellmProcessor):
         completion_params = self._build_completion_params(
             system_role=system_role, context=context
         )
-        return self._call_responses_wrapper(completion_params)
+        return self._call_responses_wrapper(completion_params, initialize=True)
 
-    def continue_thread(self, user_query):
+    def continue_thread(self, user_query, chat_history=None):
         """
         Continue an existing conversation thread with a user query.
         Requires user_session with remote_response_id.
@@ -134,10 +141,10 @@ class ResponsesProcessor(LitellmProcessor):
         Returns:
             dict: Response from the API
         """
-        completion_params = self._build_completion_params(user_query=user_query)
+        completion_params = self._build_completion_params(user_query=user_query, chat_history=chat_history)
         return self._call_responses_wrapper(completion_params)
 
-    def chat_with_context(self, context, user_query=None):
+    def chat_with_context(self, context, user_query=None, chat_history=None):
         """
         Chat with context given from OpenEdx course content.
         Either initializes a new thread or continues an existing one.
@@ -145,6 +152,7 @@ class ResponsesProcessor(LitellmProcessor):
         Args:
             context: Course content context
             user_query: Optional user query to continue conversation
+            chat_history: Optional chat history for the conversation
 
         Returns:
             dict: Response from the API
@@ -180,6 +188,6 @@ class ResponsesProcessor(LitellmProcessor):
             """
 
         if self.user_session and self.user_session.remote_response_id:
-            return self.continue_thread(user_query)
+            return self.continue_thread(user_query, chat_history=chat_history)
 
         return self.initialize_thread(system_role, context)

@@ -5,7 +5,7 @@
     },
     "LLMProcessor": {
       "function": "greet_from_llm",
-      "config": "anthropic"
+      "config": "ollama"
     }
   },
   "actuator_config": {
@@ -14,7 +14,7 @@
         "component": "AIRequestComponent",
         "config": {
           "buttonText": "Hello [config api]",
-          "customMessage": "Claude will say hello [config api]"
+          "customMessage": "Ollama will say hello [config api]"
         }
       },
       "response": {
