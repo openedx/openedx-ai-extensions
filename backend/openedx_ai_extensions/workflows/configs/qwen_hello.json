@@ -1,0 +1,32 @@
+{
+  "orchestrator_class": "DirectLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+    },
+    "LLMProcessor": {
+      "function": "greet_from_llm",
+      "config": "qwen25"
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "Hello [config api]",
+          "customMessage": "Qwen will say hello [config api]"
+        }
+      },
+      "response": {
+        "component": "AIResponseComponent",
+        "config": {
+          "customMessage": "AI Assistant Response [config api]"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
+      }
+    }
+  }
+}
