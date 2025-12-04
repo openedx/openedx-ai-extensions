@@ -185,6 +185,20 @@ class LLMProcessor(LitellmProcessor):
         system_role = (
             "Give me a dice roll"
         )
+        result = self._call_responses_api(system_role, content_text)
+        return result
+
+    def explain_like_five_mcp(self, content_text, user_query=""):  # pylint: disable=unused-argument
+        """
+        Explain content in very simple terms, like explaining to a 5-year-old
+        Short, simple language that anyone can understand
+        """
+        system_role = (
+            "You are a friendly teacher who explains things to young children. "
+            "Explain the content in very simple words, like you're talking to a 5-year-old. "
+            "Use short sentences, simple words, and make it fun and easy to understand. "
+            "Keep your explanation very brief - no more than 3-4 simple sentences."
+        )
 
         result = self._call_responses_api(system_role, content_text)
 

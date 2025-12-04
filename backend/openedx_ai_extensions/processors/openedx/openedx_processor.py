@@ -30,6 +30,17 @@ class OpenEdXProcessor:
     def no_context(self, context):  # pylint: disable=unused-argument
         return {"display_name": "No context was provided."}
 
+    def get_context_locators(self, context):
+        """Write context in a way that is usable for an llm with tool access"""
+        location_id = context.get("extra_context", {}).get("unitId")
+
+        if not location_id:
+            return {"error": "Missing unitId in context"}
+
+        return {
+            "unit_id": location_id,
+        }
+
     def get_unit_content(self, context):
         """Extract unit content from Open edX modulestore"""
         try:

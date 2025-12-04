@@ -42,11 +42,15 @@ class LitellmProcessor:
                     for key, value in settings.AI_EXTENSIONS_MCP_CONFIGS.items()
                     if key in allowed_mcp_configs
                 }
+                # Get allowed_tools filter (optional)
+                allowed_tools = self.config.get("allowed_tools", None)
+
                 self.extra_params["tools"] = [
                     {
                         "type": "mcp",
                         "server_label": key,
                         **value,
+                        **({"allowed_tools": allowed_tools} if allowed_tools else {}),
                     }
                     for key, value in self.mcp_configs.items()
                 ]
