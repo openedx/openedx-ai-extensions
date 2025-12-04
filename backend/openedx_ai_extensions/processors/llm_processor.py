@@ -194,10 +194,12 @@ class LLMProcessor(LitellmProcessor):
         Short, simple language that anyone can understand
         """
         system_role = (
+            "Roll a dice, if the number is 2 or larger, then"
             "You are a friendly teacher who explains things to young children. "
             "Explain the content in very simple words, like you're talking to a 5-year-old. "
             "Use short sentences, simple words, and make it fun and easy to understand. "
             "Keep your explanation very brief - no more than 3-4 simple sentences."
+            "If the dice is 1 or less tell a short joke"
         )
 
         result = self._call_responses_api(system_role, content_text)
