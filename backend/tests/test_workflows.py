@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from opaque_keys.edx.django.models import CourseKeyField
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
@@ -56,9 +57,8 @@ def workflow_config(db):  # pylint: disable=unused-argument
     config = Mock(spec=AIWorkflowConfig)
     config.id = 1
     config.pk = 1
-    config.action = "summarize"
     config.course_id = "course-v1:edX+DemoX+Demo_Course"
-    config.location_id = None
+    config.location_regex = None
     config.orchestrator_class = "MockResponse"
     config.processor_config = {"LLMProcessor": {"function": "summarize_content"}}
     config.actuator_config = {"UIComponents": {"request": {"component": "Button"}}}
@@ -90,6 +90,79 @@ def workflow_instance(user, workflow_config, course_key):  # pylint: disable=red
 
 
 # ============================================================================
+# Validator Tests
+# ============================================================================
+
+
+def test_validate_orchestrator_class_valid():
+    """
+    Test validate_orchestrator_class with valid orchestrator class.
+    """
+    from openedx_ai_extensions.workflows.models import (  # pylint: disable=import-outside-toplevel
+        validate_orchestrator_class,
+    )
+
+    # Should not raise any exception
+    validate_orchestrator_class("MockResponse")
+    validate_orchestrator_class("DirectLLMResponse")
+    validate_orchestrator_class("ThreadedLLMResponse")
+
+
+def test_validate_orchestrator_class_not_found():
+    """
+    Test validate_orchestrator_class with non-existent orchestrator class.
+    """
+    from openedx_ai_extensions.workflows.models import (  # pylint: disable=import-outside-toplevel
+        validate_orchestrator_class,
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        validate_orchestrator_class("NonExistentOrchestrator")
+
+    assert "not found in orchestrators module" in str(exc_info.value)
+
+
+def test_validate_processor_config_valid():
+    """
+    Test validate_processor_config with valid processor configuration.
+    """
+    from openedx_ai_extensions.workflows.models import (  # pylint: disable=import-outside-toplevel
+        validate_processor_config,
+    )
+
+    # Should not raise any exception
+    validate_processor_config({})
+    validate_processor_config({"LLMProcessor": {"model": "gpt-4"}})
+    validate_processor_config(
+        {
+            "OpenEdXProcessor": {"timeout": 30},
+            "LLMProcessor": {"model": "gpt-3.5-turbo"},
+        }
+    )
+
+
+def test_validate_processor_config_invalid():
+    """
+    Test validate_processor_config with invalid processor configuration.
+    """
+    from openedx_ai_extensions.workflows.models import (  # pylint: disable=import-outside-toplevel
+        validate_processor_config,
+    )
+
+    # Test with non-dict value
+    with pytest.raises(ValidationError) as exc_info:
+        validate_processor_config("not a dict")
+
+    assert "processor_config must be a dictionary" in str(exc_info.value)
+
+    # Test with non-existent processor
+    with pytest.raises(ValidationError) as exc_info:
+        validate_processor_config({"NonExistentProcessor": {}})
+
+    assert "not found in processors module" in str(exc_info.value)
+
+
+# ============================================================================
 # AIWorkflowConfig Tests
 # ============================================================================
 
@@ -99,9 +172,14 @@ def test_workflow_config_str():
     """
     Test AIWorkflowConfig string representation.
     """
-    config = AIWorkflowConfig(action="summarize", course_id="course-v1:test")
-    assert "summarize" in str(config)
-    assert "Course: course-v1:test" in str(config)
+    course_key_obj = CourseKey.from_string("course-v1:edX+DemoX+Demo_Course")
+    config = AIWorkflowConfig(
+        orchestrator_class="MockResponse",
+        course_id=course_key_obj,
+    )
+    # The __str__ shows "global" when location_regex is None, regardless of course_id
+    assert "global" in str(config)
+    assert "[lms]" in str(config)
 
 
 @pytest.mark.django_db
@@ -109,32 +187,101 @@ def test_workflow_config_str_global():
     """
     Test AIWorkflowConfig string representation for global config.
     """
-    config = AIWorkflowConfig(action="summarize", course_id=None)
-    assert "summarize" in str(config)
-    assert "(Global)" in str(config)
+    config = AIWorkflowConfig(
+        orchestrator_class="MockResponse",
+        course_id=None,
+    )
+    assert "global" in str(config)
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models._fake_get_config_from_file")
-def test_workflow_config_get_config(mock_get_config):
+def test_workflow_config_get_config():
     """
     Test AIWorkflowConfig.get_config class method.
     """
-    mock_config = Mock(spec=AIWorkflowConfig)
-    mock_get_config.return_value = mock_config
+    course_key_obj = CourseKey.from_string("course-v1:edX+DemoX+Demo_Course")
+    location = BlockUsageLocator(course_key_obj, block_type="vertical", block_id="unit-123")
+
+    # Create a real config in the database
+    config = AIWorkflowConfig.objects.create(
+        orchestrator_class="MockResponse",
+        course_id=course_key_obj,
+        processor_config={},
+        actuator_config={},
+    )
 
     result = AIWorkflowConfig.get_config(
-        course_id="course-v1:edX+DemoX+Demo_Course",
-        location_id="unit-123",
+        course_id=str(course_key_obj),
+        location_id=str(location),
     )
 
-    assert result == mock_config
-    mock_get_config.assert_called_once_with(
-        AIWorkflowConfig,
-        action="summarize",
-        course_id="course-v1:edX+DemoX+Demo_Course",
-        location_id="unit-123",
+    assert result == config
+    assert result.orchestrator_class == "MockResponse"
+
+
+@pytest.mark.django_db
+def test_workflow_config_get_config_with_location_regex():
+    """
+    Test AIWorkflowConfig.get_config with location_regex matching.
+    """
+    course_key_obj = CourseKey.from_string("course-v1:edX+DemoX+Demo_Course")
+    location = BlockUsageLocator(
+        course_key_obj, block_type="vertical", block_id="unit-test-123"
     )
+
+    # Create a config with location_regex
+    config_with_regex = AIWorkflowConfig.objects.create(
+        orchestrator_class="DirectLLMResponse",
+        course_id=course_key_obj,
+        location_regex=r".*unit-test.*",
+        processor_config={},
+        actuator_config={},
+    )
+
+    # Create a fallback config without location_regex
+    AIWorkflowConfig.objects.create(
+        orchestrator_class="MockResponse",
+        course_id=course_key_obj,
+        location_regex=None,
+        processor_config={},
+        actuator_config={},
+    )
+
+    result = AIWorkflowConfig.get_config(
+        course_id=str(course_key_obj),
+        location_id=str(location),
+    )
+
+    # Should match the regex config, not the fallback
+    assert result == config_with_regex
+    assert result.orchestrator_class == "DirectLLMResponse"
+
+
+@pytest.mark.django_db
+def test_workflow_config_get_config_global_fallback():
+    """
+    Test AIWorkflowConfig.get_config falls back to global config.
+    """
+    course_key_obj = CourseKey.from_string("course-v1:edX+DemoX+Demo_Course")
+    location = BlockUsageLocator(course_key_obj, block_type="vertical", block_id="unit-999")
+
+    # Create only a global config (no course_id)
+    global_config = AIWorkflowConfig.objects.create(
+        orchestrator_class="ThreadedLLMResponse",
+        course_id=CourseKeyField.Empty,
+        location_regex=None,
+        processor_config={},
+        actuator_config={},
+    )
+
+    result = AIWorkflowConfig.get_config(
+        course_id=str(course_key_obj),
+        location_id=str(location),
+    )
+
+    # Should fall back to global config
+    assert result == global_config
+    assert result.orchestrator_class == "ThreadedLLMResponse"
 
 
 # ============================================================================

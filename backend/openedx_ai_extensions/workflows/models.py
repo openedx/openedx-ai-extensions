@@ -158,7 +158,7 @@ class AIWorkflowConfig(models.Model):
                 try:
                     if re.search(config.location_regex, location_id):
                         return config
-                except re.error as e:
+                except re.error:
                     continue
 
         # Fallback: try to find a general config (no location_regex)
