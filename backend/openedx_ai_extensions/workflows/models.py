@@ -3,19 +3,68 @@ AI Workflow models for managing flexible AI workflow execution
 """
 
 import logging
+import re
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
-from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file
-
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def validate_orchestrator_class(value):
+    """
+    Validate that the orchestrator_class is a valid BaseOrchestrator subclass.
+    """
+    from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
+
+    if not hasattr(orchestrators, value):
+        raise ValidationError(
+            f"Orchestrator class '{value}' not found in orchestrators module"
+        )
+
+    orchestrator_class = getattr(orchestrators, value)
+
+    if not isinstance(orchestrator_class, type):
+        raise ValidationError(
+            f"'{value}' is not a class"
+        )
+
+    if not issubclass(orchestrator_class, orchestrators.BaseOrchestrator):
+        raise ValidationError(
+            f"'{value}' must be a subclass of BaseOrchestrator"
+        )
+
+
+def validate_processor_config(value):
+    """
+    Validate that processor_config keys are valid processor class names.
+    """
+    from openedx_ai_extensions import processors  # pylint: disable=import-outside-toplevel
+
+    if not isinstance(value, dict):
+        raise ValidationError("processor_config must be a dictionary")
+
+    for processor_name in value.keys():
+        if not hasattr(processors, processor_name):
+            available_processors = ", ".join(processors.__all__)
+            raise ValidationError(
+                f"Processor class '{processor_name}' not found in processors module. "
+                f"Available processors: {available_processors}"
+            )
+
+        processor_class = getattr(processors, processor_name)
+
+        if not isinstance(processor_class, type):
+            raise ValidationError(
+                f"'{processor_name}' is not a class"
+            )
 
 
 class AIWorkflowConfig(models.Model):
@@ -24,33 +73,33 @@ class AIWorkflowConfig(models.Model):
 
     .. no_pii:
     """
-
-    action = models.CharField(
-        max_length=100,
-        help_text="Action identifier (e.g., 'summarize', 'quiz_generate')",
-    )
-    course_id = models.CharField(
+    course_id = CourseKeyField(
         max_length=255,
         null=True,
         blank=True,
-        help_text="Course this config applies to (null = global)",
+        help_text="Course associated with this session"
     )
 
-    location_id = UsageKeyField(
+    location_regex = models.CharField(
         max_length=255,
+        default=None,
         null=True,
         blank=True,
-        help_text="Location this config applies to",
+        help_text="Location regex this config applies to",
     )
 
     # Orchestrator configuration
     orchestrator_class = models.CharField(
-        max_length=255, help_text="Full class name of the orchestrator"
+        max_length=255,
+        help_text="Full class name of the orchestrator",
+        validators=[validate_orchestrator_class],
     )
 
     # Processor configuration (LLM settings, templates, etc.)
     processor_config = models.JSONField(
-        default=dict, help_text="LLM provider, model, template settings"
+        default=dict,
+        help_text="LLM provider, model, template settings",
+        validators=[validate_processor_config],
     )
 
     # Actuator configuration (response format, UI components, etc.)
@@ -58,36 +107,93 @@ class AIWorkflowConfig(models.Model):
         default=dict, help_text="Response formatting and UI settings"
     )
 
-    # Requirements
-    # TODO: how do we enforce context requirements
+    service_variant = models.CharField(
+        max_length=50,
+        choices=[
+            ("lms", "LMS"),
+            ("cms", "CMS"),
+        ],
+        default="lms",
+        help_text="Service variant to use for this workflow",
+    )
 
-    # Metadata
-    # TODO: add an enabled field
+    enabled = models.BooleanField(
+        default=True, help_text="Whether this workflow configuration is enabled"
+    )
 
     class Meta:
-        unique_together = ["action", "course_id"]
+        unique_together = ["course_id", "location_regex", "service_variant"]
         indexes = [
-            models.Index(fields=["action", "course_id"]),
+            models.Index(fields=["course_id", "location_regex", "service_variant"]),
         ]
 
     def __str__(self):
-        course_part = f" (Course: {self.course_id})" if self.course_id else " (Global)"
-        return f"{self.action}{course_part}"
+        location_part = (self.location_regex if self.location_regex else "global")
+        return f"AIWorkflowConfig for {location_part} [{self.service_variant}]"
 
     @classmethod
     def get_config(
-        cls, action: str, course_id: Optional[str] = None, location_id: Optional[str] = None
+        cls, course_id: Optional[str] = None, location_id: Optional[str] = None
     ):
         """
-        Get configuration for a specific action, course, and location.
+        Get configuration for a specific action, course, and location and service variant.
 
-        In real implementation, this would query the database.
-        Currently uses a fake method to simulate loading config from file.
+        First tries to find a config with a location_regex that matches the location_id.
+        If not found, falls back to a general config for the course (location_regex is null).
         """
-        # In real implementation, this would query the database
-        return _fake_get_config_from_file(
-            cls, action=action, course_id=course_id, location_id=location_id
+        service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
+
+        logger.info(
+            f"Looking for config: course_id={course_id}, location_id={location_id}, "
+            f"service_variant={service_variant}"
         )
+
+        # First, try to find a config with location_regex matching the location_id
+        if location_id:
+            # Get all configs for this course and service that have a location_regex
+            configs = cls.objects.filter(
+                enabled=True,
+                service_variant=service_variant,
+                course_id=course_id,
+                location_regex__isnull=False
+            )
+
+            # Check each config's regex against the location_id
+            for config in configs:
+                try:
+                    if re.search(config.location_regex, location_id):
+                        logger.info(f"Found matching config with location_regex: {config.location_regex}")
+                        return config
+                except re.error as e:
+                    logger.warning(f"Invalid regex pattern '{config.location_regex}': {e}")
+                    continue
+
+        # Fallback: try to find a general config (no location_regex)
+        try:
+            response = cls.objects.get(
+                enabled=True,
+                service_variant=service_variant,
+                course_id=course_id,
+                location_regex__isnull=True
+            )
+            logger.info("Found general course config (no location_regex)")
+            return response
+        except cls.DoesNotExist:
+            logger.warning(f"No config found for course_id={course_id}, service_variant={service_variant}")
+
+        # Fallback: try to find a global config (no course_id, no location_regex)
+        try:
+            response = cls.objects.get(
+                enabled=True,
+                service_variant=service_variant,
+                course_id=CourseKeyField.Empty,
+                location_regex__isnull=True
+            )
+            logger.info("Found global config (no course_id, no location_regex)")
+            return response
+        except cls.DoesNotExist:
+            logger.warning(f"No global config found for service_variant={service_variant}")
+            return None
 
 
 class AIWorkflow(models.Model):
@@ -181,7 +287,7 @@ class AIWorkflow(models.Model):
         location_id = context.get("unitId")
 
         # Get workflow configuration
-        config = AIWorkflowConfig.get_config(action, course_id, location_id)
+        config = AIWorkflowConfig.get_config(course_id, location_id)
         if not config:
             raise ValidationError(
                 f"No AIWorkflowConfiguration found for action '{action}' in course '{course_id}'"

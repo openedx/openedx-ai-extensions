@@ -124,7 +124,6 @@ def test_workflow_config_get_config(mock_get_config):
     mock_get_config.return_value = mock_config
 
     result = AIWorkflowConfig.get_config(
-        action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
         location_id="unit-123",
     )

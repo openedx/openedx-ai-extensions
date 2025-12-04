@@ -12,7 +12,6 @@ class AIWorkflowConfigSerializer(serializers.Serializer):
     Exposes only the UIComponents dict from actuator_config
     """
 
-    action = serializers.CharField()
     course_id = serializers.CharField(allow_null=True, required=False)
     ui_components = serializers.SerializerMethodField()
 

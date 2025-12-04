@@ -150,22 +150,22 @@ class AIWorkflowConfigView(APIView):
         except (json.JSONDecodeError, TypeError):
             context = {}
         location_id = context.get("unitId")
-        action = request.query_params.get("action")
-        course_id = request.query_params.get("courseId")
+        course_id = context.get("courseId")
 
         try:
             # Get workflow configuration
             config = AIWorkflowConfig.get_config(
-                action=action, course_id=course_id, location_id=location_id
+                course_id=course_id, location_id=location_id
             )
 
             if not config:
+                # No config found - return empty response so UI doesn't show components
                 return Response(
                     {
-                        "error": "No workflow configuration found for current context.",
-                        "status": "not_found",
+                        "status": "no_config",
+                        "timestamp": datetime.now().isoformat(),
                     },
-                    status=status.HTTP_404_NOT_FOUND,
+                    status=status.HTTP_200_OK,
                 )
 
             # Serialize the configuration
@@ -174,15 +174,9 @@ class AIWorkflowConfigView(APIView):
             response_data = serializer.data
             response_data["timestamp"] = datetime.now().isoformat()
 
-            logger.info(
-                "🤖 CONFIG RESPONSE:\n%s",
-                pprint.pformat(response_data, indent=2, width=100),
-            )
-
             return Response(response_data, status=status.HTTP_200_OK)
 
         except ValidationError as e:
-            logger.warning("🤖 CONFIG VALIDATION ERROR: %s", str(e))
             return Response(
                 {
                     "error": str(e),
@@ -193,7 +187,6 @@ class AIWorkflowConfigView(APIView):
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("🤖 CONFIG ERROR: %s", str(e))
             return Response(
                 {
                     "error": str(e),

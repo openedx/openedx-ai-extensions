@@ -24,6 +24,11 @@ export const fetchConfiguration = async ({
     signal,
   });
 
+  // Handle no_config status - return null to hide components
+  if (data.status === 'no_config') {
+    return null;
+  }
+
   // Extract config from nested response structure
   if (data.ui_components) {
     // Return both request and response configurations
