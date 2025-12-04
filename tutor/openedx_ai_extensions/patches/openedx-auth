@@ -42,3 +42,12 @@ AI_EXTENSIONS_FIELD_FILTERS:
     {%- endfor %}
   {%- endif %}
 {%- endif %}
+{%- if AI_EXTENSIONS_MCP_CONFIGS is defined %}
+AI_EXTENSIONS_MCP_CONFIGS:
+  {%- for mcp_key, mcp_config in AI_EXTENSIONS_MCP_CONFIGS.items() %}
+  {{ mcp_key }}:
+    {%- for key, value in mcp_config.items() %}
+    {{ key }}: "{{ value }}"
+    {%- endfor %}
+  {%- endfor %}
+{%- endif %}
