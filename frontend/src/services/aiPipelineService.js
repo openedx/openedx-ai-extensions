@@ -61,16 +61,16 @@ const extractUnitIdFromUrl = () => {
  */
 export const prepareContextData = ({
   sequence = null,
-  // eslint-disable-next-line no-unused-vars
   courseId = null, // not included directly in context
   unitId = null, // included in context
   ...extraProps
 } = {}) => {
   const resolvedUnitId = unitId || extractUnitIdFromUrl();
-
+  const resolvedCourseId = courseId || extractCourseIdFromUrl();
   const contextData = {
     // Context that the backend expects
     unitId: resolvedUnitId,
+    courseId: resolvedCourseId,
 
     // Environment info
     timestamp: new Date().toISOString(),
@@ -191,6 +191,9 @@ export const callWorkflowService = async ({
   // Add optional fields if provided
   if (context) {
     requestPayload.context = context;
+    if (!requestPayload.courseId && context.courseId) {
+      requestPayload.courseId = context.courseId;
+    }
   }
   if (action) {
     requestPayload.action = action;
