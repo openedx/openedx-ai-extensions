@@ -20,31 +20,32 @@ class OpenEdXProcessor:
         # Find specific config using class name
         class_name = self.__class__.__name__
         self.config = processor_config.get(class_name, {})
+        self.context = {}
 
     def process(self, context):
         """Process based on configured function"""
         function_name = self.config.get("function", "no_context")
         function = getattr(self, function_name)
-        return function(context)
+        self.context = context
 
-    def no_context(self, context):  # pylint: disable=unused-argument
+        return function()
+
+    def no_context(self):
         return {"display_name": "No context was provided."}
 
-    def get_unit_content(self, context):
+    def get_unit_content(self):
         """Extract unit content from Open edX modulestore"""
         try:
             # pylint: disable=import-error,import-outside-toplevel
             from xmodule.modulestore.django import modulestore
 
-            location_id = context.get("extra_context", {}).get("unitId")
-
-            if not location_id:
+            if not self.context.get("location_id"):
                 return {"error": "Missing unitId in context"}
 
             # Get char_limit from config. Useful during development
             char_limit = self.config.get("char_limit", None)
 
-            unit_key = UsageKey.from_string(location_id)
+            unit_key = UsageKey.from_string(self.context.get("location_id"))
             store = modulestore()
             unit = store.get_item(unit_key)
 

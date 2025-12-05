@@ -83,7 +83,6 @@ def workflow_instance(user, workflow_config, course_key):  # pylint: disable=red
         course_id=str(course_key),
         location_id=location,
         config=workflow_config,
-        extra_context={"unitId": str(location)},
         context_data={},
     )
     return workflow
@@ -201,13 +200,12 @@ def test_workflow_find_workflow_for_context(
     location = BlockUsageLocator(
         course_key_obj, block_type="vertical", block_id="unit1"
     )
-    context = {"unitId": str(location)}
 
     workflow, created = AIWorkflow.find_workflow_for_context(
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
+        location_id=location,
         user=user,
-        extra_context=context,
     )
 
     assert workflow is not None
@@ -230,7 +228,6 @@ def test_workflow_find_workflow_for_context_no_config(mock_get_config, user):  #
             action="nonexistent",
             course_id="course-v1:edX+DemoX+Demo_Course",
             user=user,
-            extra_context={},
         )
 
     assert "No AIWorkflowConfiguration found" in str(exc_info.value)
@@ -700,3 +697,23 @@ def test_threaded_llm_response_orchestrator_history_error(
 
     assert "error" in result
     assert result["status"] == "SubmissionProcessor error"
+
+
+@pytest.mark.django_db
+def test_workflow_update_context_multiple_times(workflow_instance):  # pylint: disable=redefined-outer-name
+    """
+    Test AIWorkflow.update_context method called multiple times.
+    """
+    workflow_instance.update_context(step1="initialized", status="active")
+    assert workflow_instance.context_data["step1"] == "initialized"
+    assert workflow_instance.context_data["status"] == "active"
+
+    workflow_instance.update_context(step2="processing", tokens=50)
+    assert workflow_instance.context_data["step1"] == "initialized"
+    assert workflow_instance.context_data["step2"] == "processing"
+    assert workflow_instance.context_data["status"] == "active"
+    assert workflow_instance.context_data["tokens"] == 50
+
+    workflow_instance.update_context(status="completed", tokens=100)
+    assert workflow_instance.context_data["status"] == "completed"
+    assert workflow_instance.context_data["tokens"] == 100
