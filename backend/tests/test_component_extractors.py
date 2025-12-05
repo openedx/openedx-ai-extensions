@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from django.conf import settings
 
 from openedx_ai_extensions.processors.component_extractors import (
+    _check_show_answer,
     _extract_embeds,
     _extract_iframes,
     _extract_images,
@@ -207,7 +208,7 @@ def test_extract_html_info():
 def test_extract_problem_info():
     """Test extraction of Problem blocks uses html_to_text."""
     block = make_block(category="problem", data="<p>Q?</p>", display_name="Prob")
-    result = extract_problem_info(block)
+    result = extract_problem_info(block, show_answer=True)
     assert result["type"] == "problem"
     assert "Q?" in result["text"]
 
@@ -277,3 +278,47 @@ def test_extract_generic_info_filters_fields(monkeypatch):
     result = extract_generic_info(block)["fields"]
     assert "title" in result
     assert "skip_me" not in result
+
+
+# -------------------------------------------------------------------------
+# _check_show_answer
+# -------------------------------------------------------------------------
+
+def test_check_show_answer_always():
+    """Return True only for 'always'."""
+    assert _check_show_answer("always")
+    assert not _check_show_answer("never")
+    assert not _check_show_answer(False)
+    assert not _check_show_answer("auto")
+
+
+# -------------------------------------------------------------------------
+# Problem extractor with show_answer variations
+# -------------------------------------------------------------------------
+
+def test_extract_problem_info_show_answer_true():
+    """Return problem text including hints/solutions when show_answer=True."""
+    block = make_block(category="problem", data="<p>Q?</p><solution>42</solution>", display_name="Prob")
+    result = extract_problem_info(block, show_answer=True)
+    assert "[Solution]" in result["text"]
+    assert "Q?" in result["text"]
+
+
+def test_extract_problem_info_show_answer_false():
+    """Return problem text hiding hints/solutions when show_answer=False."""
+    block = make_block(category="problem", data="<p>Q?</p><solution>42</solution>", display_name="Prob")
+    result = extract_problem_info(block, show_answer=False)
+    assert "[Solution]" not in result["text"]
+    assert "Q?" in result["text"]
+
+
+def test_extract_problem_info_show_answer_auto():
+    """Return problem text respecting block.showanswer via auto mode."""
+    block = make_block(category="problem", data="<p>Q?</p><solution>42</solution>", display_name="Prob")
+    block.showanswer = "always"
+    result = extract_problem_info(block, show_answer="auto")
+    assert "[Solution]" in result["text"]
+
+    block.showanswer = "never"
+    result2 = extract_problem_info(block, show_answer="auto")
+    assert "[Solution]" not in result2["text"]
