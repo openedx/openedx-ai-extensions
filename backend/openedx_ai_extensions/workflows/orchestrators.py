@@ -242,11 +242,25 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # 3. Process with LLM processor
         llm_processor = ResponsesProcessor(self.config.processor_config, self.session)
+
+        chat_history = []
+        if llm_processor.get_provider() != "openai":
+            chat_history = submission_processor.get_full_message_history()
+
         llm_result = llm_processor.process(
-            context=str(content_result), input_data=input_data
+            context=str(content_result), input_data=input_data, chat_history=chat_history
         )
 
-        submission_processor.update_chat_submission(llm_result.get("response"), input_data)
+        messages = [
+            {"role": "assistant", "content": llm_result.get("response", "")},
+            {"role": "user", "content": input_data}
+        ]
+        if llm_processor.get_provider() != "openai":
+            system_messages = llm_result.get("system_messages", {})
+            for msg in system_messages:
+                messages.insert(0, {"role": msg["role"], "content": msg["content"]})
+
+        submission_processor.update_chat_submission(messages)
 
         if "error" in llm_result:
             return {"error": llm_result["error"], "status": "ResponsesProcessor error"}

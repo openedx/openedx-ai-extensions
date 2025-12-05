@@ -39,7 +39,7 @@ class SubmissionProcessor:
         function = getattr(self, function_name)
         return function(context, input_data)
 
-    def _proccess_messages(self, current_messages_count=0):
+    def _process_messages(self, current_messages_count=0, use_max_context=True):
         """
         Retrieve messages from submissions.
         If current_messages_count > 0, return only new messages not already loaded.
@@ -58,7 +58,7 @@ class SubmissionProcessor:
         # Extract all messages from all submissions
         # get_submissions returns newest first, so we need to reverse to get chronological order
         for submission in reversed(submissions):
-            submission_messages = submission["answer"]
+            submission_messages = json.loads(submission["answer"])
             # Remove metadata if present
             if submission_messages and isinstance(submission_messages, list):
                 submission_messages_copy = submission_messages.copy()
@@ -90,11 +90,15 @@ class SubmissionProcessor:
 
             # Calculate the slice to get the next batch of older messages
             # We want messages from [end - current_count - max_context : end - current_count]
-            start_index = max(
-                0,
-                len(all_messages) - current_messages_count - self.max_context_messages,
-            )
-            end_index = len(all_messages) - current_messages_count
+            if use_max_context:
+                start_index = max(
+                    0,
+                    len(all_messages) - current_messages_count - self.max_context_messages,
+                )
+                end_index = len(all_messages) - current_messages_count
+            else:
+                start_index = 0
+                end_index = len(all_messages) - current_messages_count
 
             new_messages = all_messages[start_index:end_index]
             has_more = start_index > 0
@@ -105,9 +109,12 @@ class SubmissionProcessor:
             return new_messages, has_more
         else:
             # Initial load: return most recent messages
-            messages = (
-                all_messages[-self.max_context_messages:] if all_messages else []
-            )
+            if use_max_context:
+                messages = (
+                    all_messages[-self.max_context_messages:] if all_messages else []
+                )
+            else:
+                messages = all_messages if all_messages else []
             has_more = len(all_messages) > len(messages)
 
             return messages, has_more
@@ -118,7 +125,7 @@ class SubmissionProcessor:
         Returns the most recent messages up to max_context_messages.
         """
         if self.user_session.local_submission_id:
-            messages, has_more = self._proccess_messages()
+            messages, has_more = self._process_messages()
 
             return {
                 "response": json.dumps(
@@ -153,7 +160,7 @@ class SubmissionProcessor:
                 except (ValueError, TypeError):
                     current_messages_count = 0
 
-            new_messages, has_more = self._proccess_messages(
+            new_messages, has_more = self._process_messages(
                 current_messages_count=current_messages_count
             )
 
@@ -172,21 +179,13 @@ class SubmissionProcessor:
             logger.error(f"Error retrieving previous messages: {e}")
             return {"error": f"Failed to load previous messages: {str(e)}"}
 
-    def update_chat_submission(self, llm_response, user_query):
+    def update_chat_submission(self, messages):
         """
         Update the submission with the LLM response.
         Truncates message history to keep only the most recent messages while
         preserving references to previous submission IDs.
         """
 
-        messages = [
-            {"role": "assistant", "content": llm_response},
-        ]
-
-        if user_query:
-            messages.insert(0, {"role": "user", "content": user_query})
-
-        # Track previous submission IDs for reference
         previous_submission_ids = []
 
         if self.user_session.local_submission_id:
@@ -231,7 +230,7 @@ class SubmissionProcessor:
         """
         submission = submissions_api.create_submission(
             student_item_dict=self.student_item_dict,
-            answer=data,
+            answer=json.dumps(data),
             attempt_number=1,
         )
         self.user_session.local_submission_id = submission["uuid"]
@@ -246,3 +245,13 @@ class SubmissionProcessor:
                 self.user_session.local_submission_id
             )
         return None
+
+    def get_full_message_history(self):
+        """
+        Retrieve the full message history for the current submission.
+        """
+        if self.user_session.local_submission_id:
+            messages, _ = self._process_messages(use_max_context=False)
+            return messages
+        else:
+            return None

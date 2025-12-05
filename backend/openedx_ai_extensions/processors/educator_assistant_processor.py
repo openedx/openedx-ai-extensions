@@ -6,42 +6,25 @@ import json
 import logging
 import os
 
-from django.conf import settings
 from litellm import completion
+
+from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
 
 logger = logging.getLogger(__name__)
 
 
-class EducatorAssistantProcessor:
+class EducatorAssistantProcessor(LitellmProcessor):
     """Handles AI/LLM processing operations"""
 
-    def __init__(self, config=None, user=None, context=None):
-        config = config or {}
-
-        class_name = self.__class__.__name__
-        self.config = config.get(class_name, {})
-        self.user = user
+    def __init__(self, config=None, user=None, context=None, user_session=None):
+        super().__init__(config=config, user_session=user_session)
         self.context = context
+        self.user = user
 
-        self.config_profile = self.config.get("config", "default")
-
-        # Extract API configuration once during initialization
-        self.api_key = settings.AI_EXTENSIONS[self.config_profile]['API_KEY']
-        self.model = settings.AI_EXTENSIONS[self.config_profile]['LITELLM_MODEL']
-
-        self.extra_params = {}
-        if hasattr(settings.AI_EXTENSIONS[self.config_profile], 'TIMEOUT'):
-            self.extra_params['timeout'] = settings.AI_EXTENSIONS[self.config_profile]['TIMEOUT']
-        if hasattr(settings.AI_EXTENSIONS[self.config_profile], 'TEMPERATURE'):
-            self.extra_params['temperature'] = settings.AI_EXTENSIONS[self.config_profile]['TEMPERATURE']
-        if hasattr(settings.AI_EXTENSIONS[self.config_profile], 'MAX_TOKENS'):
-            self.extra_params['max_tokens'] = settings.AI_EXTENSIONS[self.config_profile]['MAX_TOKENS']
-
-        if not self.api_key:
-            logger.error("AI API key not configured")
-
-    def process(self, input_data):
+    def process(self, *args, **kwargs):
         """Process based on configured function"""
+        # Accept flexible arguments to match base class signature
+        input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
         function_name = self.config.get("function")
         function = getattr(self, function_name)
         return function(input_data)
@@ -52,17 +35,18 @@ class EducatorAssistantProcessor:
         Handles configuration and returns standardized response
         """
         try:
-            if not self.api_key:
-                return {"error": "AI API key not configured"}
-
             # Build completion parameters
             completion_params = {
-                "model": self.model,
                 "messages": [
                     {"role": "system", "content": system_role},
                 ],
-                "api_key": self.api_key,
             }
+
+            # anthropic requires a user message
+            if self.provider == "anthropic":
+                completion_params["messages"] += [
+                    {"role": "user", "content": "Please provide the requested information based on the context above."}
+                ]
 
             # Add optional parameters only if configured
             if self.extra_params:
@@ -74,7 +58,7 @@ class EducatorAssistantProcessor:
             return {
                 "response": content,
                 "tokens_used": response.usage.total_tokens if response.usage else 0,
-                "model_used": self.model,
+                "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
 
@@ -122,12 +106,12 @@ class EducatorAssistantProcessor:
                     return {
                         "error": "Failed to parse AI response as JSON after multiple attempts.",
                         "tokens_used": tokens_used,
-                        "model_used": self.model,
+                        "model_used": self.extra_params.get("model", "unknown"),
                     }
 
         return {
             "response": response,
             "tokens_used": tokens_used,
-            "model_used": self.model,
+            "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }
