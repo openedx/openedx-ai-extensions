@@ -207,7 +207,7 @@ def test_workflow_find_workflow_for_context(
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
         user=user,
-        context=context,
+        extra_context=context,
     )
 
     assert workflow is not None
@@ -230,7 +230,7 @@ def test_workflow_find_workflow_for_context_no_config(mock_get_config, user):  #
             action="nonexistent",
             course_id="course-v1:edX+DemoX+Demo_Course",
             user=user,
-            context={},
+            extra_context={},
         )
 
     assert "No AIWorkflowConfiguration found" in str(exc_info.value)
