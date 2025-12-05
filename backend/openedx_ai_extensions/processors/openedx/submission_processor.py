@@ -68,6 +68,10 @@ class SubmissionProcessor:
                     and submission_messages_copy[-1].get("_metadata")
                 ):
                     submission_messages_copy.pop()
+                # Remove system messages if present
+                submission_messages_copy = [
+                    msg for msg in submission_messages_copy if msg.get("role") != "system"
+                ]
                 # Extend to maintain chronological order (oldest to newest)
                 all_messages.extend(submission_messages_copy)
 
@@ -105,7 +109,6 @@ class SubmissionProcessor:
 
             if not new_messages:
                 has_more = False
-
             return new_messages, has_more
         else:
             # Initial load: return most recent messages
