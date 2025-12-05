@@ -47,7 +47,7 @@ class DirectLLMResponse(BaseOrchestrator):
         # Prepare context
         context = {
             'course_id': self.workflow.course_id,
-            'extra_context': self.workflow.extra_context
+            'location_id': str(self.workflow.location_id),
         }
 
         # 1. Process with OpenEdX processor
@@ -119,7 +119,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         # Prepare context
         context = {
             'course_id': self.workflow.course_id,
-            'extra_context': self.workflow.extra_context
+            'location_id': str(self.workflow.location_id),
         }
 
         # 1. Process with OpenEdX processor
@@ -211,8 +211,8 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
     def run(self, input_data):
         context = {
-            "course_id": self.workflow.course_id,
-            "extra_context": self.workflow.extra_context,
+            'course_id': self.workflow.course_id,
+            'location_id': str(self.workflow.location_id),
         }
         submission_processor = self._get_submission_processor()
 

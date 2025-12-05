@@ -39,61 +39,36 @@ const extractUnitIdFromUrl = () => {
 };
 
 /**
- * Prepare context data from Open edX learning environment
- * Captures ALL available information without requiring anything specific
- * @param {Object} params - Learning context parameters (all optional)
- * @returns {Object} Formatted context for AI service
+ * Prepare standardized context data for backend API calls.
+ *
+ * This function generates a context object that the backend expects for Open edX
+ * AI workflows. It includes:
+ *  - Required unit context (`unitId`)
+ *  - User information (ID, username, staff status)
+ *  - Sequence/block metadata if a sequence is provided
+ *  - Browser environment info (viewport, URL, platform, language)
+ *  - Additional properties passed via `extraProps`
+ *
+ * Null or undefined values are automatically removed from the final payload.
+ *
+ * @param {Object} params
+ * @param {Object|null} [params.sequence=null] - Optional sequence object containing units/blocks
+ * @param {string|null} [params.courseId=null] - Course ID (not included directly in context)
+ * @param {string|null} [params.unitId=null] - Unit ID (included in context)
+ * @param {Object} [params.extraProps={}] - Any additional properties to merge into context
+ *
+ * @returns {Object} A cleaned, standardized context object suitable for backend consumption
  */
 export const prepareContextData = ({
-  sequence = null,
-  courseId = null,
-  unitId = null,
-  ...extraProps
+  courseId = null, // not included directly in context
+  unitId = null, // included in context
 } = {}) => {
-  // Base context that's always available
+  const resolvedUnitId = unitId || extractUnitIdFromUrl();
+  const resolvedCourseId = courseId || extractCourseIdFromUrl();
   const contextData = {
-    // Environment info
-    timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    platform: 'openedx-learning-mfe',
-    url: window.location.href,
-    pathname: window.location.pathname,
-
-    // User info (if available)
-    userId: window.user?.id || null,
-    username: window.user?.username || null,
-    isStaff: window.user?.is_staff || false,
-
-    // Course context (if available)
-    courseId: courseId || extractCourseIdFromUrl(),
-    unitId: unitId || extractUnitIdFromUrl(),
-
-    // Sequence context (if available)
-    sequence: sequence ? {
-      id: sequence.id,
-      displayName: sequence.displayName,
-      blockCount: sequence.unitBlocks?.length || 0,
-      blockTypes: sequence.unitBlocks?.map(block => block.type) || [],
-      blocks: sequence.unitBlocks?.map(block => ({
-        id: block.id,
-        type: block.type,
-        displayName: block.displayName,
-        // Capture any additional block properties
-        ...block,
-      })) || [],
-    } : null,
-
-    // Browser context
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    },
-
-    // Language/locale
-    language: navigator.language || 'en',
-
-    // Any extra props passed in
-    ...extraProps,
+    // Context that the backend expects
+    unitId: resolvedUnitId,
+    courseId: resolvedCourseId,
   };
 
   // Remove null/undefined values to keep payload clean
@@ -176,6 +151,9 @@ export const callWorkflowService = async ({
   // Add optional fields if provided
   if (context) {
     requestPayload.context = context;
+    if (!requestPayload.courseId && context.courseId) {
+      requestPayload.courseId = context.courseId;
+    }
   }
   if (action) {
     requestPayload.action = action;
