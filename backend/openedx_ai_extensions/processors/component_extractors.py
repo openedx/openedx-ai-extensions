@@ -134,6 +134,27 @@ def _extract_xblocks(soup: BeautifulSoup) -> list[str]:
     return embeddings
 
 
+def _check_show_answer(show_answer):
+    """
+    Basic show-answer check.
+
+    NOTE:
+        This is a simplified implementation. Currently it only returns True
+        when `showanswer` is set to "always".
+
+        This function can be extended to apply more intelligent logic based on:
+            - the block's `showanswer` policy,
+            - the student's attempts,
+            - correctness,
+            - past-due dates,
+            - max_attempts,
+            - and overall StudentModule state.
+
+        For now, it remains intentionally minimal.
+    """
+    return show_answer == "always"
+
+
 # ---------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------
@@ -154,13 +175,8 @@ def html_to_text(raw_html: str) -> str:
         embeddings.extend(_extract_embeds(soup))
         embeddings.extend(_extract_xblocks(soup))
 
-        # Remove embedded tags after extraction
-        for tag in soup.find_all(["iframe", "object", "img", "video", "audio", "embed"]):
-            tag.extract()
-
-        # Remove scripts & styles
-        for tag in soup(["script", "style"]):
-            tag.extract()
+        # Remove noisy tags after extraction
+        _clean_noisy_tags(soup)
 
         clean = "\n".join(line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip())
 
@@ -217,6 +233,99 @@ def _load_transcript_content(block) -> Optional[dict]:
         return transcripts
 
 
+def _remove_sensitive_content(soup: BeautifulSoup):
+    """Remove hints, solutions, and correctness info when show_answer=False."""
+    sensitive_tags = ["choicehint", "solution", "demandhint", "hint"]
+    sensitive_selectors = [
+        ".solution-span", ".detailed-solution", ".feedback-hint",
+        ".notification-submit", ".status", ".correctness",
+    ]
+    for tag_name in sensitive_tags:
+        for tag in soup.find_all(tag_name):
+            tag.decompose()
+    for selector in sensitive_selectors:
+        for tag in soup.select(selector):
+            tag.decompose()
+    for choice in soup.find_all("choice"):
+        if choice.has_attr("correct"):
+            del choice["correct"]
+
+
+def _extract_solution_feedback(soup: BeautifulSoup) -> list[str]:
+    """Extract solutions, hints, and feedback when show_answer=True."""
+    extracted_sections = []
+
+    # Mark correct answers
+    for choice in soup.find_all("choice", attrs={"correct": "true"}):
+        choice.insert(0, soup.new_string("[CORRECT ANSWER] "))
+
+    def _pull(tag_name, label):
+        for tag in soup.find_all(tag_name):
+            text = tag.get_text(" ", strip=True)
+            if text:
+                extracted_sections.append(f"[{label}]: {text}")
+            tag.decompose()
+
+    _pull("choicehint", "Feedback")
+    _pull("hint", "Hint")
+    _pull("demandhint", "Hint")
+    _pull("solution", "Solution")
+
+    sensitive_selectors = [
+        ".solution-span", ".detailed-solution", ".feedback-hint",
+        ".notification-submit", ".status", ".correctness",
+    ]
+    for selector in sensitive_selectors:
+        for tag in soup.select(selector):
+            text = tag.get_text(" ", strip=True)
+            if text:
+                extracted_sections.append(f"[Feedback/Explanation]: {text}")
+            tag.decompose()
+
+    return extracted_sections
+
+
+def _clean_noisy_tags(soup: BeautifulSoup):
+    """
+    Remove noisy HTML tags that are not useful for LLM text extraction.
+    """
+    noisy_tags = ["script", "style", "iframe", "embed", "object", "video", "audio", "img"]
+    for tag in soup.find_all(noisy_tags):
+        tag.extract()
+
+
+def _assemble_problem_text(soup: BeautifulSoup, extracted_sections: list[str], show_answer: bool) -> str:
+    """Assemble clean text and append solution/feedback if show_answer=True."""
+    base_text = "\n".join(
+        line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip()
+    )
+    if show_answer and extracted_sections:
+        base_text += "\n" + "\n".join(extracted_sections)
+    return base_text
+
+
+def _process_problem_html(raw_html: str, show_answer: bool) -> str:
+    """Main entry point for processing problem HTML."""
+    if not raw_html:
+        return ""
+
+    try:
+        soup = BeautifulSoup(raw_html, "html.parser")
+        extracted_sections = []
+
+        if show_answer:
+            extracted_sections = _extract_solution_feedback(soup)
+        else:
+            _remove_sensitive_content(soup)
+
+        _clean_noisy_tags(soup)
+        return _assemble_problem_text(soup, extracted_sections, show_answer)
+
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.error(f"Error processing problem HTML: {exc}")
+        return raw_html
+
+
 # ---------------------------------------------------------
 # Block Extractors
 # ---------------------------------------------------------
@@ -244,6 +353,7 @@ def extract_video_info(block) -> dict:
 
 
 def extract_html_info(block) -> dict:
+    """Return cleaned HTML block content as plain text with metadata."""
     logger.debug("extract_html_info: processing block %s", block.location)
     raw_html = getattr(block, "data", "") or ""
     text = html_to_text(raw_html)
@@ -255,14 +365,15 @@ def extract_html_info(block) -> dict:
     }
 
 
-# NOTE:
-# Problem blocks may include correctness (correct/incorrect) information in the data
-# returned by higher-level extractors or LMS APIs. Passing correctness to the LLM
-# is potentially sensitive and requires a future policy/architecture decision.
-def extract_problem_info(block) -> dict:
+def extract_problem_info(block, show_answer) -> dict:
+    """Return processed problem content, optionally including answers/hints."""
     logger.debug("extract_problem_info: processing %s", block.location)
     raw = getattr(block, "data", "") or ""
-    text = html_to_text(raw)
+
+    if show_answer == "auto":
+        show_answer = _check_show_answer(getattr(block, "showanswer", False))
+
+    text = _process_problem_html(raw, show_answer)
     return {
         "type": "problem",
         "block_id": str(block.location),
@@ -272,6 +383,7 @@ def extract_problem_info(block) -> dict:
 
 
 def extract_discussion_info(block) -> dict:
+    """Return discussion block metadata (IDs, category, target)."""
     logger.debug("extract_discussion_info: processing %s", block.location)
     return {
         "type": "discussion",
