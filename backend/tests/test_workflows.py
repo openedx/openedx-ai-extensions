@@ -237,8 +237,11 @@ def test_workflow_find_workflow_for_context_no_config(mock_get_config, user):  #
 
 
 @pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.models.emit_event")
 @patch("openedx_ai_extensions.workflows.orchestrators.MockResponse")
-def test_workflow_execute_success(mock_orchestrator_class, workflow_instance):  # pylint: disable=redefined-outer-name
+def test_workflow_execute_success(
+    mock_orchestrator_class, mock_emit_event, workflow_instance
+):  # pylint: disable=redefined-outer-name
     """
     Test AIWorkflow.execute method with successful execution.
     """
@@ -260,10 +263,12 @@ def test_workflow_execute_success(mock_orchestrator_class, workflow_instance):  
     assert result["status"] == "completed"
     assert result["response"] == "Summary generated"
     assert "workflow_info" in result
+    assert mock_emit_event.called
 
 
 @pytest.mark.django_db
-def test_workflow_execute_error(workflow_instance):  # pylint: disable=redefined-outer-name
+@patch("openedx_ai_extensions.workflows.models.emit_event")
+def test_workflow_execute_error(mock_emit_event, workflow_instance):  # pylint: disable=redefined-outer-name
     """
     Test AIWorkflow.execute method with execution error.
     """
@@ -283,6 +288,7 @@ def test_workflow_execute_error(workflow_instance):  # pylint: disable=redefined
     assert "error" in result
     assert "Workflow execution failed" in result["error"]
     assert workflow_instance.status == "failed"
+    assert not mock_emit_event.called  # Should not emit event on error
 
 
 @pytest.mark.django_db
