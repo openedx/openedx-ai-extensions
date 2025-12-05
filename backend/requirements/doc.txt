@@ -43,8 +43,10 @@ babel==2.17.0
     # via
     #   pydata-sphinx-theme
     #   sphinx
-beautifulsoup4==4.13.3
-    # via pydata-sphinx-theme
+beautifulsoup4==4.14.2
+    # via
+    #   -r requirements/test.txt
+    #   pydata-sphinx-theme
 build==1.2.2.post1
     # via -r requirements/doc.in
 certifi==2025.10.5
@@ -230,6 +232,8 @@ keyring==25.6.0
     # via twine
 litellm==1.78.2
     # via -r requirements/test.txt
+lxml==6.0.2
+    # via -r requirements/test.txt
 markdown-it-py==3.0.0
     # via rich
 markupsafe==3.0.3
@@ -391,8 +395,10 @@ sniffio==1.3.1
     #   openai
 snowballstemmer==2.2.0
     # via sphinx
-soupsieve==2.6
-    # via beautifulsoup4
+soupsieve==2.8
+    # via
+    #   -r requirements/test.txt
+    #   beautifulsoup4
 sphinx==8.1.3
     # via
     #   -r requirements/doc.in
