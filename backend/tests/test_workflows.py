@@ -553,7 +553,7 @@ def test_direct_llm_response_orchestrator_llm_error(
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.workflows.orchestrators.OpenEdXProcessor")
-@patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
 def test_threaded_llm_response_orchestrator_new_session(
     mock_submission_processor_class,
@@ -571,7 +571,7 @@ def test_threaded_llm_response_orchestrator_new_session(
     mock_openedx.process.return_value = {"location_id": "unit-123"}
     mock_openedx_processor_class.return_value = mock_openedx
 
-    # Mock ResponsesProcessor
+    # Mock LLMProcessor
     mock_responses = Mock()
     mock_responses.process.return_value = {
         "response": "AI chat response",
@@ -595,7 +595,7 @@ def test_threaded_llm_response_orchestrator_new_session(
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
-@patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 def test_threaded_llm_response_orchestrator_clear_session(
     mock_responses_processor_class,
     mock_submission_processor_class,
@@ -614,7 +614,7 @@ def test_threaded_llm_response_orchestrator_clear_session(
     # Change workflow action to clear_session
     workflow_instance.action = "clear_session"
 
-    # Mock ResponsesProcessor and SubmissionProcessor to prevent initialization errors
+    # Mock LLMProcessor and SubmissionProcessor to prevent initialization errors
     mock_responses = Mock()
     mock_responses_processor_class.return_value = mock_responses
     mock_submission = Mock()
@@ -630,7 +630,7 @@ def test_threaded_llm_response_orchestrator_clear_session(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
 def test_threaded_llm_response_orchestrator_get_history(
     mock_submission_processor_class,
@@ -648,7 +648,7 @@ def test_threaded_llm_response_orchestrator_get_history(
         local_submission_id="submission-uuid-123",
     )
 
-    # Mock ResponsesProcessor
+    # Mock LLMProcessor
     mock_responses = Mock()
     mock_responses_processor_class.return_value = mock_responses
 
@@ -668,7 +668,7 @@ def test_threaded_llm_response_orchestrator_get_history(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.orchestrators.ResponsesProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.LLMProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.SubmissionProcessor")
 def test_threaded_llm_response_orchestrator_history_error(
     mock_submission_processor_class,
@@ -686,7 +686,7 @@ def test_threaded_llm_response_orchestrator_history_error(
         local_submission_id="submission-uuid-123",
     )
 
-    # Mock ResponsesProcessor
+    # Mock LLMProcessor
     mock_responses = Mock()
     mock_responses_processor_class.return_value = mock_responses
 
