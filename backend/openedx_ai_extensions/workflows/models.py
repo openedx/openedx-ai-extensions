@@ -170,13 +170,13 @@ class AIWorkflow(models.Model):
     def get_context_from_request(request_body: dict, user) -> dict:
         """
         Standardized context for workflow lookup.
-        Always returns dict with keys: action, course_id, unit_id, user, extra_context
+        Always returns dict with keys: action, course_id, location_id, user, extra_context
         """
         context = request_body.get("context", {})
         return {
             "action": request_body.get("action"),
             "course_id": request_body.get("courseId"),
-            "unit_id": context.get("unitId"),
+            "location_id": context.get("unitId"),
             "user": user,
             "extra_context": context,
         }
@@ -188,7 +188,7 @@ class AIWorkflow(models.Model):
         action: str,
         course_id: Optional[str] = None,
         user,
-        unit_id: Optional[str] = None,
+        location_id: Optional[str] = None,
         extra_context: Optional[dict] = None,
     ) -> tuple["AIWorkflow", bool]:
         """
@@ -197,9 +197,6 @@ class AIWorkflow(models.Model):
 
         Returns: (workflow_instance, created_boolean)
         """
-
-        # Extract location_id from context if present
-        location_id = unit_id
 
         # Get workflow configuration
         config = AIWorkflowConfig.get_config(action, course_id, location_id)
