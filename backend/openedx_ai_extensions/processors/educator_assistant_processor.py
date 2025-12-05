@@ -9,6 +9,7 @@ import os
 from litellm import completion
 
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
+from openedx_ai_extensions.processors.openedx.content_libraries_processor import validate_xml
 
 logger = logging.getLogger(__name__)
 
@@ -98,8 +99,12 @@ class EducatorAssistantProcessor(LitellmProcessor):
         for attempt in range(3):
             try:
                 response = json.loads(result['response'])
+                for item in response["items"]:
+                    block_type = item.get("category")
+                    if not validate_xml(item.get("data"), block_type):
+                        raise ValueError(f"Invalid XML for block type {block_type}")
                 break
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, ValueError):
                 result = self._call_completion_api(prompt)
                 tokens_used += result.get("tokens_used", 0)
                 if attempt == 2:
