@@ -7,13 +7,11 @@ from .llm_processor import LLMProcessor
 from .openedx.content_libraries_processor import ContentLibraryProcessor
 from .openedx.openedx_processor import OpenEdXProcessor
 from .openedx.submission_processor import SubmissionProcessor
-from .responses_processor import ResponsesProcessor
 
 __all__ = [
     "ContentLibraryProcessor",
     "LLMProcessor",
     "OpenEdXProcessor",
-    "ResponsesProcessor",
     "SubmissionProcessor",
     "EducatorAssistantProcessor"
 ]
