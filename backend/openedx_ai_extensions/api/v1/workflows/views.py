@@ -60,7 +60,6 @@ class AIGenericWorkflowView(View):
         action = context_data["action"]
         course_id = context_data["course_id"]
         location_id = context_data["location_id"]
-        extra_context = context_data["extra_context"]
 
         # TODO: Remove verbose logging
         logger.info(
@@ -88,7 +87,6 @@ class AIGenericWorkflowView(View):
                 course_id=course_id,
                 user=user,
                 location_id=location_id,
-                extra_context=extra_context,
             )
 
             result = workflow.execute(body_data.get("user_input", {}))

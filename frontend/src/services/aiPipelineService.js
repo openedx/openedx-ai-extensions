@@ -60,10 +60,8 @@ const extractUnitIdFromUrl = () => {
  * @returns {Object} A cleaned, standardized context object suitable for backend consumption
  */
 export const prepareContextData = ({
-  sequence = null,
   courseId = null, // not included directly in context
   unitId = null, // included in context
-  ...extraProps
 } = {}) => {
   const resolvedUnitId = unitId || extractUnitIdFromUrl();
   const resolvedCourseId = courseId || extractCourseIdFromUrl();
@@ -71,44 +69,6 @@ export const prepareContextData = ({
     // Context that the backend expects
     unitId: resolvedUnitId,
     courseId: resolvedCourseId,
-
-    // Environment info
-    timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    platform: 'openedx-learning-mfe',
-    url: window.location.href,
-    pathname: window.location.pathname,
-
-    // User info (if available)
-    userId: window.user?.id || null,
-    username: window.user?.username || null,
-    isStaff: window.user?.is_staff || false,
-
-    // Sequence context (if available)
-    sequence: sequence ? {
-      id: sequence.id,
-      displayName: sequence.displayName,
-      blockCount: sequence.unitBlocks?.length || 0,
-      blockTypes: sequence.unitBlocks?.map(block => block.type) || [],
-      blocks: sequence.unitBlocks?.map(block => ({
-        id: block.id,
-        type: block.type,
-        displayName: block.displayName,
-        // Capture any additional block properties
-        ...block,
-      })) || [],
-    } : null,
-
-    // Browser viewport context
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    },
-
-    // Language
-    language: navigator.language || 'en',
-
-    ...extraProps, // additional UI-provided context
   };
 
   // Remove null/undefined values to keep payload clean
