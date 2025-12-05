@@ -35,6 +35,8 @@ attrs==25.4.0
     #   aiohttp
     #   jsonschema
     #   referencing
+beautifulsoup4==4.14.2
+    # via -r requirements/base.txt
 certifi==2025.10.5
     # via
     #   -r requirements/base.txt
@@ -178,6 +180,8 @@ jsonschema-specifications==2025.9.1
     #   jsonschema
 litellm==1.78.2
     # via -r requirements/base.txt
+lxml==6.0.2
+    # via -r requirements/base.txt
 markupsafe==3.0.3
     # via
     #   -r requirements/base.txt
@@ -282,6 +286,10 @@ sniffio==1.3.1
     #   -r requirements/base.txt
     #   anyio
     #   openai
+soupsieve==2.8
+    # via
+    #   -r requirements/base.txt
+    #   beautifulsoup4
 sqlparse==0.5.3
     # via
     #   -r requirements/base.txt
@@ -312,6 +320,7 @@ typing-extensions==4.13.2
     #   -r requirements/base.txt
     #   aiosignal
     #   anyio
+    #   beautifulsoup4
     #   edx-opaque-keys
     #   huggingface-hub
     #   openai

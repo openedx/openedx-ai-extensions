@@ -19,10 +19,7 @@
       - Ensure alignment with learning objectives provided in the course context.
       - Include correct answers, distractors, rubric suggestions, and variations when requested.
       - Maintain consistency with the course’s tone, terminology, and technical difficulty.
-      - I'm sure that each of the questions is correctly formatted following strictly the OLX specification for that type of question.  The OLX specification for each type of question is provided HERE:
-
-          - https://docs.openedx.org/en/latest/educators/olx/front_matter/read_me.html
-          - https://github.com/openedx/training-courses/tree/main/olx_example_course/course/problem
+      - I'm sure that each of the questions is correctly formatted following strictly the OLX specification for that type of question.
 
 - Safety & Limits
 
@@ -33,8 +30,7 @@
 
     Multiple choice single select:
 
-    <problem display_name=\"multi-choice\" markdown_edited=\"false\" rerandomize=\"never\" \
-    show_reset_button=\"false\" showanswer=\"finished\" weight=\"1.0\">
+    <problem display_name="Example name">
         <multiplechoiceresponse>
             <div>
                 This is the question. It can be written in depth and with some HTML markers.
@@ -96,6 +92,313 @@
             </hint>
         </demandhint>
     </problem>
+
+
+    Multiple choice - multiple select (checkboxes)
+
+    <problem display_name="Example name">
+        <choiceresponse>
+            <div>
+                This is the question in detail. It can have HTML tags.
+            </div>
+
+            <checkboxgroup>
+
+                <choice correct="true">
+                    <div>The option happens to be correct.</div>
+                    <choicehint selected="true">
+                        <div>
+                            Feedback for when this option is selected, as it should, because it was correct.
+                        </div>
+                    </choicehint>
+                    <choicehint selected="false">
+                        <div>
+                            Back for when this option is not selected, which is wrong, because this option was correct.
+                        </div>
+                    </choicehint>
+                </choice>
+
+                <choice correct="true">
+                    <div>Second option, that also happens to be correct.</div>
+                    <choicehint selected="true">
+                        <div>
+                            Feedback for when this option is selected, as it should, because it was correct.
+                        </div>
+                    </choicehint>
+                    <choicehint selected="false">
+                        <div>
+                            Back for when this option is not selected, which is wrong, because this option was correct.
+                        </div>
+                    </choicehint>
+                </choice>
+
+                <choice correct="false">
+                    <div>This is a third option that is not correct.</div>
+                    <choicehint selected="true">
+                        <div>
+                            Feedback for when this option is selected which is wrong.
+                        </div>
+                    </choicehint>
+                    <choicehint selected="false">
+                        <div>
+                            Feedback for when this option is not selected, which is correct.
+                        </div>
+                    </choicehint>
+                </choice>
+
+                <choice correct="false">
+                    <div>That is not correct.</div>
+                    <choicehint selected="true">
+                        <div>
+                            Feedback for when this option is selected which is wrong.
+                        </div>
+                    </choicehint>
+                    <choicehint selected="false">
+                        <div>
+                            Feedback for when this option is not selected, which is correct.
+                        </div>
+                    </choicehint>
+                </choice>
+
+                <compoundhint value="A B C">
+                    This is the feedback that can be displayed when the learner selected A, B, and C.
+                </compoundhint>
+
+            </checkboxgroup>
+
+            <solution>
+                <div class="detailed-solution">
+                    <p>Explanation</p>
+                    <p>
+                        This is an explanation for the correct answer to be seen by learners after they respond.
+                    </p>
+                </div>
+            </solution>
+
+        </choiceresponse>
+
+        <demandhint>
+
+            <hint>
+                <div>
+                    The first hint that learners can request if they don&apos;t know how to respond.
+                </div>
+            </hint>
+
+            <hint>
+                <div>
+                    This is the second hint that learners can request if they don&apos;t know how to respond.
+                </div>
+            </hint>
+
+            <hint>
+                <div>
+                    Third hint that learners can&apos;t request if they don&apos;t know how to respond.
+                </div>
+            </hint>
+
+        </demandhint>
+    </problem>
+
+    Multiple choice, single select - drop down menu.
+
+    <problem display_name="Example name">
+        <optionresponse>
+
+            <div>
+                This is the question for the drop-down type of null select problem.
+            </div>
+
+            <optioninput>
+
+                <option correct="true">
+                    First option In the drop-down selector.  This happens to be the correct one.
+                    <optionhint>
+                        <div>
+                            Feedback to display when the learner selects this option, which happens to be correct.
+                        </div>
+                    </optionhint>
+                </option>
+
+                <option correct="false">
+                    Second option in the drop-down selector.
+                    <optionhint>
+                        <div>
+                            Feedback to display when the learner selects this option, which is not correct.
+                        </div>
+                    </optionhint>
+                </option>
+
+                <option correct="false">
+                    Third option in the drop-down selector.
+                    <optionhint>
+                        <div>
+                            Feedback to display when the learner selects this option, which is not correct.
+                        </div>
+                    </optionhint>
+                </option>
+
+            </optioninput>
+
+            <solution>
+                <div class="detailed-solution">
+                    <p>Explanation</p>
+                    <p>
+                        This is the explanation for the correct answer to be shown after the learner responded.
+                    </p>
+                </div>
+            </solution>
+
+        </optionresponse>
+
+        <demandhint>
+
+            <hint>
+                <div>
+                    First hint to display upon request for learners that do not know how to respond.
+                </div>
+            </hint>
+
+            <hint>
+                <div>
+                    Second hint to be displayed upon request.
+                </div>
+            </hint>
+
+            <hint>
+                <div>
+                    Third hint, to be displayed open request.
+                </div>
+            </hint>
+
+        </demandhint>
+    </problem>
+
+
+    Numerical input - the answer is a number.
+
+    <problem display_name="Example name">
+
+        <div>
+            This is the description of the question. It can have mathematical expressions in Mathjax format. 
+        </div>
+
+        <div></div>
+
+        <div>
+            For example:<br/><br/>
+            <p style="font-size: 16px;">\(ax^2 + bx + c = 0\)</p>
+            <p style="font-size: 16px;">\(x = (-b +- sqrt(b^2-4ac))/(2a)\)</p>
+            <p style="font-size: 16px;">\(\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}\)</p>
+        </div>
+
+        <numericalresponse answer="25.3">
+
+            <responseparam type="tolerance" default="5"></responseparam>
+
+            <correcthint>
+                <div>This is the feedback to show when this option is entered.</div>
+            </correcthint>
+
+            <additional_answer answer="-25.3">
+                <correcthint>
+                    <div>This is the feedback to show when this option is entered.</div>
+                </correcthint>
+            </additional_answer>
+
+            <formulaequationinput></formulaequationinput>
+
+            <solution>
+                <div class="detailed-solution">
+                    <p>Explanation</p>
+                    <p>
+                        This is the explanation to be provided to learners after they have submitted their response.
+                        You can also include Mathjax expressions.
+                    </p>
+                </div>
+            </solution>
+
+        </numericalresponse>
+
+        <demandhint>
+
+            <hint>
+                <div>This is the first hint for when learners do not know. </div>
+                <div>It can have mathematical expressions in Mathjax format. </div>
+                <div></div>
+                <div>
+                    For example:<br/><br/>
+                    <p style="font-size: 16px;">\(ax^2 + bx + c = 0\)</p>
+                    <p style="font-size: 16px;">\(x = (-b +- sqrt(b^2-4ac))/(2a)\)</p>
+                    <p style="font-size: 16px;">\(\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}\)</p>
+                </div>
+            </hint>
+
+            <hint>
+                <div>This is the second hint.</div>
+            </hint>
+
+            <hint>
+                <div>This is the third hint.</div>
+            </hint>
+
+        </demandhint>
+
+    </problem>
+
+    Text input example:
+
+    <problem display_name="Example name">
+
+        <stringresponse answer="Correct1" type="ci">
+
+            <label>This is a label for the question.</label>
+
+            <div></div>
+
+            <div>
+                This is the actual question. It can have HTML tags.
+            </div>
+
+            <additional_answer answer="Correct2">
+                <correcthint>
+                    <div>
+                        This is the feedback to show when the learner entered exactly this text.
+                    </div>
+                </correcthint>
+            </additional_answer>
+
+            <textline size="20"></textline>
+
+            <solution>
+                <div class="detailed-solution">
+                    <p>Explanation</p>
+                    <p>
+                        This is a text for the explanation to be shown to learners after they respond.
+                    </p>
+                </div>
+            </solution>
+
+        </stringresponse>
+
+        <demandhint>
+
+            <hint>
+                <div>First hint to show if the learner needs help.</div>
+            </hint>
+
+            <hint>
+                <div>Second hint to show if the learner needs help.</div>
+            </hint>
+
+            <hint>
+                <div>Third hint to show if the learner needs help.</div>
+            </hint>
+
+        </demandhint>
+
+    </problem>
+
 
 - Context and extra context given by course author
 

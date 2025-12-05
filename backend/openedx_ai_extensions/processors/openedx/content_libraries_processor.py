@@ -5,6 +5,7 @@ import logging
 from uuid import uuid4
 
 from django.db import transaction
+from lxml import etree
 from opaque_keys.edx.locator import LibraryLocatorV2
 
 from openedx_ai_extensions.edxapp_wrapper.content_libraries_module import get_content_libraries
@@ -101,3 +102,16 @@ class ContentLibraryProcessor:
             created_by=self.user.id,
             opaque_keys=item_keys
         )
+
+
+def validate_xml(xml_content, block_type) -> bool:
+    """Validate XML content."""
+    parser = etree.XMLParser(strip_cdata=False)
+
+    try:
+        node = etree.fromstring(xml_content, parser=parser)
+        if node.tag != block_type:
+            return False
+    except etree.XMLSyntaxError:
+        return False
+    return True
