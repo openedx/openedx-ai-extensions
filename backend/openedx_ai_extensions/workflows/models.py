@@ -12,7 +12,6 @@ from django.db import models
 from django.utils import timezone
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
-from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.workflows.configs.mock_functions import _fake_get_config_from_file
 
 User = get_user_model()
@@ -233,17 +232,6 @@ class AIWorkflow(models.Model):
             logger.info(
                 f"🤖 WORKFLOW EXECUTOR: Completed execution for {self.get_natural_key()}, status={self.status}"
             )
-            if not is_generator(result):
-                # Add workflow metadata to result
-                result.update(
-                    {
-                        "workflow_info": {
-                            # 'natural_key': self.get_natural_key(),
-                            # 'status': self.status,
-                            # 'current_step': self.current_step,
-                        }
-                    }
-                )
 
             return result
 

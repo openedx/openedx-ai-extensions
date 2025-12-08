@@ -3,12 +3,27 @@ LLM Processing using LiteLLM for multiple providers
 """
 
 import logging
+import time
+from types import GeneratorType
 
 from litellm import completion
 
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
 
 logger = logging.getLogger(__name__)
+
+
+def is_generator(result):
+    """
+    Check if the given object is a generator.
+
+    Args:
+        result (Any): The object to check.
+
+    Returns:
+        bool: True if the object is an instance of GeneratorType, False otherwise.
+    """
+    return isinstance(result, GeneratorType)
 
 
 class LLMProcessor(LitellmProcessor):
@@ -20,49 +35,76 @@ class LLMProcessor(LitellmProcessor):
         input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
 
         function_name = self.config.get("function", "summarize_content")
-        stream = self.config.get("stream", False)
         function = getattr(self, function_name)
-        return function(input_data, stream=stream)
+        return function(input_data)
 
     def _handle_streaming_completion(self, response):
-        """Handles the streaming logic, yielding byte strings."""
+        """Stream with chunk buffering (more natural UI speed)."""
+        total_tokens = None
+        buffer = []
+        last_flush = time.time()
+
+        BUFFER_SIZE = 60  # min characters before flush
+        FLUSH_INTERVAL = 0.05
+
         try:
             for chunk in response:
+                if hasattr(chunk, "usage") and chunk.usage:
+                    total_tokens = chunk.usage.total_tokens
+
                 content = chunk.choices[0].delta.content or ""
                 if content:
-                    yield content.encode('utf-8')
+                    buffer.append(content)
+
+                now = time.time()
+
+                # Flush if large enough OR enough time has passed
+                if len("".join(buffer)) >= BUFFER_SIZE or (now - last_flush) >= FLUSH_INTERVAL:
+                    if buffer:
+                        yield "".join(buffer).encode("utf-8")
+                        buffer = []
+                    last_flush = now
+
+            # Flush any remaining buffered content at the end
+            if buffer:
+                yield "".join(buffer).encode("utf-8")
+
         except Exception as e:  # pylint: disable=broad-exception-caught
-            error_message = f"Error during AI streaming: {e}"
-            logger.error(error_message, exc_info=True)
-            yield f"\n[AI Error: {e}]".encode('utf-8')
+            logger.error(f"Error during AI streaming: {e}", exc_info=True)
+            yield f"\n[AI Error: {e}]".encode("utf-8")
+            return
+
+        # Log tokens at end
+        if total_tokens is not None:
+            logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
+        else:
+            logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
 
     def _handle_non_streaming_completion(self, response):
         """Handles the non-streaming logic, returning a response dict."""
         content = response.choices[0].message.content
+        total_tokens = response.usage.total_tokens if response.usage else 0
+        logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
+
         return {
             "response": content,
-            "tokens_used": response.usage.total_tokens if response.usage else 0,
-            "model_used": self.model,
+            "tokens_used": total_tokens,
+            "model_used": self.provider,
             "status": "success",
         }
 
-    def _call_completion_api(self, system_role, user_content, stream):
+    def _call_completion_api(self, system_role, user_content):
         """
         General method to call LiteLLM completion API.
         Returns either a generator (if stream=True) or a response dict.
         """
-        if not self.api_key:
-            # Return an error dictionary if the API key is not configured
-            return {"error": "AI API key not configured"}
-
         # Build completion parameters
+        stream = self.config.get("stream", False) or self.extra_params.get("stream", False)
         completion_params = {
-            "model": self.model,
             "messages": [
                 {"role": "system", "content": system_role},
                 {"role": "user", "content": user_content},
             ],
-            "api_key": self.api_key,
             "stream": stream,
         }
         # Add optional extra parameters

@@ -259,7 +259,6 @@ def test_workflow_execute_success(mock_orchestrator_class, workflow_instance):  
 
     assert result["status"] == "completed"
     assert result["response"] == "Summary generated"
-    assert "workflow_info" in result
 
 
 @pytest.mark.django_db
