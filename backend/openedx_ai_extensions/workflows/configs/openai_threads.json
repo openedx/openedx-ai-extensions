@@ -2,8 +2,7 @@
   "orchestrator_class": "ThreadedLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_location_content",
-      "char_limit": 300
+      "function": "get_location_content"
     },
     "LLMProcessor": {
       "function": "chat_with_context",
@@ -11,7 +10,7 @@
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",
-      "max_context_messages": 3
+      "max_context_messages": 5
     }
   },
   "actuator_config": {
