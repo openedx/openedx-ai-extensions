@@ -44,18 +44,12 @@ const extractLocationIdFromUrl = () => {
  * This function generates a context object that the backend expects for Open edX
  * AI workflows. It includes:
  *  - Required unit context (`locationId`)
- *  - User information (ID, username, staff status)
- *  - Sequence/block metadata if a sequence is provided
- *  - Browser environment info (viewport, URL, platform, language)
- *  - Additional properties passed via `extraProps`
  *
  * Null or undefined values are automatically removed from the final payload.
  *
  * @param {Object} params
- * @param {Object|null} [params.sequence=null] - Optional sequence object containing units/blocks
  * @param {string|null} [params.courseId=null] - Course ID (not included directly in context)
  * @param {string|null} [params.locationId=null] - Unit ID (included in context)
- * @param {Object} [params.extraProps={}] - Any additional properties to merge into context
  *
  * @returns {Object} A cleaned, standardized context object suitable for backend consumption
  */

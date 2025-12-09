@@ -21,14 +21,15 @@ class OpenEdXProcessor:
         class_name = self.__class__.__name__
         self.config = processor_config.get(class_name, {})
 
-    def process(self, location_id):
+    def process(self, *args, **kwargs):
         """Process based on configured function"""
         function_name = self.config.get("function", "no_context")
         function = getattr(self, function_name)
 
-        return function(location_id=location_id)
+        return function(*args, **kwargs)
 
-    def no_context(self, location_id):  # pylint: disable=unused-argument
+    def no_context(self, *args, **kwargs):
+        """Return default message when no context is provided."""
         return {"display_name": "No context was provided."}
 
     def get_location_content(self, location_id):
