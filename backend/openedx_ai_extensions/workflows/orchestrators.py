@@ -27,6 +27,7 @@ class BaseOrchestrator:
     def __init__(self, workflow):
         self.workflow = workflow
         self.config = workflow.config
+        self.location_id = str(workflow.location_id) if workflow.location_id else None
 
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
@@ -44,15 +45,9 @@ class DirectLLMResponse(BaseOrchestrator):
     """Orchestrator that provides direct LLM responses."""
 
     def run(self, input_data):
-        # Prepare context
-        context = {
-            'course_id': self.workflow.course_id,
-            'location_id': str(self.workflow.location_id),
-        }
-
         # 1. Process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(context)
+        content_result = openedx_processor.process(location_id=self.location_id)
 
         if 'error' in content_result:
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
@@ -116,15 +111,9 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         return {"response": None}
 
     def run(self, input_data):
-        # Prepare context
-        context = {
-            'course_id': self.workflow.course_id,
-            'location_id': str(self.workflow.location_id),
-        }
-
         # 1. Process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(context)
+        content_result = openedx_processor.process(location_id=self.location_id)
 
         if 'error' in content_result:
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
@@ -212,7 +201,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
     def run(self, input_data):
         context = {
             'course_id': self.workflow.course_id,
-            'location_id': str(self.workflow.location_id),
+            'location_id': self.location_id,
         }
         submission_processor = self._get_submission_processor()
 
@@ -232,7 +221,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # 2. else process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(context=context)
+        content_result = openedx_processor.process(location_id=self.location_id)
 
         if "error" in content_result:
             return {
