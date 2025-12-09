@@ -27,12 +27,6 @@ class LLMProcessor(LitellmProcessor):
     def _handle_streaming_completion(self, response):
         """Stream with chunk buffering (more natural UI speed)."""
         total_tokens = None
-        buffer = []
-        last_flush = time.time()
-
-        BUFFER_SIZE = 60  # min characters before flush
-        FLUSH_INTERVAL = 0.05
-
         try:
             for chunk in response:
                 if hasattr(chunk, "usage") and chunk.usage:
@@ -40,20 +34,7 @@ class LLMProcessor(LitellmProcessor):
 
                 content = chunk.choices[0].delta.content or ""
                 if content:
-                    buffer.append(content)
-
-                now = time.time()
-
-                # Flush if large enough OR enough time has passed
-                if len("".join(buffer)) >= BUFFER_SIZE or (now - last_flush) >= FLUSH_INTERVAL:
-                    if buffer:
-                        yield "".join(buffer).encode("utf-8")
-                        buffer = []
-                    last_flush = now
-
-            # Flush any remaining buffered content at the end
-            if buffer:
-                yield "".join(buffer).encode("utf-8")
+                    yield content.encode('utf-8')
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error during AI streaming: {e}", exc_info=True)
