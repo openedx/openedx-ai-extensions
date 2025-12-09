@@ -1,0 +1,33 @@
+{
+  "orchestrator_class": "DirectLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_location_content"
+    },
+    "LLMProcessor": {
+      "function": "summarize_content",
+      "config": "qwen25"
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "Summarize with Qwen [config api]",
+          "customMessage": "Qwen will summarize the content [config api]"
+        }
+      },
+      "response": {
+        "component": "AIResponseComponent",
+        "config": {
+          "customMessage": "AI Assistant Response [config api]"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
+      }
+    }
+  }
+}

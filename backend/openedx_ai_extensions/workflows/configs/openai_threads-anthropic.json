@@ -6,7 +6,7 @@
     },
     "LLMProcessor": {
       "function": "chat_with_context",
-      "config": "openai"
+      "config": "anthropic"
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",
@@ -19,7 +19,7 @@
         "component": "AIRequestComponent",
         "config": {
           "buttonText": "Open Chat",
-          "customMessage": "Chat with Openai AI teaching assistant",
+          "customMessage": "Chat with Anthropic AI teaching assistant",
           "action": null
         }
       },
