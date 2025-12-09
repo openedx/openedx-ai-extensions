@@ -56,7 +56,7 @@ The following table shows which processors have been tested with each provider:
      - Anthropic
      - Ollama
      - Deepseek
-   * - ResponsesProcessor
+   * - LLMProcessor(Threaded)
      - ✅
      - ✅
      - ✅
@@ -123,7 +123,7 @@ To specify which provider a processor should use, configure it in your workflow 
          "function": "get_location_content",
          "char_limit": 300
        },
-       "ResponsesProcessor": {
+       "LLMProcessor(Threaded)": {
          "function": "chat_with_context",
          "config": "my-openai"
        },
@@ -147,7 +147,7 @@ To switch between providers, simply change the ``config`` value in your workflow
 
 .. code-block:: json
 
-   "ResponsesProcessor": {
+   "LLMProcessor(Threaded)": {
      "function": "chat_with_context",
      "config": "my-anthropic"  // Changed from "my-openai"
    }

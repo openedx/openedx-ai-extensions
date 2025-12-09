@@ -62,6 +62,7 @@ class ContentLibraryProcessor:
             result = api.create_library_block(self.library_key, user_id=self.user.id, **serializer.validated_data)
         except api.IncompatibleTypesError as err:
             logger.error(f"Error creating library block: {err}")
+            return None
 
         return result
 

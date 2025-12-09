@@ -11,7 +11,6 @@ from openedx_ai_extensions.processors import (
     EducatorAssistantProcessor,
     LLMProcessor,
     OpenEdXProcessor,
-    ResponsesProcessor,
     SubmissionProcessor,
 )
 
@@ -54,7 +53,7 @@ class DirectLLMResponse(BaseOrchestrator):
 
         # 2. Process with LLM processor
         llm_processor = LLMProcessor(self.config.processor_config)
-        llm_result = llm_processor.process(str(content_result))
+        llm_result = llm_processor.process(context=str(content_result))
 
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
@@ -124,7 +123,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
             user=self.workflow.user,
             context=content_result
         )
-        llm_result = llm_processor.process(input_data)
+        llm_result = llm_processor.process(input_data=input_data)
 
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
@@ -207,7 +206,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # 1. get chat history if there is user session
         if self.session and self.session.local_submission_id and not input_data:
-            history_result = submission_processor.process(context)
+            history_result = submission_processor.process(context=context)
 
             if "error" in history_result:
                 return {
@@ -230,7 +229,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             }
 
         # 3. Process with LLM processor
-        llm_processor = ResponsesProcessor(self.config.processor_config, self.session)
+        llm_processor = LLMProcessor(self.config.processor_config, self.session)
 
         chat_history = []
         if llm_processor.get_provider() != "openai":
@@ -242,8 +241,10 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         messages = [
             {"role": "assistant", "content": llm_result.get("response", "")},
-            {"role": "user", "content": input_data}
         ]
+        if input_data:
+            messages.insert(0, {"role": "user", "content": input_data})
+
         if llm_processor.get_provider() != "openai":
             system_messages = llm_result.get("system_messages", {})
             for msg in system_messages:
@@ -252,7 +253,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         submission_processor.update_chat_submission(messages)
 
         if "error" in llm_result:
-            return {"error": llm_result["error"], "status": "ResponsesProcessor error"}
+            return {"error": llm_result["error"], "status": "LLMProcessor error"}
 
         # 3. Return result
         return {

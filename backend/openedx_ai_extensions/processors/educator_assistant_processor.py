@@ -9,6 +9,7 @@ import os
 from litellm import completion
 
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
+from openedx_ai_extensions.processors.llm_providers import adapt_to_provider
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +25,9 @@ class EducatorAssistantProcessor(LitellmProcessor):
     def process(self, *args, **kwargs):
         """Process based on configured function"""
         # Accept flexible arguments to match base class signature
-        input_data = args[0] if len(args) > 0 else kwargs.get("input_data")
         function_name = self.config.get("function")
         function = getattr(self, function_name)
-        return function(input_data)
+        return function(*args, **kwargs)
 
     def _call_completion_api(self, system_role):
         """
@@ -42,11 +42,12 @@ class EducatorAssistantProcessor(LitellmProcessor):
                 ],
             }
 
-            # anthropic requires a user message
-            if self.provider == "anthropic":
-                completion_params["messages"] += [
-                    {"role": "user", "content": "Please provide the requested information based on the context above."}
-                ]
+            completion_params = adapt_to_provider(
+                provider=self.provider,
+                params=completion_params,
+                has_user_input=False,
+                user_session=self.user_session,
+            )
 
             # Add optional parameters only if configured
             if self.extra_params:
