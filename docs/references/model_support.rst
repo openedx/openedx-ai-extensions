@@ -120,7 +120,7 @@ To specify which provider a processor should use, configure it in your workflow 
      "orchestrator_class": "ThreadedLLMResponse",
      "processor_config": {
        "OpenEdXProcessor": {
-         "function": "get_unit_content",
+         "function": "get_location_content",
          "char_limit": 300
        },
        "ResponsesProcessor": {

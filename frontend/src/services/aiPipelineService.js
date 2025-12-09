@@ -21,7 +21,7 @@ const extractCourseIdFromUrl = () => {
 /**
  * Extract unit ID from current URL if not provided
  */
-const extractUnitIdFromUrl = () => {
+const extractLocationIdFromUrl = () => {
   try {
     const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
     const StudioPathMatch = window.location.pathname.match(/block-v1:[^/]+$/);
@@ -43,72 +43,42 @@ const extractUnitIdFromUrl = () => {
  *
  * This function generates a context object that the backend expects for Open edX
  * AI workflows. It includes:
- *  - Required unit context (`unitId`)
- *  - User information (ID, username, staff status)
- *  - Sequence/block metadata if a sequence is provided
- *  - Browser environment info (viewport, URL, platform, language)
- *  - Additional properties passed via `extraProps`
+ *  - Required unit context (`locationId`)
  *
  * Null or undefined values are automatically removed from the final payload.
  *
  * @param {Object} params
- * @param {Object|null} [params.sequence=null] - Optional sequence object containing units/blocks
  * @param {string|null} [params.courseId=null] - Course ID (not included directly in context)
- * @param {string|null} [params.unitId=null] - Unit ID (included in context)
- * @param {Object} [params.extraProps={}] - Any additional properties to merge into context
+ * @param {string|null} [params.locationId=null] - Unit ID (included in context)
  *
  * @returns {Object} A cleaned, standardized context object suitable for backend consumption
  */
 export const prepareContextData = ({
-  sequence = null,
   courseId = null, // not included directly in context
-  unitId = null, // included in context
-  ...extraProps
+  locationId = null, // included in context
 } = {}) => {
-  const resolvedUnitId = unitId || extractUnitIdFromUrl();
+  const resolvedLocationId = locationId || extractLocationIdFromUrl();
   const resolvedCourseId = courseId || extractCourseIdFromUrl();
   const contextData = {
     // Context that the backend expects
-    unitId: resolvedUnitId,
+    locationId: resolvedLocationId,
     courseId: resolvedCourseId,
 
-    // Environment info
-    timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    platform: 'openedx-learning-mfe',
-    url: window.location.href,
-    pathname: window.location.pathname,
-
-    // User info (if available)
-    userId: window.user?.id || null,
-    username: window.user?.username || null,
-    isStaff: window.user?.is_staff || false,
-
     // Sequence context (if available)
-    sequence: sequence ? {
-      id: sequence.id,
-      displayName: sequence.displayName,
-      blockCount: sequence.unitBlocks?.length || 0,
-      blockTypes: sequence.unitBlocks?.map(block => block.type) || [],
-      blocks: sequence.unitBlocks?.map(block => ({
-        id: block.id,
-        type: block.type,
-        displayName: block.displayName,
-        // Capture any additional block properties
-        ...block,
-      })) || [],
-    } : null,
+    // sequence: sequence ? {
+    //   id: sequence.id,
+    //   displayName: sequence.displayName,
+    //   })) || [],
+    // } : null,
 
-    // Browser viewport context
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    },
+    // Browser context
+    // viewport: {
+    //   width: window.innerWidth,
+    //   height: window.innerHeight,
+    // },
 
-    // Language
-    language: navigator.language || 'en',
-
-    ...extraProps, // additional UI-provided context
+    // Language/locale
+    // language: navigator.language || 'en',
   };
 
   // Remove null/undefined values to keep payload clean

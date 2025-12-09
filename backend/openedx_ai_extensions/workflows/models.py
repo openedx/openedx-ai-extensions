@@ -170,15 +170,13 @@ class AIWorkflow(models.Model):
     def get_context_from_request(request_body: dict, user) -> dict:
         """
         Standardized context for workflow lookup.
-        Always returns dict with keys: action, course_id, location_id, user, extra_context
+        Always returns dict with keys: action, course_id, location_id, user
         """
-        context = request_body.get("context", {})
         return {
             "action": request_body.get("action"),
             "course_id": request_body.get("courseId"),
-            "location_id": context.get("unitId"),
+            "location_id": request_body.get("context", {}).get("locationId"),
             "user": user,
-            "extra_context": context,
         }
 
     @classmethod
@@ -189,7 +187,6 @@ class AIWorkflow(models.Model):
         course_id: Optional[str] = None,
         user,
         location_id: Optional[str] = None,
-        extra_context: Optional[dict] = None,
     ) -> tuple["AIWorkflow", bool]:
         """
         Find or create workflow based on action, course, user and context
@@ -212,15 +209,11 @@ class AIWorkflow(models.Model):
             action=action,
             course_id=course_id,
             location_id=location_id,
-            config=config,  # Asignar directamente
-            extra_context=extra_context or {},
+            config=config,
             context_data={},
         )
         created = True
 
-        logger.info(
-            f"🤖 WORKFLOW FINDER: {'Created new' if created else 'Found existing'} workflow {workflow.get_natural_key()}"
-        )
         return workflow, created
 
     def execute(self, user_input) -> Dict[str, Any]:
@@ -230,9 +223,6 @@ class AIWorkflow(models.Model):
 
         Returns: Dictionary with execution results
         """
-        logger.info(
-            f"🤖 WORKFLOW EXECUTOR: Starting execution for {self.get_natural_key()}"
-        )
 
         try:
             # Load the orchestrator for this workflow
@@ -246,10 +236,6 @@ class AIWorkflow(models.Model):
                     f"Orchestrator '{orchestrator_name}' does not implement action '{self.action}'"
                 )
             result = getattr(orchestrator, self.action)(user_input)
-
-            logger.info(
-                f"🤖 WORKFLOW EXECUTOR: Completed execution for {self.get_natural_key()}, status={self.status}"
-            )
 
             # Add workflow metadata to result
             result.update(
