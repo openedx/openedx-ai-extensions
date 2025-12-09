@@ -13,7 +13,7 @@ from openedx_ai_extensions.processors import (
     OpenEdXProcessor,
     SubmissionProcessor,
 )
-from openedx_ai_extensions.processors.llm_processor import is_generator
+from openedx_ai_extensions.utils import is_generator
 
 if TYPE_CHECKING:
     from openedx_ai_extensions.workflows.models import AIWorkflowSession
