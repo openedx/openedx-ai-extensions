@@ -166,9 +166,30 @@ class AIWorkflow(models.Model):
             parts.append(str(self.location_id))
         return "__".join(parts)
 
+    @staticmethod
+    def get_context_from_request(request_body: dict, user) -> dict:
+        """
+        Standardized context for workflow lookup.
+        Always returns dict with keys: action, course_id, location_id, user, extra_context
+        """
+        context = request_body.get("context", {})
+        return {
+            "action": request_body.get("action"),
+            "course_id": request_body.get("courseId"),
+            "location_id": context.get("unitId"),
+            "user": user,
+            "extra_context": context,
+        }
+
     @classmethod
     def find_workflow_for_context(
-        cls, action: str, course_id: str, user, context: Dict
+        cls,
+        *,
+        action: str,
+        course_id: Optional[str] = None,
+        user,
+        location_id: Optional[str] = None,
+        extra_context: Optional[dict] = None,
     ) -> tuple["AIWorkflow", bool]:
         """
         Find or create workflow based on action, course, user and context
@@ -176,9 +197,6 @@ class AIWorkflow(models.Model):
 
         Returns: (workflow_instance, created_boolean)
         """
-
-        # Extract location_id from context if present
-        location_id = context.get("unitId")
 
         # Get workflow configuration
         config = AIWorkflowConfig.get_config(action, course_id, location_id)
@@ -195,7 +213,7 @@ class AIWorkflow(models.Model):
             course_id=course_id,
             location_id=location_id,
             config=config,  # Asignar directamente
-            extra_context=context,
+            extra_context=extra_context or {},
             context_data={},
         )
         created = True
