@@ -28,7 +28,7 @@ class OpenEdXProcessor:
 
         return function(location_id=location_id)
 
-    def no_context(self):
+    def no_context(self, location_id):  # pylint: disable=unused-argument
         return {"display_name": "No context was provided."}
 
     def get_location_content(self, location_id):
