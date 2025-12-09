@@ -7,6 +7,12 @@ import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 
 /**
+ * Rate limit for rendering streaming chunks (milliseconds)
+ * Controls the minimum delay between chunk renders to prevent too-fast rendering
+ */
+const CHUNK_RATE_LIMIT_MS = 50;
+
+/**
  * Extract course ID from current URL if not provided
  */
 const extractCourseIdFromUrl = () => {
@@ -205,6 +211,26 @@ export const callWorkflowService = async ({
     const reader = response.data.getReader();
     const decoder = new TextDecoder();
 
+    // Rate limiting setup for streaming chunks
+    const chunkQueue = [];
+    let isProcessingQueue = false;
+    let streamingComplete = false;
+
+    // Process chunks from queue at controlled rate
+    const processChunkQueue = () => {
+      if (chunkQueue.length > 0 && onStreamChunk && typeof onStreamChunk === 'function') {
+        const chunk = chunkQueue.shift();
+        onStreamChunk(chunk);
+      }
+
+      // Continue processing if queue has items or streaming is still ongoing
+      if (chunkQueue.length > 0 || !streamingComplete) {
+        setTimeout(processChunkQueue, CHUNK_RATE_LIMIT_MS);
+      } else {
+        isProcessingQueue = false;
+      }
+    };
+
     // Consume the stream
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -212,6 +238,7 @@ export const callWorkflowService = async ({
       const { done, value } = await reader.read();
 
       if (done) {
+        streamingComplete = true;
         break;
       }
 
@@ -223,9 +250,21 @@ export const callWorkflowService = async ({
         // Only trigger the UI streaming callback if this is effectively a text stream.
         // If it's JSON, we must wait for the full payload to parse it validly.
         if (!isJson && onStreamChunk && typeof onStreamChunk === 'function') {
-          onStreamChunk(chunkText);
+          chunkQueue.push(chunkText);
+
+          // Start processing queue if not already running
+          if (!isProcessingQueue) {
+            isProcessingQueue = true;
+            processChunkQueue();
+          }
         }
       }
+    }
+
+    // Wait for queue to finish processing before continuing
+    while (chunkQueue.length > 0) {
+      // eslint-disable-next-line no-await-in-loop, no-promise-executor-return
+      await new Promise(resolve => setTimeout(resolve, CHUNK_RATE_LIMIT_MS));
     }
 
     // --- PROCESSING COMPLETE ---
