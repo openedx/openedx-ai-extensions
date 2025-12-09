@@ -4,26 +4,12 @@ LLM Processing using LiteLLM for multiple providers
 
 import logging
 import time
-from types import GeneratorType
 
 from litellm import completion
 
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
 
 logger = logging.getLogger(__name__)
-
-
-def is_generator(result):
-    """
-    Check if the given object is a generator.
-
-    Args:
-        result (Any): The object to check.
-
-    Returns:
-        bool: True if the object is an instance of GeneratorType, False otherwise.
-    """
-    return isinstance(result, GeneratorType)
 
 
 class LLMProcessor(LitellmProcessor):
