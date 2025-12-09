@@ -19,7 +19,7 @@ import { callWorkflowService, prepareContextData } from '../services';
  */
 const AIEducatorLibraryAssistComponent = ({
   courseId,
-  unitId,
+  locationId,
   setResponse,
   hasAsked,
   setHasAsked,
@@ -111,7 +111,7 @@ const AIEducatorLibraryAssistComponent = ({
       try {
         const contextData = prepareContextData({
           courseId,
-          unitId,
+          locationId,
         });
 
         const data = await callWorkflowService({
@@ -144,7 +144,7 @@ const AIEducatorLibraryAssistComponent = ({
     };
 
     loadPreviousSession();
-  }, [preloadPreviousSession, hasAsked, courseId, unitId, setResponse, setHasAsked, debug]);
+  }, [preloadPreviousSession, hasAsked, courseId, locationId, setResponse, setHasAsked, debug]);
 
   // Early return after all hooks have been called
   if (hasAsked && !isLoading) {
@@ -175,7 +175,7 @@ const AIEducatorLibraryAssistComponent = ({
       // Prepare context data (same as AIRequestComponent)
       const contextData = prepareContextData({
         courseId,
-        unitId,
+        locationId,
       });
 
       const data = await callWorkflowService({
@@ -420,7 +420,7 @@ const AIEducatorLibraryAssistComponent = ({
 
 AIEducatorLibraryAssistComponent.propTypes = {
   courseId: PropTypes.string.isRequired,
-  unitId: PropTypes.string.isRequired,
+  locationId: PropTypes.string.isRequired,
   hasAsked: PropTypes.bool.isRequired,
   setResponse: PropTypes.func.isRequired,
   setHasAsked: PropTypes.func.isRequired,

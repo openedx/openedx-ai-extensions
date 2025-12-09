@@ -138,13 +138,13 @@ def test_workflows_post_with_authentication(api_client, course_key):  # pylint: 
     api_client.login(username="testuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
-    # Create a proper BlockUsageLocator for the unitId
+    # Create a proper BlockUsageLocator for the locationId
     location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
 
     payload = {
         "action": "summarize",
         "courseId": str(course_key),
-        "context": {"unitId": str(location)},
+        "context": {"locationId": str(location)},
         "user_input": {"text": "Explain quantum physics"},
         "requestId": "test-request-123",
     }
@@ -191,13 +191,13 @@ def test_workflows_post_with_staff_user(api_client, course_key):  # pylint: disa
     api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
-    # Create a proper BlockUsageLocator for the unitId
+    # Create a proper BlockUsageLocator for the locationId
     location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-456")
 
     payload = {
         "action": "analyze",
         "courseId": str(course_key),
-        "context": {"unitId": str(location)},
+        "context": {"locationId": str(location)},
         "user_input": {"text": "Analyze student performance"},
         "requestId": "staff-request-789",
     }
@@ -331,7 +331,7 @@ def test_workflows_post_without_action(api_client, course_key):  # pylint: disab
 
     payload = {
         "courseId": str(course_key),
-        "context": {"unitId": "unit-123"},
+        "context": {"locationId": "unit-123"},
         "requestId": "test-request-456",
     }
 
@@ -530,7 +530,7 @@ def test_workflow_config_view_get_with_location_id_unit(
     mock_get_config.return_value = workflow_config
 
     location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-1")
-    context_json = json.dumps({"unitId": str(location)})
+    context_json = json.dumps({"locationId": str(location)})
 
     factory = APIRequestFactory()
     request = factory.get(

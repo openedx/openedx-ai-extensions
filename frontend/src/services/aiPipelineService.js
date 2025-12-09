@@ -21,7 +21,7 @@ const extractCourseIdFromUrl = () => {
 /**
  * Extract unit ID from current URL if not provided
  */
-const extractUnitIdFromUrl = () => {
+const extractLocationIdFromUrl = () => {
   try {
     const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
     const StudioPathMatch = window.location.pathname.match(/block-v1:[^/]+$/);
@@ -43,7 +43,7 @@ const extractUnitIdFromUrl = () => {
  *
  * This function generates a context object that the backend expects for Open edX
  * AI workflows. It includes:
- *  - Required unit context (`unitId`)
+ *  - Required unit context (`locationId`)
  *  - User information (ID, username, staff status)
  *  - Sequence/block metadata if a sequence is provided
  *  - Browser environment info (viewport, URL, platform, language)
@@ -54,21 +54,37 @@ const extractUnitIdFromUrl = () => {
  * @param {Object} params
  * @param {Object|null} [params.sequence=null] - Optional sequence object containing units/blocks
  * @param {string|null} [params.courseId=null] - Course ID (not included directly in context)
- * @param {string|null} [params.unitId=null] - Unit ID (included in context)
+ * @param {string|null} [params.locationId=null] - Unit ID (included in context)
  * @param {Object} [params.extraProps={}] - Any additional properties to merge into context
  *
  * @returns {Object} A cleaned, standardized context object suitable for backend consumption
  */
 export const prepareContextData = ({
   courseId = null, // not included directly in context
-  unitId = null, // included in context
+  locationId = null, // included in context
 } = {}) => {
-  const resolvedUnitId = unitId || extractUnitIdFromUrl();
+  const resolvedLocationId = locationId || extractLocationIdFromUrl();
   const resolvedCourseId = courseId || extractCourseIdFromUrl();
   const contextData = {
     // Context that the backend expects
-    unitId: resolvedUnitId,
+    locationId: resolvedLocationId,
     courseId: resolvedCourseId,
+
+    // Sequence context (if available)
+    // sequence: sequence ? {
+    //   id: sequence.id,
+    //   displayName: sequence.displayName,
+    //   })) || [],
+    // } : null,
+
+    // Browser context
+    // viewport: {
+    //   width: window.innerWidth,
+    //   height: window.innerHeight,
+    // },
+
+    // Language/locale
+    // language: navigator.language || 'en',
   };
 
   // Remove null/undefined values to keep payload clean

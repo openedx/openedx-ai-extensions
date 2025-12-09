@@ -175,7 +175,7 @@ class AIWorkflow(models.Model):
         return {
             "action": request_body.get("action"),
             "course_id": request_body.get("courseId"),
-            "location_id": request_body.get("context", {}).get("unitId"),
+            "location_id": request_body.get("context", {}).get("locationId"),
             "user": user,
         }
 

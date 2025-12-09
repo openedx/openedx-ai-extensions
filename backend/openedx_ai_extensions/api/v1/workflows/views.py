@@ -152,7 +152,7 @@ class AIWorkflowConfigView(APIView):
             context = json.loads(context_str)
         except (json.JSONDecodeError, TypeError):
             context = {}
-        location_id = context.get("unitId")
+        location_id = context.get("locationId")
         action = request.query_params.get("action")
         course_id = request.query_params.get("courseId")
 

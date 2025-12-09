@@ -40,7 +40,7 @@ class OpenEdXProcessor:
             from xmodule.modulestore.django import modulestore
 
             if not self.context.get("location_id"):
-                return {"error": "Missing unitId in context"}
+                return {"error": "Missing locationId in context"}
 
             # Get char_limit from config. Useful during development
             char_limit = self.config.get("char_limit", None)
