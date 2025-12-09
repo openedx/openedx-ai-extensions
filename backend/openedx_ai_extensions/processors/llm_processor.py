@@ -7,6 +7,7 @@ import logging
 from litellm import completion, responses
 
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
+from openedx_ai_extensions.processors.llm_providers import adapt_to_provider
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class LLMProcessor(LitellmProcessor):
         self.input_data = kwargs.get("input_data", None)
         self.chat_history = kwargs.get("chat_history", None)
 
-        function_name = self.config.get("function", "chat_with_context")
+        function_name = self.config.get("function")
         function = getattr(self, function_name)
         return function()
 
@@ -43,7 +44,7 @@ class LLMProcessor(LitellmProcessor):
                     return content_item.text
         return ""
 
-    def _build_params(self, system_role=None):
+    def _build_response_api_params(self, system_role=None):
         """
         Build completion parameters for LiteLLM responses API.
 
@@ -60,9 +61,6 @@ class LLMProcessor(LitellmProcessor):
         if self.chat_history:
             self.chat_history.append({"role": "user", "content": self.input_data})
             params["input"] = self.chat_history
-        elif self.user_session.remote_response_id and self.provider == "openai":
-            params["previous_response_id"] = self.user_session.remote_response_id
-            params["input"] = [{"role": "user", "content": self.input_data}]
         else:
             # Initialize new thread with system role and context
             params["input"] = [
@@ -70,14 +68,17 @@ class LLMProcessor(LitellmProcessor):
                 {"role": "system", "content": self.context},
             ]
 
-            # anthropic requires a user message
-            if self.provider == "anthropic":
-                params["input"] += [
-                    {"role": "user", "content": "Please provide the requested information based on the context above."}
-                ]
-
         # Add optional parameters only if configured
         params.update(self.extra_params)
+
+        has_user_input = bool(self.input_data or self.chat_history)
+        params = adapt_to_provider(
+            self.provider,
+            params,
+            has_user_input=has_user_input,
+            user_session=self.user_session,
+            input_data=self.input_data
+        )
 
         return params
 
@@ -140,13 +141,16 @@ class LLMProcessor(LitellmProcessor):
                     {"role": "user", "content": self.input_data}
                 )
 
-            if not self.input_data and self.provider == "anthropic":
-                # anthropic requires a user message
-                params["messages"] += [
-                    {"role": "user", "content": "Please provide the requested information based on the context above."}
-                ]
-
             params.update(self.extra_params)
+
+            has_user_input = bool(self.input_data)
+            params = adapt_to_provider(
+                provider=self.provider,
+                params=params,
+                has_user_input=has_user_input,
+                user_session=self.user_session,
+                input_data=self.input_data,
+            )
 
             response = completion(**params)
             content = response.choices[0].message.content
@@ -203,7 +207,7 @@ class LLMProcessor(LitellmProcessor):
                   When unsure, express uncertainty clearly.
                   Avoid providing direct answers to graded assessment questions.
             """
-        params = self._build_params(system_role=system_role)
+        params = self._build_response_api_params(system_role=system_role)
         if self.user_session and self.user_session.remote_response_id:
             return self._call_responses_wrapper(params=params)
         return self._call_responses_wrapper(params=params, initialize=True)
