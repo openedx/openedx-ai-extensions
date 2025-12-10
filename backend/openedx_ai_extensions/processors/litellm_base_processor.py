@@ -53,9 +53,6 @@ class LitellmProcessor:
                 for key, value in self.mcp_configs.items()
             ]
 
-        if not self.api_key:
-            logger.error("AI API key not configured")
-
     def process(self, *args, **kwargs):
         """Process based on configured function - must be implemented by subclasses"""
         raise NotImplementedError("Subclasses must implement process method")

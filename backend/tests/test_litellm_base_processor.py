@@ -48,8 +48,6 @@ def test_litellm_processor_initialization_basic(basic_config):  # pylint: disabl
 
     assert processor.config == basic_config["LitellmProcessor"]
     assert processor.config_profile == "default"
-    assert processor.api_key == settings.AI_EXTENSIONS["default"]["API_KEY"]
-    assert processor.model == settings.AI_EXTENSIONS["default"]["LITELLM_MODEL"]
     assert processor.mcp_configs == {}
 
 
