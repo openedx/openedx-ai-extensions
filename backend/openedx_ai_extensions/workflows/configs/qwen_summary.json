@@ -5,8 +5,8 @@
       "function": "get_location_content"
     },
     "LLMProcessor": {
-      "function": "explain_like_five",
-      "config": "default"
+      "function": "summarize_content",
+      "config": "qwen25"
     }
   },
   "actuator_config": {
@@ -14,8 +14,8 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Ask AI [config api]",
-          "customMessage": "Explain me like I'm 5 [config api]"
+          "buttonText": "Summarize with Qwen [config api]",
+          "customMessage": "Qwen will summarize the content [config api]"
         }
       },
       "response": {
