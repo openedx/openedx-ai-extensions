@@ -240,7 +240,11 @@ class LLMProcessor(LitellmProcessor):
 
     def greet_from_llm(self):
         """Simple test to greet from the LLM and mention which model is being used."""
-        system_role = "Greet the user and say hello world outlining which Llm model is being used!"
+        system_role = (
+            "You are a helpful assistant embedded in an online course."
+            "Say hello to the user and explain what LLM model you are."
+            "Don't pay attention to any extra context"
+        )
         result = self._call_completion_wrapper(system_role=system_role)
 
         return result
