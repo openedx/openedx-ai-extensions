@@ -253,8 +253,8 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             final_response = "".join(full_response_text)
 
             messages = [
+                {"role": "user", "content": input_data},
                 {"role": "assistant", "content": final_response},
-                {"role": "user", "content": input_data}
             ]
 
             # Re-inject system messages if this was a new thread (and not OpenAI)

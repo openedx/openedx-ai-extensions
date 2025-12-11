@@ -50,12 +50,10 @@ const AISidebarResponse = ({
   const previousMessageCount = useRef(0);
   const [textareaRows, setTextareaRows] = useState(1);
 
-  // Show sidebar when response or error arrives (but not while just loading)
   // Show sidebar when response or error arrives
   useEffect(() => {
     if (!response && !error) { return; }
 
-    // If there is an error, just open and show (Alert is handled in render)
     if (error) {
       setIsOpen(true);
       return;
@@ -64,10 +62,8 @@ const AISidebarResponse = ({
     let parsedData = null;
     let isJson = false;
 
-    // Attempt to parse the response
     try {
       parsedData = JSON.parse(response);
-      // Check if it looks like a message structure
       if (typeof parsedData === 'object' && parsedData !== null) {
         isJson = true;
       }
@@ -77,7 +73,6 @@ const AISidebarResponse = ({
 
     // --- SCENARIO 1: JSON with message history ---
     if (isJson) {
-    // Execute this only once for a specific data set to avoid overwriting state unnecessarily
       if (!initialResponseAdded.current) {
         let rawMessages = [];
 
@@ -103,19 +98,18 @@ const AISidebarResponse = ({
           (msg) => msg.content && String(msg.content).trim().length > 0,
         );
 
-        // Sort (oldest first)
         formattedMessages.sort((a, b) => {
-          const dateA = new Date(a.timestamp);
-          const dateB = new Date(b.timestamp);
+          const dateA = new Date(a.timestamp).getTime();
+          const dateB = new Date(b.timestamp).getTime();
 
           // Primary sort: Time
           if (dateA !== dateB) {
             return dateA - dateB;
           }
-
-          // Secondary sort (Fix for same-second messages): Trust the array order from server
+          // Tie-breaker: original index from backend array
           return a.originalIndex - b.originalIndex;
         });
+
         setChatMessages(formattedMessages);
         setIsOpen(true);
         initialResponseAdded.current = true;
@@ -128,7 +122,7 @@ const AISidebarResponse = ({
       setIsOpen(true);
 
       setChatMessages((prevMessages) => {
-      // If chat is empty (first chunk or re-entering component)
+        // First chunk or empty chat
         if (prevMessages.length === 0) {
           return [{
             type: 'ai',
@@ -137,12 +131,10 @@ const AISidebarResponse = ({
           }];
         }
 
-        // Logic to update existing message
         const lastMessage = prevMessages[prevMessages.length - 1];
 
         // If the last message is from AI -> update its content
         if (lastMessage.type === 'ai') {
-        // Optimization: if content hasn't changed, don't update state
           if (lastMessage.content === response) {
             return prevMessages;
           }
@@ -151,13 +143,12 @@ const AISidebarResponse = ({
           updatedMessages[updatedMessages.length - 1] = {
             ...lastMessage,
             content: response,
-            // Update timestamp so React knows it's fresh
-            timestamp: new Date().toISOString(),
+            timestamp: lastMessage.timestamp,
           };
           return updatedMessages;
         }
 
-        // If the last message was from the user -> add new AI response
+        // New AI message (after user question)
         return [...prevMessages, {
           type: 'ai',
           content: response,
