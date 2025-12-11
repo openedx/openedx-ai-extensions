@@ -1,0 +1,7 @@
+{%- if AI_EXTENSIONS_MCP_CONFIGS is defined %}
+AI_EXTENSIONS_MCP_CONFIGS = {
+   {%- for key, value in AI_EXTENSIONS_MCP_CONFIGS.items() %}
+    '{{ key }}': {{ value|tojson }},
+  {%- endfor %}
+}
+{%- endif %}
