@@ -222,6 +222,51 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             "status": "completed",
         }
 
+    def _stream_and_save_history(self, generator, input_data,  # pylint: disable=too-many-positional-arguments
+                                 submission_processor, llm_processor,
+                                 initial_system_msgs=None):
+        """
+        Yields chunks to the view while accumulating text to save to DB
+        once the stream finishes.
+        """
+        full_response_text = []
+
+        try:
+            # 1. Iterate and Yield (Streaming Phase)
+            for chunk in generator:
+                # chunk is bytes (encoded utf-8) from processor
+                if isinstance(chunk, bytes):
+                    text_chunk = chunk.decode("utf-8", errors="ignore")
+                else:
+                    text_chunk = str(chunk)
+
+                full_response_text.append(text_chunk)
+                yield chunk
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error in stream wrapper: {e}")
+            yield f"\n[Error processing stream: {e}]".encode("utf-8")
+
+        finally:
+            # 2. Save History (Post-Stream Phase)
+            # This executes after the view has consumed the last chunk
+            final_response = "".join(full_response_text)
+
+            messages = [
+                {"role": "assistant", "content": final_response},
+                {"role": "user", "content": input_data}
+            ]
+
+            # Re-inject system messages if this was a new thread (and not OpenAI)
+            if llm_processor.get_provider() != "openai" and initial_system_msgs:
+                for msg in initial_system_msgs:
+                    messages.insert(0, {"role": msg["role"], "content": msg["content"]})
+
+            try:
+                submission_processor.update_chat_submission(messages)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error(f"Failed to save chat history after stream: {e}")
+
     def run(self, input_data):
         context = {
             'course_id': self.workflow.course_id,
@@ -260,10 +305,26 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         if llm_processor.get_provider() != "openai":
             chat_history = submission_processor.get_full_message_history()
 
+        # Call the processor
         llm_result = llm_processor.process(
             context=str(content_result), input_data=input_data, chat_history=chat_history
         )
 
+        # --- BRANCH A: Handle Streaming (Generator) ---
+        if is_generator(llm_result):
+            return self._stream_and_save_history(
+                generator=llm_result,
+                input_data=input_data,
+                submission_processor=submission_processor,
+                llm_processor=llm_processor,
+                initial_system_msgs=None
+            )
+
+        # --- BRANCH B: Handle Error ---
+        if "error" in llm_result:
+            return {"error": llm_result["error"], "status": "ResponsesProcessor error"}
+
+        # --- BRANCH C: Handle Non-Streaming (Standard) ---
         messages = [
             {"role": "assistant", "content": llm_result.get("response", "")},
         ]

@@ -51,56 +51,119 @@ const AISidebarResponse = ({
   const [textareaRows, setTextareaRows] = useState(1);
 
   // Show sidebar when response or error arrives (but not while just loading)
+  // Show sidebar when response or error arrives
   useEffect(() => {
-    if (response && !initialResponseAdded.current) {
-      setIsOpen(true);
-      try {
-        const parsed = JSON.parse(response);
+    if (!response && !error) { return; }
 
-        // Check if response has metadata structure
-        if (parsed.messages && Array.isArray(parsed.messages)) {
-          const formattedMessages = parsed.messages.map((msg) => ({
-            type: msg.role === 'user' ? 'user' : 'ai',
-            content: msg.content,
-            timestamp: new Date().toISOString(),
-          }));
-          setChatMessages(formattedMessages);
-
-          // Store metadata for lazy loading
-          if (parsed.metadata) {
-            setHasMoreHistory(parsed.metadata.has_more || false);
-          }
-
-          initialResponseAdded.current = true;
-          return;
-        }
-
-        // Fallback: check if it's just an array of messages
-        if (Array.isArray(parsed)) {
-          const formattedMessages = parsed.map((msg) => ({
-            type: msg.role === 'user' ? 'user' : 'ai',
-            content: msg.content,
-            timestamp: new Date().toISOString(),
-          }));
-          setChatMessages(formattedMessages);
-          initialResponseAdded.current = true;
-          return;
-        }
-      } catch (e) {
-        // Not JSON, proceed to add as single message
-      }
-
-      // Add single response message
-      setChatMessages([{
-        type: 'ai',
-        content: response,
-        timestamp: new Date().toISOString(),
-      }]);
-      initialResponseAdded.current = true;
-    }
-
+    // If there is an error, just open and show (Alert is handled in render)
     if (error) {
       setIsOpen(true);
+      return;
+    }
+
+    let parsedData = null;
+    let isJson = false;
+
+    // Attempt to parse the response
+    try {
+      parsedData = JSON.parse(response);
+      // Check if it looks like a message structure
+      if (typeof parsedData === 'object' && parsedData !== null) {
+        isJson = true;
+      }
+    } catch (e) {
+      isJson = false;
+    }
+
+    // --- SCENARIO 1: JSON with message history ---
+    if (isJson) {
+    // Execute this only once for a specific data set to avoid overwriting state unnecessarily
+      if (!initialResponseAdded.current) {
+        let rawMessages = [];
+
+        if (parsedData.messages && Array.isArray(parsedData.messages)) {
+          rawMessages = parsedData.messages;
+          if (parsedData.metadata) {
+            setHasMoreHistory(parsedData.metadata.has_more || false);
+          }
+        } else if (Array.isArray(parsedData)) {
+          rawMessages = parsedData;
+        }
+
+        // Formatting
+        let formattedMessages = rawMessages.map((msg, index) => ({
+          type: msg.role === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.timestamp || new Date().toISOString(),
+          originalIndex: index,
+        }));
+
+        // Remove empty messages
+        formattedMessages = formattedMessages.filter(
+          (msg) => msg.content && String(msg.content).trim().length > 0,
+        );
+
+        // Sort (oldest first)
+        formattedMessages.sort((a, b) => {
+          const dateA = new Date(a.timestamp);
+          const dateB = new Date(b.timestamp);
+
+          // Primary sort: Time
+          if (dateA !== dateB) {
+            return dateA - dateB;
+          }
+
+          // Secondary sort (Fix for same-second messages): Trust the array order from server
+          return a.originalIndex - b.originalIndex;
+        });
+        setChatMessages(formattedMessages);
+        setIsOpen(true);
+        initialResponseAdded.current = true;
+      }
+    // eslint-disable-next-line brace-style
+    }
+
+    // --- SCENARIO 2: Simple text (Streaming) ---
+    else {
+      setIsOpen(true);
+
+      setChatMessages((prevMessages) => {
+      // If chat is empty (first chunk or re-entering component)
+        if (prevMessages.length === 0) {
+          return [{
+            type: 'ai',
+            content: response,
+            timestamp: new Date().toISOString(),
+          }];
+        }
+
+        // Logic to update existing message
+        const lastMessage = prevMessages[prevMessages.length - 1];
+
+        // If the last message is from AI -> update its content
+        if (lastMessage.type === 'ai') {
+        // Optimization: if content hasn't changed, don't update state
+          if (lastMessage.content === response) {
+            return prevMessages;
+          }
+
+          const updatedMessages = [...prevMessages];
+          updatedMessages[updatedMessages.length - 1] = {
+            ...lastMessage,
+            content: response,
+            // Update timestamp so React knows it's fresh
+            timestamp: new Date().toISOString(),
+          };
+          return updatedMessages;
+        }
+
+        // If the last message was from the user -> add new AI response
+        return [...prevMessages, {
+          type: 'ai',
+          content: response,
+          timestamp: new Date().toISOString(),
+        }];
+      });
     }
   }, [response, error]);
 
@@ -291,16 +354,21 @@ const AISidebarResponse = ({
     }
 
     const userMessage = followUpQuestion.trim();
+    const aiPlaceholder = {
+      type: 'ai',
+      content: '',
+      timestamp: null,
+    };
 
-    // Add user message to chat
     setChatMessages(prev => [...prev, {
       type: 'user',
       content: userMessage,
       timestamp: new Date().toISOString(),
-    }]);
+    }, aiPlaceholder,
+    ]);
 
     setFollowUpQuestion('');
-    setTextareaRows(1); // Reset textarea to 1 row
+    setTextareaRows(1);
     setIsSendingFollowUp(true);
 
     try {
@@ -309,8 +377,10 @@ const AISidebarResponse = ({
         ...contextData,
       });
 
+      let buffer = '';
+
       // Make API call
-      const data = await callWorkflowService({
+      await callWorkflowService({
         context: preparedContext,
         action: 'run',
         userInput: userMessage,
@@ -318,28 +388,26 @@ const AISidebarResponse = ({
           requestId: `ai-request-${Date.now()}`,
           courseId: preparedContext.courseId || null,
         },
+        onStreamChunk: (chunk) => {
+          buffer += chunk;
+          setIsSendingFollowUp(false);
+
+          setChatMessages(prev => {
+            const newMsgs = [...prev];
+            const lastIndex = newMsgs.length - 1;
+            // Update only the last message content (the AI placeholder)
+            if (newMsgs[lastIndex] && newMsgs[lastIndex].type === 'ai') {
+              newMsgs[lastIndex] = {
+                ...newMsgs[lastIndex],
+                content: buffer,
+                type: 'ai',
+                timestamp: newMsgs[lastIndex].timestamp ?? new Date().toISOString(),
+              };
+            }
+            return newMsgs;
+          });
+        },
       });
-
-      // Extract response from various possible fields
-      let aiResponse = '';
-      if (data.response) {
-        aiResponse = data.response;
-      } else if (data.message) {
-        aiResponse = data.message;
-      } else if (data.content) {
-        aiResponse = data.content;
-      } else if (data.result) {
-        aiResponse = data.result;
-      } else {
-        aiResponse = JSON.stringify(data, null, 2);
-      }
-
-      // Add AI response to chat
-      setChatMessages(prev => [...prev, {
-        type: 'ai',
-        content: aiResponse,
-        timestamp: new Date().toISOString(),
-      }]);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[AISidebarResponse] Follow-up error:', err);
@@ -535,6 +603,10 @@ const AISidebarResponse = ({
           {chatMessages.length > 0 && (
             <div className="chat-messages">
               {chatMessages.map((message, index) => {
+                // ⛔ Skip empty or invalid messages
+                if (!message.content || typeof message.content !== 'string' || !message.content.trim()) {
+                  return null;
+                }
                 const messageKey = `${message.timestamp}-${index}`;
                 let bgColor = '#f8f9fa';
                 let textColor = '#212529';

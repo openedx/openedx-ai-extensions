@@ -3,7 +3,7 @@ AI Workflow models for managing flexible AI workflow execution
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model

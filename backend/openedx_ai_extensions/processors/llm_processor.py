@@ -3,7 +3,6 @@ Responses processor for threaded AI conversations using LiteLLM
 """
 
 import logging
-import time
 
 from litellm import completion, responses
 
@@ -94,6 +93,7 @@ class LLMProcessor(LitellmProcessor):
             dict: Completion parameters ready for responses() call
         """
         params = {}
+        params["stream"] = self.config.get("stream", False) or self.extra_params.get("stream", False)
 
         if self.chat_history:
             self.chat_history.append({"role": "user", "content": self.input_data})
@@ -131,6 +131,25 @@ class LLMProcessor(LitellmProcessor):
         """
         try:
             response = responses(**params)
+            total_tokens = None
+            if params["stream"]:
+                for chunk in response:
+                    if hasattr(chunk, "usage") and chunk.usage:
+                        total_tokens = chunk.usage.total_tokens
+
+                    if getattr(chunk, "response", None):
+                        resp = getattr(chunk, "response", None)
+                        if resp is not None:
+                            response_id = getattr(resp, "id", None)
+                            self.user_session.remote_response_id = response_id
+                            self.user_session.save()
+                    if hasattr(chunk, "delta"):
+                        yield chunk.delta
+                if total_tokens is not None:
+                    logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
+                else:
+                    logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
+                return None
 
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)
@@ -139,10 +158,12 @@ class LLMProcessor(LitellmProcessor):
             if response_id:
                 self.user_session.remote_response_id = response_id
                 self.user_session.save()
+            total_tokens = response.usage.total_tokens if response.usage else 0
+            logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
 
             response = {
                 "response": content,
-                "tokens_used": response.usage.total_tokens if response.usage else 0,
+                "tokens_used": total_tokens,
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
