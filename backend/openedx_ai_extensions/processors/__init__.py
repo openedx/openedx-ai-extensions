@@ -5,6 +5,7 @@ Processors module - handles data extraction and AI processing
 from .educator_assistant_processor import EducatorAssistantProcessor
 from .llm_processor import LLMProcessor
 from .openedx.content_libraries_processor import ContentLibraryProcessor
+from .openedx.course_outline_processor import CourseOutlineProcessor
 from .openedx.openedx_processor import OpenEdXProcessor
 from .openedx.submission_processor import SubmissionProcessor
 
@@ -13,5 +14,6 @@ __all__ = [
     "LLMProcessor",
     "OpenEdXProcessor",
     "SubmissionProcessor",
-    "EducatorAssistantProcessor"
+    "EducatorAssistantProcessor",
+    "CourseOutlineProcessor",
 ]
