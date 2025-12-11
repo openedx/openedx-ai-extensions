@@ -83,14 +83,6 @@ class LLMProcessor(LitellmProcessor):
     def _build_response_api_params(self, system_role=None):
         """
         Build completion parameters for LiteLLM responses API.
-
-        Args:
-            system_role: System role message for initializing thread
-            context: Context message for initializing thread
-            input_data: User query for continuing existing thread
-
-        Returns:
-            dict: Completion parameters ready for responses() call
         """
         params = {}
         params["stream"] = self.config.get("stream", False) or self.extra_params.get("stream", False)
@@ -119,37 +111,43 @@ class LLMProcessor(LitellmProcessor):
 
         return params
 
+    def _yield_threaded_stream(self, response):
+        """
+        Helper generator to handle streaming logic for threaded responses.
+        """
+        total_tokens = None
+        try:
+            for chunk in response:
+                if hasattr(chunk, "usage") and chunk.usage:
+                    total_tokens = chunk.usage.total_tokens
+
+                if getattr(chunk, "response", None):
+                    resp = getattr(chunk, "response", None)
+                    if resp is not None:
+                        response_id = getattr(resp, "id", None)
+                        self.user_session.remote_response_id = response_id
+                        self.user_session.save()
+                if hasattr(chunk, "delta"):
+                    yield chunk.delta
+
+            if total_tokens is not None:
+                logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
+            else:
+                logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error during threaded AI streaming: {e}", exc_info=True)
+            yield f"\n[AI Error: {e}]"
+
     def _call_responses_wrapper(self, params, initialize=False):
         """
-        Wrapper around LiteLLM responses() call that handles the API call and session updates.
-
-        Args:
-            completion_params: Parameters for the responses() call
-
-        Returns:
-            dict: Standardized response with content, tokens_used, model_used, and status
+        Wrapper around LiteLLM responses() call.
         """
         try:
             response = responses(**params)
-            total_tokens = None
-            if params["stream"]:
-                for chunk in response:
-                    if hasattr(chunk, "usage") and chunk.usage:
-                        total_tokens = chunk.usage.total_tokens
 
-                    if getattr(chunk, "response", None):
-                        resp = getattr(chunk, "response", None)
-                        if resp is not None:
-                            response_id = getattr(resp, "id", None)
-                            self.user_session.remote_response_id = response_id
-                            self.user_session.save()
-                    if hasattr(chunk, "delta"):
-                        yield chunk.delta
-                if total_tokens is not None:
-                    logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
-                else:
-                    logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
-                return None
+            if params["stream"]:
+                return self._yield_threaded_stream(response)
 
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)
@@ -161,17 +159,17 @@ class LLMProcessor(LitellmProcessor):
             total_tokens = response.usage.total_tokens if response.usage else 0
             logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
 
-            response = {
+            result = {
                 "response": content,
                 "tokens_used": total_tokens,
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
-            # Include system messages when initializing a new thread to add it to submissions for non-OpenAI providers
+            # Include system messages when initializing a new thread
             if initialize:
                 system_msgs = [msg for msg in params.get("input", []) if msg["role"] == "system"]
-                response["system_messages"] = system_msgs
-            return response
+                result["system_messages"] = system_msgs
+            return result
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error calling LiteLLM: {e}")

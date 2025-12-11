@@ -152,11 +152,12 @@ def test_process_calls_get_chat_history_by_default(
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
-def test_process_retrieves_existing_submissions(
+def test_process_retrieves_existing_submissions_and_injects_timestamps(
     mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
 ):
     """
-    Test that process() properly retrieves and processes existing submissions.
+    Test that process() properly retrieves submissions and injects the submission
+    timestamp into the messages.
     """
     # Mock submission data
     mock_submissions = [
@@ -170,6 +171,11 @@ def test_process_retrieves_existing_submissions(
             "answer": json.dumps([{"role": "assistant", "content": "Hi there!"}]),
             "created_at": "2025-01-01T00:01:00Z",
         },
+        {
+            "uuid": "submission-1",
+            "answer": json.dumps([{"role": "user", "content": "Hello"}]),
+            "created_at": "2025-01-01T00:00:00Z",
+        },
     ]
     mock_submissions_api.get_submissions.return_value = mock_submissions
 
@@ -179,9 +185,22 @@ def test_process_retrieves_existing_submissions(
     mock_submissions_api.get_submissions.assert_called_once()
     call_args = mock_submissions_api.get_submissions.call_args
     assert call_args[0][0] == submission_processor.student_item_dict
+    assert "response" in result
+    response_data = json.loads(result["response"])
+    messages = response_data["messages"]
+    # Should maintain chronological order (Oldest -> Newest) due to reversed() call
+    assert len(messages) == 3
 
-    # Should return response with messages
-    assert "response" in result or "error" in result
+    # Check first message (Oldest)
+    assert messages[0]["role"] == "user"
+    assert messages[0]["content"] == "Hello"
+    # Verify timestamp was injected from the submission object
+    assert messages[0]["timestamp"] == "2025-01-01T00:00:00Z"
+
+    # Check second message (Newest)
+    assert messages[1]["role"] == "assistant"
+    assert messages[1]["content"] == "Hi there!"
+    assert messages[1]["timestamp"] == "2025-01-01T00:01:00Z"
 
 
 @pytest.mark.django_db
@@ -200,17 +219,12 @@ def test_process_respects_max_context_messages_limit(
     }
     processor = SubmissionProcessor(config=config, user_session=user_session)
 
-    # Mock multiple submissions exceeding the limit
+    # Mock multiple submissions (Newest First)
     mock_submissions = [
         {
-            "uuid": "submission-1",
-            "answer": json.dumps([{"role": "user", "content": "Message 1"}]),
-            "created_at": "2025-01-01T00:00:00Z",
-        },
-        {
-            "uuid": "submission-2",
-            "answer": json.dumps([{"role": "assistant", "content": "Response 1"}]),
-            "created_at": "2025-01-01T00:01:00Z",
+            "uuid": "submission-4",
+            "answer": json.dumps([{"role": "assistant", "content": "Response 2"}]),
+            "created_at": "2025-01-01T00:03:00Z",
         },
         {
             "uuid": "submission-3",
@@ -218,20 +232,28 @@ def test_process_respects_max_context_messages_limit(
             "created_at": "2025-01-01T00:02:00Z",
         },
         {
-            "uuid": "submission-4",
-            "answer": json.dumps([{"role": "assistant", "content": "Response 2"}]),
-            "created_at": "2025-01-01T00:03:00Z",
+            "uuid": "submission-2",
+            "answer": json.dumps([{"role": "assistant", "content": "Response 1"}]),
+            "created_at": "2025-01-01T00:01:00Z",
+        },
+        {
+            "uuid": "submission-1",
+            "answer": json.dumps([{"role": "user", "content": "Message 1"}]),
+            "created_at": "2025-01-01T00:00:00Z",
         },
     ]
     mock_submissions_api.get_submissions.return_value = mock_submissions
 
     result = processor.process(context={}, input_data=None)
 
-    # Verify get_submissions was called
-    mock_submissions_api.get_submissions.assert_called_once()
+    assert "response" in result
+    response_data = json.loads(result["response"])
+    messages = response_data["messages"]
 
-    # Should return response
-    assert "response" in result or "error" in result
+    # Should only return the last 2 messages
+    assert len(messages) == 2
+    assert messages[0]["content"] == "Message 2"
+    assert messages[1]["content"] == "Response 2"
 
 
 @pytest.mark.django_db
