@@ -1,9 +1,23 @@
 """Constants for AI workflow xAPI transformers."""
 
+# xAPI verbs
 XAPI_VERB_COMPLETED = "http://adlnet.gov/expapi/verbs/completed"
+
+# Display names
 COMPLETED = "completed"
+
+# Languages
 EN = "en"
 
-XAPI_ACTIVITY_AI_WORKFLOW = "http://activitystrea.ms/schema/1.0/process"
+# xAPI activity types
+# Custom activity type for AI-powered educational workflows
+# Following the Open edX xAPI pattern: https://w3id.org/xapi/openedx/activity/*
+XAPI_ACTIVITY_AI_WORKFLOW = "https://w3id.org/xapi/openedx/activity/ai-workflow"
 
+# xAPI extensions
+XAPI_EXTENSION_WORKFLOW_ACTION = "https://w3id.org/xapi/openedx/extension/ai-workflow-action"
+XAPI_EXTENSION_PROMPT_TEMPLATE_SLUG = "https://w3id.org/xapi/openedx/extension/prompt-template-slug"
+XAPI_EXTENSION_LOCATION_ID = "https://w3id.org/xapi/openedx/extension/location-id"
+
+# Event names
 EVENT_NAME_WORKFLOW_COMPLETED = "openedx.ai.workflow.completed"

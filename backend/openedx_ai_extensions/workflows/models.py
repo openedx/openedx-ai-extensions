@@ -251,10 +251,16 @@ class AIWorkflow(models.Model):
             )
 
             # Emit event - will be filtered by whitelist processor and routed to xapi backend
+            config_filename = self.config.processor_config.get("_config_filename", self.action)
+            # Build a clean workflow ID using config filename and action
+            workflow_id = f"{config_filename}__{self.action}"
+
             emit_event(EVENT_NAME_WORKFLOW_COMPLETED, self.course_id, {
-                "workflow_id": self.get_natural_key(),
+                "workflow_id": workflow_id,
                 "action": self.action,
                 "course_id": self.course_id,
+                "workflow_name": config_filename,
+                "location_id": str(self.location_id) if self.location_id else None,
             })
 
             return result
