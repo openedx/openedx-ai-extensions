@@ -5,6 +5,7 @@ Base processor for LiteLLM-based processors
 import logging
 
 from django.conf import settings
+
 from openedx_ai_extensions.processors.llm_functions import FUNCTIONS_SCHEMA
 
 logger = logging.getLogger(__name__)

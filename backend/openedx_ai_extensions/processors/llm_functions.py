@@ -1,8 +1,13 @@
+"""
+LLM function definitions and utilities for AI-powered workflows.
+"""
 
-import logging
 import inspect
+import logging
 import random
+
 import litellm
+
 from openedx_ai_extensions.processors.openedx.openedx_processor import OpenEdXProcessor
 
 logger = logging.getLogger(__name__)
@@ -28,6 +33,7 @@ def get_location_content(location_id, **kwargs):
         logger.error(f"Error extracting content for location {location_id}: {e}")
         return ""
 
+
 def roll_dice(n_dice=1, **kwargs):
     """Simulate rolling a specified number of six-sided dice.
 
@@ -42,6 +48,7 @@ def roll_dice(n_dice=1, **kwargs):
     """
     roll = [random.randint(1, 6) for _ in range(n_dice)]
     return roll
+
 
 AVAILABLE_FUNCTIONS = {
     name: obj
