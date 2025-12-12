@@ -6,7 +6,8 @@
     },
     "LLMProcessor": {
       "function": "explain_like_five",
-      "config": "default"
+      "config": "default",
+      "stream": true
     }
   },
   "actuator_config": {

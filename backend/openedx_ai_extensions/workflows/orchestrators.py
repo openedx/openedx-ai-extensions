@@ -13,6 +13,7 @@ from openedx_ai_extensions.processors import (
     OpenEdXProcessor,
     SubmissionProcessor,
 )
+from openedx_ai_extensions.utils import is_generator
 
 if TYPE_CHECKING:
     from openedx_ai_extensions.workflows.models import AIWorkflowSession
@@ -44,22 +45,45 @@ class DirectLLMResponse(BaseOrchestrator):
     """Orchestrator that provides direct LLM responses."""
 
     def run(self, input_data):
-        # 1. Process with OpenEdX processor
+        """
+        Executes the content fetching, LLM processing, and handles streaming
+        or structured response return.
+        """
+
+        # --- 1. Process with OpenEdX processor (Content Fetching) ---
         openedx_processor = OpenEdXProcessor(self.config.processor_config)
         content_result = openedx_processor.process(location_id=self.location_id)
 
-        if 'error' in content_result:
-            return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
+        # Early return on error during content fetching
+        if content_result and 'error' in content_result:
+            return {
+                'error': content_result['error'],
+                'status': 'OpenEdXProcessor error'
+            }
 
-        # 2. Process with LLM processor
+        # Convert fetched content to a string format suitable for the LLM
+        llm_input_content = str(content_result)
+
+        # --- 2. Process with LLM processor ---
         llm_processor = LLMProcessor(self.config.processor_config)
-        llm_result = llm_processor.process(context=str(content_result))
+        llm_result = llm_processor.process(context=llm_input_content)
 
-        if 'error' in llm_result:
-            return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
+        # --- 4. Handle Streaming Response (Generator) ---
+        if is_generator(llm_result):
+            # If the LLM returns a generator, return its directly.
+            return llm_result
 
-        # 3. Return result
-        return {
+        # --- 5. Handle LLM Error (Non-Streaming) ---
+        if llm_result and 'error' in llm_result:
+            # Early return on error during non-streaming LLM processing
+            return {
+                'error': llm_result['error'],
+                'status': 'LLMProcessor error'
+            }
+
+        # --- 6. Return Structured Non-Streaming Result ---
+        # If execution reaches this point, we have a successful, non-streaming result (Dict).
+        response_data = {
             'response': llm_result.get('response', 'No response available'),
             'status': 'completed',
             'metadata': {
@@ -67,6 +91,7 @@ class DirectLLMResponse(BaseOrchestrator):
                 'model_used': llm_result.get('model_used')
             }
         }
+        return response_data
 
 
 class SessionBasedOrchestrator(BaseOrchestrator):
@@ -197,6 +222,51 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             "status": "completed",
         }
 
+    def _stream_and_save_history(self, generator, input_data,  # pylint: disable=too-many-positional-arguments
+                                 submission_processor, llm_processor,
+                                 initial_system_msgs=None):
+        """
+        Yields chunks to the view while accumulating text to save to DB
+        once the stream finishes.
+        """
+        full_response_text = []
+
+        try:
+            # 1. Iterate and Yield (Streaming Phase)
+            for chunk in generator:
+                # chunk is bytes (encoded utf-8) from processor
+                if isinstance(chunk, bytes):
+                    text_chunk = chunk.decode("utf-8", errors="ignore")
+                else:
+                    text_chunk = str(chunk)
+
+                full_response_text.append(text_chunk)
+                yield chunk
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error in stream wrapper: {e}")
+            yield f"\n[Error processing stream: {e}]".encode("utf-8")
+
+        finally:
+            # 2. Save History (Post-Stream Phase)
+            # This executes after the view has consumed the last chunk
+            final_response = "".join(full_response_text)
+
+            messages = [
+                {"role": "user", "content": input_data},
+                {"role": "assistant", "content": final_response},
+            ]
+
+            # Re-inject system messages if this was a new thread (and not OpenAI)
+            if llm_processor.get_provider() != "openai" and initial_system_msgs:
+                for msg in initial_system_msgs:
+                    messages.insert(0, {"role": msg["role"], "content": msg["content"]})
+
+            try:
+                submission_processor.update_chat_submission(messages)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error(f"Failed to save chat history after stream: {e}")
+
     def run(self, input_data):
         context = {
             'course_id': self.workflow.course_id,
@@ -235,10 +305,26 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         if llm_processor.get_provider() != "openai":
             chat_history = submission_processor.get_full_message_history()
 
+        # Call the processor
         llm_result = llm_processor.process(
             context=str(content_result), input_data=input_data, chat_history=chat_history
         )
 
+        # --- BRANCH A: Handle Streaming (Generator) ---
+        if is_generator(llm_result):
+            return self._stream_and_save_history(
+                generator=llm_result,
+                input_data=input_data,
+                submission_processor=submission_processor,
+                llm_processor=llm_processor,
+                initial_system_msgs=None
+            )
+
+        # --- BRANCH B: Handle Error ---
+        if "error" in llm_result:
+            return {"error": llm_result["error"], "status": "ResponsesProcessor error"}
+
+        # --- BRANCH C: Handle Non-Streaming (Standard) ---
         messages = [
             {"role": "assistant", "content": llm_result.get("response", "")},
         ]

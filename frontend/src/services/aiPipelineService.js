@@ -7,6 +7,12 @@ import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 
 /**
+ * Rate limit for rendering streaming chunks (milliseconds)
+ * Controls the minimum delay between chunk renders to prevent too-fast rendering
+ */
+const CHUNK_RATE_LIMIT_MS = 50;
+
+/**
  * Extract course ID from current URL if not provided
  */
 const extractCourseIdFromUrl = () => {
@@ -127,7 +133,8 @@ export const getDefaultEndpoint = (endpoint = 'workflows') => {
 
 /**
  * Make API call to workflow service endpoint
- * Unified function for all workflow API calls
+ * Unified function for all workflow API calls.
+ *
  * @param {Object} params - Request parameters
  * @param {string} params.endpoint - API endpoint URL or endpoint type ('workflows', 'config')
  * @param {Object} params.payload - Request payload (flexible structure)
@@ -136,7 +143,8 @@ export const getDefaultEndpoint = (endpoint = 'workflows') => {
  * @param {string} params.userInput - User input (optional)
  * @param {string} params.workflowType - Workflow type (optional)
  * @param {Object} params.options - Additional options (optional)
- * @returns {Promise<Object>} API response data
+ * @param {Function} params.onStreamChunk - Callback for streaming responses.
+ * @returns {Promise<Object>} Object containing the full accumulated text and metadata.
  */
 export const callWorkflowService = async ({
   endpoint = 'workflows',
@@ -146,16 +154,20 @@ export const callWorkflowService = async ({
   userInput = null,
   workflowType = null,
   options = null,
+  onStreamChunk = null, // Optional callback for streaming text
 }) => {
   // Determine the actual endpoint URL
   const apiEndpoint = endpoint.startsWith('http')
     ? endpoint
     : getDefaultEndpoint(endpoint);
 
+  const clientRequestId = payload.requestId || generateRequestId();
+
   // Build the request payload flexibly
   const requestPayload = {
     timestamp: new Date().toISOString(),
-    ...payload, // Spread user-provided payload first
+    requestId: clientRequestId,
+    ...payload,
   };
 
   // Add optional fields if provided
@@ -179,15 +191,120 @@ export const callWorkflowService = async ({
   }
 
   try {
-    // Use Open edX authenticated HTTP client
-    const { data } = await getAuthenticatedHttpClient()
-      .post(apiEndpoint, requestPayload);
+    let fullAccumulatedText = '';
 
-    if (!data) {
-      throw new Error('Empty response from workflow service');
+    // Always use streaming configuration to capture the response body
+    // regardless of whether it is JSON or Text
+    const response = await getAuthenticatedHttpClient().post(
+      apiEndpoint,
+      requestPayload,
+      {
+        responseType: 'stream',
+        adapter: 'fetch', // Required to access the stream reader
+      },
+    );
+
+    // Detect Content-Type to decide how to process chunks
+    const contentType = response.headers['content-type'] || '';
+    const isJson = contentType.includes('application/json');
+
+    const reader = response.data.getReader();
+    const decoder = new TextDecoder();
+
+    // Rate limiting setup for streaming chunks
+    const chunkQueue = [];
+    let isProcessingQueue = false;
+    let streamingComplete = false;
+
+    // Process chunks from queue at controlled rate
+    const processChunkQueue = () => {
+      if (chunkQueue.length > 0 && onStreamChunk && typeof onStreamChunk === 'function') {
+        const chunk = chunkQueue.shift();
+        onStreamChunk(chunk);
+      }
+
+      // Continue processing if queue has items or streaming is still ongoing
+      if (chunkQueue.length > 0 || !streamingComplete) {
+        setTimeout(processChunkQueue, CHUNK_RATE_LIMIT_MS);
+      } else {
+        isProcessingQueue = false;
+      }
+    };
+
+    // Consume the stream
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // eslint-disable-next-line no-await-in-loop
+      const { done, value } = await reader.read();
+
+      if (done) {
+        streamingComplete = true;
+        break;
+      }
+
+      const chunkText = decoder.decode(value, { stream: true });
+
+      if (chunkText) {
+        fullAccumulatedText += chunkText;
+
+        // Only trigger the UI streaming callback if this is effectively a text stream.
+        // If it's JSON, we must wait for the full payload to parse it validly.
+        if (!isJson && onStreamChunk && typeof onStreamChunk === 'function') {
+          chunkQueue.push(chunkText);
+
+          // Start processing queue if not already running
+          if (!isProcessingQueue) {
+            isProcessingQueue = true;
+            processChunkQueue();
+          }
+        }
+      }
     }
 
-    return data;
+    // Wait for queue to finish processing before continuing
+    while (chunkQueue.length > 0) {
+      // eslint-disable-next-line no-await-in-loop, no-promise-executor-return
+      await new Promise(resolve => setTimeout(resolve, CHUNK_RATE_LIMIT_MS));
+    }
+
+    // --- PROCESSING COMPLETE ---
+
+    // Scenario A: The backend returned a JSON object (Success or Error)
+    if (isJson) {
+      try {
+        const jsonResult = JSON.parse(fullAccumulatedText);
+
+        // If the backend sent an error status (e.g. 400/500), throw it so the UI handles it as an error
+        if (response.status >= 400) {
+          throw new Error(jsonResult.error || 'AI Service Error');
+        }
+
+        return jsonResult;
+      } catch (e) {
+        // If we caught an error above, re-throw it.
+        // If JSON.parse failed, throw a format error.
+        if (e.message !== 'Unexpected end of JSON input') {
+          throw e;
+        }
+        // eslint-disable-next-line no-console
+        console.error('Failed to parse AI response:', e);
+        throw new Error('Invalid response format from AI service');
+      }
+    }
+
+    // Scenario B: The backend returned a Streaming Text response
+    // If the HTTP status indicates failure but content wasn't JSON, throw error
+    if (response.status >= 400) {
+      throw new Error(fullAccumulatedText || `Request failed with status ${response.status}`);
+    }
+
+    // Return a constructed object matching the shape of a JSON response
+    return {
+      response: fullAccumulatedText,
+      requestId: clientRequestId,
+      status: 'success',
+      timestamp: new Date().toISOString(),
+    };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Workflow Service Error:', error);

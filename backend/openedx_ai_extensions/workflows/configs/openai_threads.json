@@ -6,7 +6,8 @@
     },
     "LLMProcessor": {
       "function": "chat_with_context",
-      "config": "openai"
+      "config": "openai",
+      "stream": true
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",

@@ -59,6 +59,7 @@ class SubmissionProcessor:
         # get_submissions returns newest first, so we need to reverse to get chronological order
         for submission in reversed(submissions):
             submission_messages = json.loads(submission["answer"])
+            timestamp = str(submission.get("created_at") or submission.get("submitted_at") or "")
             # Remove metadata if present
             if submission_messages and isinstance(submission_messages, list):
                 submission_messages_copy = submission_messages.copy()
@@ -72,6 +73,9 @@ class SubmissionProcessor:
                 submission_messages_copy = [
                     msg for msg in submission_messages_copy if msg.get("role") != "system"
                 ]
+                for msg in submission_messages_copy:
+                    if isinstance(msg, dict):
+                        msg["timestamp"] = timestamp
                 # Extend to maintain chronological order (oldest to newest)
                 all_messages.extend(submission_messages_copy)
 

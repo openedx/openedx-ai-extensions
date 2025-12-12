@@ -31,6 +31,42 @@ class LLMProcessor(LitellmProcessor):
         function = getattr(self, function_name)
         return function()
 
+    def _handle_streaming_completion(self, response):
+        """Stream with chunk buffering (more natural UI speed)."""
+        total_tokens = None
+        try:
+            for chunk in response:
+                if hasattr(chunk, "usage") and chunk.usage:
+                    total_tokens = chunk.usage.total_tokens
+
+                content = chunk.choices[0].delta.content or ""
+                if content:
+                    yield content.encode('utf-8')
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error during AI streaming: {e}", exc_info=True)
+            yield f"\n[AI Error: {e}]".encode("utf-8")
+            return
+
+        # Log tokens at end
+        if total_tokens is not None:
+            logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
+        else:
+            logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
+
+    def _handle_non_streaming_completion(self, response):
+        """Handles the non-streaming logic, returning a response dict."""
+        content = response.choices[0].message.content
+        total_tokens = response.usage.total_tokens if response.usage else 0
+        logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
+
+        return {
+            "response": content,
+            "tokens_used": total_tokens,
+            "model_used": self.provider,
+            "status": "success",
+        }
+
     def _extract_response_content(self, response):
         """Extract text content from LiteLLM response."""
         if not hasattr(response, "output") or not response.output:
@@ -47,16 +83,9 @@ class LLMProcessor(LitellmProcessor):
     def _build_response_api_params(self, system_role=None):
         """
         Build completion parameters for LiteLLM responses API.
-
-        Args:
-            system_role: System role message for initializing thread
-            context: Context message for initializing thread
-            input_data: User query for continuing existing thread
-
-        Returns:
-            dict: Completion parameters ready for responses() call
         """
         params = {}
+        params["stream"] = self.config.get("stream", False) or self.extra_params.get("stream", False)
 
         if self.chat_history:
             self.chat_history.append({"role": "user", "content": self.input_data})
@@ -82,18 +111,43 @@ class LLMProcessor(LitellmProcessor):
 
         return params
 
+    def _yield_threaded_stream(self, response):
+        """
+        Helper generator to handle streaming logic for threaded responses.
+        """
+        total_tokens = None
+        try:
+            for chunk in response:
+                if hasattr(chunk, "usage") and chunk.usage:
+                    total_tokens = chunk.usage.total_tokens
+
+                if getattr(chunk, "response", None):
+                    resp = getattr(chunk, "response", None)
+                    if resp is not None:
+                        response_id = getattr(resp, "id", None)
+                        self.user_session.remote_response_id = response_id
+                        self.user_session.save()
+                if hasattr(chunk, "delta"):
+                    yield chunk.delta
+
+            if total_tokens is not None:
+                logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
+            else:
+                logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error during threaded AI streaming: {e}", exc_info=True)
+            yield f"\n[AI Error: {e}]"
+
     def _call_responses_wrapper(self, params, initialize=False):
         """
-        Wrapper around LiteLLM responses() call that handles the API call and session updates.
-
-        Args:
-            completion_params: Parameters for the responses() call
-
-        Returns:
-            dict: Standardized response with content, tokens_used, model_used, and status
+        Wrapper around LiteLLM responses() call.
         """
         try:
             response = responses(**params)
+
+            if params["stream"]:
+                return self._yield_threaded_stream(response)
 
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)
@@ -102,18 +156,20 @@ class LLMProcessor(LitellmProcessor):
             if response_id:
                 self.user_session.remote_response_id = response_id
                 self.user_session.save()
+            total_tokens = response.usage.total_tokens if response.usage else 0
+            logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
 
-            response = {
+            result = {
                 "response": content,
-                "tokens_used": response.usage.total_tokens if response.usage else 0,
+                "tokens_used": total_tokens,
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
-            # Include system messages when initializing a new thread to add it to submissions for non-OpenAI providers
+            # Include system messages when initializing a new thread
             if initialize:
                 system_msgs = [msg for msg in params.get("input", []) if msg["role"] == "system"]
-                response["system_messages"] = system_msgs
-            return response
+                result["system_messages"] = system_msgs
+            return result
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error calling LiteLLM: {e}")
@@ -121,49 +177,54 @@ class LLMProcessor(LitellmProcessor):
 
     def _call_completion_wrapper(self, system_role):
         """
-        General method to call LiteLLM completion API
-        Handles configuration and returns standardized response
+        General method to call LiteLLM completion API.
+        Returns either a generator (if stream=True) or a response dict.
         """
-        try:
-            params = {
-                "messages": [
-                    {"role": "system", "content": system_role},
-                ],
-            }
+        # Build completion parameters
+        stream = self.config.get("stream", False) or self.extra_params.get("stream", False)
+        params = {
+            "stream": stream,
+            "messages": [
+                {"role": "system", "content": system_role},
+            ],
+        }
 
-            if self.context:
-                params["messages"].append(
-                    {"role": "system", "content": self.context}
-                )
-
-            if self.input_data:
-                params["messages"].append(
-                    {"role": "user", "content": self.input_data}
-                )
-
-            params.update(self.extra_params)
-
-            has_user_input = bool(self.input_data)
-            params = adapt_to_provider(
-                provider=self.provider,
-                params=params,
-                has_user_input=has_user_input,
-                user_session=self.user_session,
-                input_data=self.input_data,
+        if self.context:
+            params["messages"].append(
+                {"role": "system", "content": self.context}
             )
 
-            response = completion(**params)
-            content = response.choices[0].message.content
+        if self.input_data:
+            params["messages"].append(
+                {"role": "user", "content": self.input_data}
+            )
 
-            return {
-                "response": content,
-                "tokens_used": response.usage.total_tokens if response.usage else 0,
-                "model_used": self.extra_params.get("model", "unknown"),
-                "status": "success",
-            }
+        params.update(self.extra_params)
+
+        has_user_input = bool(self.input_data)
+        params = adapt_to_provider(
+            provider=self.provider,
+            params=params,
+            has_user_input=has_user_input,
+            user_session=self.user_session,
+            input_data=self.input_data,
+        )
+
+        try:
+            # 1. Call the LiteLLM API
+            response = completion(**params)
+
+            # 2. Handle streaming response (Generator)
+            if stream:
+                return self._handle_streaming_completion(response)  # Return the generator object
+            else:
+                return self._handle_non_streaming_completion(response)  # Return the dictionary
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error calling LiteLLM: {e}")
+            # Catch errors that occur during the INITIAL API call (before streaming starts)
+            error_message = f"Error during initial AI completion call: {e}"
+            logger.error(error_message, exc_info=True)
+            # Always return a dictionary error in this outer block
             return {"error": f"AI processing failed: {str(e)}"}
 
     def chat_with_context(self):
