@@ -5,9 +5,11 @@ Open edX Content Extraction
 import json
 import logging
 
+from django.conf import settings
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
 
+from openedx_ai_extensions.functions.decorators import llm_tool, register_instance
 from openedx_ai_extensions.processors.component_extractors import (
     COMPONENT_EXTRACTORS,
     extract_generic_info,
@@ -30,6 +32,9 @@ class OpenEdXProcessor:
         self.course_id = course_id
         self.user = user
 
+        # Register this instance for LLM function calls
+        register_instance(self)
+
     def process(self, *args, **kwargs):
         """Process based on configured function"""
         function_name = self.config.get("function", "no_context")
@@ -41,6 +46,23 @@ class OpenEdXProcessor:
         """Return default message when no context is provided."""
         return {"display_name": "No context was provided."}
 
+    @llm_tool(schema={
+        "name": "get_location_content",
+        "description": "Get the content of a given Open edX location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location_id": {
+                    "type": "string",
+                    "description": (
+                        "The string representation of the location ID, "
+                        "if not provided uses the current location"
+                    )
+                }
+            },
+            "required": []
+        }
+    })
     def get_location_content(self, location_id=None):
         """Extract unit content from Open edX modulestore"""
         try:
@@ -49,6 +71,8 @@ class OpenEdXProcessor:
 
             # Get char_limit from config. Useful during development
             char_limit = self.config.get("char_limit", None)
+            location_id = location_id or self.location_id
+
             location_id = location_id or self.location_id
 
             unit_key = UsageKey.from_string(location_id)
@@ -229,3 +253,39 @@ class OpenEdXProcessor:
                 outline.append(chapter_info)
 
         return outline
+
+    @llm_tool(schema={
+          "name": "get_context",
+          "description": "Get the context vars of the current Open edX location",
+        }
+    )
+    def get_context(self):
+        """Get the context of a given Open edX location."""
+        return {
+            "location_id": self.location_id,
+            "course_id": self.course_id
+        }
+
+    @llm_tool(schema={
+          "name": "get_location_link",
+          "description": "Get the URL of a given Open edX location",
+          "parameters": {
+              "type": "object",
+              "properties": {
+                  "location_id": {
+                      "type": "string",
+                      "description": (
+                          "The string representation of the location ID, "
+                          "if not provided uses the current location"
+                      )
+                  }
+              },
+              "required": []
+          }
+      }
+    )
+    def get_location_link(self, location_id=None):
+        """Helper to get the URL of a given location ID"""
+        return (
+            f"{settings.LEARNING_MICROFRONTEND_URL}/course/{self.course_id}/{location_id or self.location_id}"
+        )

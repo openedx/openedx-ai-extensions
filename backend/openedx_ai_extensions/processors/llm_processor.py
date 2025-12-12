@@ -2,10 +2,12 @@
 Responses processor for threaded AI conversations using LiteLLM
 """
 
+import json
 import logging
 
 from litellm import completion, responses
 
+from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
 from openedx_ai_extensions.processors.llm_providers import adapt_to_provider
 
@@ -15,8 +17,9 @@ logger = logging.getLogger(__name__)
 class LLMProcessor(LitellmProcessor):
     """Handles AI processing using LiteLLM with support for threaded conversations."""
 
-    def __init__(self, config=None, user_session=None):
+    def __init__(self, config=None, user_session=None, tools_context_vars=None):
         super().__init__(config, user_session)
+        self.tools_context_vars = tools_context_vars or {}
         self.chat_history = None
         self.input_data = None
         self.context = None
@@ -212,8 +215,7 @@ class LLMProcessor(LitellmProcessor):
 
         try:
             # 1. Call the LiteLLM API
-            response = completion(**params)
-
+            response = self._completion_with_tools(tool_calls=[], params=params)
             # 2. Handle streaming response (Generator)
             if stream:
                 return self._handle_streaming_completion(response)  # Return the generator object
@@ -226,6 +228,35 @@ class LLMProcessor(LitellmProcessor):
             logger.exception(error_message, exc_info=True)
             # Always return a dictionary error in this outer block
             return {"error": f"AI processing failed: {str(e)}"}
+
+    def _completion_with_tools(self, tool_calls, params):
+        """Handle tool calls recursively until no more tool calls are present."""
+        for tool_call in tool_calls:
+            function_name = tool_call.function.name
+            function_to_call = AVAILABLE_TOOLS[function_name]
+            function_args = json.loads(tool_call.function.arguments)
+
+            function_response = function_to_call(
+                **function_args,
+            )
+            params["messages"].append(
+                {
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": function_name,
+                    "content": str(function_response),
+                }
+            )
+
+        # Call completion again with updated messages
+        response = completion(**params)
+
+        new_tool_calls = response.choices[0].message.tool_calls
+        if new_tool_calls:
+            params["messages"].append(response.choices[0].message)
+            return self._completion_with_tools(new_tool_calls, params)
+
+        return response
 
     def chat_with_context(self):
         """
@@ -306,6 +337,18 @@ class LLMProcessor(LitellmProcessor):
             "Say hello to the user and explain what LLM model you are."
             "Don't pay attention to any extra context"
         )
+        result = self._call_completion_wrapper(system_role=system_role)
+
+        return result
+
+    def answer_question(self):
+        """Answer a specific question based on the provided content"""
+        system_role = (
+            "Roll a dice: if the result is 1, give me the current location complete link, "
+            "if the result is 2 or more then Enumerate the location content and leave a "
+            "brief explanation of each section. In all cases present the results of the dice roll."
+        )
+
         result = self._call_completion_wrapper(system_role=system_role)
 
         return result
