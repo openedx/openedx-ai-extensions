@@ -5,6 +5,7 @@ Base processor for LiteLLM-based processors
 import logging
 
 from django.conf import settings
+from openedx_ai_extensions.processors.llm_functions import FUNCTIONS_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,19 @@ class LitellmProcessor:
         self.extra_params = {}
         for key, value in settings.AI_EXTENSIONS[self.config_profile].items():
             self.extra_params[key.lower()] = value
+
+        tools_enabled = self.config.get("tools_enabled", [])
+        if tools_enabled:
+            functions_schema_filtered = [
+                {
+                  "type": "function",
+                  "function": schema
+                }
+                for name, schema in FUNCTIONS_SCHEMA.items()
+                if name in tools_enabled
+            ]
+            if functions_schema_filtered:
+                self.extra_params["tools"] = functions_schema_filtered
 
     def process(self, *args, **kwargs):
         """Process based on configured function - must be implemented by subclasses"""

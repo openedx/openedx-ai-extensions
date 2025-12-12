@@ -2,12 +2,14 @@
 Responses processor for threaded AI conversations using LiteLLM
 """
 
+import json
 import logging
 
 from litellm import completion, responses
 
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
 from openedx_ai_extensions.processors.llm_providers import adapt_to_provider
+from openedx_ai_extensions.processors.llm_functions import AVAILABLE_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +17,9 @@ logger = logging.getLogger(__name__)
 class LLMProcessor(LitellmProcessor):
     """Handles AI processing using LiteLLM with support for threaded conversations."""
 
-    def __init__(self, config=None, user_session=None):
+    def __init__(self, config=None, user_session=None, tools_context_vars=None):
         super().__init__(config, user_session)
+        self.tools_context_vars = tools_context_vars or {}
         self.chat_history = None
         self.input_data = None
         self.context = None
@@ -141,6 +144,20 @@ class LLMProcessor(LitellmProcessor):
                     {"role": "user", "content": self.input_data}
                 )
 
+            included_vars = self.config.get("extra_context", {}).get("vars_to_include_in_context", [])
+            if included_vars:
+                extra_context_parts = []
+                for var_name in included_vars:
+                    if var_name in self.tools_context_vars:
+                        extra_context_parts.append(
+                            f"{var_name}: {self.tools_context_vars[var_name]}"
+                        )
+                if extra_context_parts:
+                    extra_context_str = "\n".join(extra_context_parts)
+                    params["messages"].append(
+                        {"role": "system", "content": f"Additional Context:\n{extra_context_str}"}
+                    )
+
             params.update(self.extra_params)
 
             has_user_input = bool(self.input_data)
@@ -153,11 +170,20 @@ class LLMProcessor(LitellmProcessor):
             )
 
             response = completion(**params)
-            content = response.choices[0].message.content
+
+            tool_calls = response.choices[0].message.tool_calls
+            if tool_calls:
+                params["messages"].append(response.choices[0].message)
+                response = self._recursive_tool_call_handler(tool_calls=tool_calls, params=params)
+            else:
+                response = {
+                    "response": response.choices[0].message.content,
+                    "usage": response.usage.total_tokens if response.usage else 0,
+                }
 
             return {
-                "response": content,
-                "tokens_used": response.usage.total_tokens if response.usage else 0,
+                "response": response["response"],
+                "tokens_used": response["usage"],
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
@@ -165,6 +191,41 @@ class LLMProcessor(LitellmProcessor):
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
+
+    def _recursive_tool_call_handler(self, tool_calls, params, usage=0):
+        """Handle tool calls recursively until no more tool calls are present."""
+        for tool_call in tool_calls:
+            function_name = tool_call.function.name
+            function_to_call = AVAILABLE_FUNCTIONS[function_name]
+            function_args = json.loads(tool_call.function.arguments)
+
+            function_response = function_to_call(
+                **function_args,
+            )
+            params["messages"].append(
+                {
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": function_name,
+                    "content": str(function_response),
+                }
+            )
+
+        # Call completion again with updated messages
+        response = completion(**params)
+
+        new_tool_calls = response.choices[0].message.tool_calls
+        if new_tool_calls:
+            params["messages"].append(response.choices[0].message)
+            return self._recursive_tool_call_handler(
+                new_tool_calls, params,
+                usage=usage + (response.usage.total_tokens if response.usage else 0)
+            )
+
+        return {
+            "response": response.choices[0].message.content,
+            "usage": usage + (response.usage.total_tokens if response.usage else 0),
+        }
 
     def chat_with_context(self):
         """
@@ -245,6 +306,18 @@ class LLMProcessor(LitellmProcessor):
             "Say hello to the user and explain what LLM model you are."
             "Don't pay attention to any extra context"
         )
+        result = self._call_completion_wrapper(system_role=system_role)
+
+        return result
+
+    def answer_question(self):
+        """Answer a specific question based on the provided content"""
+        system_role = (
+            "Roll a dice: if the result is 1, tell me a joke, if the result is 2 or more then"
+            "Enumerate the location content and leave a brief explanation of each section."
+            "In all cases present the results of the dice roll."
+        )
+
         result = self._call_completion_wrapper(system_role=system_role)
 
         return result
