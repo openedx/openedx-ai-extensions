@@ -6,23 +6,17 @@ from openedx_ai_extensions.edxapp_wrapper.event_routing_module import XApiTransf
 from openedx_ai_extensions.workflows.processors.xapi import constants
 
 
-@XApiTransformersRegistry.register("openedx.ai.workflow.completed")
-class AIWorkflowCompletedTransformer(XApiTransformer):
+class BaseAIWorkflowTransformer(XApiTransformer):
     """
-    xAPI Transformer for a successfully completed AI workflow.
+    Base transformer for all AI workflow events.
 
-    Transforms the 'openedx.ai.workflow.completed' event into an xAPI statement
-    following the Open edX xAPI specification pattern for assessments and activities.
+    Provides common object construction for AI workflow activities.
+    Subclasses only need to define the appropriate verb.
     """
-
-    _verb = Verb(
-        id=constants.XAPI_VERB_COMPLETED,
-        display=LanguageMap({constants.EN: constants.COMPLETED}),
-    )
 
     def get_object(self):
         """
-        Construct the xAPI object for the completed AI workflow.
+        Construct the xAPI object for AI workflow events.
 
         The activity object includes:
         - A unique ID for this workflow instance
@@ -66,3 +60,47 @@ class AIWorkflowCompletedTransformer(XApiTransformer):
                 extensions=Extensions(extensions),
             ),
         )
+
+
+@XApiTransformersRegistry.register("openedx.ai.workflow.initialized")
+class AIWorkflowInitializedTransformer(BaseAIWorkflowTransformer):
+    """
+    xAPI Transformer for initializing a threaded AI workflow.
+
+    Emitted when a conversational/threaded workflow is started for the first time.
+    """
+
+    _verb = Verb(
+        id=constants.XAPI_VERB_INITIALIZED,
+        display=LanguageMap({constants.EN: constants.INITIALIZED}),
+    )
+
+
+@XApiTransformersRegistry.register("openedx.ai.workflow.interacted")
+class AIWorkflowInteractedTransformer(BaseAIWorkflowTransformer):
+    """
+    xAPI Transformer for interactions within a threaded AI workflow.
+
+    Emitted for each subsequent interaction in a conversational workflow
+    (after initialization).
+    """
+
+    _verb = Verb(
+        id=constants.XAPI_VERB_INTERACTED,
+        display=LanguageMap({constants.EN: constants.INTERACTED}),
+    )
+
+
+@XApiTransformersRegistry.register("openedx.ai.workflow.completed")
+class AIWorkflowCompletedTransformer(BaseAIWorkflowTransformer):
+    """
+    xAPI Transformer for a one-shot AI workflow completion.
+
+    Emitted when a non-threaded workflow completes (e.g., summarize, explain_like_five).
+    These workflows don't have back-and-forth interactions - they're single request/response.
+    """
+
+    _verb = Verb(
+        id=constants.XAPI_VERB_COMPLETED,
+        display=LanguageMap({constants.EN: constants.COMPLETED}),
+    )

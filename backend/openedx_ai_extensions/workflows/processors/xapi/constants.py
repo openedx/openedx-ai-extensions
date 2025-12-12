@@ -1,9 +1,13 @@
 """Constants for AI workflow xAPI transformers."""
 
 # xAPI verbs
+XAPI_VERB_INITIALIZED = "http://adlnet.gov/expapi/verbs/initialized"
+XAPI_VERB_INTERACTED = "http://adlnet.gov/expapi/verbs/interacted"
 XAPI_VERB_COMPLETED = "http://adlnet.gov/expapi/verbs/completed"
 
 # Display names
+INITIALIZED = "initialized"
+INTERACTED = "interacted"
 COMPLETED = "completed"
 
 # Languages
@@ -20,4 +24,6 @@ XAPI_EXTENSION_PROMPT_TEMPLATE_SLUG = "https://w3id.org/xapi/openedx/extension/p
 XAPI_EXTENSION_LOCATION_ID = "https://w3id.org/xapi/openedx/extension/location-id"
 
 # Event names
+EVENT_NAME_WORKFLOW_INITIALIZED = "openedx.ai.workflow.initialized"
+EVENT_NAME_WORKFLOW_INTERACTED = "openedx.ai.workflow.interacted"
 EVENT_NAME_WORKFLOW_COMPLETED = "openedx.ai.workflow.completed"
