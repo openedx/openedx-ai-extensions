@@ -52,7 +52,10 @@ class DirectLLMResponse(BaseOrchestrator):
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
 
         # 2. Process with LLM processor
-        llm_processor = LLMProcessor(self.config.processor_config)
+        llm_processor = LLMProcessor(
+            self.config.processor_config,
+            tools_context_vars={"location_id": self.location_id}
+        )
         llm_result = llm_processor.process(context=str(content_result))
 
         if 'error' in llm_result:
