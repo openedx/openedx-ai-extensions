@@ -12,15 +12,20 @@ from bs4 import BeautifulSoup
 from django.conf import settings
 
 from openedx_ai_extensions.processors.component_extractors import (
+    _assemble_problem_text,
     _check_show_answer,
+    _clean_noisy_tags,
     _extract_embeds,
     _extract_iframes,
     _extract_images,
     _extract_media,
     _extract_objects,
+    _extract_solution_feedback,
     _extract_xblocks,
     _is_field_allowed,
     _load_transcript_content,
+    _process_problem_html,
+    _remove_sensitive_content,
     extract_discussion_info,
     extract_generic_info,
     extract_html_info,
@@ -322,3 +327,216 @@ def test_extract_problem_info_show_answer_auto():
     block.showanswer = "never"
     result2 = extract_problem_info(block, show_answer="auto")
     assert "[Solution]" not in result2["text"]
+
+# -------------------------------------------------------------------------
+# _remove_sensitive_content
+# -------------------------------------------------------------------------
+
+
+def test_remove_sensitive_content_removes_tags_and_classes():
+    """Test that sensitive tags and specific CSS classes are removed."""
+    html = """
+    <div>
+        <p>Question text</p>
+        <solution>Hidden solution</solution>
+        <hint>Hidden hint</hint>
+        <span class="detailed-solution">Detailed explanation</span>
+        <div class="correctness">Correctness info</div>
+    </div>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    _remove_sensitive_content(soup)
+
+    text = soup.get_text(strip=True)
+    assert "Question text" in text
+    assert "Hidden solution" not in text
+    assert "Hidden hint" not in text
+    assert "Detailed explanation" not in text
+    assert "Correctness info" not in text
+
+
+def test_remove_sensitive_content_cleans_choice_attributes():
+    """Test that the 'correct' attribute is removed from choice tags."""
+    html = """
+    <choicegroup>
+        <choice correct="true">Option A</choice>
+        <choice correct="false">Option B</choice>
+    </choicegroup>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    _remove_sensitive_content(soup)
+
+    choices = soup.find_all("choice")
+    for choice in choices:
+        assert not choice.has_attr("correct")
+    # Content should remain
+    assert "Option A" in soup.get_text()
+
+
+# -------------------------------------------------------------------------
+# _extract_solution_feedback
+# -------------------------------------------------------------------------
+
+def test_extract_solution_feedback_marks_correct_answers():
+    """Test that correct answers get explicitly marked in the soup."""
+    html = """
+    <choicegroup>
+        <choice correct="true">Paris</choice>
+        <choice correct="false">London</choice>
+    </choicegroup>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    extracted = _extract_solution_feedback(soup)
+
+    # Check modification of the soup (inline marking)
+    correct_choice = soup.find("choice", attrs={"correct": "true"})
+    assert "[CORRECT ANSWER]" in correct_choice.get_text()
+
+    # Check that nothing was extracted into the list (since these are choices, not hints/solutions)
+    assert not extracted
+    assert isinstance(extracted, list)
+
+
+def test_extract_solution_feedback_pulls_info():
+    """Test that solutions, hints, and feedback are extracted and removed from soup."""
+    html = """
+    <div>
+        <solution>42</solution>
+        <hint>Try counting</hint>
+        <div class="detailed-solution">It is the answer.</div>
+    </div>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    extracted = _extract_solution_feedback(soup)
+
+    expected_snippets = [
+        "[Solution]: 42",
+        "[Hint]: Try counting",
+        "[Feedback/Explanation]: It is the answer."
+    ]
+
+    # Verify extracted list contents
+    for expect in expected_snippets:
+        assert expect in extracted
+
+    # Verify tags are gone from soup
+    soup_text = soup.get_text(strip=True)
+    assert "42" not in soup_text
+    assert "Try counting" not in soup_text
+
+
+# -------------------------------------------------------------------------
+# _clean_noisy_tags
+# -------------------------------------------------------------------------
+
+def test_clean_noisy_tags():
+    """Test removal of script, style, img and other noisy tags."""
+    html = """
+    <div>
+        <p>Keep me</p>
+        <script>console.log('bad')</script>
+        <style>.css { color: red; }</style>
+        <img src="img.png" alt="img" />
+    </div>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    _clean_noisy_tags(soup)
+
+    text = soup.get_text(strip=True)
+    assert "Keep me" in text
+    assert "console.log" not in text
+    assert ".css" not in text
+    assert soup.find("img") is None
+
+
+# -------------------------------------------------------------------------
+# _assemble_problem_text
+# -------------------------------------------------------------------------
+
+def test_assemble_problem_text_with_show_answer():
+    """Test assembling text with extracted sections appended."""
+    soup = BeautifulSoup("<p>Question</p>", "html.parser")
+    extracted = ["[Solution]: 42"]
+
+    result = _assemble_problem_text(soup, extracted, show_answer=True)
+
+    assert "Question" in result
+    assert "[Solution]: 42" in result
+
+
+def test_assemble_problem_text_without_show_answer():
+    """Test that extracted sections are ignored if show_answer is False."""
+    soup = BeautifulSoup("<p>Question</p>", "html.parser")
+    extracted = ["[Solution]: 42"]
+
+    # Even if extracted list is passed (which technically shouldn't happen in flow),
+    # the function should ignore it if show_answer=False
+    result = _assemble_problem_text(soup, extracted, show_answer=False)
+
+    assert "Question" in result
+    assert "[Solution]: 42" not in result
+
+
+# -------------------------------------------------------------------------
+# _process_problem_html (Integration Tests)
+# -------------------------------------------------------------------------
+
+def test_process_problem_html_show_answer_true():
+    """
+    Integration test: show_answer=True.
+    Should contain original text, marked correct answer, and extracted solution.
+    """
+    html = """
+    <div>
+        <p>What is 2+2?</p>
+        <choice correct="true">4</choice>
+        <solution>It is four.</solution>
+        <script>bad()</script>
+    </div>
+    """
+    result = _process_problem_html(html, show_answer=True)
+
+    assert "What is 2+2?" in result
+    assert "[CORRECT ANSWER]\n4" in result
+    assert "[Solution]: It is four." in result
+    assert "bad()" not in result  # noisy tag cleaned
+
+
+def test_process_problem_html_show_answer_false():
+    """
+    Integration test: show_answer=False.
+    Should contain sanitized text only. Hints/Solutions removed completely.
+    """
+    html = """
+    <div>
+        <p>What is 2+2?</p>
+        <choice correct="true">4</choice>
+        <solution>It is four.</solution>
+    </div>
+    """
+    result = _process_problem_html(html, show_answer=False)
+
+    assert "What is 2+2?" in result
+    assert "4" in result
+    # "correct" attribute removed, so no marker
+    assert "[CORRECT ANSWER]" not in result
+    # solution removed
+    assert "It is four" not in result
+
+
+def test_process_problem_html_empty_input():
+    """Test that empty HTML returns empty string."""
+    assert _process_problem_html("", True) == ""
+    assert _process_problem_html(None, False) == ""
+
+
+@patch("openedx_ai_extensions.processors.component_extractors.BeautifulSoup")
+def test_process_problem_html_exception_handling(mock_bs):
+    """Test that if processing fails, raw HTML is returned."""
+    # Force an exception during processing
+    mock_bs.side_effect = Exception("Boom")
+
+    raw_html = "<div>Raw</div>"
+    result = _process_problem_html(raw_html, show_answer=True)
+
+    assert result == raw_html
