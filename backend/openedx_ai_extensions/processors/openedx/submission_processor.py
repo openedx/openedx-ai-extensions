@@ -253,12 +253,64 @@ class SubmissionProcessor:
             )
         return None
 
+    @staticmethod
+    def _normalize_message_content(content):
+        """
+        Normalize message content to ensure LiteLLM compatibility.
+
+        Args:
+            content: The content to normalize (can be str, dict, list, or other)
+
+        Returns:
+            Normalized content as string or valid multi-modal list format
+        """
+        if content is None or isinstance(content, str):
+            return content
+
+        if isinstance(content, dict):
+            # Convert dict to JSON string for LiteLLM compatibility
+            return json.dumps(content)
+
+        if isinstance(content, list):
+            # Check if it's valid LiteLLM multi-modal format
+            # Valid format: list of dicts with 'type' field (e.g., [{"type": "text", "text": "..."}])
+            if content and all(isinstance(item, dict) and "type" in item for item in content):
+                return content  # Keep valid multi-modal format
+            # Otherwise convert to string
+            return str(content)
+
+        # Convert any other type to string
+        return str(content)
+
+    def _normalize_message(self, message):
+        """
+        Normalize a single message for LiteLLM compatibility.
+
+        Args:
+            message: The message dict to normalize
+
+        Returns:
+            Normalized message dict with proper content format and cleaned fields
+        """
+        if not isinstance(message, dict):
+            return message
+
+        normalized = message.copy()
+        normalized["content"] = self._normalize_message_content(normalized.get("content"))
+        # Remove timestamp field as it's not part of standard message schema
+        normalized.pop("timestamp", None)
+        return normalized
+
     def get_full_message_history(self):
         """
         Retrieve the full message history for the current submission.
+        Ensures all message content is properly formatted for LiteLLM compatibility.
+
+        Returns:
+            List of normalized messages or None if no submission exists
         """
-        if self.user_session.local_submission_id:
-            messages, _ = self._process_messages(use_max_context=False)
-            return messages
-        else:
+        if not self.user_session.local_submission_id:
             return None
+
+        messages, _ = self._process_messages(use_max_context=False)
+        return [self._normalize_message(msg) for msg in messages]
