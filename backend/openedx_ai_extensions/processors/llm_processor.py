@@ -17,9 +17,8 @@ logger = logging.getLogger(__name__)
 class LLMProcessor(LitellmProcessor):
     """Handles AI processing using LiteLLM with support for threaded conversations."""
 
-    def __init__(self, config=None, user_session=None, tools_context_vars=None):
+    def __init__(self, config=None, user_session=None):
         super().__init__(config, user_session)
-        self.tools_context_vars = tools_context_vars or {}
         self.chat_history = None
         self.input_data = None
         self.context = None
