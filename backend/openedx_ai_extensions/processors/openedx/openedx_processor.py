@@ -6,7 +6,11 @@ import logging
 
 from opaque_keys.edx.keys import UsageKey
 
-from openedx_ai_extensions.processors.component_extractors import COMPONENT_EXTRACTORS, extract_generic_info
+from openedx_ai_extensions.processors.component_extractors import (
+    COMPONENT_EXTRACTORS,
+    extract_generic_info,
+    extract_problem_info,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +75,8 @@ class OpenEdXProcessor:
             block = store.get_item(block_key)
             block_type = block.category.lower()
             extractor = COMPONENT_EXTRACTORS.get(block_type, extract_generic_info)
+            if extractor is extract_problem_info:
+                return extractor(block, self.config.get("show_answer", "auto"))
             return extractor(block)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.warning(f"Could not load block {block_key}: {exc}")
