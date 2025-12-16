@@ -74,7 +74,7 @@ class MockChoice:
         if delta:
             self.delta = delta
         else:
-            self.message = Mock(content=content)
+            self.message = Mock(content=content, tool_calls=None)
 
 
 class MockChunk:

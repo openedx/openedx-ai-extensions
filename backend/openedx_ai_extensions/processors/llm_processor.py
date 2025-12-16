@@ -250,6 +250,13 @@ class LLMProcessor(LitellmProcessor):
         # Call completion again with updated messages
         response = completion(**params)
 
+        # Check if response is a generator (streaming mode)
+        # Generators/iterators don't have 'choices' attribute
+        if hasattr(response, '__iter__') and not hasattr(response, 'choices'):
+            # For streaming responses, we can't check tool_calls, just return the generator
+            return response
+
+        # For non-streaming responses, check for tool calls
         new_tool_calls = response.choices[0].message.tool_calls
         if new_tool_calls:
             params["messages"].append(response.choices[0].message)
