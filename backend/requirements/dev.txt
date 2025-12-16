@@ -139,6 +139,8 @@ cryptography==46.0.3
     # via
     #   -r requirements/quality.txt
     #   django-fernet-fields-v2
+ddt==1.7.2
+    # via -r requirements/quality.txt
 diff-cover==9.2.4
     # via -r requirements/dev.in
 dill==0.3.9
@@ -263,6 +265,12 @@ exceptiongroup==1.3.1
     # via
     #   -r requirements/quality.txt
     #   celery
+factory-boy==3.3.0
+    # via -r requirements/quality.txt
+faker==25.8.0
+    # via
+    #   -r requirements/quality.txt
+    #   factory-boy
 fastavro==1.12.1
     # via
     #   -r requirements/quality.txt
@@ -517,6 +525,7 @@ python-dateutil==2.9.0.post0
     #   -r requirements/quality.txt
     #   celery
     #   edx-event-routing-backends
+    #   faker
 python-dotenv==1.1.1
     # via
     #   -r requirements/quality.txt

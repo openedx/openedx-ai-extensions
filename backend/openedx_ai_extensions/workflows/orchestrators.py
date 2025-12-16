@@ -6,6 +6,8 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from eventtracking import tracker
+
 from openedx_ai_extensions.processors import (
     ContentLibraryProcessor,
     EducatorAssistantProcessor,
@@ -13,8 +15,6 @@ from openedx_ai_extensions.processors import (
     OpenEdXProcessor,
     SubmissionProcessor,
 )
-from eventtracking import tracker
-
 from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.xapi.constants import (
     EVENT_NAME_WORKFLOW_COMPLETED,
@@ -36,15 +36,15 @@ class BaseOrchestrator:
         self.config = workflow.config
         self.location_id = str(workflow.location_id) if workflow.location_id else None
 
-    def _emit_workflow_event(self, event_name: str):
+    def _emit_workflow_event(self, event_name: str) -> None:
         """
         Emit an xAPI event for this workflow.
 
         Args:
             event_name: The event name constant (e.g., EVENT_NAME_WORKFLOW_COMPLETED)
         """
-        config_filename = self.config.processor_config.get("_config_filename", self.workflow.action)
-        workflow_id = f"{config_filename}__{self.workflow.action}"
+        config_filename: str = self.config.processor_config.get("_config_filename", self.workflow.action)
+        workflow_id: str = f"{config_filename}__{self.workflow.action}"
 
         tracker.emit(event_name, {
             "workflow_id": workflow_id,
@@ -59,7 +59,10 @@ class BaseOrchestrator:
 
 
 class MockResponse(BaseOrchestrator):
-    """One-shot mock orchestrator - emits completed events."""
+    """
+    Complete mock orchestrator.
+    Responds inmediately with a mock answer. Useful for UI testing.
+    """
 
     def run(self, input_data):
         # Emit completed event for one-shot workflow
@@ -72,7 +75,10 @@ class MockResponse(BaseOrchestrator):
 
 
 class DirectLLMResponse(BaseOrchestrator):
-    """One-shot orchestrator for direct LLM responses - emits completed events."""
+    """
+    Orchestrator for direct LLM responses.
+    Does a single call to an LLM and gives a response.
+    """
 
     def run(self, input_data):
         """
@@ -159,10 +165,9 @@ class SessionBasedOrchestrator(BaseOrchestrator):
 
 class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
     """
-    One-shot orchestrator for educator assistant workflows.
+    Orchestrator for educator assistant workflows.
 
     Generates quiz questions and stores them in content libraries.
-    Emits completed events.
     """
 
     def get_current_session_response(self, _):
@@ -230,10 +235,6 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 class ThreadedLLMResponse(SessionBasedOrchestrator):
     """
     Threaded orchestrator for conversational workflows.
-
-    Emits:
-    - initialized: First interaction (no previous session data)
-    - interacted: Subsequent interactions (has session/chat history)
     """
 
     def lazy_load_chat_history(self, input_data):

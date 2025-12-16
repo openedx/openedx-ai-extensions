@@ -26,7 +26,8 @@ class OpenedxAIExtensionsConfig(AppConfig):
         event-routing-backends processor looks them up.
         """
         # Import the transformers module to trigger the @register decorators
-        from openedx_ai_extensions.xapi import transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
+        from openedx_ai_extensions.xapi import \
+            transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
 
     plugin_app = {
         "url_config": {

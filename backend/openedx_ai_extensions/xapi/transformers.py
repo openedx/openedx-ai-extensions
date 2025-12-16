@@ -1,5 +1,7 @@
 """xAPI transformers for AI workflow events."""
 
+from typing import Optional
+
 from event_routing_backends.processors.xapi.registry import XApiTransformersRegistry
 from event_routing_backends.processors.xapi.transformer import XApiTransformer
 from tincan import Activity, ActivityDefinition, Extensions, LanguageMap, Verb
@@ -15,7 +17,7 @@ class BaseAIWorkflowTransformer(XApiTransformer):
     Subclasses only need to define the appropriate verb.
     """
 
-    def get_object(self):
+    def get_object(self) -> Activity:
         """
         Construct the xAPI object for AI workflow events.
 
@@ -31,22 +33,22 @@ class BaseAIWorkflowTransformer(XApiTransformer):
         Returns:
             `Activity`: The xAPI Activity object representing the AI workflow
         """
-        workflow_id = self.get_data("workflow_id", True)
-        action = self.get_data("action") or "unknown-action"
-        workflow_name = self.get_data("workflow_name") or action
+        workflow_id: str = self.get_data("workflow_id", True)
+        action: str = self.get_data("action") or "unknown-action"
+        workflow_name: str = self.get_data("workflow_name") or action
 
         # Build extensions
-        extensions = {
+        extensions: dict[str, str] = {
             constants.XAPI_EXTENSION_WORKFLOW_ACTION: action,
         }
 
         # Add prompt template slug if available (placeholder for now)
-        prompt_template = self.get_data("prompt_template_slug")
+        prompt_template: Optional[str] = self.get_data("prompt_template_slug")
         if prompt_template:
             extensions[constants.XAPI_EXTENSION_PROMPT_TEMPLATE_SLUG] = prompt_template
 
         # Add location_id if available
-        location_id = self.get_data("location_id")
+        location_id: Optional[str] = self.get_data("location_id")
         if location_id:
             extensions[constants.XAPI_EXTENSION_LOCATION_ID] = location_id
 
