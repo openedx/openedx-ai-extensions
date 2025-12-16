@@ -2,9 +2,11 @@
 Open edX Content Extraction
 """
 
+import json
 import logging
 
 from opaque_keys.edx.keys import UsageKey
+from opaque_keys.edx.locator import CourseLocator
 
 from openedx_ai_extensions.processors.component_extractors import (
     COMPONENT_EXTRACTORS,
@@ -104,3 +106,120 @@ class OpenEdXProcessor:
 
         except Exception as trunc_err:  # pylint: disable=broad-exception-caught
             logger.debug("char_limit truncation skipped due to error: %s", trunc_err)
+
+    @staticmethod
+    def define_category(category):
+        """Define a category processor"""
+        if category == "chapter":
+            return "section"
+        if category == "sequential":
+            return "subsection"
+        if category == "vertical":
+            return "unit"
+        return "unknown"
+
+    def get_course_outline(self, course_id, user):
+        """Retrieve course outline structure (Sections > Subsections > Units)."""
+        # pylint: disable=import-error,import-outside-toplevel
+        from lms.djangoapps.course_blocks.api import get_course_blocks
+        from xmodule.modulestore.django import modulestore
+
+        course_key = CourseLocator.from_string(course_id)
+        course_usage_key = modulestore().make_course_usage_key(course_key)
+
+        # 1. Get the BlockStructure object. This respects the user's permissions.
+        block_structure = get_course_blocks(user, course_usage_key, include_completion=True)
+
+        # 2. Serialize the structure, including the top-level 'course' block data.
+        full_outline = self._serialize_block_structure_outline(block_structure)
+
+        # Returning the single dictionary (which represents the course outline object) as JSON string
+        return json.dumps(full_outline)
+
+    def _serialize_block_structure_outline(self, block_structure):
+        """
+        Convert BlockStructure into:
+        Sections (chapter) -> Subsections (sequential) -> Units (vertical)
+
+        Output format:
+        {
+            "course_outline": [
+                {
+                    "display_name": "...",
+                    "category": "section",
+                    "subsections": [
+                        {
+                            "display_name": "...",
+                            "category": "subsection",
+                            "units": [
+                                {
+                                    "display_name": "...",
+                                    "category": "unit"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+        """
+        root_key = block_structure.root_block_usage_key
+        if not root_key:
+            return []
+
+        outline = []
+
+        # -------- Chapters (Sections) --------
+        for chapter_key in block_structure.get_children(root_key):
+            category = block_structure.get_xblock_field(chapter_key, "category")
+            if category != "chapter":
+                continue
+
+            chapter_info = {
+                "display_name": block_structure.get_xblock_field(
+                    chapter_key, "display_name"
+                ),
+                "category": self.define_category(category),
+                "subsections": [],
+            }
+
+            # -------- Sequentials (Subsections) --------
+            for sequential_key in block_structure.get_children(chapter_key):
+                seq_category = block_structure.get_xblock_field(
+                    sequential_key, "category"
+                )
+                if seq_category != "sequential":
+                    continue
+
+                sequential_info = {
+                    "display_name": block_structure.get_xblock_field(
+                        sequential_key, "display_name"
+                    ),
+                    "category": self.define_category(seq_category),
+                    "units": [],
+                }
+
+                # -------- Verticals (Units) --------
+                for vertical_key in block_structure.get_children(sequential_key):
+                    vert_category = block_structure.get_xblock_field(
+                        vertical_key, "category"
+                    )
+                    if vert_category != "vertical":
+                        continue
+
+                    vertical_info = {
+                        "display_name": block_structure.get_xblock_field(
+                            vertical_key, "display_name"
+                        ),
+                        "category": self.define_category(vert_category),
+                    }
+
+                    sequential_info["units"].append(vertical_info)
+
+                if sequential_info["units"]:
+                    chapter_info["subsections"].append(sequential_info)
+
+            if chapter_info["subsections"]:
+                outline.append(chapter_info)
+
+        return outline
