@@ -125,16 +125,15 @@ class OpenEdXProcessor:
         """Retrieve course outline structure (Sections > Subsections > Units)."""
         # pylint: disable=import-error,import-outside-toplevel
         from lms.djangoapps.course_blocks.api import get_course_blocks
-        from xmodule.modulestore.django import modulestore
 
         course_id = course_id or self.course_id
         user = user or self.user
 
         course_key = CourseLocator.from_string(course_id)
-        course_usage_key = modulestore().make_course_usage_key(course_key)
+        course_usage_key = course_key.make_usage_key("course", "course")
 
         # 1. Get the BlockStructure object. This respects the user's permissions.
-        block_structure = get_course_blocks(user, course_usage_key, include_completion=True)
+        block_structure = get_course_blocks(user, course_usage_key, include_completion=False)
 
         # 2. Serialize the structure, including the top-level 'course' block data.
         full_outline = self._serialize_block_structure_outline(block_structure)
