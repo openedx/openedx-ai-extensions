@@ -48,7 +48,15 @@ class OpenEdXProcessor:
 
     @llm_tool(schema={
         "name": "get_location_content",
-        "description": "Get the content of a given Open edX location",
+        "description": "Get published Open edX course content into an text format.
+
+    This function reads the *actual published content* of a course unit (or other
+    course block) exactly as it is visible to the learner in the browser and
+    converts it into a structured format suitable for LLM processing.
+
+    Use this function whenever an answer depends on the specific text, questions,
+    instructions, or structure of the course content the user is currently viewing.
+    Do NOT rely on prior knowledge, assumptions, or summaries of the course.",
         "parameters": {
             "type": "object",
             "properties": {
