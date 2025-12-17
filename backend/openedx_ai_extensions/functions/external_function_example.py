@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 
 @llm_tool(schema={
     "name": "roll_dice",
-    "description": "Simulate rolling a specified number of six-sided dice",
+    "description": "Generate a random roll of one or more six-sided dice.
+
+    Use this function ONLY when a truly random dice roll is required
+    (e.g., games of chance, simulations, or when the user asks to roll dice)",
     "parameters": {
         "type": "object",
         "properties": {
