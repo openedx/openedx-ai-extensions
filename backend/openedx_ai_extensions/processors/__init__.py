@@ -13,5 +13,5 @@ __all__ = [
     "LLMProcessor",
     "OpenEdXProcessor",
     "SubmissionProcessor",
-    "EducatorAssistantProcessor"
+    "EducatorAssistantProcessor",
 ]
