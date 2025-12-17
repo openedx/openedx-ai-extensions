@@ -6,6 +6,8 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from eventtracking import tracker
+
 from openedx_ai_extensions.processors import (
     ContentLibraryProcessor,
     EducatorAssistantProcessor,
@@ -14,6 +16,11 @@ from openedx_ai_extensions.processors import (
     SubmissionProcessor,
 )
 from openedx_ai_extensions.utils import is_generator
+from openedx_ai_extensions.xapi.constants import (
+    EVENT_NAME_WORKFLOW_COMPLETED,
+    EVENT_NAME_WORKFLOW_INITIALIZED,
+    EVENT_NAME_WORKFLOW_INTERACTED,
+)
 
 if TYPE_CHECKING:
     from openedx_ai_extensions.workflows.models import AIWorkflowSession
@@ -29,12 +36,38 @@ class BaseOrchestrator:
         self.config = workflow.config
         self.location_id = str(workflow.location_id) if workflow.location_id else None
 
+    def _emit_workflow_event(self, event_name: str) -> None:
+        """
+        Emit an xAPI event for this workflow.
+
+        Args:
+            event_name: The event name constant (e.g., EVENT_NAME_WORKFLOW_COMPLETED)
+        """
+        config_filename: str = self.config.processor_config.get("_config_filename", self.workflow.action)
+        workflow_id: str = f"{config_filename}__{self.workflow.action}"
+
+        tracker.emit(event_name, {
+            "workflow_id": workflow_id,
+            "action": self.workflow.action,
+            "course_id": self.workflow.course_id,
+            "workflow_name": config_filename,
+            "location_id": self.location_id,
+        })
+
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
 
 
 class MockResponse(BaseOrchestrator):
+    """
+    Complete mock orchestrator.
+    Responds inmediately with a mock answer. Useful for UI testing.
+    """
+
     def run(self, input_data):
+        # Emit completed event for one-shot workflow
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
+
         return {
             "response": f"Mock response for {self.workflow.action}",
             "status": "completed",
@@ -42,7 +75,10 @@ class MockResponse(BaseOrchestrator):
 
 
 class DirectLLMResponse(BaseOrchestrator):
-    """Orchestrator that provides direct LLM responses."""
+    """
+    Orchestrator for direct LLM responses.
+    Does a single call to an LLM and gives a response.
+    """
 
     def run(self, input_data):
         """
@@ -81,7 +117,10 @@ class DirectLLMResponse(BaseOrchestrator):
                 'status': 'LLMProcessor error'
             }
 
-        # --- 6. Return Structured Non-Streaming Result ---
+        # 6. Emit completed event for one-shot workflow
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
+
+        # --- 7. Return Structured Non-Streaming Result ---
         # If execution reaches this point, we have a successful, non-streaming result (Dict).
         response_data = {
             'response': llm_result.get('response', 'No response available'),
@@ -125,7 +164,11 @@ class SessionBasedOrchestrator(BaseOrchestrator):
 
 
 class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
-    """Orchestrator for educator assistant workflows."""
+    """
+    Orchestrator for educator assistant workflows.
+
+    Generates quiz questions and stores them in content libraries.
+    """
 
     def get_current_session_response(self, _):
         """Retrieve the current session's LLM response."""
@@ -174,7 +217,11 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         }
         self.session.metadata = metadata
         self.session.save(update_fields=["metadata"])
-        # 3. Return result
+
+        # Emit completed event for one-shot workflow
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
+
+        # 4. Return result
         return {
             'response': f"authoring/library/{lib_key_str}/collection/{collection_key}",
             'status': 'completed',
@@ -186,7 +233,9 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
 
 class ThreadedLLMResponse(SessionBasedOrchestrator):
-    """Orchestrator that provides LLM responses using threading."""
+    """
+    Threaded orchestrator for conversational workflows.
+    """
 
     def lazy_load_chat_history(self, input_data):
         """
@@ -274,8 +323,12 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         }
         submission_processor = self._get_submission_processor()
 
+        # Determine if this is first interaction or subsequent
+        has_previous_session = self.session and self.session.local_submission_id
+        is_first_interaction = not has_previous_session
+
         # 1. get chat history if there is user session
-        if self.session and self.session.local_submission_id and not input_data:
+        if has_previous_session and not input_data:
             history_result = submission_processor.process(context=context)
 
             if "error" in history_result:
@@ -341,7 +394,13 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         if "error" in llm_result:
             return {"error": llm_result["error"], "status": "LLMProcessor error"}
 
-        # 3. Return result
+        # Emit appropriate event based on interaction state
+        if is_first_interaction:
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED)
+        else:
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED)
+
+        # 4. Return result
         return {
             "response": llm_result.get("response", "No response available"),
             "status": "completed",

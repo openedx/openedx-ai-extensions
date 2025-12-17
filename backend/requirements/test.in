@@ -8,3 +8,5 @@ pytest-django             # pytest extension for better Django support
 code-annotations          # provides commands used by the pii_check make target.
 edx-django-utils          # Open edX Django utilities, needed for plugin testing
 django_extensions         # Helpful dev commans including 'show_urls'
+ddt                       # Test parameterization
+factory-boy               # Required by event-routing-backends test fixtures

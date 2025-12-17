@@ -1,0 +1,27 @@
+{
+  "name": "openedx.ai.workflow.initialized",
+  "timestamp": "2024-11-07T15:25:00.987654+00:00",
+  "data": {
+    "workflow_id": "anthropic_threads__chat",
+    "action": "chat",
+    "course_id": "course-v1:edX+DemoX+Demo_Course",
+    "workflow_name": "anthropic_threads",
+    "location_id": "block-v1:edX+DemoX+Demo_Course+type@vertical+block@def456"
+  },
+  "context": {
+    "course_id": "course-v1:edX+DemoX+Demo_Course",
+    "course_user_tags": {},
+    "session": "b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7",
+    "user_id": 7,
+    "username": "learner",
+    "ip": "10.0.0.50",
+    "host": "localhost:18000",
+    "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "path": "/courses/course-v1:edX+DemoX+Demo_Course/xblock/block-v1:edX+DemoX+Demo_Course+type@vertical+block@def456",
+    "referer": "http://localhost:18000/courses/course-v1:edX+DemoX+Demo_Course/courseware",
+    "accept_language": "en-US,en;q=0.9",
+    "client_id": null,
+    "org_id": "edX",
+    "enterprise_uuid": ""
+  }
+}

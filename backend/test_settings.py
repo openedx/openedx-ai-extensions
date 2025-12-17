@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django_filters",
     "edx_django_utils.plugins",
     "django_extensions",
+    "eventtracking.django.apps.EventTrackingConfig",
 ]
 
 # Dynamically add plugin apps - only using the LMS context for simplicity
@@ -126,6 +127,14 @@ AI_EXTENSIONS = {
         "MAX_TOKENS": 1000,
     },
 }
+
+# Event tracking configuration for tests (matches completion-aggregator pattern)
+EVENT_TRACKING_ENABLED = True
+EVENT_TRACKING_BACKENDS = {}
+# Provided so the generated xAPI events use a known LMS URL when testing
+LMS_ROOT_URL = "http://localhost:18000"
+# Provided so the generated xAPI events use a known "event routing backends package string" when testing
+RUNNING_WITH_TEST_SETTINGS = True
 
 # Apply plugin settings - must be done after base settings are defined
 # Only using the LMS context for simplicity

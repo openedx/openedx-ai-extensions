@@ -41,6 +41,7 @@ def _fake_get_config_from_file(
         DEFAULT_CONFIG_FILE = "default_cms.json"
 
     configs = None
+    config_filename = None
     location = location_id
 
     # Try to find a matching config file from proxy settings
@@ -53,6 +54,8 @@ def _fake_get_config_from_file(
             if os.path.exists(full_path) and (re.match(location_regex, location)):
                 with open(full_path, "r") as f:
                     configs = json.load(f)
+                    # Extract filename without extension (e.g., "openai_threads" from "openai_threads.json")
+                    config_filename = os.path.splitext(os.path.basename(file_path))[0]
                     break
 
     # If no config found, use the default file
@@ -60,6 +63,7 @@ def _fake_get_config_from_file(
         default_path = os.path.join(os.path.dirname(__file__), DEFAULT_CONFIG_FILE)
         with open(default_path, "r") as f:
             configs = json.load(f)
+            config_filename = os.path.splitext(DEFAULT_CONFIG_FILE)[0]
 
     # TODO: Remove verbose logging
     logger.debug(
@@ -70,11 +74,15 @@ def _fake_get_config_from_file(
         ),
     )
 
+    # Store the config filename in processor_config metadata
+    processor_config = configs.get("processor_config", {})
+    processor_config["_config_filename"] = config_filename
+
     return cls(
         action=action,
         course_id=course_id,
         location_id=location_id,
         orchestrator_class=configs["orchestrator_class"],
-        processor_config=configs.get("processor_config", {}),
+        processor_config=processor_config,
         actuator_config=configs.get("actuator_config", {}),
     )

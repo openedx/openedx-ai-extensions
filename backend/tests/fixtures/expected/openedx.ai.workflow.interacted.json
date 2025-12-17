@@ -1,0 +1,55 @@
+{
+  "actor": {
+    "objectType": "Agent",
+    "account": {
+      "name": "32e08e30-f8ae-4ce2-94a8-c2bfe38a70cb",
+      "homePage": "http://localhost:18000"
+    }
+  },
+  "id": "cd85488b-d40c-5148-a6e2-0e004b8ab971",
+  "object": {
+    "id": "http://localhost:18000/ai_workflow/anthropic_threads__chat",
+    "definition": {
+      "type": "https://w3id.org/xapi/openedx/activity/ai-workflow",
+      "name": {
+        "en": "anthropic_threads"
+      },
+      "description": {
+        "en": "AI-powered educational workflow"
+      },
+      "extensions": {
+        "https://w3id.org/xapi/openedx/extension/ai-workflow-action": "chat",
+        "https://w3id.org/xapi/openedx/extension/location-id": "block-v1:edX+DemoX+Demo_Course+type@vertical+block@def456"
+      }
+    },
+    "objectType": "Activity"
+  },
+  "verb": {
+    "id": "http://adlnet.gov/expapi/verbs/interacted",
+    "display": {
+      "en": "interacted"
+    }
+  },
+  "version": "1.0.3",
+  "context": {
+    "contextActivities": {
+      "parent": [
+        {
+          "id": "http://localhost:18000/course/course-v1:edX+DemoX+Demo_Course",
+          "objectType": "Activity",
+          "definition": {
+            "name": {
+              "en-US": "Demonstration Course"
+            },
+            "type": "http://adlnet.gov/expapi/activities/course"
+          }
+        }
+      ]
+    },
+    "extensions": {
+      "https://w3id.org/xapi/openedx/extension/transformer-version": "event-routing-backends@1.1.1",
+      "https://w3id.org/xapi/openedx/extensions/session-id": "b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7"
+    }
+  },
+  "timestamp": "2024-11-07T15:28:00.456789+00:00"
+}
