@@ -51,8 +51,13 @@ class DirectLLMResponse(BaseOrchestrator):
         """
 
         # --- 1. Process with OpenEdX processor (Content Fetching) ---
-        openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(location_id=self.location_id)
+        openedx_processor = OpenEdXProcessor(
+            processor_config=self.config.processor_config,
+            location_id=self.location_id,
+            course_id=self.workflow.course_id,
+            user=self.workflow.user,
+        )
+        content_result = openedx_processor.process()
 
         # Early return on error during content fetching
         if content_result and 'error' in content_result:
@@ -136,8 +141,13 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
     def run(self, input_data):
         # 1. Process with OpenEdX processor
-        openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(location_id=self.location_id)
+        openedx_processor = OpenEdXProcessor(
+            processor_config=self.config.processor_config,
+            location_id=self.location_id,
+            course_id=self.workflow.course_id,
+            user=self.workflow.user,
+        )
+        content_result = openedx_processor.process()
 
         if 'error' in content_result:
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
@@ -289,8 +299,13 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             }
 
         # 2. else process with OpenEdX processor
-        openedx_processor = OpenEdXProcessor(self.config.processor_config)
-        content_result = openedx_processor.process(location_id=self.location_id)
+        openedx_processor = OpenEdXProcessor(
+            processor_config=self.config.processor_config,
+            location_id=self.location_id,
+            course_id=self.workflow.course_id,
+            user=self.workflow.user,
+        )
+        content_result = openedx_processor.process()
 
         if "error" in content_result:
             return {

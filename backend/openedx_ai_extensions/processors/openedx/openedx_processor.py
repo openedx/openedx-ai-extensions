@@ -20,12 +20,15 @@ logger = logging.getLogger(__name__)
 class OpenEdXProcessor:
     """Handles Open edX content extraction"""
 
-    def __init__(self, processor_config=None):
+    def __init__(self, processor_config=None, location_id=None, course_id=None, user=None):
         processor_config = processor_config or {}
 
         # Find specific config using class name
         class_name = self.__class__.__name__
         self.config = processor_config.get(class_name, {})
+        self.location_id = location_id
+        self.course_id = course_id
+        self.user = user
 
     def process(self, *args, **kwargs):
         """Process based on configured function"""
@@ -118,11 +121,14 @@ class OpenEdXProcessor:
             return "unit"
         return "unknown"
 
-    def get_course_outline(self, course_id, user):
+    def get_course_outline(self, course_id=None, user=None):
         """Retrieve course outline structure (Sections > Subsections > Units)."""
         # pylint: disable=import-error,import-outside-toplevel
         from lms.djangoapps.course_blocks.api import get_course_blocks
         from xmodule.modulestore.django import modulestore
+
+        course_id = course_id or self.course_id
+        user = user or self.user
 
         course_key = CourseLocator.from_string(course_id)
         course_usage_key = modulestore().make_course_usage_key(course_key)
