@@ -47,28 +47,32 @@ class OpenEdXProcessor:
         return {"display_name": "No context was provided."}
 
     @llm_tool(schema={
-        "name": "get_location_content",
-        "description": "Get published Open edX course content into an text format.
+        "type": "function",
+        "function": {
+            "name": "get_location_content",
+            "description": (
+                "Get published Open edX course content into an text format."
+                "This function reads the *actual published content* of a course unit (or other"
+                "course block) exactly as it is visible to the learner in the browser and"
+                "converts it into a structured format suitable for LLM processing."
 
-    This function reads the *actual published content* of a course unit (or other
-    course block) exactly as it is visible to the learner in the browser and
-    converts it into a structured format suitable for LLM processing.
-
-    Use this function whenever an answer depends on the specific text, questions,
-    instructions, or structure of the course content the user is currently viewing.
-    Do NOT rely on prior knowledge, assumptions, or summaries of the course.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location_id": {
-                    "type": "string",
-                    "description": (
-                        "The string representation of the location ID, "
-                        "if not provided uses the current location"
-                    )
-                }
-            },
-            "required": []
+                "Use this function whenever an answer depends on the specific text, questions,"
+                "instructions, or structure of the course content the user is currently viewing."
+                "Do NOT rely on prior knowledge, assumptions, or summaries of the course."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location_id": {
+                        "type": "string",
+                        "description": (
+                            "The string representation of the location ID, "
+                            "if not provided uses the current location"
+                        )
+                    }
+                },
+                "required": []
+            }
         }
     })
     def get_location_content(self, location_id=None):
@@ -263,10 +267,12 @@ class OpenEdXProcessor:
         return outline
 
     @llm_tool(schema={
-          "name": "get_context",
-          "description": "Get the context vars of the current Open edX location",
-        }
-    )
+        "type": "function",
+        "function": {
+              "name": "get_context",
+              "description": "Get the context vars of the current Open edX location",
+              }
+    })
     def get_context(self):
         """Get the context of a given Open edX location."""
         return {
@@ -275,20 +281,23 @@ class OpenEdXProcessor:
         }
 
     @llm_tool(schema={
-          "name": "get_location_link",
-          "description": "Get the URL of a given Open edX location",
-          "parameters": {
-              "type": "object",
-              "properties": {
-                  "location_id": {
-                      "type": "string",
-                      "description": (
-                          "The string representation of the location ID, "
-                          "if not provided uses the current location"
-                      )
-                  }
-              },
-              "required": []
+          "type": "function",
+          "function": {
+              "name": "get_location_link",
+              "description": "Get the URL of a given Open edX location",
+              "parameters": {
+                  "type": "object",
+                  "properties": {
+                      "location_id": {
+                          "type": "string",
+                          "description": (
+                              "The string representation of the location ID, "
+                              "if not provided uses the current location"
+                          )
+                      }
+                  },
+                  "required": []
+              }
           }
       }
     )

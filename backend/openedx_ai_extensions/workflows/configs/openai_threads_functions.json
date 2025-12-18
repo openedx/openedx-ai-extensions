@@ -1,10 +1,10 @@
 {
-  "orchestrator_class": "DirectLLMResponse",
+  "orchestrator_class": "ThreadedLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
     },
     "LLMProcessor": {
-      "function": "answer_question",
+      "function": "chat_with_context",
       "config": "openai",
       "enabled_tools": [
         "get_context",
@@ -12,6 +12,10 @@
         "roll_dice",
         "get_location_link"
       ]
+    },
+    "SubmissionProcessor": {
+      "function": "get_chat_history",
+      "max_context_messages": 5
     }
   },
   "actuator_config": {
@@ -19,14 +23,15 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Ask AI [config api]",
-          "customMessage": "Answer a question using functions [config api]"
+          "buttonText": "Open Chat",
+          "customMessage": "Chat with Openai AI teaching assistant with functions",
+          "action": null
         }
       },
       "response": {
-        "component": "AIResponseComponent",
+        "component": "AISidebarResponse",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "AI powered assistant"
         }
       },
       "metadata": {

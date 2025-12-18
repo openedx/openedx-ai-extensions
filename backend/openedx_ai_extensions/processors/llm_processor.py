@@ -82,12 +82,35 @@ class LLMProcessor(LitellmProcessor):
                     return content_item.text
         return ""
 
+    def _extract_function_response(self, response):
+        """Extract full response object from LiteLLM response."""
+        if not hasattr(response, "output") or not response.output:
+            return None
+        result = []
+        for item in response.output:
+            if getattr(item, "type", None) == "function_call":
+                result.append(item)
+            if getattr(item, "type", None) == "reasoning":
+                result.append(item)
+        return result
+
+    def _extract_response_tool_calls(self, response):
+        """Extract tool calls from LiteLLM response."""
+        tool_calls = []
+        if not hasattr(response, "output") or not response.output:
+            return tool_calls
+
+        for item in response.output:
+            if getattr(item, "type", None) == "function_call":
+                tool_calls.append(item)
+        return tool_calls
+
     def _build_response_api_params(self, system_role=None):
         """
         Build completion parameters for LiteLLM responses API.
         """
         params = {}
-        params["stream"] = self.config.get("stream", False) or self.extra_params.get("stream", False)
+        params["stream"] = self.stream
 
         if self.chat_history:
             self.chat_history.append({"role": "user", "content": self.input_data})
@@ -146,7 +169,7 @@ class LLMProcessor(LitellmProcessor):
         Wrapper around LiteLLM responses() call.
         """
         try:
-            response = responses(**params)
+            response = self._responses_with_tools(tool_calls=[], params=params)
 
             if params["stream"]:
                 return self._yield_threaded_stream(response)
@@ -183,9 +206,8 @@ class LLMProcessor(LitellmProcessor):
         Returns either a generator (if stream=True) or a response dict.
         """
         # Build completion parameters
-        stream = self.config.get("stream", False) or self.extra_params.get("stream", False)
         params = {
-            "stream": stream,
+            "stream": self.stream,
             "messages": [
                 {"role": "system", "content": system_role},
             ],
@@ -216,7 +238,7 @@ class LLMProcessor(LitellmProcessor):
             # 1. Call the LiteLLM API
             response = self._completion_with_tools(tool_calls=[], params=params)
             # 2. Handle streaming response (Generator)
-            if stream:
+            if self.stream:
                 return self._handle_streaming_completion(response)  # Return the generator object
             else:
                 return self._handle_non_streaming_completion(response)  # Return the dictionary
@@ -250,18 +272,44 @@ class LLMProcessor(LitellmProcessor):
         # Call completion again with updated messages
         response = completion(**params)
 
-        # Check if response is a generator (streaming mode)
-        # Generators/iterators don't have 'choices' attribute
-        if hasattr(response, '__iter__') and not hasattr(response, 'choices'):
-            # For streaming responses, we can't check tool_calls, just return the generator
+        if self.stream:
             return response
 
-        # For non-streaming responses, check for tool calls
         new_tool_calls = response.choices[0].message.tool_calls
         if new_tool_calls:
             params["messages"].append(response.choices[0].message)
             return self._completion_with_tools(new_tool_calls, params)
 
+        return response
+
+    def _responses_with_tools(self, tool_calls, params):
+        """Handle tool calls recursively until no more tool calls are present."""
+        for tool_call in tool_calls:
+            function_name = tool_call.name
+            function_to_call = AVAILABLE_TOOLS[function_name]
+            function_args = json.loads(tool_call.arguments)
+
+            function_response = function_to_call(
+                **function_args,
+            )
+            params["input"].append({
+                "type": "function_call_output",
+                "call_id": tool_call.call_id,
+                "output": str(function_response)
+            })
+
+        # Call completion again with updated messages
+        response = responses(**params)
+
+        if self.stream:
+            return response
+
+        new_tool_calls = self._extract_response_tool_calls(response=response)
+        if new_tool_calls:
+            params["input"].extend(self._extract_function_response(response=response))
+            return self._responses_with_tools(new_tool_calls, params)
+
+        print(response)
         return response
 
     def chat_with_context(self):
