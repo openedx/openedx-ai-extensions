@@ -262,7 +262,7 @@ class LLMProcessor(LitellmProcessor):
 
         # For streaming, return the generator immediately
         # Tool calls are not supported in streaming mode
-        if self.stream:
+        if params.get("stream"):
             return response
 
         # For non-streaming, check for tool calls and handle recursively
@@ -292,7 +292,7 @@ class LLMProcessor(LitellmProcessor):
         # Call completion again with updated messages
         response = responses(**params)
 
-        if self.stream:
+        if params.get("stream"):
             return response
 
         new_tool_calls = self._extract_response_tool_calls(response=response)

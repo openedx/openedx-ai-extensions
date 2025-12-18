@@ -227,7 +227,7 @@ def test_enabled_tools_single_function(mock_settings):  # pylint: disable=unused
     assert len(processor.extra_params["tools"]) == 1
     assert processor.extra_params["tools"][0]["type"] == "function"
     assert "function" in processor.extra_params["tools"][0]
-    assert processor.extra_params["tools"][0]["function"] == TOOLS_SCHEMA["roll_dice"]
+    assert processor.extra_params["tools"][0] == TOOLS_SCHEMA["roll_dice"]
 
 
 @patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
@@ -254,7 +254,7 @@ def test_enabled_tools_multiple_functions(mock_settings):  # pylint: disable=unu
     for tool in processor.extra_params["tools"]:
         assert tool["type"] == "function"
         assert "function" in tool
-        assert tool["function"] in TOOLS_SCHEMA.values()
+        assert tool in TOOLS_SCHEMA.values()
 
 
 @patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
@@ -276,11 +276,11 @@ def test_enabled_tools_filters_only_enabled_functions(mock_settings):  # pylint:
 
     # Only roll_dice should be in tools
     assert len(processor.extra_params["tools"]) == 1
-    assert processor.extra_params["tools"][0]["function"] == TOOLS_SCHEMA["roll_dice"]
+    assert processor.extra_params["tools"][0] == TOOLS_SCHEMA["roll_dice"]
 
     # get_location_content should not be in tools
     for tool in processor.extra_params["tools"]:
-        assert tool["function"] != TOOLS_SCHEMA["get_location_content"]
+        assert tool != TOOLS_SCHEMA["get_location_content"]
 
 
 @patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
@@ -303,7 +303,7 @@ def test_enabled_tools_nonexistent_function(mock_settings):  # pylint: disable=u
     # Only roll_dice should be in tools (nonexistent_function ignored)
     assert "tools" in processor.extra_params
     assert len(processor.extra_params["tools"]) == 1
-    assert processor.extra_params["tools"][0]["function"] == TOOLS_SCHEMA["roll_dice"]
+    assert processor.extra_params["tools"][0] == TOOLS_SCHEMA["roll_dice"]
 
 
 @patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
@@ -328,7 +328,7 @@ def test_enabled_tools_all_available_functions(mock_settings):  # pylint: disabl
     assert len(processor.extra_params["tools"]) == len(TOOLS_SCHEMA)
 
     # Verify all functions are included
-    included_schemas = [tool["function"] for tool in processor.extra_params["tools"]]
+    included_schemas = processor.extra_params["tools"]
     for schema in TOOLS_SCHEMA.values():
         assert schema in included_schemas
 
