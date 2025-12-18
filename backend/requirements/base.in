@@ -5,7 +5,7 @@ Django             # Web application framework
 djangorestframework  # REST API framework
 django-filter      # Filtering for DRF
 edx-opaque-keys        # Open edX CourseKeyField
-litellm            # LLM Gateway to provide model access
+litellm[proxy]            # LLM Gateway to provide model access
 event-tracking              # Allows the backend to emit tracking events
 edx-event-routing-backends  # Extends xAPI transformer events for this package
 openedx-atlas

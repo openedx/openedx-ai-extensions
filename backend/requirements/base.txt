@@ -14,14 +14,21 @@ amqp==5.3.1
     # via kombu
 aniso8601==10.0.1
     # via tincan
+annotated-doc==0.0.4
+    # via fastapi
 annotated-types==0.7.0
     # via pydantic
 anyio==4.11.0
     # via
     #   httpx
+    #   mcp
     #   openai
+    #   sse-starlette
+    #   starlette
 apache-libcloud==3.8.0
     # via edx-event-routing-backends
+apscheduler==3.11.1
+    # via litellm
 asgiref==3.8.1
     # via django
 attrs==25.4.0
@@ -30,10 +37,26 @@ attrs==25.4.0
     #   jsonschema
     #   openedx-events
     #   referencing
+azure-core==1.37.0
+    # via
+    #   azure-identity
+    #   azure-storage-blob
+azure-identity==1.25.1
+    # via litellm
+azure-storage-blob==12.27.1
+    # via litellm
+backoff==2.2.1
+    # via litellm
 beautifulsoup4==4.14.2
     # via -r requirements/base.in
 billiard==4.2.4
     # via celery
+boto3==1.36.0
+    # via litellm
+botocore==1.36.26
+    # via
+    #   boto3
+    #   s3transfer
 celery==5.6.0
     # via
     #   edx-celeryutils
@@ -47,6 +70,7 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pynacl
+    #   soundfile
 charset-normalizer==3.4.4
     # via requests
 click==8.3.0
@@ -58,6 +82,8 @@ click==8.3.0
     #   code-annotations
     #   edx-django-utils
     #   litellm
+    #   rq
+    #   uvicorn
 click-didyoumean==0.3.1
     # via celery
 click-plugins==1.1.1.2
@@ -66,8 +92,16 @@ click-repl==0.3.0
     # via celery
 code-annotations==2.3.0
     # via edx-toggles
+croniter==6.0.0
+    # via rq
 cryptography==46.0.3
-    # via django-fernet-fields-v2
+    # via
+    #   azure-identity
+    #   azure-storage-blob
+    #   django-fernet-fields-v2
+    #   litellm
+    #   msal
+    #   pyjwt
 distro==1.9.0
     # via openai
 django==4.2.20
@@ -118,7 +152,9 @@ djangorestframework==3.16.0
     #   django-config-models
     #   edx-submissions
 dnspython==2.7.0
-    # via pymongo
+    # via
+    #   email-validator
+    #   pymongo
 edx-ccx-keys==2.0.2
     # via openedx-events
 edx-celeryutils==1.4.0
@@ -145,12 +181,20 @@ edx-toggles==5.4.1
     # via
     #   edx-event-routing-backends
     #   event-tracking
+email-validator==2.3.0
+    # via pydantic
 event-tracking==3.3.0
     # via
     #   -r requirements/base.in
     #   edx-event-routing-backends
 exceptiongroup==1.3.1
     # via celery
+fastapi==0.125.0
+    # via
+    #   fastapi-sso
+    #   litellm
+fastapi-sso==0.16.0
+    # via litellm
 fastavro==1.12.1
     # via openedx-events
 fasteners==0.20
@@ -165,54 +209,93 @@ frozenlist==1.8.0
     #   aiosignal
 fsspec==2025.9.0
     # via huggingface-hub
+grpcio==1.67.1
+    # via litellm
+gunicorn==23.0.0
+    # via litellm
 h11==0.16.0
-    # via httpcore
+    # via
+    #   httpcore
+    #   uvicorn
 hf-xet==1.1.10
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
 httpx==0.28.1
     # via
+    #   fastapi-sso
     #   litellm
+    #   mcp
     #   openai
+httpx-sse==0.4.3
+    # via mcp
 huggingface-hub==0.35.3
     # via tokenizers
 idna==3.11
     # via
     #   anyio
+    #   email-validator
     #   httpx
     #   requests
     #   yarl
 importlib-metadata==8.7.0
     # via litellm
 isodate==0.7.2
-    # via edx-event-routing-backends
+    # via
+    #   azure-storage-blob
+    #   edx-event-routing-backends
 jinja2==3.1.6
     # via
     #   code-annotations
     #   litellm
 jiter==0.11.0
     # via openai
+jmespath==1.0.1
+    # via
+    #   boto3
+    #   botocore
 jsonfield==3.2.0
     # via
     #   edx-celeryutils
     #   edx-event-routing-backends
     #   edx-submissions
 jsonschema==4.25.1
-    # via litellm
+    # via
+    #   litellm
+    #   mcp
 jsonschema-specifications==2025.9.1
     # via jsonschema
 kombu==5.6.1
     # via celery
-litellm==1.78.2
-    # via -r requirements/base.in
+litellm[proxy]==1.80.10
+    # via
+    #   -c requirements/constraints.txt
+    #   -r requirements/base.in
+litellm-enterprise==0.1.25
+    # via litellm
+litellm-proxy-extras==0.4.14
+    # via litellm
+markdown-it-py==4.0.0
+    # via rich
 markupsafe==3.0.3
     # via jinja2
+mcp==1.24.0
+    # via litellm
+mdurl==0.1.2
+    # via markdown-it-py
+msal==1.34.0
+    # via
+    #   azure-identity
+    #   msal-extensions
+msal-extensions==1.3.1
+    # via azure-identity
 multidict==6.7.0
     # via
     #   aiohttp
     #   yarl
-openai==2.4.0
+oauthlib==3.3.1
+    # via fastapi-sso
+openai==2.13.0
     # via litellm
 openedx-atlas==0.7.0
     # via -r requirements/base.in
@@ -220,12 +303,19 @@ openedx-events==10.5.0
     # via event-tracking
 openedx-filters==2.1.0
     # via edx-event-routing-backends
+orjson==3.11.5
+    # via litellm
 packaging==25.0
     # via
+    #   gunicorn
     #   huggingface-hub
     #   kombu
 pbr==6.1.1
     # via stevedore
+polars==1.36.1
+    # via litellm
+polars-runtime-32==1.36.1
+    # via polars
 prompt-toolkit==3.0.52
     # via click-repl
 propcache==0.4.1
@@ -236,28 +326,52 @@ psutil==7.1.3
     # via edx-django-utils
 pycparser==2.23
     # via cffi
-pydantic==2.11.10
+pydantic[email]==2.11.10
     # via
+    #   fastapi
+    #   fastapi-sso
     #   litellm
+    #   mcp
     #   openai
+    #   pydantic-settings
 pydantic-core==2.33.2
     # via pydantic
+pydantic-settings==2.12.0
+    # via mcp
+pygments==2.19.2
+    # via rich
+pyjwt[crypto]==2.10.1
+    # via
+    #   litellm
+    #   mcp
+    #   msal
 pymongo==4.12.0
     # via
     #   edx-opaque-keys
     #   event-tracking
 pynacl==1.6.1
-    # via edx-django-utils
+    # via
+    #   edx-django-utils
+    #   litellm
 python-dateutil==2.9.0.post0
     # via
+    #   botocore
     #   celery
+    #   croniter
     #   edx-event-routing-backends
 python-dotenv==1.1.1
-    # via litellm
+    # via
+    #   litellm
+    #   pydantic-settings
+python-multipart==0.0.18
+    # via
+    #   litellm
+    #   mcp
 python-slugify==8.0.4
     # via code-annotations
 pytz==2025.2
     # via
+    #   croniter
     #   edx-event-routing-backends
     #   edx-submissions
     #   event-tracking
@@ -267,8 +381,11 @@ pyyaml==6.0.3
     #   code-annotations
     #   edx-django-release-util
     #   huggingface-hub
+    #   litellm
 redis==7.1.0
-    # via django-redis
+    # via
+    #   django-redis
+    #   rq
 referencing==0.37.0
     # via
     #   jsonschema
@@ -278,13 +395,21 @@ regex==2025.9.18
 requests==2.32.5
     # via
     #   apache-libcloud
+    #   azure-core
     #   edx-event-routing-backends
     #   huggingface-hub
+    #   msal
     #   tiktoken
+rich==13.7.1
+    # via litellm
 rpds-py==0.27.1
     # via
     #   jsonschema
     #   referencing
+rq==2.6.1
+    # via litellm
+s3transfer==0.11.3
+    # via boto3
 six==1.17.0
     # via
     #   edx-ccx-keys
@@ -295,10 +420,19 @@ sniffio==1.3.1
     # via
     #   anyio
     #   openai
+soundfile==0.12.1
+    # via litellm
 soupsieve==2.8
     # via beautifulsoup4
 sqlparse==0.5.3
     # via django
+sse-starlette==3.0.4
+    # via mcp
+starlette==0.50.0
+    # via
+    #   fastapi
+    #   mcp
+    #   sse-starlette
 stevedore==5.4.1
     # via
     #   code-annotations
@@ -320,23 +454,42 @@ typing-extensions==4.13.2
     # via
     #   aiosignal
     #   anyio
+    #   azure-core
+    #   azure-identity
+    #   azure-storage-blob
     #   beautifulsoup4
     #   edx-opaque-keys
     #   exceptiongroup
+    #   fastapi
     #   huggingface-hub
+    #   mcp
     #   openai
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
-    # via pydantic
+    # via
+    #   mcp
+    #   pydantic
+    #   pydantic-settings
 tzdata==2025.2
     # via kombu
 tzlocal==5.3.1
-    # via celery
+    # via
+    #   apscheduler
+    #   celery
 urllib3==2.5.0
-    # via requests
+    # via
+    #   botocore
+    #   requests
+uvicorn==0.31.1
+    # via
+    #   litellm
+    #   mcp
+uvloop==0.21.0
+    # via litellm
 vine==5.1.0
     # via
     #   amqp
@@ -344,6 +497,8 @@ vine==5.1.0
     #   kombu
 wcwidth==0.2.14
     # via prompt-toolkit
+websockets==15.0.1
+    # via litellm
 yarl==1.22.0
     # via aiohttp
 zipp==3.23.0

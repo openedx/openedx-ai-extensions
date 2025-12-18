@@ -24,6 +24,10 @@ aniso8601==10.0.1
     # via
     #   -r requirements/base.txt
     #   tincan
+annotated-doc==0.0.4
+    # via
+    #   -r requirements/base.txt
+    #   fastapi
 annotated-types==0.7.0
     # via
     #   -r requirements/base.txt
@@ -32,11 +36,18 @@ anyio==4.11.0
     # via
     #   -r requirements/base.txt
     #   httpx
+    #   mcp
     #   openai
+    #   sse-starlette
+    #   starlette
 apache-libcloud==3.8.0
     # via
     #   -r requirements/base.txt
     #   edx-event-routing-backends
+apscheduler==3.11.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 asgiref==3.8.1
     # via
     #   -r requirements/base.txt
@@ -48,12 +59,38 @@ attrs==25.4.0
     #   jsonschema
     #   openedx-events
     #   referencing
+azure-core==1.37.0
+    # via
+    #   -r requirements/base.txt
+    #   azure-identity
+    #   azure-storage-blob
+azure-identity==1.25.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+azure-storage-blob==12.27.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+backoff==2.2.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 beautifulsoup4==4.14.2
     # via -r requirements/base.txt
 billiard==4.2.4
     # via
     #   -r requirements/base.txt
     #   celery
+boto3==1.36.0
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+botocore==1.36.26
+    # via
+    #   -r requirements/base.txt
+    #   boto3
+    #   s3transfer
 celery==5.6.0
     # via
     #   -r requirements/base.txt
@@ -70,6 +107,7 @@ cffi==2.0.0
     #   -r requirements/base.txt
     #   cryptography
     #   pynacl
+    #   soundfile
 charset-normalizer==3.4.4
     # via
     #   -r requirements/base.txt
@@ -84,6 +122,8 @@ click==8.3.0
     #   code-annotations
     #   edx-django-utils
     #   litellm
+    #   rq
+    #   uvicorn
 click-didyoumean==0.3.1
     # via
     #   -r requirements/base.txt
@@ -103,10 +143,19 @@ code-annotations==2.3.0
     #   edx-toggles
 coverage[toml]==7.8.0
     # via pytest-cov
+croniter==6.0.0
+    # via
+    #   -r requirements/base.txt
+    #   rq
 cryptography==46.0.3
     # via
     #   -r requirements/base.txt
+    #   azure-identity
+    #   azure-storage-blob
     #   django-fernet-fields-v2
+    #   litellm
+    #   msal
+    #   pyjwt
 ddt==1.7.2
     # via -r requirements/test.in
 distro==1.9.0
@@ -174,6 +223,7 @@ djangorestframework==3.16.0
 dnspython==2.7.0
     # via
     #   -r requirements/base.txt
+    #   email-validator
     #   pymongo
 edx-ccx-keys==2.0.2
     # via
@@ -210,6 +260,10 @@ edx-toggles==5.4.1
     #   -r requirements/base.txt
     #   edx-event-routing-backends
     #   event-tracking
+email-validator==2.3.0
+    # via
+    #   -r requirements/base.txt
+    #   pydantic
 event-tracking==3.3.0
     # via
     #   -r requirements/base.txt
@@ -222,6 +276,15 @@ factory-boy==3.3.0
     # via -r requirements/test.in
 faker==25.8.0
     # via factory-boy
+fastapi==0.125.0
+    # via
+    #   -r requirements/base.txt
+    #   fastapi-sso
+    #   litellm
+fastapi-sso==0.16.0
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 fastavro==1.12.1
     # via
     #   -r requirements/base.txt
@@ -247,10 +310,19 @@ fsspec==2025.9.0
     # via
     #   -r requirements/base.txt
     #   huggingface-hub
+grpcio==1.67.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+gunicorn==23.0.0
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 h11==0.16.0
     # via
     #   -r requirements/base.txt
     #   httpcore
+    #   uvicorn
 hf-xet==1.1.10
     # via
     #   -r requirements/base.txt
@@ -262,8 +334,14 @@ httpcore==1.0.9
 httpx==0.28.1
     # via
     #   -r requirements/base.txt
+    #   fastapi-sso
     #   litellm
+    #   mcp
     #   openai
+httpx-sse==0.4.3
+    # via
+    #   -r requirements/base.txt
+    #   mcp
 huggingface-hub==0.35.3
     # via
     #   -r requirements/base.txt
@@ -272,6 +350,7 @@ idna==3.11
     # via
     #   -r requirements/base.txt
     #   anyio
+    #   email-validator
     #   httpx
     #   requests
     #   yarl
@@ -284,6 +363,7 @@ iniconfig==2.1.0
 isodate==0.7.2
     # via
     #   -r requirements/base.txt
+    #   azure-storage-blob
     #   edx-event-routing-backends
 jinja2==3.1.6
     # via
@@ -294,6 +374,11 @@ jiter==0.11.0
     # via
     #   -r requirements/base.txt
     #   openai
+jmespath==1.0.1
+    # via
+    #   -r requirements/base.txt
+    #   boto3
+    #   botocore
 jsonfield==3.2.0
     # via
     #   -r requirements/base.txt
@@ -304,6 +389,7 @@ jsonschema==4.25.1
     # via
     #   -r requirements/base.txt
     #   litellm
+    #   mcp
 jsonschema-specifications==2025.9.1
     # via
     #   -r requirements/base.txt
@@ -312,18 +398,53 @@ kombu==5.6.1
     # via
     #   -r requirements/base.txt
     #   celery
-litellm==1.78.2
-    # via -r requirements/base.txt
+litellm[proxy]==1.80.10
+    # via
+    #   -c requirements/constraints.txt
+    #   -r requirements/base.txt
+litellm-enterprise==0.1.25
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+litellm-proxy-extras==0.4.14
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+markdown-it-py==4.0.0
+    # via
+    #   -r requirements/base.txt
+    #   rich
 markupsafe==3.0.3
     # via
     #   -r requirements/base.txt
     #   jinja2
+mcp==1.24.0
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+mdurl==0.1.2
+    # via
+    #   -r requirements/base.txt
+    #   markdown-it-py
+msal==1.34.0
+    # via
+    #   -r requirements/base.txt
+    #   azure-identity
+    #   msal-extensions
+msal-extensions==1.3.1
+    # via
+    #   -r requirements/base.txt
+    #   azure-identity
 multidict==6.7.0
     # via
     #   -r requirements/base.txt
     #   aiohttp
     #   yarl
-openai==2.4.0
+oauthlib==3.3.1
+    # via
+    #   -r requirements/base.txt
+    #   fastapi-sso
+openai==2.13.0
     # via
     #   -r requirements/base.txt
     #   litellm
@@ -337,9 +458,14 @@ openedx-filters==2.1.0
     # via
     #   -r requirements/base.txt
     #   edx-event-routing-backends
+orjson==3.11.5
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 packaging==25.0
     # via
     #   -r requirements/base.txt
+    #   gunicorn
     #   huggingface-hub
     #   kombu
     #   pytest
@@ -349,6 +475,14 @@ pbr==6.1.1
     #   stevedore
 pluggy==1.5.0
     # via pytest
+polars==1.36.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+polars-runtime-32==1.36.1
+    # via
+    #   -r requirements/base.txt
+    #   polars
 prompt-toolkit==3.0.52
     # via
     #   -r requirements/base.txt
@@ -366,15 +500,33 @@ pycparser==2.23
     # via
     #   -r requirements/base.txt
     #   cffi
-pydantic==2.11.10
+pydantic[email]==2.11.10
     # via
     #   -r requirements/base.txt
+    #   fastapi
+    #   fastapi-sso
     #   litellm
+    #   mcp
     #   openai
+    #   pydantic-settings
 pydantic-core==2.33.2
     # via
     #   -r requirements/base.txt
     #   pydantic
+pydantic-settings==2.12.0
+    # via
+    #   -r requirements/base.txt
+    #   mcp
+pygments==2.19.2
+    # via
+    #   -r requirements/base.txt
+    #   rich
+pyjwt[crypto]==2.10.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+    #   mcp
+    #   msal
 pymongo==4.12.0
     # via
     #   -r requirements/base.txt
@@ -384,6 +536,7 @@ pynacl==1.6.1
     # via
     #   -r requirements/base.txt
     #   edx-django-utils
+    #   litellm
 pytest==8.3.5
     # via
     #   pytest-cov
@@ -395,13 +548,21 @@ pytest-django==4.11.1
 python-dateutil==2.9.0.post0
     # via
     #   -r requirements/base.txt
+    #   botocore
     #   celery
+    #   croniter
     #   edx-event-routing-backends
     #   faker
 python-dotenv==1.1.1
     # via
     #   -r requirements/base.txt
     #   litellm
+    #   pydantic-settings
+python-multipart==0.0.18
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+    #   mcp
 python-slugify==8.0.4
     # via
     #   -r requirements/base.txt
@@ -409,6 +570,7 @@ python-slugify==8.0.4
 pytz==2025.2
     # via
     #   -r requirements/base.txt
+    #   croniter
     #   edx-event-routing-backends
     #   edx-submissions
     #   event-tracking
@@ -419,10 +581,12 @@ pyyaml==6.0.3
     #   code-annotations
     #   edx-django-release-util
     #   huggingface-hub
+    #   litellm
 redis==7.1.0
     # via
     #   -r requirements/base.txt
     #   django-redis
+    #   rq
 referencing==0.37.0
     # via
     #   -r requirements/base.txt
@@ -436,14 +600,28 @@ requests==2.32.5
     # via
     #   -r requirements/base.txt
     #   apache-libcloud
+    #   azure-core
     #   edx-event-routing-backends
     #   huggingface-hub
+    #   msal
     #   tiktoken
+rich==13.7.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 rpds-py==0.27.1
     # via
     #   -r requirements/base.txt
     #   jsonschema
     #   referencing
+rq==2.6.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+s3transfer==0.11.3
+    # via
+    #   -r requirements/base.txt
+    #   boto3
 six==1.17.0
     # via
     #   -r requirements/base.txt
@@ -456,6 +634,10 @@ sniffio==1.3.1
     #   -r requirements/base.txt
     #   anyio
     #   openai
+soundfile==0.12.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 soupsieve==2.8
     # via
     #   -r requirements/base.txt
@@ -464,6 +646,16 @@ sqlparse==0.5.3
     # via
     #   -r requirements/base.txt
     #   django
+sse-starlette==3.0.4
+    # via
+    #   -r requirements/base.txt
+    #   mcp
+starlette==0.50.0
+    # via
+    #   -r requirements/base.txt
+    #   fastapi
+    #   mcp
+    #   sse-starlette
 stevedore==5.4.1
     # via
     #   -r requirements/base.txt
@@ -496,19 +688,27 @@ typing-extensions==4.13.2
     #   -r requirements/base.txt
     #   aiosignal
     #   anyio
+    #   azure-core
+    #   azure-identity
+    #   azure-storage-blob
     #   beautifulsoup4
     #   edx-opaque-keys
     #   exceptiongroup
+    #   fastapi
     #   huggingface-hub
+    #   mcp
     #   openai
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via
     #   -r requirements/base.txt
+    #   mcp
     #   pydantic
+    #   pydantic-settings
 tzdata==2025.2
     # via
     #   -r requirements/base.txt
@@ -516,11 +716,22 @@ tzdata==2025.2
 tzlocal==5.3.1
     # via
     #   -r requirements/base.txt
+    #   apscheduler
     #   celery
 urllib3==2.5.0
     # via
     #   -r requirements/base.txt
+    #   botocore
     #   requests
+uvicorn==0.31.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
+    #   mcp
+uvloop==0.21.0
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 vine==5.1.0
     # via
     #   -r requirements/base.txt
@@ -531,6 +742,10 @@ wcwidth==0.2.14
     # via
     #   -r requirements/base.txt
     #   prompt-toolkit
+websockets==15.0.1
+    # via
+    #   -r requirements/base.txt
+    #   litellm
 yarl==1.22.0
     # via
     #   -r requirements/base.txt
