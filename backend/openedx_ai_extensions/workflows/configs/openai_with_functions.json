@@ -2,12 +2,16 @@
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_location_content"
     },
     "LLMProcessor": {
-      "function": "explain_like_five",
-      "config": "default",
-      "stream": true
+      "function": "answer_question",
+      "config": "openai",
+      "enabled_tools": [
+        "get_context",
+        "get_location_content",
+        "roll_dice",
+        "get_location_link"
+      ]
     }
   },
   "actuator_config": {
