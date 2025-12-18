@@ -121,6 +121,7 @@ const AISidebarResponse = ({
     else {
       setIsOpen(true);
 
+      initialResponseAdded.current = true;
       setChatMessages((prevMessages) => {
         // First chunk or empty chat
         if (prevMessages.length === 0) {
@@ -371,7 +372,7 @@ const AISidebarResponse = ({
       let buffer = '';
 
       // Make API call
-      await callWorkflowService({
+      const data = await callWorkflowService({
         context: preparedContext,
         action: 'run',
         userInput: userMessage,
@@ -399,6 +400,27 @@ const AISidebarResponse = ({
           });
         },
       });
+
+      // Extract response from various possible fields
+      let aiResponse = '';
+      if (data.response) {
+        aiResponse = data.response;
+      } else if (data.message) {
+        aiResponse = data.message;
+      } else if (data.content) {
+        aiResponse = data.content;
+      } else if (data.result) {
+        aiResponse = data.result;
+      } else {
+        aiResponse = JSON.stringify(data, null, 2);
+      }
+
+      // Add AI response to chat
+      setChatMessages(prev => [...prev, {
+        type: 'ai',
+        content: aiResponse,
+        timestamp: new Date().toISOString(),
+      }]);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[AISidebarResponse] Follow-up error:', err);

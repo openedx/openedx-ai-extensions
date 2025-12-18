@@ -4,6 +4,7 @@ Base classes to hold the logic of execution in ai workflows
 """
 import json
 import logging
+import time
 from typing import TYPE_CHECKING
 
 from eventtracking import tracker
@@ -69,9 +70,37 @@ class MockResponse(BaseOrchestrator):
         self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
 
         return {
-            "response": f"Mock response for {self.workflow.action}",
+            "response": f"Mock response for {self.workflow.action} at {time.strftime('%Y-%m-%d %H:%M:%S')}",
             "status": "completed",
         }
+
+
+class MockStreamResponse(BaseOrchestrator):
+    """
+    Complete mock orchestrator with streaming.
+    Responds inmediately with a mock answer in a streaming fashion. Useful for UI testing.
+    """
+
+    def run(self, input_data):
+        # Emit completed event for one-shot workflow
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
+
+        def stream_generator():
+            mock_response = (
+                "This streaming function emits incremental chunks of data as they become available,"
+                "rather than waiting for the full response to be computed. It is designed for low-latency,"
+                "real-time consumption, allowing callers to process partial results immediately. Each yielded"
+                "event represents a discrete update in the stream and may contain content, metadata,"
+                "or control signals.The stream remains open until completion or error, at which point"
+                "it is gracefully closed. Consumers are expected to iterate over the stream sequentially"
+                "and handle partial data, retries, or early termination as needed."
+            )
+            for char in mock_response:
+                # Simulate streaming by yielding one character at a time, with delay
+                time.sleep(0.05)  # 50ms delay to simulate streaming
+                yield char.encode("utf-8")
+
+        return stream_generator()
 
 
 class DirectLLMResponse(BaseOrchestrator):
