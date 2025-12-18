@@ -64,7 +64,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
             }
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error calling LiteLLM: {e}")
+            logger.exception(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
     def generate_quiz_questions(self, input_data):
@@ -81,7 +81,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
             with open(prompt_file_path, "r") as f:
                 prompt = f.read()
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error loading prompt template: {e}")
+            logger.exception(f"Error loading prompt template: {e}")
             return {"error": "Failed to load prompt template."}
 
         if '{{NUM_QUESTIONS}}' in prompt:

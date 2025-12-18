@@ -172,7 +172,7 @@ class LLMProcessor(LitellmProcessor):
             return result
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error calling LiteLLM: {e}")
+            logger.exception(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
     def _call_completion_wrapper(self, system_role):
@@ -223,7 +223,7 @@ class LLMProcessor(LitellmProcessor):
         except Exception as e:  # pylint: disable=broad-exception-caught
             # Catch errors that occur during the INITIAL API call (before streaming starts)
             error_message = f"Error during initial AI completion call: {e}"
-            logger.error(error_message, exc_info=True)
+            logger.exception(error_message, exc_info=True)
             # Always return a dictionary error in this outer block
             return {"error": f"AI processing failed: {str(e)}"}
 

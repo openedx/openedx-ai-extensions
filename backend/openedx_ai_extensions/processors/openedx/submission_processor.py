@@ -183,7 +183,7 @@ class SubmissionProcessor:
                 ),
             }
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error retrieving previous messages: {e}")
+            logger.exception(f"Error retrieving previous messages: {e}")
             return {"error": f"Failed to load previous messages: {str(e)}"}
 
     def update_chat_submission(self, messages):
