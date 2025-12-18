@@ -41,7 +41,7 @@ class OpenEdXProcessor:
         """Return default message when no context is provided."""
         return {"display_name": "No context was provided."}
 
-    def get_location_content(self, location_id):
+    def get_location_content(self, location_id=None):
         """Extract unit content from Open edX modulestore"""
         try:
             # pylint: disable=import-error,import-outside-toplevel
@@ -49,6 +49,7 @@ class OpenEdXProcessor:
 
             # Get char_limit from config. Useful during development
             char_limit = self.config.get("char_limit", None)
+            location_id = location_id or self.location_id
 
             unit_key = UsageKey.from_string(location_id)
             store = modulestore()

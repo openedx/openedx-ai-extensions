@@ -2,6 +2,7 @@
 Tests for the `openedx-ai-extensions` workflows module.
 """
 
+import inspect
 import sys
 from unittest.mock import MagicMock, Mock, patch
 
@@ -24,6 +25,7 @@ from openedx_ai_extensions.workflows.orchestrators import (  # noqa: E402 pylint
     BaseOrchestrator,
     DirectLLMResponse,
     MockResponse,
+    MockStreamResponse,
     ThreadedLLMResponse,
 )
 
@@ -464,6 +466,31 @@ def test_mock_response_orchestrator(workflow_instance):  # pylint: disable=redef
     assert result["status"] == "completed"
     assert "Mock response" in result["response"]
     assert workflow_instance.action in result["response"]
+
+
+@pytest.mark.django_db
+def test_mock_stream_response_orchestrator(workflow_instance):  # pylint: disable=redefined-outer-name
+    """
+    Test MockStreamResponse orchestrator with streaming.
+    """
+    orchestrator = MockStreamResponse(workflow=workflow_instance)
+    result = orchestrator.run({})
+
+    # Verify it returns a generator
+    assert inspect.isgenerator(result), "Expected a generator from MockStreamResponse"
+
+    # Consume the generator and collect chunks
+    chunks = []
+    for chunk in result:
+        assert isinstance(chunk, bytes), "Expected bytes from stream"
+        chunks.append(chunk)
+
+    # Decode and verify content
+    full_response = b"".join(chunks).decode("utf-8")
+    assert len(full_response) > 0, "Expected non-empty response"
+    assert "streaming function" in full_response
+    assert "incremental chunks" in full_response
+    assert "real-time consumption" in full_response
 
 
 @pytest.mark.django_db
