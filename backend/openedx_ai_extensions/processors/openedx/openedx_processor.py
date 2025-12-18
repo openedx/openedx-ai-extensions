@@ -86,8 +86,6 @@ class OpenEdXProcessor:
             char_limit = self.config.get("char_limit", None)
             location_id = location_id or self.location_id
 
-            location_id = location_id or self.location_id
-
             unit_key = UsageKey.from_string(location_id)
             store = modulestore()
             unit = store.get_item(unit_key)

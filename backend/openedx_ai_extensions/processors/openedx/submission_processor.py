@@ -259,6 +259,9 @@ class SubmissionProcessor:
         """
         if self.user_session.local_submission_id:
             messages, _ = self._process_messages(use_max_context=False)
+            for msg in messages:
+                if isinstance(msg, dict):
+                    msg.pop("timestamp", None)
             return messages
         else:
             return None

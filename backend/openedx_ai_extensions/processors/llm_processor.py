@@ -82,18 +82,6 @@ class LLMProcessor(LitellmProcessor):
                     return content_item.text
         return ""
 
-    def _extract_function_response(self, response):
-        """Extract full response object from LiteLLM response."""
-        if not hasattr(response, "output") or not response.output:
-            return None
-        result = []
-        for item in response.output:
-            if getattr(item, "type", None) == "function_call":
-                result.append(item)
-            if getattr(item, "type", None) == "reasoning":
-                result.append(item)
-        return result
-
     def _extract_response_tool_calls(self, response):
         """Extract tool calls from LiteLLM response."""
         tool_calls = []
@@ -260,7 +248,6 @@ class LLMProcessor(LitellmProcessor):
             function_response = function_to_call(
                 **function_args,
             )
-            print("Function response:", function_response)
             params["messages"].append(
                 {
                     "tool_call_id": tool_call.id,
@@ -293,7 +280,6 @@ class LLMProcessor(LitellmProcessor):
             function_response = function_to_call(
                 **function_args,
             )
-            print("Function response:", function_response)
             params["input"].append({
                 "type": "function_call_output",
                 "call_id": tool_call.call_id,
@@ -308,10 +294,10 @@ class LLMProcessor(LitellmProcessor):
 
         new_tool_calls = self._extract_response_tool_calls(response=response)
         if new_tool_calls:
-            params["input"].extend(self._extract_function_response(response=response))
+            if "previous_response_id " in params:
+                params["previous_response_id"] = response.id
             return self._responses_with_tools(new_tool_calls, params)
 
-        print(response)
         return response
 
     def chat_with_context(self):
