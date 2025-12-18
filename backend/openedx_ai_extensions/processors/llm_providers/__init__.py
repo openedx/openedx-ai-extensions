@@ -48,3 +48,23 @@ def adapt_to_provider(provider, params, has_user_input=True, user_session=None, 
                     params["messages"].append({"role": "user", "content": user_prompt})
 
     return params
+
+
+def after_tool_call_adaptations(provider, params, data=None):
+    """
+    Apply provider-specific modifications to API call parameters after tool calls.
+
+    This function centralizes all provider-specific logic that needs to be applied
+    after tool calls have been made, such as updating threading information.
+
+    Args:
+        provider (str): The LLM provider name (e.g., 'openai', 'anthropic')
+        params (dict): The parameters dictionary to modify
+    Returns:
+        dict: Modified parameters with provider-specific adaptations applied
+    """
+    if provider == "openai":
+        if data and hasattr(data, "id"):
+            params["previous_response_id"] = data.id
+
+    return params

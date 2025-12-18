@@ -9,7 +9,7 @@ from litellm import completion, responses
 
 from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
-from openedx_ai_extensions.processors.llm_providers import adapt_to_provider
+from openedx_ai_extensions.processors.llm_providers import adapt_to_provider, after_tool_call_adaptations
 
 logger = logging.getLogger(__name__)
 
@@ -260,9 +260,12 @@ class LLMProcessor(LitellmProcessor):
         # Call completion again with updated messages
         response = completion(**params)
 
+        # For streaming, return the generator immediately
+        # Tool calls are not supported in streaming mode
         if self.stream:
             return response
 
+        # For non-streaming, check for tool calls and handle recursively
         new_tool_calls = response.choices[0].message.tool_calls
         if new_tool_calls:
             params["messages"].append(response.choices[0].message)
@@ -294,8 +297,7 @@ class LLMProcessor(LitellmProcessor):
 
         new_tool_calls = self._extract_response_tool_calls(response=response)
         if new_tool_calls:
-            if "previous_response_id " in params:
-                params["previous_response_id"] = response.id
+            params = after_tool_call_adaptations(self.provider, params, data=response)
             return self._responses_with_tools(new_tool_calls, params)
 
         return response
