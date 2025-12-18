@@ -1,0 +1,38 @@
+{
+  "orchestrator_class": "DirectLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+    },
+    "LLMProcessor": {
+      "function": "answer_question",
+      "config": "anthropic",
+      "enabled_tools": [
+        "get_context",
+        "get_location_content",
+        "roll_dice",
+        "get_location_link"
+      ]
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "Ask AI [config api]",
+          "customMessage": "Answer a question using functions Antrhopic [config api]"
+        }
+      },
+      "response": {
+        "component": "AIResponseComponent",
+        "config": {
+          "customMessage": "AI Assistant Response [config api]"
+        }
+      },
+      "metadata": {
+          "version": 0.1,
+          "provider": "config_api"
+      }
+    }
+  }
+}

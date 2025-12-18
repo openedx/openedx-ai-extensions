@@ -48,6 +48,7 @@ class OpenEdXProcessor:
 
     @llm_tool(schema={
         "type": "function",
+        "name": "get_location_content",  # responses needs to have this field.
         "function": {
             "name": "get_location_content",
             "description": (
@@ -268,6 +269,7 @@ class OpenEdXProcessor:
 
     @llm_tool(schema={
         "type": "function",
+        "name": "get_context",  # responses needs to have this field.
         "function": {
               "name": "get_context",
               "description": "Get the context vars of the current Open edX location",
@@ -282,6 +284,7 @@ class OpenEdXProcessor:
 
     @llm_tool(schema={
           "type": "function",
+          "name": "get_location_link",  # responses needs to have this field.
           "function": {
               "name": "get_location_link",
               "description": "Get the URL of a given Open edX location",

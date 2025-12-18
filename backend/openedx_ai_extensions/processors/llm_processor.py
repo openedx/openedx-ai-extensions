@@ -192,7 +192,7 @@ class LLMProcessor(LitellmProcessor):
             }
             # Include system messages when initializing a new thread
             if initialize:
-                system_msgs = [msg for msg in params.get("input", []) if msg["role"] == "system"]
+                system_msgs = [msg for msg in params.get("input", []) if "role" in msg and msg["role"] == "system"]
                 result["system_messages"] = system_msgs
             return result
 
@@ -260,6 +260,7 @@ class LLMProcessor(LitellmProcessor):
             function_response = function_to_call(
                 **function_args,
             )
+            print("Function response:", function_response)
             params["messages"].append(
                 {
                     "tool_call_id": tool_call.id,
@@ -292,6 +293,7 @@ class LLMProcessor(LitellmProcessor):
             function_response = function_to_call(
                 **function_args,
             )
+            print("Function response:", function_response)
             params["input"].append({
                 "type": "function_call_output",
                 "call_id": tool_call.call_id,
