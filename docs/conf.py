@@ -19,6 +19,10 @@ from subprocess import check_call
 
 from django import setup as django_setup
 
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BACKEND_PATH = os.path.join(REPO_ROOT, "backend")
+sys.path.insert(0, BACKEND_PATH)
+
 autodoc_mock_imports = [
     "submissions",
     "content_libraries_module_t_v1",

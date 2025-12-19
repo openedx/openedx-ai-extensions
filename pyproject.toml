@@ -66,6 +66,9 @@ include = [
     "/backend",
     "/frontend"
 ]
+exclude = [
+    "/frontend/node_modules"
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["tutor/openedx_ai_extensions"]
@@ -76,3 +79,24 @@ only-include = [
 [tool.hatch.build.targets.wheel.force-include]
 "backend/" = "openedx-ai-extensions-backend"
 "frontend/" = "openedx-ai-extensions-frontend"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = docs
+skipsdist = true
+
+[testenv:docs]
+description = Build Sphinx documentation
+changedir = docs
+setenv =
+    PYTHONPATH = {toxinidir}/backend
+    DJANGO_SETTINGS_MODULE = test_settings
+deps =
+    sphinx
+    sphinx-book-theme
+    -r{toxinidir}/backend/requirements/test.txt
+    -r{toxinidir}/backend/requirements/doc.txt
+commands =
+    sphinx-build -b html -W --keep-going . _build/html
+"""
