@@ -179,7 +179,7 @@ const AIEducatorLibraryAssistComponent = ({
 
       const data = await callWorkflowService({
         context: contextData,
-        action: 'run',
+        action: 'run_async',
         payload: {
           requestId: `ai-request-${Date.now()}`,
           user_input: {
@@ -190,25 +190,28 @@ const AIEducatorLibraryAssistComponent = ({
         },
       });
 
-      // Handle response
-      if (data.response) {
-        setResponse(data.response);
-        setHasAsked(true);
-      } else if (data.message) {
-        setResponse(data.message);
-        setHasAsked(true);
-      } else if (data.content) {
-        setResponse(data.content);
-        setHasAsked(true);
-      } else if (data.result) {
-        setResponse(data.result);
-        setHasAsked(true);
-      } else if (data.error) {
+      if (data.error) {
         throw new Error(data.error);
-      } else {
-        setResponse(JSON.stringify(data, null, 2));
-        setHasAsked(true);
       }
+
+      // Pass response to response component
+      // For async tasks, pass the full response object as JSON
+      // Response component will detect status: 'processing' and handle polling
+      if (data.status === 'processing' && data.task_id) {
+        // Include context data so response component can poll
+        setResponse(JSON.stringify({
+          ...data,
+          courseId,
+          locationId,
+        }));
+      } else {
+        // Immediate response
+        const immediateResponse = data.response || data.message || data.content
+          || data.result || JSON.stringify(data, null, 2);
+        setResponse(immediateResponse);
+      }
+
+      setHasAsked(true);
       setShowForm(false);
 
       // Reset form

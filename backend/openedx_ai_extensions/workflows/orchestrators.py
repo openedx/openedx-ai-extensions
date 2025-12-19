@@ -7,6 +7,7 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
+from celery import shared_task
 from eventtracking import tracker
 
 from openedx_ai_extensions.processors import (
@@ -24,9 +25,43 @@ from openedx_ai_extensions.xapi.constants import (
 )
 
 if TYPE_CHECKING:
-    from openedx_ai_extensions.workflows.models import AIWorkflowSession
+    from openedx_ai_extensions.workflows.models import AIWorkflowSession, AIWorkflow
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, time_limit=300, soft_time_limit=270)
+def _execute_orchestrator_async(task_self, workflow_id, input_data):
+
+    task_id = task_self.request.id
+    logger.info(f"[CELERY TASK] Starting task_id={task_id} for workflow_id={workflow_id}")
+
+    try:
+
+        # STUB: For now, just log and sleep to verify Celery works
+        for i in range(1, 11):
+            logger.info(f"[CELERY TASK] task_id={task_id} - Step {i}/10")
+            time.sleep(1)
+
+        logger.info(f"[CELERY TASK] Completed task_id={task_id}")
+
+        # TODO: Replace stub with actual execution:
+        # workflow = AIWorkflow.objects.get(id=workflow_id)
+        # orchestrator = workflow._get_orchestrator()
+        # result = orchestrator.run(input_data)
+        # return result
+
+        return {
+            'task_id': task_id,
+            'workflow_id': workflow_id,
+            'status': 'completed',
+            'response': 'Stub task completed - 10 seconds elapsed',
+            'message': 'This is a stub. Will execute orchestrator.run() later.'
+        }
+    except SoftTimeLimitExceeded:
+        # Explain in the session what has happened
+        raise
+
 
 
 class BaseOrchestrator:
@@ -267,6 +302,38 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
                 'tokens_used': llm_result.get('tokens_used'),
                 'model_used': llm_result.get('model_used')
             }
+        }
+
+    def run_async(self, input_data):
+        """
+        """
+        logger.info(
+            f"[EducatorAssistantOrchestrator] Method: run_async"
+            f"workflow_id={self.workflow.id} action={self.workflow.action}"
+        )
+
+        task = _execute_orchestrator_async.delay(
+            workflow_id=self.workflow.id,
+            input_data=input_data
+        )
+
+        logger.info(
+            f"[ORCHESTRATOR] Launched async task_id={task.id} "
+            f"for workflow_id={self.workflow.id} action={self.workflow.action}"
+        )
+
+        return {
+            'status': 'processing',
+            'task_id': task.id,
+            'message': 'AI workflow has started'
+        }
+
+    def get_run_status(self, input_data):
+        logger.info(f"GET_RUN_STATUS: {str(input_data)}")
+        return {
+            'status': 'processing',
+            'task_id': "some_id_must_check_it_matches",
+            'message': f"AI workflow is running {time.strftime('%Y-%m-%d %H:%M:%S')}"
         }
 
 
