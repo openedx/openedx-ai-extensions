@@ -29,6 +29,9 @@ class OpenedxAIExtensionsConfig(AppConfig):
         from openedx_ai_extensions.xapi import \
             transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
 
+        # Import the tasks module to trigger the registration
+        from openedx_ai_extensions import tasks 
+
     plugin_app = {
         "url_config": {
             "lms.djangoapp": {

@@ -8,6 +8,7 @@ import time
 from typing import TYPE_CHECKING
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from eventtracking import tracker
 
 from openedx_ai_extensions.processors import (
@@ -30,38 +31,30 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, time_limit=300, soft_time_limit=270)
-def _execute_orchestrator_async(task_self, workflow_id, input_data):
+@shared_task(name="openedx_ai_extensions.workflows.execute_orchestrator", bind=True, time_limit=300, soft_time_limit=270)
+def _execute_orchestrator_async(task_self, workflow_id, action, params=None):
 
     task_id = task_self.request.id
-    logger.info(f"[CELERY TASK] Starting task_id={task_id} for workflow_id={workflow_id}")
-
     try:
+        from openedx_ai_extensions.workflows.models import AIWorkflow
 
-        # STUB: For now, just log and sleep to verify Celery works
-        for i in range(1, 11):
-            logger.info(f"[CELERY TASK] task_id={task_id} - Step {i}/10")
-            time.sleep(1)
+        # Get the workflow and orchestrator
+        workflow = AIWorkflow.objects.get(id=workflow_id)
+        orchestrator = workflow._get_orchestrator()
 
-        logger.info(f"[CELERY TASK] Completed task_id={task_id}")
+        # Validate action exists
+        if not hasattr(orchestrator, action):
+            raise AttributeError(f"Orchestrator does not have method '{action}'")
 
-        # TODO: Replace stub with actual execution:
-        # workflow = AIWorkflow.objects.get(id=workflow_id)
-        # orchestrator = workflow._get_orchestrator()
-        # result = orchestrator.run(input_data)
-        # return result
+        # Call the specified method with params
+        orchestrator_method = getattr(orchestrator, action)
+        result = orchestrator_method(**(params or {}))
 
-        return {
-            'task_id': task_id,
-            'workflow_id': workflow_id,
-            'status': 'completed',
-            'response': 'Stub task completed - 10 seconds elapsed',
-            'message': 'This is a stub. Will execute orchestrator.run() later.'
-        }
+        return result
+
     except SoftTimeLimitExceeded:
         # Explain in the session what has happened
         raise
-
 
 
 class BaseOrchestrator:
@@ -306,20 +299,17 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
     def run_async(self, input_data):
         """
-        """
-        logger.info(
-            f"[EducatorAssistantOrchestrator] Method: run_async"
-            f"workflow_id={self.workflow.id} action={self.workflow.action}"
-        )
+        Launch async task to execute the run method.
 
+        Args:
+            input_data: Input data to pass to the run method
+        """
         task = _execute_orchestrator_async.delay(
             workflow_id=self.workflow.id,
-            input_data=input_data
-        )
-
-        logger.info(
-            f"[ORCHESTRATOR] Launched async task_id={task.id} "
-            f"for workflow_id={self.workflow.id} action={self.workflow.action}"
+            action='run',
+            params={
+                "input_data": input_data,
+            }
         )
 
         return {
