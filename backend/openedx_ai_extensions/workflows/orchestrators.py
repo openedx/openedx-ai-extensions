@@ -32,9 +32,10 @@ logger = logging.getLogger(__name__)
 class BaseOrchestrator:
     """Base class for workflow orchestrators."""
 
-    def __init__(self, workflow):
+    def __init__(self, workflow, user):
         self.workflow = workflow
-        self.config = workflow.config
+        self.user = user
+        self.profile = workflow.profile
         self.location_id = str(workflow.location_id) if workflow.location_id else None
 
     def _emit_workflow_event(self, event_name: str) -> None:
@@ -44,7 +45,7 @@ class BaseOrchestrator:
         Args:
             event_name: The event name constant (e.g., EVENT_NAME_WORKFLOW_COMPLETED)
         """
-        config_filename: str = self.config.processor_config.get("_config_filename", self.workflow.action)
+        config_filename: str = self.profile.processor_config.get("_config_filename", self.workflow.action)
         workflow_id: str = f"{config_filename}__{self.workflow.action}"
 
         tracker.emit(event_name, {
@@ -117,10 +118,10 @@ class DirectLLMResponse(BaseOrchestrator):
 
         # --- 1. Process with OpenEdX processor (Content Fetching) ---
         openedx_processor = OpenEdXProcessor(
-            processor_config=self.config.processor_config,
+            processor_config=self.profile.processor_config,
             location_id=self.location_id,
             course_id=self.workflow.course_id,
-            user=self.workflow.user,
+            user=self.user,
         )
         content_result = openedx_processor.process()
 
@@ -135,7 +136,7 @@ class DirectLLMResponse(BaseOrchestrator):
         llm_input_content = str(content_result)
 
         # --- 2. Process with LLM processor ---
-        llm_processor = LLMProcessor(self.config.processor_config)
+        llm_processor = LLMProcessor(self.profile.processor_config)
         llm_result = llm_processor.process(context=llm_input_content)
 
         # --- 4. Handle Streaming Response (Generator) ---
@@ -170,14 +171,14 @@ class DirectLLMResponse(BaseOrchestrator):
 class SessionBasedOrchestrator(BaseOrchestrator):
     """Orchestrator that provides session-based LLM responses."""
 
-    def __init__(self, workflow):
+    def __init__(self, workflow, user):
         from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
 
-        super().__init__(workflow)
+        super().__init__(workflow, user)
         self.session, _ = AIWorkflowSession.objects.get_or_create(
-            user=self.workflow.user,
-            course_id=self.workflow.course_id,
-            location_id=self.workflow.location_id,
+            user=self.user,
+            scope=self.workflow,
+            profile=self.workflow.profile,
             defaults={},
         )
 
@@ -190,7 +191,7 @@ class SessionBasedOrchestrator(BaseOrchestrator):
 
     def _get_submission_processor(self):
         return SubmissionProcessor(
-            self.config.processor_config, self.session
+            self.profile.processor_config, self.session
         )
 
     def run(self, input_data):
@@ -214,10 +215,10 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
     def run(self, input_data):
         # 1. Process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(
-            processor_config=self.config.processor_config,
+            processor_config=self.profile.processor_config,
             location_id=self.location_id,
             course_id=self.workflow.course_id,
-            user=self.workflow.user,
+            user=self.user,
         )
         content_result = openedx_processor.process()
 
@@ -226,8 +227,8 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
         # 2. Process with LLM processor
         llm_processor = EducatorAssistantProcessor(
-            config=self.config.processor_config,
-            user=self.workflow.user,
+            config=self.profile.processor_config,
+            user=self.user,
             context=content_result
         )
         llm_result = llm_processor.process(input_data=input_data)
@@ -239,8 +240,8 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
         library_processor = ContentLibraryProcessor(
             library_key=lib_key_str,
-            user=self.workflow.user,
-            config=self.config.processor_config
+            user=self.user,
+            config=self.profile.processor_config
         )
 
         collection_key = library_processor.create_collection_and_add_items(
@@ -382,10 +383,10 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # 2. else process with OpenEdX processor
         openedx_processor = OpenEdXProcessor(
-            processor_config=self.config.processor_config,
+            processor_config=self.profile.processor_config,
             location_id=self.location_id,
             course_id=self.workflow.course_id,
-            user=self.workflow.user,
+            user=self.user,
         )
         content_result = openedx_processor.process()
 
@@ -396,7 +397,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             }
 
         # 3. Process with LLM processor
-        llm_processor = LLMProcessor(self.config.processor_config, self.session)
+        llm_processor = LLMProcessor(self.profile.processor_config, self.session)
 
         chat_history = []
         if llm_processor.get_provider() != "openai":

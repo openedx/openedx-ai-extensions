@@ -119,7 +119,6 @@ const AIEducatorLibraryAssistComponent = ({
           action: 'get_current_session_response',
           payload: {
             requestId: `ai-request-${Date.now()}`,
-            courseId,
           },
         });
 
@@ -183,7 +182,6 @@ const AIEducatorLibraryAssistComponent = ({
         action: 'run',
         payload: {
           requestId: `ai-request-${Date.now()}`,
-          courseId,
           user_input: {
             library_id: selectedLibrary,
             num_questions: numberOfQuestions,

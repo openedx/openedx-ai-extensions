@@ -153,7 +153,6 @@ const ConfigurableAIAssistance = ({
         userInput: requestMessage,
         payload: {
           requestId: `ai-request-${Date.now()}`,
-          courseId: contextData.courseId,
         },
         onStreamChunk: (chunk) => {
           setIsLoading(false);

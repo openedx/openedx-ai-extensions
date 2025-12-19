@@ -17,8 +17,8 @@ sys.modules["submissions"] = MagicMock()
 sys.modules["submissions.api"] = MagicMock()
 
 from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
-    AIWorkflow,
-    AIWorkflowConfig,
+    AIWorkflowScope,
+    AIWorkflowProfile,
     AIWorkflowSession,
 )
 from openedx_ai_extensions.workflows.orchestrators import (  # noqa: E402 pylint: disable=wrong-import-position
@@ -55,7 +55,7 @@ def workflow_config(db):  # pylint: disable=unused-argument
     """
     Create a mock workflow config with proper Django model attributes.
     """
-    config = Mock(spec=AIWorkflowConfig)
+    config = Mock(spec=AIWorkflowProfile)
     config.id = 1
     config.pk = 1
     config.action = "summarize"
@@ -79,7 +79,7 @@ def workflow_instance(user, workflow_config, course_key):  # pylint: disable=red
     location = BlockUsageLocator(
         course_key, block_type="vertical", block_id="test_unit"
     )
-    workflow = AIWorkflow(
+    workflow = AIWorkflowScope(
         user=user,
         action="summarize",
         course_id=str(course_key),
@@ -100,7 +100,7 @@ def test_workflow_config_str():
     """
     Test AIWorkflowConfig string representation.
     """
-    config = AIWorkflowConfig(action="summarize", course_id="course-v1:test")
+    config = AIWorkflowProfile(action="summarize", course_id="course-v1:test")
     assert "summarize" in str(config)
     assert "Course: course-v1:test" in str(config)
 
@@ -110,7 +110,7 @@ def test_workflow_config_str_global():
     """
     Test AIWorkflowConfig string representation for global config.
     """
-    config = AIWorkflowConfig(action="summarize", course_id=None)
+    config = AIWorkflowProfile(action="summarize", course_id=None)
     assert "summarize" in str(config)
     assert "(Global)" in str(config)
 
@@ -119,12 +119,12 @@ def test_workflow_config_str_global():
 @patch("openedx_ai_extensions.workflows.models._fake_get_config_from_file")
 def test_workflow_config_get_config(mock_get_config):
     """
-    Test AIWorkflowConfig.get_config class method.
+    Test AIWorkflowProfile.get_config class method.
     """
-    mock_config = Mock(spec=AIWorkflowConfig)
+    mock_config = Mock(spec=AIWorkflowProfile)
     mock_get_config.return_value = mock_config
 
-    result = AIWorkflowConfig.get_config(
+    result = AIWorkflowProfile.get_config(
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
         location_id="unit-123",
@@ -132,7 +132,7 @@ def test_workflow_config_get_config(mock_get_config):
 
     assert result == mock_config
     mock_get_config.assert_called_once_with(
-        AIWorkflowConfig,
+        AIWorkflowProfile,
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
         location_id="unit-123",
@@ -173,7 +173,7 @@ def test_workflow_get_natural_key_no_unit(user, workflow_config):  # pylint: dis
     """
     Test AIWorkflow.get_natural_key without location_id.
     """
-    workflow = AIWorkflow(
+    workflow = AIWorkflowScope(
         user=user,
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
@@ -189,12 +189,12 @@ def test_workflow_get_natural_key_no_unit(user, workflow_config):  # pylint: dis
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models.AIWorkflowConfig.get_config")
+@patch("openedx_ai_extensions.workflows.models.AIWorkflowProfile.get_config")
 def test_workflow_find_workflow_for_context(
     mock_get_config, user, workflow_config
 ):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflow.find_workflow_for_context class method.
+    Test AIWorkflowScope.find_workflow_for_context class method.
     """
     mock_get_config.return_value = workflow_config
 
@@ -203,7 +203,7 @@ def test_workflow_find_workflow_for_context(
         course_key_obj, block_type="vertical", block_id="unit1"
     )
 
-    workflow, created = AIWorkflow.find_workflow_for_context(
+    workflow, created = AIWorkflowScope.find_workflow_for_context(
         action="summarize",
         course_id="course-v1:edX+DemoX+Demo_Course",
         location_id=location,
@@ -218,21 +218,21 @@ def test_workflow_find_workflow_for_context(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.models.AIWorkflowConfig.get_config")
+@patch("openedx_ai_extensions.workflows.models.AIWorkflowProfile.get_config")
 def test_workflow_find_workflow_for_context_no_config(mock_get_config, user):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflow.find_workflow_for_context raises error when no config found.
+    Test AIWorkflowScope.find_workflow_for_context raises error when no config found.
     """
     mock_get_config.return_value = None
 
     with pytest.raises(ValidationError) as exc_info:
-        AIWorkflow.find_workflow_for_context(
+        AIWorkflowScope.find_workflow_for_context(
             action="nonexistent",
             course_id="course-v1:edX+DemoX+Demo_Course",
             user=user,
         )
 
-    assert "No AIWorkflowConfiguration found" in str(exc_info.value)
+    assert "No AIWorkflowProfile found" in str(exc_info.value)
 
 
 @pytest.mark.django_db

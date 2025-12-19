@@ -20,13 +20,13 @@ sys.modules["submissions"] = MagicMock()
 sys.modules["submissions.api"] = MagicMock()
 
 from openedx_ai_extensions.api.v1.workflows.serializers import (  # noqa: E402 pylint: disable=wrong-import-position
-    AIWorkflowConfigSerializer,
+    AIWorkflowProfileSerializer,
 )
 from openedx_ai_extensions.api.v1.workflows.views import (  # noqa: E402 pylint: disable=wrong-import-position
     AIGenericWorkflowView,
-    AIWorkflowConfigView,
+    AIWorkflowProfileView,
 )
-from openedx_ai_extensions.workflows.models import AIWorkflowConfig  # noqa: E402 pylint: disable=wrong-import-position
+from openedx_ai_extensions.workflows.models import AIWorkflowProfile  # noqa: E402 pylint: disable=wrong-import-position
 
 User = get_user_model()
 
@@ -75,7 +75,7 @@ def workflow_config():
     """
     Create a mock workflow config for unit tests.
     """
-    config = Mock(spec=AIWorkflowConfig)
+    config = Mock(spec=AIWorkflowProfile)
     config.id = 1
     config.pk = 1
     config.action = "summarize"
@@ -362,9 +362,9 @@ def test_config_endpoint_without_authentication(api_client):  # pylint: disable=
 
 def test_serializer_serialize_config(workflow_config):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflowConfigSerializer serializes config correctly.
+    Test AIWorkflowProfileSerializer serializes config correctly.
     """
-    serializer = AIWorkflowConfigSerializer(workflow_config)
+    serializer = AIWorkflowProfileSerializer(workflow_config)
     data = serializer.data
 
     assert data["action"] == "summarize"
@@ -377,7 +377,7 @@ def test_serializer_get_ui_components(workflow_config):  # pylint: disable=redef
     """
     Test serializer extracts ui_components from actuator_config.
     """
-    serializer = AIWorkflowConfigSerializer(workflow_config)
+    serializer = AIWorkflowProfileSerializer(workflow_config)
     ui_components = serializer.get_ui_components(workflow_config)
 
     assert "request" in ui_components
@@ -389,12 +389,12 @@ def test_serializer_get_ui_components_empty_config():
     """
     Test serializer handles empty actuator_config.
     """
-    config = Mock(spec=AIWorkflowConfig)
+    config = Mock(spec=AIWorkflowProfile)
     config.action = "test"
     config.course_id = None
     config.actuator_config = None
 
-    serializer = AIWorkflowConfigSerializer(config)
+    serializer = AIWorkflowProfileSerializer(config)
     ui_components = serializer.get_ui_components(config)
 
     assert ui_components == {}
@@ -404,7 +404,7 @@ def test_serializer_create_not_implemented(workflow_config):  # pylint: disable=
     """
     Test that serializer.create raises NotImplementedError.
     """
-    serializer = AIWorkflowConfigSerializer(workflow_config)
+    serializer = AIWorkflowProfileSerializer(workflow_config)
 
     with pytest.raises(NotImplementedError) as exc_info:
         serializer.create({})
@@ -416,7 +416,7 @@ def test_serializer_update_not_implemented(workflow_config):  # pylint: disable=
     """
     Test that serializer.update raises NotImplementedError.
     """
-    serializer = AIWorkflowConfigSerializer(workflow_config)
+    serializer = AIWorkflowProfileSerializer(workflow_config)
 
     with pytest.raises(NotImplementedError) as exc_info:
         serializer.update(workflow_config, {})
@@ -430,7 +430,7 @@ def test_serializer_update_not_implemented(workflow_config):  # pylint: disable=
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflow.find_workflow_for_context")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.find_workflow_for_context")
 def test_generic_workflow_view_post_validation_error_unit(
     mock_find_workflow, user, course_key  # pylint: disable=redefined-outer-name
 ):
@@ -463,7 +463,7 @@ def test_generic_workflow_view_post_validation_error_unit(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflow.find_workflow_for_context")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.find_workflow_for_context")
 def test_generic_workflow_view_post_general_exception_unit(
     mock_find_workflow, user, course_key  # pylint: disable=redefined-outer-name
 ):
@@ -495,12 +495,12 @@ def test_generic_workflow_view_post_general_exception_unit(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowConfig.get_config")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_config")
 def test_workflow_config_view_get_not_found_unit(
     mock_get_config, user  # pylint: disable=redefined-outer-name
 ):
     """
-    Test AIWorkflowConfigView returns 404 when no config found (unit test).
+    Test AIWorkflowProfileView returns 404 when no config found (unit test).
     """
     mock_get_config.return_value = None
 
@@ -511,7 +511,7 @@ def test_workflow_config_view_get_not_found_unit(
     )
     request.user = user
 
-    view = AIWorkflowConfigView.as_view()
+    view = AIWorkflowProfileView.as_view()
     response = view(request)
 
     assert response.status_code == 404
@@ -520,12 +520,12 @@ def test_workflow_config_view_get_not_found_unit(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowConfig.get_config")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_config")
 def test_workflow_config_view_get_with_location_id_unit(
     mock_get_config, workflow_config, user, course_key  # pylint: disable=redefined-outer-name
 ):
     """
-    Test AIWorkflowConfigView GET request with location_id in context (unit test).
+    Test AIWorkflowProfileView GET request with location_id in context (unit test).
     """
     mock_get_config.return_value = workflow_config
 
@@ -543,7 +543,7 @@ def test_workflow_config_view_get_with_location_id_unit(
     )
     request.user = user
 
-    view = AIWorkflowConfigView.as_view()
+    view = AIWorkflowProfileView.as_view()
     response = view(request)
 
     assert response.status_code == 200
@@ -556,12 +556,12 @@ def test_workflow_config_view_get_with_location_id_unit(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowConfig.get_config")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_config")
 def test_workflow_config_view_invalid_context_json_unit(
     mock_get_config, workflow_config, user  # pylint: disable=redefined-outer-name
 ):
     """
-    Test AIWorkflowConfigView handles invalid JSON in context parameter (unit test).
+    Test AIWorkflowProfileView handles invalid JSON in context parameter (unit test).
     """
     mock_get_config.return_value = workflow_config
 
@@ -572,7 +572,7 @@ def test_workflow_config_view_invalid_context_json_unit(
     )
     request.user = user
 
-    view = AIWorkflowConfigView.as_view()
+    view = AIWorkflowProfileView.as_view()
     response = view(request)
 
     # Should handle invalid JSON gracefully and use empty context

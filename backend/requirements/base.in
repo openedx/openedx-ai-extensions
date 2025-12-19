@@ -11,3 +11,5 @@ edx-event-routing-backends  # Extends xAPI transformer events for this package
 openedx-atlas
 edx-submissions
 beautifulsoup4
+jsonschema
+jsonmerge

@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
@@ -26,7 +27,7 @@
         }
       },
       "metadata": {
-          "version": 0.1,
+          "version": "1.0",
           "provider": "config_api"
       }
     }

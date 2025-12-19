@@ -5,7 +5,6 @@ Refactored to use Django models and workflow orchestrators
 
 import json
 import logging
-import pprint
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
@@ -19,9 +18,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from openedx_ai_extensions.utils import is_generator
-from openedx_ai_extensions.workflows.models import AIWorkflow, AIWorkflowConfig
+from openedx_ai_extensions.workflows.models import AIWorkflowScope
 
-from .serializers import AIWorkflowConfigSerializer
+from .serializers import AIWorkflowProfileSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -33,82 +32,28 @@ class AIGenericWorkflowView(View):
     """
 
     def post(self, request):
-        """Handle POST request for AI assistance"""
-        return self._handle_request(request, "POST")
-
-    def get(self, request):
-        """Handle GET request for AI assistance"""
-        return self._handle_request(request, "GET")
-
-    def _handle_request(self, request, method):
         """Common handler for GET and POST requests"""
 
-        # Parse request body if present
         try:
+            config = AIWorkflowScope.get_config(request=request)
+
+            request_body = {}
             if request.body:
-                body_data = json.loads(request.body.decode("utf-8"))
-            else:
-                body_data = {}
-        except json.JSONDecodeError:
-            return JsonResponse(
-                {"error": "Invalid JSON in request body", "status": "error"}, status=400
-            )
+                request_body = json.loads(request.body.decode("utf-8"))
+            action = request_body.get("action", "")
+            user_input = request_body.get("userInput", {})
 
-        user = request.user
-        # Use standardized get_context
-        context_data = AIWorkflow.get_context_from_request(body_data, user)
-
-        action = context_data["action"]
-        course_id = context_data["course_id"]
-        location_id = context_data["location_id"]
-        # Extract obligatory workflow identification fields
-        user_input = body_data.get("user_input", {})
-        request_id = body_data.get("requestId", "no-request-id")
-
-        # TODO: Remove verbose logging
-        logger.info(
-            "🤖 AI WORKFLOW REQUEST:\n%s",
-            pprint.pformat(
-                {
-                    "timestamp": datetime.now().isoformat(),
-                    "method": method,
-                    "action": action,
-                    "user_id": user.id,
-                    "username": user.username,
-                    "course_id": course_id,
-                    "query_params": dict(request.GET),
-                    "request_body": body_data,
-                },
-                indent=2,
-                width=100,
-            ),
-        )
-
-        try:
-            # Get or create workflow based on context
-            workflow, created = AIWorkflow.find_workflow_for_context(
+            result = config.execute(
+                user_input=user_input,
                 action=action,
-                course_id=course_id,
-                user=user,
-                location_id=location_id,
+                user=request.user,
             )
-
-            result = workflow.execute(user_input)
 
             if is_generator(result):
                 return StreamingHttpResponse(
                     result,
                     content_type="text/plain"
                 )
-
-            # TODO: this should go through a serializer so that every UI actuator receives a compatible object
-            result.update(
-                {
-                    "requestId": request_id,
-                    "timestamp": datetime.now().isoformat(),
-                    "workflow_created": created,
-                }
-            )
 
             # Check result status and return appropriate HTTP status
             result_status = result.get("status", "success")
@@ -144,9 +89,9 @@ class AIGenericWorkflowView(View):
             )
 
 
-class AIWorkflowConfigView(APIView):
+class AIWorkflowProfileView(APIView):
     """
-    API endpoint to retrieve workflow configuration
+    API endpoint to retrieve workflow profile configuration
     """
 
     permission_classes = [IsAuthenticated]
@@ -155,41 +100,24 @@ class AIWorkflowConfigView(APIView):
         """
         Retrieve workflow configuration for a given action and context
         """
-        # Extract query parameters
-        try:
-            context_str = request.query_params.get("context", "{}")
-            context = json.loads(context_str)
-        except (json.JSONDecodeError, TypeError):
-            context = {}
-        location_id = context.get("locationId")
-        action = request.query_params.get("action")
-        course_id = request.query_params.get("courseId")
 
         try:
             # Get workflow configuration
-            config = AIWorkflowConfig.get_config(
-                action=action, course_id=course_id, location_id=location_id
-            )
+            config = AIWorkflowScope.get_config(request=request)
 
             if not config:
                 return Response(
                     {
-                        "error": "No workflow configuration found for current context.",
+                        "error": "No workflow scope configuration found for current context.",
                         "status": "not_found",
                     },
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            # Serialize the configuration
-            serializer = AIWorkflowConfigSerializer(config)
+            serializer = AIWorkflowProfileSerializer(config)
 
             response_data = serializer.data
             response_data["timestamp"] = datetime.now().isoformat()
-
-            logger.info(
-                "🤖 CONFIG RESPONSE:\n%s",
-                pprint.pformat(response_data, indent=2, width=100),
-            )
 
             return Response(response_data, status=status.HTTP_200_OK)
 
