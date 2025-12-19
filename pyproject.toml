@@ -89,14 +89,11 @@ skipsdist = true
 [testenv:docs]
 description = Build Sphinx documentation
 changedir = docs
-setenv =
-    PYTHONPATH = {toxinidir}/backend
-    DJANGO_SETTINGS_MODULE = test_settings
 deps =
     sphinx
     sphinx-book-theme
-    -r{toxinidir}/backend/requirements/test.txt
     -r{toxinidir}/backend/requirements/doc.txt
+    -e {toxinidir}/backend
 commands =
     sphinx-build -b html -W --keep-going . _build/html
 """

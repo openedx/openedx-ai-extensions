@@ -19,16 +19,11 @@ from subprocess import check_call
 
 from django import setup as django_setup
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BACKEND_PATH = os.path.join(REPO_ROOT, "backend")
-sys.path.insert(0, BACKEND_PATH)
 
 autodoc_mock_imports = [
     "submissions",
-    "content_libraries_module_t_v1",
     "openedx",
     "common",
-    "xmodule",
 ]
 
 def get_version(*file_paths):
@@ -52,7 +47,7 @@ sys.path.append(REPO_ROOT)
 
 VERSION = get_version('../backend/openedx_ai_extensions', '__init__.py')
 # Configure Django for autodoc usage
-os.environ['DJANGO_SETTINGS_MODULE'] = 'test_settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'backend.test_settings'
 django_setup()
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -542,7 +537,7 @@ def on_init(app):  # pylint: disable=unused-argument
     avoid checking in the generated reStructuredText files.
     """
     docs_path = os.path.abspath(os.path.dirname(__file__))
-    root_path = os.path.abspath(os.path.join(docs_path, '..'))  # Це корінь проекту
+    root_path = os.path.abspath(os.path.join(docs_path, '..'))
 
     source_path = os.path.join(root_path, 'backend', 'openedx_ai_extensions')
     migrations_path = os.path.join(source_path, 'migrations')
