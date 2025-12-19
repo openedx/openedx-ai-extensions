@@ -1,7 +1,7 @@
 """
 Utilities for discovering, loading, and validating workflow templates.
 
-Templates are read-only JSON/YAML files stored on disk.
+Templates are read-only JSON5 files stored on disk (allowing comments).
 Security: Only load from configured directories to prevent path traversal.
 """
 import json
@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 
+import json5
 from django.conf import settings
 from jsonmerge import merge
 from jsonschema import Draft7Validator, ValidationError as JsonSchemaValidationError
@@ -139,6 +140,8 @@ def load_template(template_path: str) -> Optional[dict]:
     """
     Load a workflow template from disk.
 
+    Supports JSON5 format (allows comments, trailing commas, etc).
+
     Args:
         template_path: Relative path to template file
 
@@ -156,11 +159,11 @@ def load_template(template_path: str) -> Optional[dict]:
         if full_path.exists():
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    data = json5.load(f)
                 logger.info(f"Loaded template: {template_path}")
                 return data
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in template {template_path}: {e}")
+            except json5.JSON5DecodeError as e:
+                logger.error(f"Invalid JSON5 in template {template_path}: {e}")
                 return None
             except Exception as e:
                 logger.error(f"Error loading template {template_path}: {e}")
@@ -168,6 +171,27 @@ def load_template(template_path: str) -> Optional[dict]:
 
     logger.error(f"Template not found: {template_path}")
     return None
+
+
+def parse_json5_string(json5_string: str) -> dict:
+    """
+    Parse a JSON5 string into a dict.
+
+    Allows comments, trailing commas, etc.
+
+    Args:
+        json5_string: JSON5-formatted string
+
+    Returns:
+        Parsed dict
+
+    Raises:
+        json5.JSON5DecodeError: If string is invalid JSON5
+    """
+    if not json5_string or not json5_string.strip():
+        return {}
+
+    return json5.loads(json5_string)
 
 
 def merge_template_with_patch(base_template: dict, patch: dict) -> dict:
@@ -207,6 +231,12 @@ def validate_workflow_config(config: dict) -> tuple[bool, list[str]]:
         Tuple of (is_valid, error_messages)
     """
     errors = []
+
+    if config is None:
+        return False, ["config is null (base template missing or failed to load)"]
+
+    if not isinstance(config, dict):
+        return False, [f"config must be an object/dict, got {type(config).__name__}"]
 
     # JSON Schema validation
     validator = Draft7Validator(WORKFLOW_SCHEMA)

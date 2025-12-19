@@ -1,4 +1,5 @@
 {
+  // Explain yourself
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {

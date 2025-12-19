@@ -3,6 +3,7 @@ Common settings for the openedx_ai_extensions application.
 """
 
 import logging
+from pathlib import Path
 
 from event_routing_backends.utils.settings import event_tracking_backends_config
 
@@ -30,6 +31,8 @@ DEFAULT_FIELD_FILTERS = {
         "name",
     ],
 }
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def plugin_settings(settings):
@@ -59,6 +62,13 @@ def plugin_settings(settings):
         settings.AI_EXTENSIONS_MODEL_PROXY = [
             {"location_regex": ".*", "file": "configs/default.json"},
         ]
+
+    if not hasattr(settings, "WORKFLOW_TEMPLATE_DIRS"):
+        settings.WORKFLOW_TEMPLATE_DIRS = [
+            BASE_DIR / "workflows" / "profiles",
+            BASE_DIR / "workflows" / "examples",
+        ]
+
 
     # -------------------------
     # ThreadedOrchestrator

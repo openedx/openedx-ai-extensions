@@ -14,6 +14,7 @@ from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 import settings
 from openedx_ai_extensions.workflows.template_utils import (
     get_effective_config,
+    parse_json5_string,
     validate_workflow_config,
 )
 
@@ -45,10 +46,10 @@ class AIWorkflowProfile(models.Model):
         max_length=1024,
         help_text="Relative path to base template file (e.g., 'educator_assistant/quiz_generator.json')"
     )
-    content_patch = models.JSONField(
-        default=dict,
+    content_patch = models.TextField(
         blank=True,
-        help_text="JSON Merge Patch (RFC 7386) to apply to base template"
+        default="",
+        help_text="JSON5 Merge Patch (RFC 7386) to apply to base template. Supports comments and trailing commas."
     )
 
     class Meta:
@@ -57,6 +58,23 @@ class AIWorkflowProfile(models.Model):
 
     def __str__(self):
         return f"{self.slug} ({self.base_filepath})"
+
+    @property
+    def content_patch_dict(self) -> dict:
+        """
+        Parse content_patch as JSON5 and return as dict.
+
+        Returns:
+            Parsed dict from JSON5 string, or empty dict if empty/invalid
+        """
+        if not self.content_patch or not self.content_patch.strip():
+            return {}
+
+        try:
+            return parse_json5_string(self.content_patch)
+        except Exception as e:
+            logger.error(f"Error parsing content_patch for {self.slug}: {e}")
+            return {}
 
     @cached_property
     def config(self) -> dict:
@@ -68,7 +86,7 @@ class AIWorkflowProfile(models.Model):
         Returns:
             Merged configuration dict
         """
-        return get_effective_config(self.base_filepath, self.content_patch)
+        return get_effective_config(self.base_filepath, self.content_patch_dict)
 
     def get_config(self) -> dict:
         """
