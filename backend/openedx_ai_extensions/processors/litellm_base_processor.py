@@ -6,6 +6,8 @@ import logging
 
 from django.conf import settings
 
+from openedx_ai_extensions.functions.decorators import TOOLS_SCHEMA
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +37,22 @@ class LitellmProcessor:
         self.extra_params = {}
         for key, value in settings.AI_EXTENSIONS[self.config_profile].items():
             self.extra_params[key.lower()] = value
+
+        self.stream = self.config.get("stream", False)
+
+        enabled_tools = self.config.get("enabled_tools", [])
+        if enabled_tools:
+            functions_schema_filtered = [
+                schema
+                for name, schema in TOOLS_SCHEMA.items()
+                if name in enabled_tools or "__all__" in enabled_tools
+            ]
+            if functions_schema_filtered:
+                self.extra_params["tools"] = functions_schema_filtered
+
+        if self.stream and "tools" in self.extra_params:
+            logger.warning("Streaming responses with tools is not supported; disabling streaming.")
+            self.stream = False
 
     def process(self, *args, **kwargs):
         """Process based on configured function - must be implemented by subclasses"""

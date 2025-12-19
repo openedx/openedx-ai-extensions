@@ -74,7 +74,7 @@ class MockChoice:
         if delta:
             self.delta = delta
         else:
-            self.message = Mock(content=content)
+            self.message = Mock(content=content, tool_calls=None)
 
 
 class MockChunk:
@@ -207,6 +207,9 @@ def test_chat_with_context_streaming(
     Should return a generator yielding deltas.
     """
     llm_processor.config["stream"] = True
+    llm_processor.stream = True  # Also set instance variable
+    llm_processor.config["enabled_tools"] = []  # Disable tools for streaming
+    llm_processor.extra_params.pop("tools", None)  # Remove tools if present
 
     # Mock Generator
     chunks = [
@@ -242,6 +245,9 @@ def test_summarize_content_streaming(
     """
     llm_processor.config["function"] = "summarize_content"
     llm_processor.config["stream"] = True
+    llm_processor.stream = True  # Also set instance variable
+    llm_processor.config["enabled_tools"] = []  # Disable tools for streaming
+    llm_processor.extra_params.pop("tools", None)  # Remove tools if present
 
     # Mock Generator
     chunks = [
@@ -292,6 +298,9 @@ def test_completion_error_handling_stream(
     """
     llm_processor.config["function"] = "summarize_content"
     llm_processor.config["stream"] = True
+    llm_processor.stream = True  # Also set instance variable
+    llm_processor.config["enabled_tools"] = []  # Disable tools for streaming
+    llm_processor.extra_params.pop("tools", None)  # Remove tools if present
 
     # Mock generator that raises error mid-stream
     def error_generator():

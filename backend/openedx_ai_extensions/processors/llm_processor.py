@@ -2,12 +2,14 @@
 Responses processor for threaded AI conversations using LiteLLM
 """
 
+import json
 import logging
 
 from litellm import completion, responses
 
+from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
-from openedx_ai_extensions.processors.llm_providers import adapt_to_provider
+from openedx_ai_extensions.processors.llm_providers import adapt_to_provider, after_tool_call_adaptations
 
 logger = logging.getLogger(__name__)
 
@@ -80,12 +82,23 @@ class LLMProcessor(LitellmProcessor):
                     return content_item.text
         return ""
 
+    def _extract_response_tool_calls(self, response):
+        """Extract tool calls from LiteLLM response."""
+        tool_calls = []
+        if not hasattr(response, "output") or not response.output:
+            return tool_calls
+
+        for item in response.output:
+            if getattr(item, "type", None) == "function_call":
+                tool_calls.append(item)
+        return tool_calls
+
     def _build_response_api_params(self, system_role=None):
         """
         Build completion parameters for LiteLLM responses API.
         """
         params = {}
-        params["stream"] = self.config.get("stream", False) or self.extra_params.get("stream", False)
+        params["stream"] = self.stream
 
         if self.chat_history:
             self.chat_history.append({"role": "user", "content": self.input_data})
@@ -144,7 +157,7 @@ class LLMProcessor(LitellmProcessor):
         Wrapper around LiteLLM responses() call.
         """
         try:
-            response = responses(**params)
+            response = self._responses_with_tools(tool_calls=[], params=params)
 
             if params["stream"]:
                 return self._yield_threaded_stream(response)
@@ -167,7 +180,7 @@ class LLMProcessor(LitellmProcessor):
             }
             # Include system messages when initializing a new thread
             if initialize:
-                system_msgs = [msg for msg in params.get("input", []) if msg["role"] == "system"]
+                system_msgs = [msg for msg in params.get("input", []) if "role" in msg and msg["role"] == "system"]
                 result["system_messages"] = system_msgs
             return result
 
@@ -181,9 +194,8 @@ class LLMProcessor(LitellmProcessor):
         Returns either a generator (if stream=True) or a response dict.
         """
         # Build completion parameters
-        stream = self.config.get("stream", False) or self.extra_params.get("stream", False)
         params = {
-            "stream": stream,
+            "stream": self.stream,
             "messages": [
                 {"role": "system", "content": system_role},
             ],
@@ -212,10 +224,9 @@ class LLMProcessor(LitellmProcessor):
 
         try:
             # 1. Call the LiteLLM API
-            response = completion(**params)
-
+            response = self._completion_with_tools(tool_calls=[], params=params)
             # 2. Handle streaming response (Generator)
-            if stream:
+            if self.stream:
                 return self._handle_streaming_completion(response)  # Return the generator object
             else:
                 return self._handle_non_streaming_completion(response)  # Return the dictionary
@@ -226,6 +237,70 @@ class LLMProcessor(LitellmProcessor):
             logger.exception(error_message, exc_info=True)
             # Always return a dictionary error in this outer block
             return {"error": f"AI processing failed: {str(e)}"}
+
+    def _completion_with_tools(self, tool_calls, params):
+        """Handle tool calls recursively until no more tool calls are present."""
+        for tool_call in tool_calls:
+            function_name = tool_call.function.name
+            function_to_call = AVAILABLE_TOOLS[function_name]
+            function_args = json.loads(tool_call.function.arguments)
+
+            function_response = function_to_call(
+                **function_args,
+            )
+            params["messages"].append(
+                {
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": function_name,
+                    "content": str(function_response),
+                }
+            )
+
+        # Call completion again with updated messages
+        response = completion(**params)
+
+        # For streaming, return the generator immediately
+        # Tool calls are not supported in streaming mode
+        if params.get("stream"):
+            return response
+
+        # For non-streaming, check for tool calls and handle recursively
+        new_tool_calls = response.choices[0].message.tool_calls
+        if new_tool_calls:
+            params["messages"].append(response.choices[0].message)
+            return self._completion_with_tools(new_tool_calls, params)
+
+        return response
+
+    def _responses_with_tools(self, tool_calls, params):
+        """Handle tool calls recursively until no more tool calls are present."""
+        for tool_call in tool_calls:
+            function_name = tool_call.name
+            function_to_call = AVAILABLE_TOOLS[function_name]
+            function_args = json.loads(tool_call.arguments)
+
+            function_response = function_to_call(
+                **function_args,
+            )
+            params["input"].append({
+                "type": "function_call_output",
+                "call_id": tool_call.call_id,
+                "output": str(function_response)
+            })
+
+        # Call completion again with updated messages
+        response = responses(**params)
+
+        if params.get("stream"):
+            return response
+
+        new_tool_calls = self._extract_response_tool_calls(response=response)
+        if new_tool_calls:
+            params = after_tool_call_adaptations(self.provider, params, data=response)
+            return self._responses_with_tools(new_tool_calls, params)
+
+        return response
 
     def chat_with_context(self):
         """
@@ -306,6 +381,18 @@ class LLMProcessor(LitellmProcessor):
             "Say hello to the user and explain what LLM model you are."
             "Don't pay attention to any extra context"
         )
+        result = self._call_completion_wrapper(system_role=system_role)
+
+        return result
+
+    def answer_question(self):
+        """Answer a specific question based on the provided content"""
+        system_role = (
+            "Roll a dice: if the result is 1, give me the current location complete link, "
+            "if the result is 2 or more then Enumerate the location content and leave a "
+            "brief explanation of each section. In all cases present the results of the dice roll."
+        )
+
         result = self._call_completion_wrapper(system_role=system_role)
 
         return result
