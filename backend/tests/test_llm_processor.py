@@ -315,3 +315,144 @@ def test_completion_error_handling_stream(
     # Should yield content then the error message
     assert results[0] == b"Start"
     assert b"[AI Error: Stream cut off]" in results[1]
+
+
+# ============================================================================
+# MCP Configuration Tests
+# ============================================================================
+
+@pytest.mark.django_db
+def test_mcp_configs_empty_when_not_specified(user_session, settings):  # pylint: disable=redefined-outer-name
+    """
+    Test that MCP configs are empty when not specified in config.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+    settings.AI_EXTENSIONS_MCP_CONFIGS = {}
+
+    config = {
+        "LLMProcessor": {
+            "function": "chat_with_context",
+            "model": "gpt-3.5-turbo",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    assert processor.mcp_configs == {}
+    assert "tools" not in processor.extra_params
+
+
+@pytest.mark.django_db
+def test_mcp_configs_filtering_from_allowed_list(user_session, settings):  # pylint: disable=redefined-outer-name
+    """
+    Test that MCP configs are filtered based on the allowed mcp_configs list.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+    settings.AI_EXTENSIONS_MCP_CONFIGS = {
+        "server1": {
+            "command": "python",
+            "args": ["-m", "server1"],
+        },
+        "server2": {
+            "command": "node",
+            "args": ["server2.js"],
+        },
+        "server3": {
+            "command": "python",
+            "args": ["-m", "server3"],
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "chat_with_context",
+            "model": "gpt-3.5-turbo",
+            "mcp_configs": ["server1", "server3"]  # Only allow server1 and server3
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    # Should only include server1 and server3
+    assert len(processor.mcp_configs) == 2
+    assert "server1" in processor.mcp_configs
+    assert "server3" in processor.mcp_configs
+    assert "server2" not in processor.mcp_configs
+
+
+@pytest.mark.django_db
+def test_mcp_configs_tools_parameter_generation(user_session, settings):  # pylint: disable=redefined-outer-name
+    """
+    Test that MCP configs are properly converted to tools parameter format.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+    settings.AI_EXTENSIONS_MCP_CONFIGS = {
+        "context7": {
+            "command": "uvx",
+            "args": ["context7"],
+            "env": {"API_KEY": "secret"}
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "chat_with_context",
+            "model": "gpt-3.5-turbo",
+            "mcp_configs": ["context7"]
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    # Verify tools parameter is generated correctly
+    assert "tools" in processor.extra_params
+    tools = processor.extra_params["tools"]
+    assert len(tools) == 1
+    assert tools[0]["type"] == "mcp"
+    assert tools[0]["server_label"] == "context7"
+    assert tools[0]["command"] == "uvx"
+    assert tools[0]["args"] == ["context7"]
+    assert tools[0]["env"] == {"API_KEY": "secret"}
+
+
+@pytest.mark.django_db
+def test_mcp_configs_empty_allowed_list(user_session, settings):  # pylint: disable=redefined-outer-name
+    """
+    Test that MCP configs remain empty when allowed list is empty.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+    settings.AI_EXTENSIONS_MCP_CONFIGS = {
+        "server1": {
+            "command": "python",
+            "args": ["-m", "server1"],
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "chat_with_context",
+            "model": "gpt-3.5-turbo",
+            "mcp_configs": []  # Empty list
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    assert processor.mcp_configs == {}
+    assert "tools" not in processor.extra_params

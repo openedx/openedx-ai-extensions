@@ -121,7 +121,7 @@ LOGGING = {
 AI_EXTENSIONS = {
     "default": {
         "API_KEY": "test-api-key",
-        "LITELLM_MODEL": "gpt-3.5-turbo",
+        "MODEL": "gpt-3.5-turbo",
         "TIMEOUT": 30,
         "TEMPERATURE": 0.7,
         "MAX_TOKENS": 1000,
