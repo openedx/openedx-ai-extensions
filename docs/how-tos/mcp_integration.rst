@@ -27,29 +27,52 @@ Architecture
 
 .. code-block:: text
 
-    ┌─────────────────────────────────────┐
-    │   OpenEdx AI Extensions             │
-    │   (MCP Client)                      │
-    │                                     │
-    │   ┌──────────────────┐              │
-    │   │  AI Workflow     │              │
-    │   │  Processor       │              │
-    │   └────────┬─────────┘              │
-    │            │                        │
-    │            ├─► calls MCP tools      │
-    │            │                        │
-    └────────────┼────────────────────────┘
-                 │
-                 │ HTTPS
-                 │
-    ┌────────────▼────────────────────────┐
-    │   External MCP Server               │
-    │   (Your Infrastructure)             │
-    │                                     │
-    │   - Custom tools                    │
-    │   - Resources                       │
-    │   - Your business logic             │
-    └─────────────────────────────────────┘
+    ┌────────────────────────────────────────────┐
+    │   OpenEdX AI Extensions                    │
+    │   (MCP Client / Orchestrator)              │
+    │                                            │
+    │   ┌──────────────────────┐                 │
+    │   │  AI Workflow         │                 │
+    │   │  Processor           │                 │
+    │   └─────────┬────────────┘                 │
+    │             │                              │
+    │             │ 1. LLM API call              │
+    │             │    (optional MCP config:     │
+    │             │     tools, servers, auth)    │
+    │             ▼                              │
+    │   ┌──────────────────────┐                 │
+    │   │   LLM Provider API   │                 │
+    │   │   (OpenAI, etc.)     │                 │
+    │   └─────────┬────────────┘                 │
+    │             │                              │
+    │   Tool call │ 2. Tool-use request          │
+    │   decision  │    (by the LLM)              │
+    │             ▼                              │
+    │   ┌──────────────────────┐                 │
+    │   │ MCP Tool Executor    │                 │
+    │   │ (client-side logic)  │                 │
+    │   └─────────┬────────────┘                 │
+    │             │ HTTPS                        │
+    └─────────────┼──────────────────────────────┘
+                  │
+                  │ 3. Execute MCP tools
+                  │
+    ┌─────────────▼──────────────────────────────┐
+    │   External MCP Server                      │
+    │   (Your Infrastructure)                    │
+    │                                            │
+    │   - Custom tools                           │
+    │   - Resources                              │
+    │   - Business logic                         │
+    │                                            │
+    └─────────────┬──────────────────────────────┘
+                  │
+                  │ 4. Tool results
+                  │
+    ┌─────────────▼──────────────────────────────┐
+    │   Back to LLM Provider API                 │
+    │   (tool results sent, final response)      │
+    └────────────────────────────────────────────┘
 
 
 Configuration
