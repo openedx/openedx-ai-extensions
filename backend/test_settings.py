@@ -135,25 +135,6 @@ EVENT_TRACKING_BACKENDS = {}
 LMS_ROOT_URL = "http://localhost:18000"
 # Provided so the generated xAPI events use a known "event routing backends package string" when testing
 RUNNING_WITH_TEST_SETTINGS = True
-AI_EXTENSIONS_FIELD_FILTERS = {
-    "allowed_fields": [
-        "name",
-        "display_name",
-        "tags",
-        "title",
-        "format",
-        "text",
-        "type",
-        "due",
-        "source_file",
-        "data",
-        "graded",
-    ],
-    "allowed_field_substrings": [
-        "description",
-        "name",
-    ],
-}
 
 # Apply plugin settings - must be done after base settings are defined
 # Only using the LMS context for simplicity

@@ -35,42 +35,52 @@ def register_instance(instance):
 
 
 def llm_tool(schema):
-    """Decorator to register a function as an LLM function.
+    """
+    Decorator to register a function as an LLM function.
 
     This decorator can be applied to both regular functions and instance methods.
-    For methods, the instance must be registered using register_instance() before
-    the method can be called via AVAILABLE_TOOLS.
+    For methods, the instance must be registered using ``register_instance()``
+    before the method can be called via ``AVAILABLE_TOOLS``.
 
     Parameters
     ----------
     schema : dict
         JSON schema for the function.
 
-    Usage:
-        # For regular functions:
-        @llm_tool(schema={
-            "name": "my_function",
-            "description": "Function description",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "param1": {"type": "string", "description": "..."}
-                },
-                "required": ["param1"]
+    Examples
+    --------
+    Regular function example::
+
+        @llm_tool(
+            schema={
+                "name": "my_function",
+                "description": "Function description",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "param1": {
+                            "type": "string",
+                            "description": "..."
+                        }
+                    },
+                    "required": ["param1"]
+                }
             }
-        })
+        )
         def my_function(param1):
-            '''Function description.'''
+            \"\"\"Function description.\"\"\"
             return result
 
-        # For instance methods:
+    Instance method example::
+
         class MyClass:
             @llm_tool(schema={...})
             def my_method(self, param1):
-                '''Method description.'''
+                \"\"\"Method description.\"\"\"
                 return result
 
-        # Then register the instance:
+    Registering the instance::
+
         my_instance = MyClass()
         register_instance(my_instance)
     """
