@@ -18,7 +18,11 @@ sys.modules["submissions.api"] = MagicMock()
 from openedx_ai_extensions.processors.openedx.submission_processor import (  # noqa: E402 pylint: disable=wrong-import-position
     SubmissionProcessor,
 )
-from openedx_ai_extensions.workflows.models import AIWorkflowSession  # noqa: E402 pylint: disable=wrong-import-position
+from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
+    AIWorkflowProfile,
+    AIWorkflowScope,
+    AIWorkflowSession,
+)
 
 User = get_user_model()
 
@@ -42,12 +46,44 @@ def course_key():
 
 
 @pytest.fixture
-def user_session(user, course_key, db):  # pylint: disable=unused-argument,redefined-outer-name
+def workflow_profile(db):  # pylint: disable=unused-argument
+    """
+    Create and return a test AIWorkflowProfile.
+    """
+    profile = AIWorkflowProfile.objects.create(
+        slug="test-submission",
+        base_filepath="base/default.json",
+        content_patch='{}'
+    )
+    return profile
+
+
+@pytest.fixture
+def workflow_scope(workflow_profile, course_key, db):  # pylint: disable=unused-argument,redefined-outer-name
+    """
+    Create and return a test AIWorkflowScope.
+    """
+    scope = AIWorkflowScope.objects.create(
+        location_regex=".*",
+        course_id=course_key,
+        service_variant="lms",
+        profile=workflow_profile,
+        enabled=True
+    )
+    return scope
+
+
+@pytest.fixture
+def user_session(
+    user, course_key, workflow_scope, workflow_profile, db
+):  # pylint: disable=unused-argument,redefined-outer-name
     """
     Create and return a test AIWorkflowSession.
     """
     session = AIWorkflowSession.objects.create(
         user=user,
+        scope=workflow_scope,
+        profile=workflow_profile,
         course_id=course_key,
         local_submission_id="test-submission-uuid-123",
     )
@@ -55,12 +91,16 @@ def user_session(user, course_key, db):  # pylint: disable=unused-argument,redef
 
 
 @pytest.fixture
-def user_session_no_submission(user, course_key, db):  # pylint: disable=unused-argument,redefined-outer-name
+def user_session_no_submission(
+    user, course_key, workflow_scope, workflow_profile, db
+):  # pylint: disable=unused-argument,redefined-outer-name
     """
     Create and return a test AIWorkflowSession without a submission ID.
     """
     session = AIWorkflowSession.objects.create(
         user=user,
+        scope=workflow_scope,
+        profile=workflow_profile,
         course_id=course_key,
         local_submission_id=None,
     )

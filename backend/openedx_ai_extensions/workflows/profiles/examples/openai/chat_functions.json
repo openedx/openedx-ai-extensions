@@ -1,13 +1,22 @@
+/*
+Test experience using chat. Ask ChatGPT to answer in a way that forces to use functions
+to retrieve context from the current unit and the course outline
+*/
 {
   "orchestrator_class": "ThreadedLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_location_content"
     },
     "LLMProcessor": {
       "function": "chat_with_context",
       "config": "openai",
-      "stream": true
+      "enabled_tools": [
+        "get_context",
+        "get_location_content",
+        "roll_dice",
+        "get_location_link"
+      ]
+      // Streaming and functions is not supported
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",
@@ -20,7 +29,7 @@
         "component": "AIRequestComponent",
         "config": {
           "buttonText": "Open Chat",
-          "customMessage": "Chat with Openai AI teaching assistant",
+          "customMessage": "Chat with Openai AI teaching assistant with functions",
           "action": null
         }
       },
@@ -29,11 +38,8 @@
         "config": {
           "customMessage": "AI powered assistant"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

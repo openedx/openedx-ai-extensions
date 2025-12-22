@@ -1,3 +1,6 @@
+/*
+Test experience. Ask ChatGPT to chat having given it the current unit context
+*/
 {
   "orchestrator_class": "ThreadedLLMResponse",
   "processor_config": {
@@ -6,7 +9,8 @@
     },
     "LLMProcessor": {
       "function": "chat_with_context",
-      "config": "deepseek"
+      "config": "openai",
+      "stream": true
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",
@@ -19,7 +23,7 @@
         "component": "AIRequestComponent",
         "config": {
           "buttonText": "Open Chat",
-          "customMessage": "Chat with DeepSeek AI teaching assistant",
+          "customMessage": "Chat with Openai AI teaching assistant",
           "action": null
         }
       },
@@ -28,11 +32,8 @@
         "config": {
           "customMessage": "AI powered assistant"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

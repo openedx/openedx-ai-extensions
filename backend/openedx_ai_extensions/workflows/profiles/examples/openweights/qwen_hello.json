@@ -1,3 +1,9 @@
+/*
+Test experience. Use a self-hosted Ollama server with a Qwen model
+
+For a tutor plugin for self-hosting a cpu only ollama.
+See: https://gist.github.com/felipemontoya/509495d3fbaa696fa2b684880a8388da
+*/
 {
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
@@ -13,20 +19,17 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Hello [config api]",
-          "customMessage": "Qwen will say hello [config api]"
+          "buttonText": "Hello Qwen",
+          "customMessage": "Qwen will say hello"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "Qwen Response"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

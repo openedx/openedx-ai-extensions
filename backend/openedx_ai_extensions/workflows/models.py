@@ -2,16 +2,17 @@
 AI Workflow models for managing flexible AI workflow execution
 """
 import json
-import re
 import logging
+import re
 from typing import Any, Optional
 from uuid import uuid4
 
+import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.functional import cached_property
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
-import settings
+
 from openedx_ai_extensions.workflows.template_utils import (
     get_effective_config,
     parse_json5_string,
@@ -29,12 +30,17 @@ class AIWorkflowProfile(models.Model):
     Templates are read-only JSON files on disk (versioned, immutable).
     Profiles point to a template and store JSON patch overrides in the DB.
     Effective config = merge(base_template, content_patch)
+
+    .. no_pii:
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     slug = models.SlugField(
         max_length=255,
-        help_text="Human readable identifier for the AI workflow profile (lowercase, hyphens allowed). Used for analytics.",
+        help_text=(
+            "Human readable identifier for the AI workflow profile "
+            "(lowercase, hyphens allowed). Used for analytics."
+        ),
         unique=True
     )
     description = models.TextField(
@@ -72,7 +78,7 @@ class AIWorkflowProfile(models.Model):
 
         try:
             return parse_json5_string(self.content_patch)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error parsing content_patch for {self.slug}: {e}")
             return {}
 
@@ -107,17 +113,23 @@ class AIWorkflowProfile(models.Model):
 
     def get_ui_components(self) -> dict:
         """Extract UIComponents from the effective configuration."""
+        if self.config is None:
+            return {}
         actuator_config = self.config.get("actuator_config", {})
         return actuator_config.get("UIComponents", {})
 
     @property
-    def orchestrator_class(self) -> str:
+    def orchestrator_class(self) -> Optional[str]:
         """Get orchestrator class name from effective config."""
+        if self.config is None:
+            return None
         return self.config.get("orchestrator_class")
 
     @property
     def processor_config(self) -> dict:
         """Get processor config from effective config."""
+        if self.config is None:
+            return {}
         return self.config.get("processor_config", {})
 
 
@@ -125,6 +137,9 @@ class AIWorkflowScope(models.Model):
     """
     .. no_pii:
     """
+
+    _location_id = None
+    _action = None
 
     SERVICE_VARIANTS = [
         ("lms", "LMS"),
@@ -167,6 +182,26 @@ class AIWorkflowScope(models.Model):
     def __str__(self):
         return f"AIWorkflowScope {self.id} for course {self.course_id} at location {self.location_regex}"
 
+    @property
+    def location_id(self):
+        """Get the runtime location_id if set."""
+        return self._location_id
+
+    @location_id.setter
+    def location_id(self, value):
+        """Set the runtime location_id."""
+        self._location_id = value
+
+    @property
+    def action(self):
+        """Get the runtime action if set."""
+        return self._action
+
+    @action.setter
+    def action(self, value):
+        """Set the runtime action."""
+        self._action = value
+
     @classmethod
     def get_config(cls, request):
         """
@@ -177,7 +212,10 @@ class AIWorkflowScope(models.Model):
         """
         service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
 
-        context_str = request.query_params.get("context", "{}")
+        if hasattr(request, "GET"):
+            context_str = request.GET.get("context", "{}")
+        else:
+            context_str = request.query_params.get("context", "{}")
         context = json.loads(context_str)
 
         course_id = context.get("courseId")
@@ -197,6 +235,7 @@ class AIWorkflowScope(models.Model):
             for config in configs:
                 try:
                     if re.search(config.location_regex, location_id):
+                        config.location_id = location_id  # Attach for reference
                         return config
                 except re.error:
                     continue
@@ -239,6 +278,8 @@ class AIWorkflowScope(models.Model):
 
             orchestrator_name = self.profile.orchestrator_class  # "DirectLLMResponse"
             orchestrator = getattr(orchestrators, orchestrator_name)(workflow=self, user=user)
+
+            self.action = action
 
             if not hasattr(orchestrator, action):
                 raise NotImplementedError(
@@ -305,7 +346,6 @@ class AIWorkflowSession(models.Model):
         help_text="ID of the last response sent to the user",
     )
     metadata = models.JSONField(default=dict, help_text="Additional session metadata")
-
 
     class Meta:
         unique_together = ("user", "scope", "profile")

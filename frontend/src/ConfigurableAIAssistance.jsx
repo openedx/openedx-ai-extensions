@@ -227,6 +227,11 @@ const ConfigurableAIAssistance = ({
     );
   }
 
+  // Don't render anything if no config is available (silently hide)
+  if (!config) {
+    return null;
+  }
+
   // Render configured components
   if (config) {
     // Both request and response configs are required

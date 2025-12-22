@@ -41,7 +41,7 @@ class AIGenericWorkflowView(View):
             if request.body:
                 request_body = json.loads(request.body.decode("utf-8"))
             action = request_body.get("action", "")
-            user_input = request_body.get("userInput", {})
+            user_input = request_body.get("user_input", {})
 
             result = config.execute(
                 user_input=user_input,
@@ -106,12 +106,13 @@ class AIWorkflowProfileView(APIView):
             config = AIWorkflowScope.get_config(request=request)
 
             if not config:
+                # No config found - return empty response so UI doesn't show components
                 return Response(
                     {
-                        "error": "No workflow scope configuration found for current context.",
-                        "status": "not_found",
+                        "status": "no_config",
+                        "timestamp": datetime.now().isoformat(),
                     },
-                    status=status.HTTP_404_NOT_FOUND,
+                    status=status.HTTP_200_OK,
                 )
 
             serializer = AIWorkflowProfileSerializer(config)

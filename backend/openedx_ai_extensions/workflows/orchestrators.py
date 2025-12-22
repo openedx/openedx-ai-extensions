@@ -45,15 +45,13 @@ class BaseOrchestrator:
         Args:
             event_name: The event name constant (e.g., EVENT_NAME_WORKFLOW_COMPLETED)
         """
-        config_filename: str = self.profile.processor_config.get("_config_filename", self.workflow.action)
-        workflow_id: str = f"{config_filename}__{self.workflow.action}"
 
         tracker.emit(event_name, {
-            "workflow_id": workflow_id,
+            "workflow_id": str(self.workflow.id),
             "action": self.workflow.action,
-            "course_id": self.workflow.course_id,
-            "workflow_name": config_filename,
-            "location_id": self.location_id,
+            "course_id": str(self.workflow.course_id),
+            "profile_name": self.profile.slug,
+            "location_id": str(self.location_id),
         })
 
     def run(self, input_data):

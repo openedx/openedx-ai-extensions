@@ -1,5 +1,9 @@
+/*
+This profile uses a mock response to test the UI without using
+a remote LLM call
+*/
 {
-  "orchestrator_class": "MockStreamResponse",
+  "orchestrator_class": "MockResponse",
   "processor_config": {
     "OpenEdXProcessor": {
     },
@@ -11,20 +15,17 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Ask AI [config api]",
-          "customMessage": "A mocked streaming response from the server [config api]"
+          "buttonText": "Ask test AI [mocked]",
+          "customMessage": "An inmediate test response from the server"
         }
       },
       "response": {
         "component": "AISidebarResponse",
         "config": {
-          "customMessage": "AI Assistant Sidebar Response [config api]"
+          "customMessage": "Sidebar Response [mocked]"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

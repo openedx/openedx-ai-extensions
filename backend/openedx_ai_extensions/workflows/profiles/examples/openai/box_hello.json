@@ -1,5 +1,7 @@
+/*
+Test experience. Ask ChatGPT to say which llm model is answering
+*/
 {
-  // Explain yourself
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
@@ -14,20 +16,17 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Ask AI [config api]",
-          "customMessage": "ChatGPT will say hello [config api]"
+          "buttonText": "Hello AI",
+          "customMessage": "ChatGPT will say hello"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "ChatGPT Response"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

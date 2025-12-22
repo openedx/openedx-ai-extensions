@@ -4,15 +4,14 @@ Utilities for discovering, loading, and validating workflow templates.
 Templates are read-only JSON5 files stored on disk (allowing comments).
 Security: Only load from configured directories to prevent path traversal.
 """
-import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import json5
 from django.conf import settings
 from jsonmerge import merge
-from jsonschema import Draft7Validator, ValidationError as JsonSchemaValidationError
+from jsonschema import Draft7Validator
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +57,10 @@ def get_template_directories() -> list[Path]:
 
     # Get from settings if available
     template_dirs = getattr(settings, "WORKFLOW_TEMPLATE_DIRS", [str(default_dir)])
+
+    # Handle None value
+    if template_dirs is None:
+        template_dirs = [str(default_dir)]
 
     # Convert to Path objects and ensure they exist
     paths = []
@@ -127,7 +130,7 @@ def discover_templates() -> list[tuple[str, str]]:
                 display_name = str(rel_path.with_suffix("")).replace("/", ".")
 
                 templates.append((str(rel_path), display_name))
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.warning(f"Error processing template {json_file}: {e}")
 
     # Sort by display name
@@ -160,12 +163,14 @@ def load_template(template_path: str) -> Optional[dict]:
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
                     data = json5.load(f)
+
                 logger.info(f"Loaded template: {template_path}")
                 return data
-            except json5.JSON5DecodeError as e:
+            except ValueError as e:
+                # json5 raises ValueError for invalid JSON5
                 logger.error(f"Invalid JSON5 in template {template_path}: {e}")
                 return None
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error(f"Error loading template {template_path}: {e}")
                 return None
 
@@ -214,7 +219,7 @@ def merge_template_with_patch(base_template: dict, patch: dict) -> dict:
         # Use jsonmerge for RFC 7386 merge patch
         merged = merge(base_template, patch)
         return merged
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error(f"Error merging template with patch: {e}")
         # Return base template on error
         return base_template.copy()
@@ -284,11 +289,11 @@ def _validate_semantics(config: dict) -> list[str]:
     actuator_config = config.get("actuator_config", {})
     if not isinstance(actuator_config, dict):
         errors.append("actuator_config must be an object")
-
-    # Validate UIComponents structure if present
-    ui_components = actuator_config.get("UIComponents", {})
-    if ui_components and not isinstance(ui_components, dict):
-        errors.append("actuator_config.UIComponents must be an object")
+    else:
+        # Validate UIComponents structure if present (only if actuator_config is a dict)
+        ui_components = actuator_config.get("UIComponents", {})
+        if ui_components and not isinstance(ui_components, dict):
+            errors.append("actuator_config.UIComponents must be an object")
 
     return errors
 

@@ -58,17 +58,12 @@ def plugin_settings(settings):
     # -------------------------
     # Settings based config router
     # -------------------------
-    if not hasattr(settings, "AI_EXTENSIONS_MODEL_PROXY"):
-        settings.AI_EXTENSIONS_MODEL_PROXY = [
-            {"location_regex": ".*", "file": "configs/default.json"},
-        ]
 
     if not hasattr(settings, "WORKFLOW_TEMPLATE_DIRS"):
         settings.WORKFLOW_TEMPLATE_DIRS = [
             BASE_DIR / "workflows" / "profiles",
             BASE_DIR / "workflows" / "examples",
         ]
-
 
     # -------------------------
     # ThreadedOrchestrator

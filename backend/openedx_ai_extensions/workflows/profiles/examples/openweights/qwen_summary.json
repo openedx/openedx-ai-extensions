@@ -1,3 +1,9 @@
+/*
+Test experience. Use a self-hosted Ollama server with a Qwen model for the summary experience
+
+For a tutor plugin for self-hosting a cpu only ollama.
+See: https://gist.github.com/felipemontoya/509495d3fbaa696fa2b684880a8388da
+*/
 {
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
@@ -14,20 +20,17 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Summarize with Qwen [config api]",
-          "customMessage": "Qwen will summarize the content [config api]"
+          "buttonText": "Summarize with Qwen",
+          "customMessage": "Qwen will summarize the content"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "Summary by Qwen"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

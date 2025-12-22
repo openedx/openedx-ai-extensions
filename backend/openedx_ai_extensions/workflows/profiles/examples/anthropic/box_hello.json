@@ -1,3 +1,6 @@
+/*
+Test experience. Ask claude to say which llm model is answering
+*/
 {
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
@@ -13,20 +16,17 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Hello [config api]",
-          "customMessage": "Claude will say hello [config api]"
+          "buttonText": "Hello AI",
+          "customMessage": "Claude will say hello"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "Claude Response"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

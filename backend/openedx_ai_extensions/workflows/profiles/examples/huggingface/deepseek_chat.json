@@ -1,17 +1,15 @@
+/*
+Test experience. Use a hosted DeepSeek to chat having given it the current unit context
+*/
 {
   "orchestrator_class": "ThreadedLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
+      "function": "get_location_content"
     },
     "LLMProcessor": {
       "function": "chat_with_context",
-      "config": "openai",
-      "enabled_tools": [
-        "get_context",
-        "get_location_content",
-        "roll_dice",
-        "get_location_link"
-      ]
+      "config": "deepseek"
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",
@@ -24,7 +22,7 @@
         "component": "AIRequestComponent",
         "config": {
           "buttonText": "Open Chat",
-          "customMessage": "Chat with Openai AI teaching assistant with functions",
+          "customMessage": "Chat with DeepSeek AI teaching assistant",
           "action": null
         }
       },
@@ -33,11 +31,8 @@
         "config": {
           "customMessage": "AI powered assistant"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

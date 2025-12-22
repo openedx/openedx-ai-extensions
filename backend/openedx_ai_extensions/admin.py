@@ -3,14 +3,13 @@ Django admin configuration for AI Extensions models.
 """
 import json
 
-import json5
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
-from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowSession
+from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 from openedx_ai_extensions.workflows.template_utils import discover_templates, parse_json5_string
 
 
@@ -18,6 +17,8 @@ class AIWorkflowProfileAdminForm(forms.ModelForm):
     """Custom form for AIWorkflowProfile with template selection."""
 
     class Meta:
+        """Form metadata."""
+
         model = AIWorkflowProfile
         fields = '__all__'
         widgets = {
@@ -30,6 +31,7 @@ class AIWorkflowProfileAdminForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """Initialize form with template choices and help text."""
         super().__init__(*args, **kwargs)
 
         # Populate base_filepath choices from discovered templates
@@ -55,8 +57,9 @@ class AIWorkflowProfileAdminForm(forms.ModelForm):
         # Validate JSON5 syntax
         try:
             parse_json5_string(content_patch_raw)
-        except json5.JSON5DecodeError as e:
-            raise ValidationError(f'Invalid JSON5 syntax: {e}')
+        except Exception as e:
+            # json5 library may not expose JSON5DecodeError in all versions
+            raise ValidationError(f'Invalid JSON5 syntax: {e}') from e
 
         # Return the raw string (we store it as text, parse at runtime)
         return content_patch_raw
@@ -67,6 +70,7 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
     """
     Admin interface for AI Workflow Profiles with preview and validation.
     """
+
     form = AIWorkflowProfileAdminForm
 
     list_display = ('slug', 'base_filepath', 'description_preview', 'is_valid')
@@ -115,7 +119,6 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
         if not obj.base_filepath:
             return '-'
 
-        from pathlib import Path  # pylint: disable=import-outside-toplevel
         from openedx_ai_extensions.workflows.template_utils import (  # pylint: disable=import-outside-toplevel
             get_template_directories,
             is_safe_template_path,
@@ -142,7 +145,8 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
 
             if file_content is None:
                 return format_html(
-                    '<div style="background: #fee; padding: 10px; border-radius: 4px; color: #c00;">'
+                    '<div style="background: #fee; padding: 10px; '
+                    'border-radius: 4px; color: #c00;">'
                     '<strong>Error:</strong> Template file not found'
                     '</div>'
                 )
@@ -157,26 +161,34 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
                 'var link = this; '
                 'if (el.style.display === \'none\') {{ '
                 '  el.style.display = \'block\'; '
-                '  link.textContent = \'▼ Hide Base Template ({filepath})\'; '
+                '  link.textContent = '
+                '\'▼ Hide Base Template ({filepath})\'; '
                 '}} else {{ '
                 '  el.style.display = \'none\'; '
-                '  link.textContent = \'▶ Show Base Template ({filepath})\'; '
+                '  link.textContent = '
+                '\'▶ Show Base Template ({filepath})\'; '
                 '}} '
                 'return false;" '
                 'style="text-decoration: none; color: #447e9b; font-weight: bold;">'
                 '▶ Show Base Template ({filepath})'
                 '</a>'
-                '<div id="{id}" style="display: none; background: #f0f8ff; padding: 10px; border-radius: 4px; border: 1px solid #ddd; margin-top: 10px;">'
-                '<pre style="margin: 0; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto;">{content}</pre>'
+                '<div id="{id}" style="display: none; '
+                'background: #f0f8ff; padding: 10px; '
+                'border-radius: 4px; border: 1px solid #ddd; '
+                'margin-top: 10px;">'
+                '<pre style="margin: 0; font-family: monospace; '
+                'font-size: 12px; max-height: 400px; '
+                'overflow-y: auto;">{content}</pre>'
                 '</div>'
                 '</div>',
                 id=preview_id,
                 filepath=obj.base_filepath,
                 content=file_content
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return format_html(
-                '<div style="background: #fee; padding: 10px; border-radius: 4px; color: #c00;">'
+                '<div style="background: #fee; padding: 10px; '
+                'border-radius: 4px; color: #c00;">'
                 '<strong>Error loading template:</strong> {}'
                 '</div>',
                 str(e)
@@ -199,9 +211,10 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
                 '</div>',
                 formatted_json
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return format_html(
-                '<div style="background: #fee; padding: 10px; border-radius: 4px; color: #c00;">'
+                '<div style="background: #fee; padding: 10px; '
+                'border-radius: 4px; color: #c00;">'
                 '<strong>Error loading configuration:</strong> {}'
                 '</div>',
                 str(e)
@@ -232,6 +245,8 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
     validation_status.short_description = 'Validation Status'
 
     class Media:
+        """Admin media assets."""
+
         css = {
             'all': ('admin/css/forms.css',)
         }
@@ -250,3 +265,20 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__username", "course_id", "location_id")
     readonly_fields = ("local_submission_id", "remote_response_id", "metadata")
+
+
+@admin.register(AIWorkflowScope)
+class AIWorkflowConfigAdmin(admin.ModelAdmin):
+    """
+    Admin interface for managing AI Workflow Configurations.
+    """
+
+    list_display = (
+        "course_id",
+        "location_regex",
+        "service_variant",
+        "profile",
+        "enabled",
+    )
+    search_fields = ("course_id", "location_regex", "profile__slug")
+    list_filter = ("service_variant", "enabled")

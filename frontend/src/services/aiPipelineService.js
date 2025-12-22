@@ -155,7 +155,7 @@ export const callWorkflowService = async ({
   onStreamChunk = null, // Optional callback for streaming text
 }) => {
   // Determine the actual endpoint URL
-  const apiEndpoint = endpoint.startsWith('http')
+  let apiEndpoint = endpoint.startsWith('http')
     ? endpoint
     : getDefaultEndpoint(endpoint);
 
