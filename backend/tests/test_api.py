@@ -115,7 +115,7 @@ def test_api_urls_are_registered():
 
     # Test that the v1 config URL can be reversed
     config_url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
-    assert config_url == "/openedx-ai-extensions/v1/config/"
+    assert config_url == "/openedx-ai-extensions/v1/profile/"
 
 
 @pytest.mark.django_db
@@ -487,18 +487,18 @@ def test_generic_workflow_view_post_general_exception_unit():
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_config")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_profile")
 def test_workflow_config_view_get_not_found_unit(
-    mock_get_config, user  # pylint: disable=redefined-outer-name
+    mock_get_profile, user  # pylint: disable=redefined-outer-name
 ):
     """
     Test AIWorkflowProfileView returns no_config status when no config found (unit test).
     """
-    mock_get_config.return_value = None
+    mock_get_profile.return_value = None
 
     factory = APIRequestFactory()
     request = factory.get(
-        "/openedx-ai-extensions/v1/config/",
+        "/openedx-ai-extensions/v1/profile/",
         {"action": "nonexistent", "context": "{}"},
     )
     request.user = user
@@ -514,9 +514,9 @@ def test_workflow_config_view_get_not_found_unit(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_config")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_profile")
 def test_workflow_config_view_get_with_location_id_unit(
-    mock_get_config, user, course_key  # pylint: disable=redefined-outer-name
+    mock_get_profile, user, course_key  # pylint: disable=redefined-outer-name
 ):
     """
     Test AIWorkflowProfileView GET request with location_id in context (unit test).
@@ -529,14 +529,14 @@ def test_workflow_config_view_get_with_location_id_unit(
     mock_scope = Mock()
     mock_scope.profile = mock_profile
     mock_scope.course_id = course_key
-    mock_get_config.return_value = mock_scope
+    mock_get_profile.return_value = mock_scope
 
     location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-1")
     context_json = json.dumps({"locationId": str(location)})
 
     factory = APIRequestFactory()
     request = factory.get(
-        "/openedx-ai-extensions/v1/config/",
+        "/openedx-ai-extensions/v1/profile/",
         {
             "action": "summarize",
             "courseId": str(course_key),
@@ -549,16 +549,16 @@ def test_workflow_config_view_get_with_location_id_unit(
     response = view(request)
 
     assert response.status_code == 200
-    # Verify get_config was called with request parameter
-    mock_get_config.assert_called_once()
-    call_kwargs = mock_get_config.call_args[1]
+    # Verify get_profile was called with request parameter
+    mock_get_profile.assert_called_once()
+    call_kwargs = mock_get_profile.call_args[1]
     assert "request" in call_kwargs
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_config")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.get_profile")
 def test_workflow_config_view_invalid_context_json_unit(
-    mock_get_config, user  # pylint: disable=redefined-outer-name
+    mock_get_profile, user  # pylint: disable=redefined-outer-name
 ):
     """
     Test AIWorkflowProfileView handles invalid JSON in context parameter (unit test).
@@ -570,11 +570,11 @@ def test_workflow_config_view_invalid_context_json_unit(
     # Create a mock AIWorkflowScope with profile attribute
     mock_scope = Mock()
     mock_scope.profile = mock_profile
-    mock_get_config.return_value = mock_scope
+    mock_get_profile.return_value = mock_scope
 
     factory = APIRequestFactory()
     request = factory.get(
-        "/openedx-ai-extensions/v1/config/",
+        "/openedx-ai-extensions/v1/profile/",
         {"action": "summarize", "context": "invalid json{"},
     )
     request.user = user

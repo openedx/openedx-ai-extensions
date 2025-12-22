@@ -137,15 +137,15 @@ def test_workflow_scope_str(workflow_scope, course_key):  # pylint: disable=rede
 
 
 @pytest.mark.django_db
-def test_workflow_scope_get_config(course_key):  # pylint: disable=redefined-outer-name
+def test_workflow_scope_get_profile(course_key):  # pylint: disable=redefined-outer-name
     """
-    Test AIWorkflowScope.get_config class method.
+    Test AIWorkflowScope.get_profile class method.
     """
     # Create a mock request with context
     request = Mock()
     request.GET.get = Mock(return_value='{"courseId": "' + str(course_key) + '", "locationId": "test_location"}')
 
-    result = AIWorkflowScope.get_config(request)
+    result = AIWorkflowScope.get_profile(request)
 
     # Should return None or a scope depending on configuration
     # Just verify no exception is raised

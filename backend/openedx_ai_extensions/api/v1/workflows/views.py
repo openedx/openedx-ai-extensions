@@ -35,7 +35,7 @@ class AIGenericWorkflowView(View):
         """Common handler for GET and POST requests"""
 
         try:
-            config = AIWorkflowScope.get_config(request=request)
+            config = AIWorkflowScope.get_profile(request=request)
 
             request_body = {}
             if request.body:
@@ -103,7 +103,7 @@ class AIWorkflowProfileView(APIView):
 
         try:
             # Get workflow configuration
-            config = AIWorkflowScope.get_config(request=request)
+            config = AIWorkflowScope.get_profile(request=request)
 
             if not config:
                 # No config found - return empty response so UI doesn't show components

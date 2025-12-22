@@ -203,7 +203,7 @@ class AIWorkflowScope(models.Model):
         self._action = value
 
     @classmethod
-    def get_config(cls, request):
+    def get_profile(cls, request):
         """
         Get configuration for a specific action, course, and location and service variant.
 

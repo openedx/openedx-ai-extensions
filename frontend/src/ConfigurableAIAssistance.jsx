@@ -59,7 +59,7 @@ const ConfigurableAIAssistance = ({
   const [error, setError] = useState('');
   const [hasAsked, setHasAsked] = useState(false);
 
-  const configEndpoint = getDefaultEndpoint('config');
+  const configEndpoint = getDefaultEndpoint('profile');
   const requestIdRef = useRef(0);
 
   // Load configuration on mount
