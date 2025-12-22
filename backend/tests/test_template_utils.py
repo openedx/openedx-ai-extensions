@@ -24,16 +24,15 @@ from openedx_ai_extensions.workflows.template_utils import (
 class TestGetTemplateDirectories(TestCase):
     """Tests for get_template_directories function."""
 
-    def test_default_directory(self):
-        """Test that default configs directory is returned when no settings."""
-        # When WORKFLOW_TEMPLATE_DIRS is not set, should use default
-        with override_settings(WORKFLOW_TEMPLATE_DIRS=None):
+    def test_empty_directory_list(self):
+        """Test that when WORKFLOW_TEMPLATE_DIRS is empty list, returns empty list."""
+        # When WORKFLOW_TEMPLATE_DIRS is explicitly set to empty list
+        with override_settings(WORKFLOW_TEMPLATE_DIRS=[]):
             dirs = get_template_directories()
 
-            # Should return the default configs directory
+            # Should return empty list
             self.assertIsInstance(dirs, list)
-            # The default directory might not exist in test environment
-            # so we just check the function returns a list
+            self.assertEqual(dirs, [])
 
     def test_custom_directories_from_settings(self):
         """Test that custom directories are read from settings."""

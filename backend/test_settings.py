@@ -128,6 +128,11 @@ AI_EXTENSIONS = {
     },
 }
 
+# Workflow template directories for tests
+WORKFLOW_TEMPLATE_DIRS = [
+    root("openedx_ai_extensions", "workflows", "profiles"),
+]
+
 # Event tracking configuration for tests (matches completion-aggregator pattern)
 EVENT_TRACKING_ENABLED = True
 EVENT_TRACKING_BACKENDS = {}
