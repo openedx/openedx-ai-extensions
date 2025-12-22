@@ -425,8 +425,8 @@ class TestValidateWorkflowConfig(TestCase):
         self.assertFalse(is_valid)
         self.assertTrue(any("1.0" in err for err in errors))
 
-    def test_validate_missing_llm_processor(self):
-        """Test that missing LLMProcessor is invalid in schema 1.0."""
+    def test_validate_empty_processor_config(self):
+        """Test that empty processor_config is invalid in schema 1.0."""
         config = {
             "schema_version": "1.0",
             "orchestrator_class": "TestOrchestrator",
@@ -436,7 +436,36 @@ class TestValidateWorkflowConfig(TestCase):
         is_valid, errors = validate_workflow_config(config)
 
         self.assertFalse(is_valid)
-        self.assertTrue(any("LLMProcessor" in err for err in errors))
+        self.assertTrue(any("at least one processor" in err or "minProperties" in err for err in errors))
+
+    def test_validate_processor_config_with_any_processor(self):
+        """Test that processor_config accepts any processor, not just LLMProcessor."""
+        config = {
+            "schema_version": "1.0",
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {
+                "EducatorAssistantProcessor": {"function": "generate_quiz"}
+            },
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertTrue(is_valid, f"Validation failed with errors: {errors}")
+
+    def test_validate_processor_config_with_non_object_processor(self):
+        """Test that processor values must be objects."""
+        config = {
+            "schema_version": "1.0",
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {
+                "LLMProcessor": "not an object"
+            },
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertFalse(is_valid)
+        self.assertTrue(any("LLMProcessor" in err and "object" in err for err in errors))
 
     def test_validate_missing_ui_components(self):
         """Test that missing UIComponents is invalid in schema 1.0."""
@@ -677,6 +706,69 @@ class TestGetEffectiveConfig(TestCase):
             self.assertEqual(config["orchestrator_class"], "BaseOrchestrator")
 
 
+class TestValidateAllProfiles(TestCase):
+    """Tests to validate all profile templates in the codebase."""
+
+    def test_all_profile_templates_are_valid(self):
+        """Test that all profile templates pass schema 1.0 validation."""
+        from pathlib import Path
+
+        # Get the profiles directory
+        profiles_dir = Path(__file__).parent.parent / "openedx_ai_extensions" / "workflows" / "profiles"
+
+        if not profiles_dir.exists():
+            self.skipTest(f"Profiles directory not found: {profiles_dir}")
+
+        # Find all JSON files in the profiles directory
+        json_files = list(profiles_dir.rglob("*.json"))
+
+        self.assertGreater(len(json_files), 0, "No profile JSON files found to validate")
+
+        # Track validation results
+        validation_errors = {}
+        successful_validations = []
+
+        # Test each profile template
+        with override_settings(WORKFLOW_TEMPLATE_DIRS=[str(profiles_dir)]):
+            for json_file in json_files:
+                # Get relative path from profiles directory
+                rel_path = json_file.relative_to(profiles_dir)
+
+                # Load the template
+                template_data = load_template(str(rel_path))
+
+                if template_data is None:
+                    validation_errors[str(rel_path)] = ["Failed to load template (invalid JSON5 or read error)"]
+                    continue
+
+                # Validate the template
+                is_valid, errors = validate_workflow_config(template_data)
+
+                if not is_valid:
+                    validation_errors[str(rel_path)] = errors
+                else:
+                    successful_validations.append(str(rel_path))
+
+        # Report results
+        if validation_errors:
+            error_report = "\n\n=== PROFILE VALIDATION FAILURES ===\n"
+            for template_path, errors in validation_errors.items():
+                error_report += f"\n{template_path}:\n"
+                for error in errors:
+                    error_report += f"  - {error}\n"
+
+            self.fail(
+                f"{len(validation_errors)} out of {len(json_files)} profile templates failed validation."
+                f"{error_report}\n\n"
+                f"Successfully validated: {len(successful_validations)} templates"
+            )
+
+        # All templates are valid
+        print(f"\n✓ Successfully validated {len(successful_validations)} profile templates")
+        for path in sorted(successful_validations):
+            print(f"  ✓ {path}")
+
+
 class TestWorkflowSchema(TestCase):
     """Tests for WORKFLOW_SCHEMA (version 1.0)."""
 
@@ -709,18 +801,16 @@ class TestWorkflowSchema(TestCase):
         schema_version_prop = WORKFLOW_SCHEMA["properties"]["schema_version"]
         self.assertEqual(schema_version_prop.get("const"), "1.0")
 
-    def test_processor_config_requires_llm_processor(self):
-        """Test that processor_config must have LLMProcessor."""
+    def test_processor_config_requires_at_least_one_processor(self):
+        """Test that processor_config must have at least one processor."""
         processor_config_props = WORKFLOW_SCHEMA["properties"]["processor_config"]
-        self.assertIn("required", processor_config_props)
-        self.assertIn("LLMProcessor", processor_config_props["required"])
 
-        # LLMProcessor must be an object
-        self.assertIn("LLMProcessor", processor_config_props["properties"])
-        self.assertEqual(
-            processor_config_props["properties"]["LLMProcessor"]["type"],
-            "object"
-        )
+        # Must have minProperties constraint
+        self.assertIn("minProperties", processor_config_props)
+        self.assertEqual(processor_config_props["minProperties"], 1)
+
+        # Should allow additional properties (any processor)
+        self.assertTrue(processor_config_props.get("additionalProperties", False))
 
     def test_actuator_config_requires_ui_components(self):
         """Test that actuator_config must have UIComponents."""

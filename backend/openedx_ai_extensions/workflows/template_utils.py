@@ -34,15 +34,9 @@ WORKFLOW_SCHEMA = {
         },
         "processor_config": {
             "type": "object",
-            "required": ["LLMProcessor"],
-            "properties": {
-                "LLMProcessor": {
-                    "type": "object",
-                    "description": "LLM processor configuration"
-                }
-            },
+            "minProperties": 1,
             "additionalProperties": True,
-            "description": "Configuration for processors - must include LLMProcessor"
+            "description": "Configuration for processors - must contain at least one processor"
         },
         "actuator_config": {
             "type": "object",
@@ -317,10 +311,13 @@ def _validate_semantics(config: dict) -> list[str]:
     processor_config = config.get("processor_config", {})
     if not isinstance(processor_config, dict):
         errors.append("processor_config must be an object")
+    elif len(processor_config) == 0:
+        errors.append("processor_config must contain at least one processor")
     else:
-        llm_processor = processor_config.get("LLMProcessor")
-        if llm_processor is not None and not isinstance(llm_processor, dict):
-            errors.append("processor_config.LLMProcessor must be an object")
+        # Validate that all processor values are objects
+        for processor_name, processor_value in processor_config.items():
+            if not isinstance(processor_value, dict):
+                errors.append(f"processor_config.{processor_name} must be an object")
 
     # Check actuator_config structure (required by schema 1.0)
     actuator_config = config.get("actuator_config", {})
