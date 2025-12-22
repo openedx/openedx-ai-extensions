@@ -33,9 +33,8 @@ class BaseAIWorkflowTransformer(XApiTransformer):
         Returns:
             `Activity`: The xAPI Activity object representing the AI workflow
         """
-        workflow_id: str = self.get_data("workflow_id", True)
         action: str = self.get_data("action") or "unknown-action"
-        workflow_name: str = self.get_data("workflow_name") or action
+        profile_name: str = self.get_data("profile_name") or action
 
         # Build extensions
         extensions: dict[str, str] = {
@@ -53,10 +52,10 @@ class BaseAIWorkflowTransformer(XApiTransformer):
             extensions[constants.XAPI_EXTENSION_LOCATION_ID] = location_id
 
         return Activity(
-            id=self.get_object_iri("ai_workflow", workflow_id),
+            id=self.get_object_iri("ai_workflow", "__".join([profile_name, action])),
             definition=ActivityDefinition(
                 type=constants.XAPI_ACTIVITY_AI_WORKFLOW,
-                name=LanguageMap({constants.EN: workflow_name}),
+                name=LanguageMap({constants.EN: profile_name}),
                 description=LanguageMap({
                     constants.EN: "AI-powered educational workflow"
                 }),

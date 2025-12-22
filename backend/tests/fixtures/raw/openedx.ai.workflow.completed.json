@@ -5,7 +5,7 @@
     "workflow_id": "openai_threads__summarize",
     "action": "summarize",
     "course_id": "course-v1:edX+DemoX+Demo_Course",
-    "workflow_name": "openai_threads",
+    "profile_name": "openai_threads",
     "location_id": "block-v1:edX+DemoX+Demo_Course+type@vertical+block@abc123"
   },
   "context": {
