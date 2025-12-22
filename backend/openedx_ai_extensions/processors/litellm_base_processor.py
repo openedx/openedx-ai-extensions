@@ -16,28 +16,36 @@ class LitellmProcessor:
 
     def __init__(self, config=None, user_session=None):
         config = config or {}
-
-        class_name = self.__class__.__name__
-        self.config = config.get(class_name, {})
+        self.config = config.get(self.__class__.__name__, {})
         self.user_session = user_session
 
-        self.config_profile = self.config.get("config", "default")
+        provider_spec = self.config.get("provider", "default")
+        self.config_profile = provider_spec
+        if isinstance(provider_spec, str):
+            providers = getattr(settings, "AI_EXTENSIONS", {})
+            provider = providers.get(provider_spec)
 
-        if "MODEL" not in settings.AI_EXTENSIONS[self.config_profile]:
+            if provider is None and provider_spec != "default":
+                raise ValueError(f"Unknown AI_EXTENSIONS profile '{provider_spec}'")
+
+            provider = provider or {}
+        else:
+            raise TypeError("`provider` must be a string")
+
+        options = self.config.get("options", {}) or {}
+
+        base_params = {k.lower(): v for k, v in provider.items()}
+        override_params = {k.lower(): v for k, v in options.items()}
+        self.extra_params = {**base_params, **override_params}
+
+        model = self.extra_params.get("model")
+        if not isinstance(model, str) or "/" not in model:
             raise ValueError(
-                f"AI_EXTENSIONS config '{self.config_profile}' missing 'MODEL' setting."
+                "MODEL must be defined and have the format 'provider/model_name'. "
+                "e.g., 'openai/gpt-4'"
             )
-        try:
-            self.provider = settings.AI_EXTENSIONS[self.config_profile].get("MODEL").split("/")[0]
-        except Exception as exc:
-            raise ValueError(
-                "MODEL setting must be in the format 'provider/model_name'. e.g., 'openai/gpt-4'"
-            ) from exc
 
-        self.extra_params = {}
-        for key, value in settings.AI_EXTENSIONS[self.config_profile].items():
-            self.extra_params[key.lower()] = value
-
+        self.provider = model.split("/")[0]
         self.custom_prompt = self.config.get("prompt", None)
         self.stream = self.config.get("stream", False)
 
@@ -60,7 +68,7 @@ class LitellmProcessor:
         if allowed_mcp_configs:
             self.mcp_configs = {
                 key: value
-                for key, value in settings.AI_EXTENSIONS_MCP_CONFIGS.items()
+                for key, value in getattr(settings, 'AI_EXTENSIONS_MCP_CONFIGS', {}).items()
                 if key in allowed_mcp_configs
             }
             self.extra_params["tools"] = [

@@ -71,7 +71,7 @@ def llm_processor(user_session, settings):  # pylint: disable=redefined-outer-na
     # Mock AI_EXTENSIONS settings
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-dummy-key"
         }
     }
@@ -353,7 +353,7 @@ def test_mcp_configs_empty_when_not_specified(user_session, settings):  # pylint
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -378,7 +378,7 @@ def test_mcp_configs_filtering_from_allowed_list(user_session, settings):  # pyl
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -420,7 +420,7 @@ def test_mcp_configs_tools_parameter_generation(user_session, settings):  # pyli
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -459,7 +459,7 @@ def test_mcp_configs_empty_allowed_list(user_session, settings):  # pylint: disa
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -497,7 +497,7 @@ def test_call_with_custom_prompt_function(
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -538,7 +538,7 @@ def test_call_with_custom_prompt_when_function_not_specified(
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -572,7 +572,7 @@ def test_custom_prompt_overrides_system_role_in_completion(
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -611,7 +611,7 @@ def test_custom_prompt_in_chat_with_context(
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -654,7 +654,7 @@ def test_call_with_custom_prompt_streaming(
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }
@@ -697,7 +697,7 @@ def test_call_with_custom_prompt_missing_prompt_raises_error(
     """
     settings.AI_EXTENSIONS = {
         "default": {
-            "MODEL": "gpt-3.5-turbo",
+            "MODEL": "openai/gpt-3.5-turbo",
             "API_KEY": "test-key"
         }
     }

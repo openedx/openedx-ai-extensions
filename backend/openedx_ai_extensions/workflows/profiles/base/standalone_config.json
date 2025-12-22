@@ -1,5 +1,6 @@
 /*
-Test experience. Ask claude to say which llm model is answering
+A profile that stores the config directy in json.
+Useful for getting started or testing API_KEYS
 */
 {
   "orchestrator_class": "DirectLLMResponse",
@@ -7,8 +8,12 @@ Test experience. Ask claude to say which llm model is answering
     "OpenEdXProcessor": {
     },
     "LLMProcessor": {
-      "function": "greet_from_llm",
-      "provider": "anthropic"
+      "stream": true,
+      "prompt": "Say hi and tell me: which LLM model are you? Be specific.",
+      "options": {
+        "MODEL": "openai/gpt-4.1-mini",
+        "API_KEY": "sk-proj-put-your-api-key-here",
+      },
     }
   },
   "actuator_config": {
@@ -17,13 +22,13 @@ Test experience. Ask claude to say which llm model is answering
         "component": "AIRequestComponent",
         "config": {
           "buttonText": "Hello AI",
-          "customMessage": "Claude will say hello"
+          "customMessage": "Call any AI with any config"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "Claude Response"
+          "customMessage": "The response from AI"
         }
       }
     }

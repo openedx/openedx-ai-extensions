@@ -10,7 +10,7 @@ present the streaming answer in the same box.
     },
     "LLMProcessor": {
       "function": "summarize_content",
-      "config": "default",
+      "provider": "default",
       "stream": true
     }
   },

@@ -61,10 +61,6 @@ class AIWorkflowProfile(models.Model):
         help_text="JSON5 Merge Patch (RFC 7386) to apply to base template. Supports comments and trailing commas."
     )
 
-    class Meta:
-        verbose_name = "AI Workflow Profile"
-        verbose_name_plural = "AI Workflow Profiles"
-
     def __str__(self):
         return f"{self.slug} ({self.base_filepath})"
 

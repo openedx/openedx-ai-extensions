@@ -8,7 +8,7 @@ Test experience. Use a hugging face hosted version of DeepSeek to say which llm 
     },
     "LLMProcessor": {
       "function": "greet_from_llm",
-      "config": "deepseek"
+      "provider": "deepseek"
     }
   },
   "actuator_config": {
