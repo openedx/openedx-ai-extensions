@@ -16,29 +16,57 @@ from jsonschema import Draft7Validator
 logger = logging.getLogger(__name__)
 
 
-# JSON Schema for workflow configuration validation
+# JSON Schema for workflow configuration validation (schema version 1.0)
 WORKFLOW_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
-    "required": ["orchestrator_class", "processor_config", "actuator_config"],
+    "required": ["schema_version", "orchestrator_class", "processor_config", "actuator_config"],
     "properties": {
         "schema_version": {
             "type": "string",
-            "description": "Schema version for future compatibility"
+            "const": "1.0",
+            "description": "Schema version 1.0"
         },
         "orchestrator_class": {
             "type": "string",
+            "minLength": 1,
             "description": "Name of the orchestrator class to use"
         },
         "processor_config": {
             "type": "object",
-            "description": "Configuration for processors",
-            "additionalProperties": True
+            "required": ["LLMProcessor"],
+            "properties": {
+                "LLMProcessor": {
+                    "type": "object",
+                    "description": "LLM processor configuration"
+                }
+            },
+            "additionalProperties": True,
+            "description": "Configuration for processors - must include LLMProcessor"
         },
         "actuator_config": {
             "type": "object",
-            "description": "Configuration for actuators (UI components, etc)",
-            "additionalProperties": True
+            "required": ["UIComponents"],
+            "properties": {
+                "UIComponents": {
+                    "type": "object",
+                    "required": ["request", "response"],
+                    "properties": {
+                        "request": {
+                            "type": "object",
+                            "description": "UI request configuration"
+                        },
+                        "response": {
+                            "type": "object",
+                            "description": "UI response configuration"
+                        }
+                    },
+                    "additionalProperties": True,
+                    "description": "UI components configuration"
+                }
+            },
+            "additionalProperties": True,
+            "description": "Configuration for actuators (UI components, etc)"
         }
     },
     "additionalProperties": True
@@ -229,6 +257,8 @@ def validate_workflow_config(config: dict) -> tuple[bool, list[str]]:
     """
     Validate a workflow configuration against the JSON schema.
 
+    Enforces schema version 1.0 requirements.
+
     Args:
         config: Configuration to validate
 
@@ -243,7 +273,7 @@ def validate_workflow_config(config: dict) -> tuple[bool, list[str]]:
     if not isinstance(config, dict):
         return False, [f"config must be an object/dict, got {type(config).__name__}"]
 
-    # JSON Schema validation
+    # JSON Schema validation (schema version 1.0)
     validator = Draft7Validator(WORKFLOW_SCHEMA)
     schema_errors = list(validator.iter_errors(config))
 
@@ -265,6 +295,9 @@ def _validate_semantics(config: dict) -> list[str]:
     """
     Perform semantic validation beyond JSON schema.
 
+    Validates Python identifier constraints and nested structure requirements
+    that are not easily expressed in JSON schema.
+
     Args:
         config: Configuration to validate
 
@@ -273,27 +306,40 @@ def _validate_semantics(config: dict) -> list[str]:
     """
     errors = []
 
-    # Check orchestrator_class is a valid identifier
+    # Check orchestrator_class is a valid Python identifier
     orchestrator_class = config.get("orchestrator_class", "")
     if not orchestrator_class:
         errors.append("orchestrator_class cannot be empty")
-    elif not orchestrator_class.replace("_", "").isalnum():
+    elif not orchestrator_class.replace("_", "").replace(".", "").isalnum():
         errors.append(f"orchestrator_class '{orchestrator_class}' is not a valid Python identifier")
 
-    # Check processor_config has required fields
+    # Check processor_config structure (required by schema 1.0)
     processor_config = config.get("processor_config", {})
     if not isinstance(processor_config, dict):
         errors.append("processor_config must be an object")
+    else:
+        llm_processor = processor_config.get("LLMProcessor")
+        if llm_processor is not None and not isinstance(llm_processor, dict):
+            errors.append("processor_config.LLMProcessor must be an object")
 
-    # Check actuator_config has required fields
+    # Check actuator_config structure (required by schema 1.0)
     actuator_config = config.get("actuator_config", {})
     if not isinstance(actuator_config, dict):
         errors.append("actuator_config must be an object")
     else:
-        # Validate UIComponents structure if present (only if actuator_config is a dict)
-        ui_components = actuator_config.get("UIComponents", {})
-        if ui_components and not isinstance(ui_components, dict):
-            errors.append("actuator_config.UIComponents must be an object")
+        ui_components = actuator_config.get("UIComponents")
+        if ui_components is not None:
+            if not isinstance(ui_components, dict):
+                errors.append("actuator_config.UIComponents must be an object")
+            else:
+                # Check request and response structures
+                request = ui_components.get("request")
+                if request is not None and not isinstance(request, dict):
+                    errors.append("actuator_config.UIComponents.request must be an object")
+
+                response = ui_components.get("response")
+                if response is not None and not isinstance(response, dict):
+                    errors.append("actuator_config.UIComponents.response must be an object")
 
     return errors
 

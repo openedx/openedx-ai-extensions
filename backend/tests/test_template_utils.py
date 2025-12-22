@@ -358,15 +358,23 @@ class TestValidateWorkflowConfig(TestCase):
     """Tests for validate_workflow_config function."""
 
     def test_validate_valid_config(self):
-        """Test validating a valid configuration."""
+        """Test validating a valid schema 1.0 configuration."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "TestOrchestrator",
-            "processor_config": {"model": "gpt-4"},
-            "actuator_config": {"UIComponents": {}}
+            "processor_config": {
+                "LLMProcessor": {"function": "summarize_content"}
+            },
+            "actuator_config": {
+                "UIComponents": {
+                    "request": {},
+                    "response": {}
+                }
+            }
         }
         is_valid, errors = validate_workflow_config(config)
 
-        self.assertTrue(is_valid)
+        self.assertTrue(is_valid, f"Validation failed with errors: {errors}")
         self.assertEqual(len(errors), 0)
 
     def test_validate_null_config(self):
@@ -389,15 +397,93 @@ class TestValidateWorkflowConfig(TestCase):
         is_valid, errors = validate_workflow_config(config)
 
         self.assertFalse(is_valid)
-        # Should complain about missing processor_config and actuator_config
+        # Should complain about missing schema_version, processor_config, and actuator_config
         self.assertGreater(len(errors), 0)
+
+    def test_validate_missing_schema_version(self):
+        """Test that missing schema_version is invalid."""
+        config = {
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertFalse(is_valid)
+        self.assertTrue(any("schema_version" in err for err in errors))
+
+    def test_validate_wrong_schema_version(self):
+        """Test that wrong schema_version is invalid."""
+        config = {
+            "schema_version": "2.0",
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertFalse(is_valid)
+        self.assertTrue(any("1.0" in err for err in errors))
+
+    def test_validate_missing_llm_processor(self):
+        """Test that missing LLMProcessor is invalid in schema 1.0."""
+        config = {
+            "schema_version": "1.0",
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertFalse(is_valid)
+        self.assertTrue(any("LLMProcessor" in err for err in errors))
+
+    def test_validate_missing_ui_components(self):
+        """Test that missing UIComponents is invalid in schema 1.0."""
+        config = {
+            "schema_version": "1.0",
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertFalse(is_valid)
+        self.assertTrue(any("UIComponents" in err for err in errors))
+
+    def test_validate_missing_request_in_ui_components(self):
+        """Test that missing request is invalid in schema 1.0."""
+        config = {
+            "schema_version": "1.0",
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"response": {}}}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertFalse(is_valid)
+        self.assertTrue(any("request" in err for err in errors))
+
+    def test_validate_missing_response_in_ui_components(self):
+        """Test that missing response is invalid in schema 1.0."""
+        config = {
+            "schema_version": "1.0",
+            "orchestrator_class": "TestOrchestrator",
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}}}
+        }
+        is_valid, errors = validate_workflow_config(config)
+
+        self.assertFalse(is_valid)
+        self.assertTrue(any("response" in err for err in errors))
 
     def test_validate_empty_orchestrator_class(self):
         """Test that empty orchestrator_class is invalid."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "",
-            "processor_config": {},
-            "actuator_config": {}
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
         }
         is_valid, errors = validate_workflow_config(config)
 
@@ -407,9 +493,10 @@ class TestValidateWorkflowConfig(TestCase):
     def test_validate_invalid_orchestrator_class_identifier(self):
         """Test that invalid Python identifier is caught."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "Invalid-Class-Name!",
-            "processor_config": {},
-            "actuator_config": {}
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
         }
         is_valid, errors = validate_workflow_config(config)
 
@@ -419,9 +506,10 @@ class TestValidateWorkflowConfig(TestCase):
     def test_validate_processor_config_not_dict(self):
         """Test that non-dict processor_config is invalid."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "TestOrchestrator",
             "processor_config": "not a dict",
-            "actuator_config": {}
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
         }
         is_valid, errors = validate_workflow_config(config)
 
@@ -431,8 +519,9 @@ class TestValidateWorkflowConfig(TestCase):
     def test_validate_actuator_config_not_dict(self):
         """Test that non-dict actuator_config is invalid."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "TestOrchestrator",
-            "processor_config": {},
+            "processor_config": {"LLMProcessor": {}},
             "actuator_config": ["not", "a", "dict"]
         }
         is_valid, errors = validate_workflow_config(config)
@@ -443,8 +532,9 @@ class TestValidateWorkflowConfig(TestCase):
     def test_validate_ui_components_not_dict(self):
         """Test that non-dict UIComponents is invalid."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "TestOrchestrator",
-            "processor_config": {},
+            "processor_config": {"LLMProcessor": {}},
             "actuator_config": {
                 "UIComponents": "not a dict"
             }
@@ -457,11 +547,11 @@ class TestValidateWorkflowConfig(TestCase):
     def test_validate_additional_properties_allowed(self):
         """Test that additional properties are allowed."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "TestOrchestrator",
-            "processor_config": {},
-            "actuator_config": {},
-            "custom_field": "custom_value",
-            "schema_version": "1.0"
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}},
+            "custom_field": "custom_value"
         }
         is_valid, _errors = validate_workflow_config(config)
 
@@ -475,9 +565,10 @@ class TestValidateSemantics(TestCase):
     def test_valid_config_no_errors(self):
         """Test that valid config produces no errors."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "ValidOrchestrator",
-            "processor_config": {},
-            "actuator_config": {}
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
         }
         errors = _validate_semantics(config)
 
@@ -486,9 +577,10 @@ class TestValidateSemantics(TestCase):
     def test_orchestrator_class_with_underscores(self):
         """Test that underscores in orchestrator_class are allowed."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "My_Test_Orchestrator",
-            "processor_config": {},
-            "actuator_config": {}
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
         }
         errors = _validate_semantics(config)
 
@@ -497,9 +589,10 @@ class TestValidateSemantics(TestCase):
     def test_empty_orchestrator_class(self):
         """Test that empty orchestrator_class produces error."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "",
-            "processor_config": {},
-            "actuator_config": {}
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
         }
         errors = _validate_semantics(config)
 
@@ -509,9 +602,10 @@ class TestValidateSemantics(TestCase):
     def test_invalid_identifier_special_chars(self):
         """Test that special characters in orchestrator_class are rejected."""
         config = {
+            "schema_version": "1.0",
             "orchestrator_class": "Invalid@Orchestrator!",
-            "processor_config": {},
-            "actuator_config": {}
+            "processor_config": {"LLMProcessor": {}},
+            "actuator_config": {"UIComponents": {"request": {}, "response": {}}}
         }
         errors = _validate_semantics(config)
 
@@ -584,19 +678,20 @@ class TestGetEffectiveConfig(TestCase):
 
 
 class TestWorkflowSchema(TestCase):
-    """Tests for WORKFLOW_SCHEMA constant."""
+    """Tests for WORKFLOW_SCHEMA (version 1.0)."""
 
     def test_schema_has_required_fields(self):
-        """Test that schema defines required fields."""
+        """Test that schema defines all required top-level fields."""
         self.assertIn("required", WORKFLOW_SCHEMA)
         required = WORKFLOW_SCHEMA["required"]
 
+        self.assertIn("schema_version", required)
         self.assertIn("orchestrator_class", required)
         self.assertIn("processor_config", required)
         self.assertIn("actuator_config", required)
 
     def test_schema_properties_defined(self):
-        """Test that schema has property definitions."""
+        """Test that schema has all property definitions."""
         self.assertIn("properties", WORKFLOW_SCHEMA)
         properties = WORKFLOW_SCHEMA["properties"]
 
@@ -608,3 +703,40 @@ class TestWorkflowSchema(TestCase):
     def test_schema_allows_additional_properties(self):
         """Test that schema allows additional properties."""
         self.assertTrue(WORKFLOW_SCHEMA.get("additionalProperties", False))
+
+    def test_schema_version_constrained_to_1_0(self):
+        """Test that schema_version must be exactly '1.0'."""
+        schema_version_prop = WORKFLOW_SCHEMA["properties"]["schema_version"]
+        self.assertEqual(schema_version_prop.get("const"), "1.0")
+
+    def test_processor_config_requires_llm_processor(self):
+        """Test that processor_config must have LLMProcessor."""
+        processor_config_props = WORKFLOW_SCHEMA["properties"]["processor_config"]
+        self.assertIn("required", processor_config_props)
+        self.assertIn("LLMProcessor", processor_config_props["required"])
+
+        # LLMProcessor must be an object
+        self.assertIn("LLMProcessor", processor_config_props["properties"])
+        self.assertEqual(
+            processor_config_props["properties"]["LLMProcessor"]["type"],
+            "object"
+        )
+
+    def test_actuator_config_requires_ui_components(self):
+        """Test that actuator_config must have UIComponents."""
+        actuator_config_props = WORKFLOW_SCHEMA["properties"]["actuator_config"]
+        self.assertIn("required", actuator_config_props)
+        self.assertIn("UIComponents", actuator_config_props["required"])
+
+    def test_ui_components_requires_request_and_response(self):
+        """Test that UIComponents must have request and response objects."""
+        actuator_config_props = WORKFLOW_SCHEMA["properties"]["actuator_config"]
+        ui_components_props = actuator_config_props["properties"]["UIComponents"]
+
+        self.assertIn("required", ui_components_props)
+        self.assertIn("request", ui_components_props["required"])
+        self.assertIn("response", ui_components_props["required"])
+
+        # Both must be objects
+        self.assertEqual(ui_components_props["properties"]["request"]["type"], "object")
+        self.assertEqual(ui_components_props["properties"]["response"]["type"], "object")
