@@ -227,18 +227,27 @@ class AIWorkflowScope(models.Model):
             configs = cls.objects.filter(
                 enabled=True,
                 service_variant=service_variant,
-                course_id=course_id,
                 location_regex__isnull=False
             )
 
             # Check each config's regex against the location_id
+            selected_config = None
             for config in configs:
                 try:
                     if re.search(config.location_regex, location_id):
                         config.location_id = location_id  # Attach for reference
-                        return config
+                        if selected_config is None:
+                            selected_config = config
+                        else:
+                            raise ValueError(
+                                f"Multiple AIWorkflowScope configs match location_id '{location_id}': "
+                                f"'{selected_config.id}' and '{config.id}'"
+                            )
                 except re.error:
                     continue
+
+            if selected_config:
+                return selected_config
 
         # Fallback: try to find a general config (no location_regex)
         try:

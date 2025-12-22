@@ -96,7 +96,7 @@ class MockStreamResponse(BaseOrchestrator):
             )
             for char in mock_response:
                 # Simulate streaming by yielding one character at a time, with delay
-                time.sleep(0.05)  # 50ms delay to simulate streaming
+                time.sleep(0.01)
                 yield char.encode("utf-8")
 
         return stream_generator()

@@ -711,8 +711,6 @@ class TestValidateAllProfiles(TestCase):
 
     def test_all_profile_templates_are_valid(self):
         """Test that all profile templates pass schema 1.0 validation."""
-        from pathlib import Path
-
         # Get the profiles directory
         profiles_dir = Path(__file__).parent.parent / "openedx_ai_extensions" / "workflows" / "profiles"
 
