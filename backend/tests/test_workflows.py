@@ -141,13 +141,11 @@ def test_workflow_scope_get_profile(course_key):  # pylint: disable=redefined-ou
     """
     Test AIWorkflowScope.get_profile class method.
     """
-    # Create a request context dict
-    request_context = {
-        "courseId": str(course_key),
-        "locationId": "test_location"
-    }
-
-    result = AIWorkflowScope.get_profile(request_context)
+    # Call get_profile with course_id and location_id
+    result = AIWorkflowScope.get_profile(
+        course_id=course_key,
+        location_id="test_location"
+    )
 
     # Should return None or a scope depending on configuration
     # Just verify no exception is raised

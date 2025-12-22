@@ -549,11 +549,12 @@ def test_workflow_config_view_get_with_location_id_unit(
     response = view(request)
 
     assert response.status_code == 200
-    # Verify get_profile was called with request_context parameter
+    # Verify get_profile was called with correct parameters
     mock_get_profile.assert_called_once()
     call_kwargs = mock_get_profile.call_args[1]
-    assert "request_context" in call_kwargs
-    assert "locationId" in call_kwargs["request_context"]
+    assert "course_id" in call_kwargs
+    assert "location_id" in call_kwargs
+    assert call_kwargs["location_id"] == str(location)
 
 
 @pytest.mark.django_db

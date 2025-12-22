@@ -76,7 +76,7 @@ def get_template_directories() -> list[Path]:
     """
 
     # Get from settings if available
-    template_dirs = getattr(settings, "WORKFLOW_TEMPLATE_DIRS")
+    template_dirs = settings.WORKFLOW_TEMPLATE_DIRS
 
     # Convert to Path objects and ensure they exist
     paths = []

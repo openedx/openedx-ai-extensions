@@ -1,6 +1,7 @@
 """
 AI Workflow models for managing flexible AI workflow execution
 """
+import functools
 import logging
 import re
 from typing import Any, Optional
@@ -9,6 +10,8 @@ from uuid import uuid4
 import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 from django.utils.functional import cached_property
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
@@ -202,25 +205,28 @@ class AIWorkflowScope(models.Model):
         self._action = value
 
     @classmethod
-    def get_profile(cls, request_context):
+    @functools.lru_cache(maxsize=128)
+    def get_profile(cls, course_id, location_id):
         """
         Get configuration for a specific action, course, and location and service variant.
 
         First tries to find a config with a location_regex that matches the location_id.
         If not found, falls back to a general config for the course (location_regex is null).
+
+        Results are cached using functools.lru_cache (max 128 entries).
+        Cache is automatically cleared when AIWorkflowScope or AIWorkflowProfile objects change.
         """
         service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
 
-        course_id = request_context.get("courseId")
-        location_id = request_context.get("locationId")
-
         # First, try to find a config with location_regex matching the location_id
         if location_id:
+
             # Get all configs for this course and service that have a location_regex
             configs = cls.objects.filter(
                 enabled=True,
                 service_variant=service_variant,
-                location_regex__isnull=False
+                location_regex__isnull=False,
+                course_id=course_id,
             )
 
             # Check each config's regex against the location_id
@@ -297,6 +303,12 @@ class AIWorkflowScope(models.Model):
                 "status": "error",
             }
 
+    def save(self, *args, **kwargs):
+        """Override save to clear cache on changes."""
+        if self.location_regex and not self.course_id:
+            raise ValueError("AIWorkflowScope with location_regex must also have a course_id.")
+        super().save(*args, **kwargs)
+
 
 class AIWorkflowSession(models.Model):
     """
@@ -351,3 +363,16 @@ class AIWorkflowSession(models.Model):
 
     class Meta:
         unique_together = ("user", "scope", "profile")
+
+
+# Signal handlers for cache invalidation
+@receiver(post_save, sender=AIWorkflowScope)
+@receiver(post_delete, sender=AIWorkflowScope)
+@receiver(post_save, sender=AIWorkflowProfile)
+@receiver(post_delete, sender=AIWorkflowProfile)
+def clear_workflow_cache(**kwargs):  # pylint: disable=unused-argument
+    """
+    Clear get_profile LRU cache when AIWorkflowScope or AIWorkflowProfile objects change.
+    This ensures the cache stays fresh when workflow configurations are modified.
+    """
+    AIWorkflowScope.get_profile.cache_clear()

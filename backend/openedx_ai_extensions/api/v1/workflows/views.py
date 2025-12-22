@@ -48,7 +48,10 @@ class AIGenericWorkflowView(View):
 
         try:
             context = get_context_from_request(request)
-            config = AIWorkflowScope.get_profile(request_context=context)
+            config = AIWorkflowScope.get_profile(
+                location_id=context.get("locationId"),
+                course_id=context.get("courseId")
+            )
 
             request_body = {}
             if request.body:
@@ -117,7 +120,10 @@ class AIWorkflowProfileView(APIView):
         try:
             # Get workflow configuration
             context = get_context_from_request(request)
-            config = AIWorkflowScope.get_profile(request_context=context)
+            config = AIWorkflowScope.get_profile(
+                location_id=context.get("locationId"),
+                course_id=context.get("courseId")
+            )
 
             if not config:
                 # No config found - return empty response so UI doesn't show components
