@@ -549,10 +549,11 @@ def test_workflow_config_view_get_with_location_id_unit(
     response = view(request)
 
     assert response.status_code == 200
-    # Verify get_profile was called with request parameter
+    # Verify get_profile was called with request_context parameter
     mock_get_profile.assert_called_once()
     call_kwargs = mock_get_profile.call_args[1]
-    assert "request" in call_kwargs
+    assert "request_context" in call_kwargs
+    assert "locationId" in call_kwargs["request_context"]
 
 
 @pytest.mark.django_db
@@ -582,5 +583,5 @@ def test_workflow_config_view_invalid_context_json_unit(
     view = AIWorkflowProfileView.as_view()
     response = view(request)
 
-    # Should handle invalid JSON gracefully and use empty context
-    assert response.status_code == 200
+    # Should return error status for invalid JSON
+    assert response.status_code == 500

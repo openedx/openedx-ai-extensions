@@ -75,7 +75,7 @@ def get_template_directories() -> list[Path]:
         List of Path objects pointing to template directories
     """
     # Default to the configs directory in the workflows app
-    default_dir = Path(__file__).parent / "configs"
+    default_dir = Path(__file__).parent / "profiles"
 
     # Get from settings if available
     template_dirs = getattr(settings, "WORKFLOW_TEMPLATE_DIRS", [str(default_dir)])

@@ -141,11 +141,13 @@ def test_workflow_scope_get_profile(course_key):  # pylint: disable=redefined-ou
     """
     Test AIWorkflowScope.get_profile class method.
     """
-    # Create a mock request with context
-    request = Mock()
-    request.GET.get = Mock(return_value='{"courseId": "' + str(course_key) + '", "locationId": "test_location"}')
+    # Create a request context dict
+    request_context = {
+        "courseId": str(course_key),
+        "locationId": "test_location"
+    }
 
-    result = AIWorkflowScope.get_profile(request)
+    result = AIWorkflowScope.get_profile(request_context)
 
     # Should return None or a scope depending on configuration
     # Just verify no exception is raised

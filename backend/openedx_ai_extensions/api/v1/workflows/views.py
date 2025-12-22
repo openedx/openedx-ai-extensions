@@ -25,6 +25,18 @@ from .serializers import AIWorkflowProfileSerializer
 logger = logging.getLogger(__name__)
 
 
+def get_context_from_request(request):
+    """
+    Extract context from request query parameters
+    """
+    if hasattr(request, "GET"):
+        context_str = request.GET.get("context", "{}")
+    else:
+        context_str = request.query_params.get("context", "{}")
+    context = json.loads(context_str)
+    return context
+
+
 @method_decorator(login_required, name="dispatch")
 class AIGenericWorkflowView(View):
     """
@@ -35,7 +47,8 @@ class AIGenericWorkflowView(View):
         """Common handler for GET and POST requests"""
 
         try:
-            config = AIWorkflowScope.get_profile(request=request)
+            context = get_context_from_request(request)
+            config = AIWorkflowScope.get_profile(request_context=context)
 
             request_body = {}
             if request.body:
@@ -103,7 +116,8 @@ class AIWorkflowProfileView(APIView):
 
         try:
             # Get workflow configuration
-            config = AIWorkflowScope.get_profile(request=request)
+            context = get_context_from_request(request)
+            config = AIWorkflowScope.get_profile(request_context=context)
 
             if not config:
                 # No config found - return empty response so UI doesn't show components

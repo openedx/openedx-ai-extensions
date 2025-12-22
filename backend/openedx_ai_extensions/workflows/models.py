@@ -1,7 +1,6 @@
 """
 AI Workflow models for managing flexible AI workflow execution
 """
-import json
 import logging
 import re
 from typing import Any, Optional
@@ -203,7 +202,7 @@ class AIWorkflowScope(models.Model):
         self._action = value
 
     @classmethod
-    def get_profile(cls, request):
+    def get_profile(cls, request_context):
         """
         Get configuration for a specific action, course, and location and service variant.
 
@@ -212,14 +211,8 @@ class AIWorkflowScope(models.Model):
         """
         service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
 
-        if hasattr(request, "GET"):
-            context_str = request.GET.get("context", "{}")
-        else:
-            context_str = request.query_params.get("context", "{}")
-        context = json.loads(context_str)
-
-        course_id = context.get("courseId")
-        location_id = context.get("locationId")
+        course_id = request_context.get("courseId")
+        location_id = request_context.get("locationId")
 
         # First, try to find a config with location_regex matching the location_id
         if location_id:
