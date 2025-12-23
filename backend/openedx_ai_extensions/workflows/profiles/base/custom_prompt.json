@@ -1,0 +1,50 @@
+/*
+Using a custom prompt to determine the experience.
+Send the course content to the LLM process and
+have it explain in a different with this prompt.
+*/
+{
+  "orchestrator_class": "DirectLLMResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_location_content"
+    },
+    "LLMProcessor": {
+      "config": "default",
+      "stream": true,
+      "prompt": "\
+You are an educational assistant embedded in an online course. \
+ \
+Rephrase the given content using different wording while preserving the original meaning, intent, and factual accuracy. \
+ \
+Guidelines: \
+- Do not add new information. \
+- Do not remove important details. \
+- Do not simplify unless explicitly asked. \
+- Keep the length roughly similar to the original. \
+- Use clear, natural language suitable for the course audience. \
+- Avoid repeating sentence structures or phrases from the original text. \
+ \
+Output only the rephrased content. \
+",
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "Rephrase",
+          "customMessage": "Explain this but differently"
+        }
+      },
+      "response": {
+        "component": "AIResponseComponent",
+        "config": {
+          "customMessage": "In other words"
+        }
+      }
+    }
+  },
+  "schema_version": "1.0",
+}

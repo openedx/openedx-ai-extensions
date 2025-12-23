@@ -38,7 +38,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
             # Build completion parameters
             completion_params = {
                 "messages": [
-                    {"role": "system", "content": system_role},
+                    {"role": "system", "content": self.custom_prompt or system_role},
                 ],
             }
 

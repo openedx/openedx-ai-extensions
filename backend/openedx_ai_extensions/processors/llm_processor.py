@@ -29,7 +29,10 @@ class LLMProcessor(LitellmProcessor):
         self.input_data = kwargs.get("input_data", None)
         self.chat_history = kwargs.get("chat_history", None)
 
-        function_name = self.config.get("function")
+        function_name = self.config.get("function", None)
+        # jsonmerge still returns "function": null", so check for that too
+        if not function_name:
+            function_name = "call_with_custom_prompt"
         function = getattr(self, function_name)
         return function()
 
@@ -106,7 +109,7 @@ class LLMProcessor(LitellmProcessor):
         else:
             # Initialize new thread with system role and context
             params["input"] = [
-                {"role": "system", "content": system_role},
+                {"role": "system", "content": self.custom_prompt or system_role},
                 {"role": "system", "content": self.context},
             ]
 
@@ -197,7 +200,7 @@ class LLMProcessor(LitellmProcessor):
         params = {
             "stream": self.stream,
             "messages": [
-                {"role": "system", "content": system_role},
+                {"role": "system", "content": self.custom_prompt or system_role},
             ],
         }
 
@@ -394,5 +397,14 @@ class LLMProcessor(LitellmProcessor):
         )
 
         result = self._call_completion_wrapper(system_role=system_role)
+
+        return result
+
+    def call_with_custom_prompt(self):
+        """Call LLM with a completely custom prompt provided in custom_prompt config."""
+        if not self.custom_prompt:
+            raise ValueError("Custom prompt not provided in configuration.")
+
+        result = self._call_completion_wrapper(system_role="")
 
         return result
