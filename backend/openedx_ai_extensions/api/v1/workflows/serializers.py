@@ -5,26 +5,24 @@ Serializers for AI Workflows API
 from rest_framework import serializers
 
 
-class AIWorkflowConfigSerializer(serializers.Serializer):
+class AIWorkflowProfileSerializer(serializers.Serializer):
     """
-    Serializer for AIWorkflowConfig data
-    Simple serializer to pass config from backend to frontend
-    Exposes only the UIComponents dict from actuator_config
+    Serializer for AIWorkflowProfile data
+    Simple serializer to pass profile config from backend to frontend
+    Exposes only the UIComponents dict from the profile
     """
 
-    action = serializers.CharField()
     course_id = serializers.CharField(allow_null=True, required=False)
     ui_components = serializers.SerializerMethodField()
 
     def get_ui_components(self, obj):
         """Extract UIComponents from actuator_config"""
-        actuator_config = obj.actuator_config or {}
-        return actuator_config.get("UIComponents", {})
+        return obj.profile.get_ui_components()
 
     def create(self, validated_data):
         """Read-only serializer — creation not supported."""
-        raise NotImplementedError("AIWorkflowConfigSerializer is read-only")
+        raise NotImplementedError("AIWorkflowProfileSerializer is read-only")
 
     def update(self, instance, validated_data):
         """Read-only serializer — update not supported."""
-        raise NotImplementedError("AIWorkflowConfigSerializer is read-only")
+        raise NotImplementedError("AIWorkflowProfileSerializer is read-only")

@@ -55,7 +55,6 @@ const GetAIAssistanceButton = ({
         userInput: requestMessage || 'Provide learning assistance for this content',
         payload: {
           requestId: `ai-request-${Date.now()}`,
-          courseId: contextData.courseId,
         },
         onStreamChunk: (chunk) => {
           setIsLoading(false);

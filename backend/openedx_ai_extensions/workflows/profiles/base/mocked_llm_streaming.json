@@ -1,0 +1,31 @@
+/*
+This profile uses a mock response to test streaming capabilities
+in the UI without using a remote LLM call
+*/
+{
+  "orchestrator_class": "MockStreamResponse",
+  "processor_config": {
+    "OpenEdXProcessor": {
+    },
+    "LLMProcessor": {
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "AIRequestComponent",
+        "config": {
+          "buttonText": "Ask test AI [mocked]",
+          "customMessage": "A streaming test response from the server"
+        }
+      },
+      "response": {
+        "component": "AISidebarResponse",
+        "config": {
+          "customMessage": "Sidebar Response using streaming [mocked]"
+        }
+      }
+    }
+  },
+  "schema_version": "1.0",
+}

@@ -152,12 +152,10 @@ export const callWorkflowService = async ({
   context = null,
   action = null,
   userInput = null,
-  workflowType = null,
-  options = null,
   onStreamChunk = null, // Optional callback for streaming text
 }) => {
   // Determine the actual endpoint URL
-  const apiEndpoint = endpoint.startsWith('http')
+  let apiEndpoint = endpoint.startsWith('http')
     ? endpoint
     : getDefaultEndpoint(endpoint);
 
@@ -170,24 +168,16 @@ export const callWorkflowService = async ({
     ...payload,
   };
 
-  // Add optional fields if provided
   if (context) {
-    requestPayload.context = context;
-    if (!requestPayload.courseId && context.courseId) {
-      requestPayload.courseId = context.courseId;
-    }
+    const params = new URLSearchParams();
+    params.append('context', JSON.stringify(context));
+    apiEndpoint += `?${params.toString()}`;
   }
   if (action) {
     requestPayload.action = action;
   }
   if (userInput) {
     requestPayload.user_input = userInput;
-  }
-  if (workflowType) {
-    requestPayload.workflow_type = workflowType;
-  }
-  if (options) {
-    requestPayload.options = options;
   }
 
   try {

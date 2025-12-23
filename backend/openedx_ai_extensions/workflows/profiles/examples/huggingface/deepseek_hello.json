@@ -1,3 +1,6 @@
+/*
+Test experience. Use a hugging face hosted version of DeepSeek to say which llm model is answering
+*/
 {
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
@@ -5,7 +8,7 @@
     },
     "LLMProcessor": {
       "function": "greet_from_llm",
-      "config": "ollama"
+      "config": "deepseek"
     }
   },
   "actuator_config": {
@@ -13,20 +16,17 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Hello [config api]",
-          "customMessage": "Ollama will say hello [config api]"
+          "buttonText": "Hello AI",
+          "customMessage": "DeepSeek will say hello"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "DeepSeek Response"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

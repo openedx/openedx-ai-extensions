@@ -43,7 +43,6 @@ const AIEducatorLibraryResponseComponent = ({
         action: 'clear_session',
         payload: {
           requestId: `ai-request-${Date.now()}`,
-          courseId: preparedContext.courseId || null,
         },
       });
     } catch (err) {

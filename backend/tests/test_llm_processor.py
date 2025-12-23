@@ -10,7 +10,7 @@ from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
 from openedx_ai_extensions.processors.llm_processor import LLMProcessor
-from openedx_ai_extensions.workflows.models import AIWorkflowSession
+from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 
 User = get_user_model()
 
@@ -28,7 +28,30 @@ def course_key():
 
 
 @pytest.fixture
-def user_session(user, course_key, db):  # pylint: disable=redefined-outer-name,unused-argument
+def workflow_profile(db):  # pylint: disable=unused-argument
+    """Create and return a test workflow profile."""
+    return AIWorkflowProfile.objects.create(
+        slug="test-llm-processor",
+        description="Test LLM processor workflow",
+        base_filepath="base/default.json",
+        content_patch='{}'
+    )
+
+
+@pytest.fixture
+def workflow_scope(workflow_profile, course_key):  # pylint: disable=redefined-outer-name
+    """Create and return a test workflow scope."""
+    return AIWorkflowScope.objects.create(
+        location_regex=".*unit-123.*",
+        course_id=course_key,
+        service_variant="lms",
+        profile=workflow_profile,
+        enabled=True
+    )
+
+
+@pytest.fixture
+def user_session(user, course_key, workflow_scope, db):  # pylint: disable=redefined-outer-name,unused-argument
     """Create and return a test user session with a valid location."""
     location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
 
@@ -36,7 +59,9 @@ def user_session(user, course_key, db):  # pylint: disable=redefined-outer-name,
         user=user,
         course_id=course_key,
         location_id=location,
-        local_submission_id="sub-123"
+        local_submission_id="sub-123",
+        scope=workflow_scope,
+        profile=workflow_scope.profile
     )
 
 

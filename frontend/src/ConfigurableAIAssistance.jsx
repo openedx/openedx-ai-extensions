@@ -59,7 +59,7 @@ const ConfigurableAIAssistance = ({
   const [error, setError] = useState('');
   const [hasAsked, setHasAsked] = useState(false);
 
-  const configEndpoint = getDefaultEndpoint('config');
+  const configEndpoint = getDefaultEndpoint('profile');
   const requestIdRef = useRef(0);
 
   // Load configuration on mount
@@ -153,7 +153,6 @@ const ConfigurableAIAssistance = ({
         userInput: requestMessage,
         payload: {
           requestId: `ai-request-${Date.now()}`,
-          courseId: contextData.courseId,
         },
         onStreamChunk: (chunk) => {
           setIsLoading(false);
@@ -226,6 +225,11 @@ const ConfigurableAIAssistance = ({
         <p>Failed to load AI extensions configuration: {configError}</p>
       </Alert>
     );
+  }
+
+  // Don't render anything if no config is available (silently hide)
+  if (!config) {
+    return null;
   }
 
   // Render configured components

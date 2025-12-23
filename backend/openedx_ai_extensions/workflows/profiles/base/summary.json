@@ -1,3 +1,7 @@
+/*
+Basic summary experience. Send the course content to the LLM process and
+present the streaming answer in the same box.
+*/
 {
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
@@ -5,7 +9,7 @@
       "function": "get_location_content"
     },
     "LLMProcessor": {
-      "function": "explain_like_five",
+      "function": "summarize_content",
       "config": "default",
       "stream": true
     }
@@ -15,20 +19,17 @@
       "request": {
         "component": "AIRequestComponent",
         "config": {
-          "buttonText": "Ask AI [config api]",
-          "customMessage": "Explain me like I'm 5 [config api]"
+          "buttonText": "AI summary",
+          "customMessage": "Produce a brief summary of this unit"
         }
       },
       "response": {
         "component": "AIResponseComponent",
         "config": {
-          "customMessage": "AI Assistant Response [config api]"
+          "customMessage": "AI summary assistant"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }

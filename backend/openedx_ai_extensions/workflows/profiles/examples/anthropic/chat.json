@@ -1,3 +1,6 @@
+/*
+Test experience. Ask claude to chat having given it the current unit context
+*/
 {
   "orchestrator_class": "ThreadedLLMResponse",
   "processor_config": {
@@ -28,11 +31,8 @@
         "config": {
           "customMessage": "AI powered assistant"
         }
-      },
-      "metadata": {
-          "version": 0.1,
-          "provider": "config_api"
       }
     }
-  }
+  },
+  "schema_version": "1.0",
 }
