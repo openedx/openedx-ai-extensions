@@ -502,10 +502,12 @@ def test_call_with_custom_prompt_function(
         }
     }
 
+    custom_prompt_text = "You are a helpful AI assistant."
     config = {
         "LLMProcessor": {
             "function": "call_with_custom_prompt",
             "model": "gpt-3.5-turbo",
+            "prompt": custom_prompt_text,
         }
     }
     processor = LLMProcessor(config=config, user_session=user_session)
@@ -519,11 +521,11 @@ def test_call_with_custom_prompt_function(
     assert result["response"] == "Custom response"
     mock_completion.assert_called_once()
 
-    # Verify the system role is the default
+    # Verify the custom prompt is used in the system role
     call_kwargs = mock_completion.call_args[1]
     messages = call_kwargs["messages"]
     assert messages[0]["role"] == "system"
-    assert messages[0]["content"] == "You are a helpful assistant."
+    assert messages[0]["content"] == custom_prompt_text
 
 
 @pytest.mark.django_db
@@ -541,10 +543,12 @@ def test_call_with_custom_prompt_when_function_not_specified(
         }
     }
 
+    custom_prompt_text = "Default custom prompt for testing."
     config = {
         "LLMProcessor": {
             # No "function" key specified
             "model": "gpt-3.5-turbo",
+            "prompt": custom_prompt_text,
         }
     }
     processor = LLMProcessor(config=config, user_session=user_session)
@@ -655,11 +659,13 @@ def test_call_with_custom_prompt_streaming(
         }
     }
 
+    custom_prompt_text = "You are a streaming assistant."
     config = {
         "LLMProcessor": {
             "function": "call_with_custom_prompt",
             "model": "gpt-3.5-turbo",
             "stream": True,
+            "prompt": custom_prompt_text,
         }
     }
     processor = LLMProcessor(config=config, user_session=user_session)
@@ -680,3 +686,30 @@ def test_call_with_custom_prompt_streaming(
     assert len(results) == 2
     assert results[0] == b"Streaming "
     assert results[1] == b"response"
+
+
+@pytest.mark.django_db
+def test_call_with_custom_prompt_missing_prompt_raises_error(
+    user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that call_with_custom_prompt raises ValueError when prompt is not provided.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "call_with_custom_prompt",
+            "model": "gpt-3.5-turbo",
+            # No "prompt" key provided
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    with pytest.raises(ValueError, match="Custom prompt not provided in configuration"):
+        processor.process(input_data="Test input")
