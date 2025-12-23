@@ -7,7 +7,7 @@ import re
 from typing import Any, Optional
 from uuid import uuid4
 
-import settings
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -273,7 +273,7 @@ class AIWorkflowScope(models.Model):
         except cls.DoesNotExist:
             return None
 
-    def execute(self, user_input, action, user) -> dict[str, str | dict[str, str]] | Any:
+    def execute(self, user_input, action, user, running_context) -> dict[str, str | dict[str, str]] | Any:
         """
         Execute this workflow using its configured orchestrator
         This is where the actual AI processing happens
@@ -286,7 +286,8 @@ class AIWorkflowScope(models.Model):
             from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
 
             orchestrator_name = self.profile.orchestrator_class  # "DirectLLMResponse"
-            orchestrator = getattr(orchestrators, orchestrator_name)(workflow=self, user=user)
+            orchestrator_class = getattr(orchestrators, orchestrator_name)
+            orchestrator = orchestrator_class(workflow=self, user=user, context=running_context)
 
             self.action = action
 

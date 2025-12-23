@@ -60,11 +60,12 @@ def _execute_orchestrator_async(task_self, workflow_id, action, params=None):
 class BaseOrchestrator:
     """Base class for workflow orchestrators."""
 
-    def __init__(self, workflow, user):
+    def __init__(self, workflow, user, context):
         self.workflow = workflow
         self.user = user
         self.profile = workflow.profile
-        self.location_id = str(workflow.location_id) if workflow.location_id else None
+        self.location_id = context.get("location_id", None)
+        self.course_id = context.get("course_id", None)
 
     def _emit_workflow_event(self, event_name: str) -> None:
         """
@@ -77,7 +78,7 @@ class BaseOrchestrator:
         tracker.emit(event_name, {
             "workflow_id": str(self.workflow.id),
             "action": self.workflow.action,
-            "course_id": str(self.workflow.course_id),
+            "course_id": str(self.course_id),
             "profile_name": self.profile.slug,
             "location_id": str(self.location_id),
         })
@@ -146,7 +147,7 @@ class DirectLLMResponse(BaseOrchestrator):
         openedx_processor = OpenEdXProcessor(
             processor_config=self.profile.processor_config,
             location_id=self.location_id,
-            course_id=self.workflow.course_id,
+            course_id=self.course_id,
             user=self.user,
         )
         content_result = openedx_processor.process()
@@ -197,10 +198,10 @@ class DirectLLMResponse(BaseOrchestrator):
 class SessionBasedOrchestrator(BaseOrchestrator):
     """Orchestrator that provides session-based LLM responses."""
 
-    def __init__(self, workflow, user):
+    def __init__(self, workflow, user,context):
         from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
 
-        super().__init__(workflow, user)
+        super().__init__(workflow, user, context)
         self.session, _ = AIWorkflowSession.objects.get_or_create(
             user=self.user,
             scope=self.workflow,
@@ -243,7 +244,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         openedx_processor = OpenEdXProcessor(
             processor_config=self.profile.processor_config,
             location_id=self.location_id,
-            course_id=self.workflow.course_id,
+            course_id=self.course_id,
             user=self.user,
         )
         content_result = openedx_processor.process()
@@ -413,7 +414,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
     def run(self, input_data):
         context = {
-            'course_id': self.workflow.course_id,
+            'course_id': self.course_id,
             'location_id': self.location_id,
         }
         submission_processor = self._get_submission_processor()
@@ -440,7 +441,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         openedx_processor = OpenEdXProcessor(
             processor_config=self.profile.processor_config,
             location_id=self.location_id,
-            course_id=self.workflow.course_id,
+            course_id=self.course_id,
             user=self.user,
         )
         content_result = openedx_processor.process()
