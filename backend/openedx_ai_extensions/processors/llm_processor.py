@@ -106,7 +106,7 @@ class LLMProcessor(LitellmProcessor):
         else:
             # Initialize new thread with system role and context
             params["input"] = [
-                {"role": "system", "content": system_role},
+                {"role": "system", "content": self.custom_prompt or system_role},
                 {"role": "system", "content": self.context},
             ]
 
@@ -197,7 +197,7 @@ class LLMProcessor(LitellmProcessor):
         params = {
             "stream": self.stream,
             "messages": [
-                {"role": "system", "content": system_role},
+                {"role": "system", "content": self.custom_prompt or system_role},
             ],
         }
 

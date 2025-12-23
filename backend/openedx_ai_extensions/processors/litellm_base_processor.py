@@ -38,6 +38,7 @@ class LitellmProcessor:
         for key, value in settings.AI_EXTENSIONS[self.config_profile].items():
             self.extra_params[key.lower()] = value
 
+        self.custom_prompt = self.config.get("prompt", None)
         self.stream = self.config.get("stream", False)
 
         enabled_tools = self.config.get("enabled_tools", [])
