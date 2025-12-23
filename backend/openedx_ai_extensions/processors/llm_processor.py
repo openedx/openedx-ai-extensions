@@ -29,7 +29,10 @@ class LLMProcessor(LitellmProcessor):
         self.input_data = kwargs.get("input_data", None)
         self.chat_history = kwargs.get("chat_history", None)
 
-        function_name = self.config.get("function")
+        function_name = self.config.get("function", None)
+        # jsonmerge still returns "function": null", so check for that too
+        if not function_name:
+            function_name = "call_with_custom_prompt"
         function = getattr(self, function_name)
         return function()
 
@@ -392,6 +395,14 @@ class LLMProcessor(LitellmProcessor):
             "if the result is 2 or more then Enumerate the location content and leave a "
             "brief explanation of each section. In all cases present the results of the dice roll."
         )
+
+        result = self._call_completion_wrapper(system_role=system_role)
+
+        return result
+
+    def call_with_custom_prompt(self):
+        """Call LLM with a completely custom prompt provided in input_data"""
+        system_role = "You are a helpful assistant."
 
         result = self._call_completion_wrapper(system_role=system_role)
 
