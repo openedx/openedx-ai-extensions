@@ -77,7 +77,7 @@ const AIEducatorLibraryResponseComponent = ({
 
   // Memoized async task data from response
   const asyncTask = useMemo(() => {
-    if (!response) return null;
+    if (!response) { return null; }
     try {
       const parsed = JSON.parse(response);
       if (parsed.status === 'processing' && parsed.task_id) {
@@ -110,7 +110,7 @@ const AIEducatorLibraryResponseComponent = ({
       });
 
       setLastUpdateTime(new Date());
-      if (data.message) setPollingMessage(data.message);
+      if (data.message) { setPollingMessage(data.message); }
 
       // Handle terminal states
       const isSuccess = data.status === 'completed' || data.status === 'success';
@@ -174,7 +174,7 @@ const AIEducatorLibraryResponseComponent = ({
 
   // Effect to handle response changes
   useEffect(() => {
-    if (!response) return undefined;
+    if (!response) { return undefined; }
 
     if (asyncTask) {
       startPolling(asyncTask);
@@ -198,7 +198,7 @@ const AIEducatorLibraryResponseComponent = ({
    * Cancel the currently running async task
    */
   const handleCancelRun = useCallback(async () => {
-    if (!asyncTask?.task_id) return;
+    if (!asyncTask?.task_id) { return; }
 
     try {
       await callWorkflowService({
@@ -263,7 +263,7 @@ const AIEducatorLibraryResponseComponent = ({
   const handleClearAndClose = useCallback(() => handleClose(false), [handleClose]);
 
   // Early return if nothing to display
-  if (!response && !error) return null;
+  if (!response && !error) { return null; }
 
   // Build URL for final response link
   const hyperlinkUrl = `${window.location.origin}/${finalResponse}`;

@@ -31,7 +31,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name="openedx_ai_extensions.workflows.execute_orchestrator", bind=True, time_limit=300, soft_time_limit=270)
+@shared_task(
+    name="openedx_ai_extensions.workflows.execute_orchestrator",
+    bind=True,
+    time_limit=300,
+    soft_time_limit=270
+)
 def _execute_orchestrator_async(task_self, session_id, action, params=None):
     """
     Execute an orchestrator action asynchronously.
@@ -375,7 +380,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
             'message': 'AI workflow has started'
         }
 
-    def get_run_status(self, input_data):
+    def get_run_status(self, input_data):  # pylint: disable=unused-argument
         """
         Get the status of an async task from session metadata.
 

@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "edx_django_utils.plugins",
     "django_extensions",
     "eventtracking.django.apps.EventTrackingConfig",
+    "submissions",
 ]
 
 # Dynamically add plugin apps - only using the LMS context for simplicity

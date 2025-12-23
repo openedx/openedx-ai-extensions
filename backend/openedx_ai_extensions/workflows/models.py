@@ -378,7 +378,7 @@ class AIWorkflowSession(models.Model):
 @receiver(post_delete, sender=AIWorkflowScope)
 @receiver(post_save, sender=AIWorkflowProfile)
 @receiver(post_delete, sender=AIWorkflowProfile)
-def clear_workflow_cache(**kwargs):  # pylint: disable=unused-argument
+def clear_workflow_cache(**kwargs):
     """
     Clear get_profile LRU cache when AIWorkflowScope or AIWorkflowProfile objects change.
     This ensures the cache stays fresh when workflow configurations are modified.

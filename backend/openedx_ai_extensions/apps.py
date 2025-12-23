@@ -30,7 +30,7 @@ class OpenedxAIExtensionsConfig(AppConfig):
             transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
 
         # Import the tasks module to trigger the registration
-        from openedx_ai_extensions import tasks 
+        from openedx_ai_extensions import tasks  # noqa: F401 pylint: disable=unused-import
 
     plugin_app = {
         "url_config": {
