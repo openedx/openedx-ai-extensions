@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "edx_django_utils.plugins",
     "django_extensions",
     "eventtracking.django.apps.EventTrackingConfig",
+    "submissions",
 ]
 
 # Dynamically add plugin apps - only using the LMS context for simplicity
@@ -140,6 +141,9 @@ EVENT_TRACKING_BACKENDS = {}
 LMS_ROOT_URL = "http://localhost:18000"
 # Provided so the generated xAPI events use a known "event routing backends package string" when testing
 RUNNING_WITH_TEST_SETTINGS = True
+
+# Service variant - required for workflow scope filtering
+SERVICE_VARIANT = "lms"
 
 # Apply plugin settings - must be done after base settings are defined
 # Only using the LMS context for simplicity

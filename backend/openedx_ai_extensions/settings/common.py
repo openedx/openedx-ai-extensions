@@ -62,7 +62,6 @@ def plugin_settings(settings):
     if not hasattr(settings, "WORKFLOW_TEMPLATE_DIRS"):
         settings.WORKFLOW_TEMPLATE_DIRS = [
             BASE_DIR / "workflows" / "profiles",
-            BASE_DIR / "workflows" / "examples",
         ]
 
     # -------------------------

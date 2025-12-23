@@ -170,7 +170,8 @@ def test_workflow_scope_execute(workflow_scope, user):  # pylint: disable=redefi
         mock_instance.run = Mock(return_value={"status": "completed", "response": "Test"})
         mock_orch.return_value = mock_instance
 
-        result = workflow_scope.execute("test input", "run", user)
+        running_context = {"location_id": None, "course_id": workflow_scope.course_id}
+        result = workflow_scope.execute("test input", "run", user, running_context)
 
         # Should return result or error
         assert "status" in result
@@ -287,9 +288,8 @@ def test_base_orchestrator_initialization(workflow_scope, user):  # pylint: disa
     """
     Test BaseOrchestrator initialization.
     """
-    # Mock the workflow to have location_id attribute
-    workflow_scope.location_id = None
-    orchestrator = BaseOrchestrator(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = BaseOrchestrator(workflow=workflow_scope, user=user, context=context)
 
     assert orchestrator.workflow == workflow_scope
 
@@ -299,9 +299,8 @@ def test_base_orchestrator_run_not_implemented(workflow_scope, user):  # pylint:
     """
     Test BaseOrchestrator.run raises NotImplementedError.
     """
-    # Mock the workflow to have location_id attribute
-    workflow_scope.location_id = None
-    orchestrator = BaseOrchestrator(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = BaseOrchestrator(workflow=workflow_scope, user=user, context=context)
 
     with pytest.raises(NotImplementedError):
         orchestrator.run({})
@@ -315,7 +314,8 @@ def test_mock_response_orchestrator(workflow_scope, user):  # pylint: disable=re
     # Mock the workflow to have location_id and action attributes
     workflow_scope.location_id = None
     workflow_scope.action = "test_action"
-    orchestrator = MockResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = MockResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run({})
 
     assert result["status"] == "completed"
@@ -330,7 +330,8 @@ def test_mock_stream_response_orchestrator(workflow_scope, user):  # pylint: dis
     # Mock the workflow to have location_id and action attributes
     workflow_scope.location_id = None
     workflow_scope.action = "test_action"
-    orchestrator = MockStreamResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = MockStreamResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run({})
 
     # Verify it returns a generator
@@ -383,7 +384,8 @@ def test_direct_llm_response_orchestrator_success(
     # Mock the workflow to have location_id and action attributes
     workflow_scope.location_id = None
     workflow_scope.action = "test_action"
-    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run({})
 
     assert result["status"] == "completed"
@@ -407,7 +409,8 @@ def test_direct_llm_response_orchestrator_openedx_error(
 
     # Mock the workflow to have location_id attribute
     workflow_scope.location_id = None
-    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run({})
 
     assert "error" in result
@@ -436,7 +439,8 @@ def test_direct_llm_response_orchestrator_llm_error(
 
     # Mock the workflow to have location_id attribute
     workflow_scope.location_id = None
-    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run({})
 
     assert "error" in result
@@ -479,7 +483,8 @@ def test_threaded_llm_response_orchestrator_new_session(
     # Mock the workflow to have location_id and action attributes
     workflow_scope.location_id = None
     workflow_scope.action = "test_action"
-    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run("User question here")
 
     assert result["status"] == "completed"
@@ -515,7 +520,8 @@ def test_threaded_llm_response_orchestrator_clear_session(
 
     # Mock the workflow to have location_id attribute
     workflow_scope.location_id = None
-    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.clear_session(None)
 
     assert result["status"] == "session_cleared"
@@ -559,7 +565,8 @@ def test_threaded_llm_response_orchestrator_get_history(
 
     # Mock the workflow to have location_id attribute
     workflow_scope.location_id = None
-    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
     # Call with no user input to trigger history retrieval
     result = orchestrator.run(None)
 
@@ -600,7 +607,8 @@ def test_threaded_llm_response_orchestrator_history_error(
 
     # Mock the workflow to have location_id attribute
     workflow_scope.location_id = None
-    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user)
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run(None)
 
     assert "error" in result

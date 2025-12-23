@@ -12,6 +12,8 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils.decorators import method_decorator
 from django.views import View
+from opaque_keys import InvalidKeyError
+from opaque_keys.edx.keys import CourseKey, UsageKey
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -27,14 +29,47 @@ logger = logging.getLogger(__name__)
 
 def get_context_from_request(request):
     """
-    Extract context from request query parameters
+    Extract and validate context from request query parameters.
+
+    Validates course_id and location_id formats using Open edX opaque_keys.
+    Returns a dict with snake_case keys.
+
+    Args:
+        request: Django request object with query parameters
+
+    Returns:
+        dict: Context with validated course_id and location_id in snake_case
+
+    Raises:
+        ValidationError: If course_id or location_id are invalid
     """
     if hasattr(request, "GET"):
         context_str = request.GET.get("context", "{}")
     else:
         context_str = request.query_params.get("context", "{}")
+
     context = json.loads(context_str)
-    return context
+    validated_context = {}
+
+    # Validate and convert courseId to course_id
+    course_id_raw = context.get("courseId") or context.get("course_id")
+    if course_id_raw:
+        try:
+            CourseKey.from_string(course_id_raw)
+            validated_context["course_id"] = course_id_raw
+        except InvalidKeyError as e:
+            raise ValidationError(f"Invalid course_id format: {course_id_raw}") from e
+
+    # Validate and convert locationId to location_id
+    location_id_raw = context.get("locationId") or context.get("location_id")
+    if location_id_raw:
+        try:
+            UsageKey.from_string(location_id_raw)
+            validated_context["location_id"] = location_id_raw
+        except InvalidKeyError as e:
+            raise ValidationError(f"Invalid location_id format: {location_id_raw}") from e
+
+    return validated_context
 
 
 @method_decorator(login_required, name="dispatch")
@@ -48,10 +83,7 @@ class AIGenericWorkflowView(View):
 
         try:
             context = get_context_from_request(request)
-            config = AIWorkflowScope.get_profile(
-                location_id=context.get("locationId"),
-                course_id=context.get("courseId")
-            )
+            workflow_profile = AIWorkflowScope.get_profile(**context)
 
             request_body = {}
             if request.body:
@@ -59,10 +91,11 @@ class AIGenericWorkflowView(View):
             action = request_body.get("action", "")
             user_input = request_body.get("user_input", {})
 
-            result = config.execute(
+            result = workflow_profile.execute(
                 user_input=user_input,
                 action=action,
                 user=request.user,
+                running_context=context,
             )
 
             if is_generator(result):
@@ -118,15 +151,12 @@ class AIWorkflowProfileView(APIView):
         """
 
         try:
-            # Get workflow configuration
+            # Get workflow configuration profile
             context = get_context_from_request(request)
-            config = AIWorkflowScope.get_profile(
-                location_id=context.get("locationId"),
-                course_id=context.get("courseId")
-            )
+            profile = AIWorkflowScope.get_profile(**context)
 
-            if not config:
-                # No config found - return empty response so UI doesn't show components
+            if not profile:
+                # No profile found - return empty response so UI doesn't show components
                 return Response(
                     {
                         "status": "no_config",
@@ -135,7 +165,7 @@ class AIWorkflowProfileView(APIView):
                     status=status.HTTP_200_OK,
                 )
 
-            serializer = AIWorkflowProfileSerializer(config)
+            serializer = AIWorkflowProfileSerializer(profile)
 
             response_data = serializer.data
             response_data["timestamp"] = datetime.now().isoformat()
@@ -143,7 +173,7 @@ class AIWorkflowProfileView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except ValidationError as e:
-            logger.warning("🤖 CONFIG VALIDATION ERROR: %s", str(e))
+            logger.warning("🤖 CONFIG PROFILE VALIDATION ERROR: %s", str(e))
             return Response(
                 {
                     "error": str(e),
@@ -154,7 +184,7 @@ class AIWorkflowProfileView(APIView):
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("🤖 CONFIG ERROR: %s", str(e))
+            logger.error("🤖 CONFIG PROFILE ERROR: %s", str(e))
             return Response(
                 {
                     "error": str(e),
