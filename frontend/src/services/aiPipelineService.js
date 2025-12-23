@@ -30,7 +30,7 @@ const extractCourseIdFromUrl = () => {
 const extractLocationIdFromUrl = () => {
   try {
     const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
-    const StudioPathMatch = window.location.pathname.match(/block-v1:[^/]+$/);
+    const StudioPathMatch = window.location.pathname.match(/(block-v1:[^/]*type@vertical[^/]*)/);
 
     if (pathMatch) {
       return pathMatch[0];

@@ -32,28 +32,70 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name="openedx_ai_extensions.workflows.execute_orchestrator", bind=True, time_limit=300, soft_time_limit=270)
-def _execute_orchestrator_async(task_self, workflow_id, action, params=None):
+def _execute_orchestrator_async(task_self, session_id, action, params=None):
+    """
+    Execute an orchestrator action asynchronously.
+
+    Args:
+        task_self: Celery task instance (bound)
+        session_id: UUID of the AIWorkflowSession
+        action: Method name to call on the orchestrator (e.g., 'run')
+        params: Dictionary of parameters to pass to the action method
+
+    Returns:
+        Result from the orchestrator action method
+    """
+    from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
 
     task_id = task_self.request.id
+    params = params or {}
+
     try:
-        from openedx_ai_extensions.workflows.models import AIWorkflow
+        # 1. Get the session from the database
+        session = AIWorkflowSession.objects.select_related('scope', 'profile', 'user').get(id=session_id)
 
-        # Get the workflow and orchestrator
-        workflow = AIWorkflow.objects.get(id=workflow_id)
-        orchestrator = workflow._get_orchestrator()
+        # 2. Build context from session
+        context = {
+            'course_id': str(session.course_id),
+            'location_id': str(session.location_id),
+        }
 
-        # Validate action exists
+        # 3. Get orchestrator class and instantiate
+        orchestrator_name = session.profile.orchestrator_class
+        orchestrator_class = getattr(orchestrators, orchestrator_name)
+        orchestrator = orchestrator_class(
+            workflow=session.scope,
+            user=session.user,
+            context=context
+        )
+
+        # 4. Validate action exists
         if not hasattr(orchestrator, action):
-            raise AttributeError(f"Orchestrator does not have method '{action}'")
+            error_msg = f"Orchestrator '{orchestrator_name}' does not have method '{action}'"
+            logger.error(f"Task {task_id}: {error_msg}")
+            raise AttributeError(error_msg)
 
-        # Call the specified method with params
+        # 5. Call the action method with params
         orchestrator_method = getattr(orchestrator, action)
-        result = orchestrator_method(**(params or {}))
+        logger.info(f"Task {task_id}: Executing {orchestrator_name}.{action} for session {session_id}")
+        result = orchestrator_method(**params)
 
+        logger.info(f"Task {task_id}: Completed successfully")
         return result
 
     except SoftTimeLimitExceeded:
-        # Explain in the session what has happened
+        logger.error(f"Task {task_id}: Soft time limit exceeded for session {session_id}")
+        # TODO: Update session metadata to indicate timeout
+        raise
+
+    except AIWorkflowSession.DoesNotExist:
+        logger.error(f"Task {task_id}: Session {session_id} not found")
+        raise
+
+    except Exception as e:
+        logger.error(f"Task {task_id}: Error executing {action} for session {session_id}: {str(e)}")
+        # TODO: Update session metadata to indicate error
         raise
 
 
@@ -305,8 +347,13 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         Args:
             input_data: Input data to pass to the run method
         """
+
+        self.session.course_id = self.course_id
+        self.session.location_id = self.location_id
+        self.session.save()
+
         task = _execute_orchestrator_async.delay(
-            workflow_id=self.workflow.id,
+            session_id=self.session.id,
             action='run',
             params={
                 "input_data": input_data,
@@ -321,6 +368,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
     def get_run_status(self, input_data):
         logger.info(f"GET_RUN_STATUS: {str(input_data)}")
+        # TODO: actually run the status
         return {
             'status': 'processing',
             'task_id': "some_id_must_check_it_matches",
