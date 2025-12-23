@@ -22,10 +22,12 @@ class BaseAIWorkflowTransformer(XApiTransformer):
         Construct the xAPI object for AI workflow events.
 
         The activity object includes:
+
         - A unique ID for this workflow instance
         - A custom activity type (https://w3id.org/xapi/openedx/activity/ai-workflow)
         - Name derived from the config filename (e.g., "openai_threads")
         - Extensions with workflow metadata:
+
           - action: The workflow action
           - prompt-template-slug: Placeholder for future prompt template tracking
           - location-id: The Open edX location/unit where the workflow was triggered

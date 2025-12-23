@@ -71,3 +71,25 @@ jobs:
 
       - name: Run test
         run: npm run test
+
+  test_plugin:
+    name: Plugin / Docs Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [ "3.12" ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Build documentation
+        env:
+          TOXENV: docs
+        run: tox

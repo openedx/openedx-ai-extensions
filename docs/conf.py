@@ -20,6 +20,12 @@ from subprocess import check_call
 from django import setup as django_setup
 
 
+autodoc_mock_imports = [
+    "submissions",
+    "openedx",
+    "common",
+]
+
 def get_version(*file_paths):
     """
     Extract the version string from the file.
@@ -39,9 +45,9 @@ def get_version(*file_paths):
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(REPO_ROOT)
 
-VERSION = get_version('./backend/openedx_ai_extensions', '__init__.py')
+VERSION = get_version('../backend/openedx_ai_extensions', '__init__.py')
 # Configure Django for autodoc usage
-os.environ['DJANGO_SETTINGS_MODULE'] = 'test_settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'backend.test_settings'
 django_setup()
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -532,13 +538,22 @@ def on_init(app):  # pylint: disable=unused-argument
     """
     docs_path = os.path.abspath(os.path.dirname(__file__))
     root_path = os.path.abspath(os.path.join(docs_path, '..'))
+
+    source_path = os.path.join(root_path, 'backend', 'openedx_ai_extensions')
+    migrations_path = os.path.join(source_path, 'migrations')
+
     apidoc_path = 'sphinx-apidoc'
     if hasattr(sys, 'real_prefix'):  # Check to see if we are in a virtualenv
         # If we are, assemble the path manually
         bin_path = os.path.abspath(os.path.join(sys.prefix, 'bin'))
         apidoc_path = os.path.join(bin_path, apidoc_path)
-    check_call([apidoc_path, '-o', docs_path, os.path.join(root_path, 'openedx_ai_extensions'),
-                os.path.join(root_path, 'openedx_ai_extensions/migrations')])
+
+    check_call([
+        apidoc_path,
+        '-o', docs_path,  # output directory
+        source_path,  # source directory for apidoc
+        migrations_path  # excluded path
+    ])
 
 
 def setup(app):
