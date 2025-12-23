@@ -4,6 +4,7 @@ Base classes to hold the logic of execution in ai workflows
 """
 import json
 import logging
+import sys
 import time
 from typing import TYPE_CHECKING
 
@@ -26,7 +27,7 @@ from openedx_ai_extensions.xapi.constants import (
 )
 
 if TYPE_CHECKING:
-    from openedx_ai_extensions.workflows.models import AIWorkflowSession, AIWorkflow
+    from openedx_ai_extensions.workflows.models import AIWorkflow, AIWorkflowSession
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,6 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
         Result from the orchestrator action method
     """
     from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
-    from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
 
     task_id = task_self.request.id
     params = params or {}
@@ -66,9 +66,13 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
             'location_id': str(session.location_id),
         }
 
-        # 3. Get orchestrator class and instantiate
+        # 3. Get orchestrator class and instantiate from current module's globals
         orchestrator_name = session.profile.orchestrator_class
-        orchestrator_class = getattr(orchestrators, orchestrator_name)
+        orchestrator_class = sys.modules[__name__].__dict__.get(orchestrator_name)
+        if not orchestrator_class:
+            error_msg = f"Orchestrator class '{orchestrator_name}' not found in module"
+            logger.error(f"Task {task_id}: {error_msg}")
+            raise AttributeError(error_msg)
         orchestrator = orchestrator_class(
             workflow=session.scope,
             user=session.user,
@@ -254,7 +258,7 @@ class DirectLLMResponse(BaseOrchestrator):
 class SessionBasedOrchestrator(BaseOrchestrator):
     """Orchestrator that provides session-based LLM responses."""
 
-    def __init__(self, workflow, user,context):
+    def __init__(self, workflow, user, context):
         from openedx_ai_extensions.workflows.models import AIWorkflowSession  # pylint: disable=import-outside-toplevel
 
         super().__init__(workflow, user, context)

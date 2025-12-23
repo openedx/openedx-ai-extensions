@@ -142,6 +142,9 @@ LMS_ROOT_URL = "http://localhost:18000"
 # Provided so the generated xAPI events use a known "event routing backends package string" when testing
 RUNNING_WITH_TEST_SETTINGS = True
 
+# Service variant - required for workflow scope filtering
+SERVICE_VARIANT = "lms"
+
 # Apply plugin settings - must be done after base settings are defined
 # Only using the LMS context for simplicity
 # Third parameter is the settings_type which should match the keys in settings_config

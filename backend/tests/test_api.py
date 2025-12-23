@@ -221,8 +221,12 @@ def test_config_endpoint_get_with_action(api_client):  # pylint: disable=redefin
     api_client.login(username="testuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
 
-    # Test with action parameter
-    response = api_client.get(url, {"action": "summarize", "context": "{}"})
+    # Test with action parameter and minimal context
+    # Use dummy course key that won't match any config
+    dummy_course = "course-v1:TestOrg+Test+Run"
+    dummy_location = "block-v1:TestOrg+Test+Run+type@vertical+block@test"
+    context = json.dumps({"courseId": dummy_course, "locationId": dummy_location})
+    response = api_client.get(url, {"action": "summarize", "context": context})
 
     assert response.status_code in [200, 404]
     assert response["Content-Type"] == "application/json"
@@ -247,9 +251,12 @@ def test_config_endpoint_get_with_action_and_course(api_client, course_key):  # 
     api_client.login(username="testuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
 
+    # Put both course_id and location_id in the context JSON
+    dummy_location = f"block-v1:{course_key}+type@vertical+block@test"
+    context = json.dumps({"courseId": str(course_key), "locationId": dummy_location})
     response = api_client.get(
         url,
-        {"action": "explain_like_five", "courseId": str(course_key), "context": "{}"},
+        {"action": "explain_like_five", "context": context},
     )
 
     assert response.status_code in [200, 404]
@@ -273,7 +280,10 @@ def test_config_endpoint_ui_components_structure(api_client):  # pylint: disable
     api_client.login(username="testuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
 
-    response = api_client.get(url, {"action": "explain_like_five", "context": "{}"})
+    dummy_course = "course-v1:TestOrg+Test+Run"
+    dummy_location = "block-v1:TestOrg+Test+Run+type@vertical+block@test"
+    context = json.dumps({"courseId": dummy_course, "locationId": dummy_location})
+    response = api_client.get(url, {"action": "explain_like_five", "context": context})
     assert response.status_code in [200, 404]
 
     data = response.json()
@@ -532,14 +542,13 @@ def test_workflow_config_view_get_with_location_id_unit(
     mock_get_profile.return_value = mock_scope
 
     location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-1")
-    context_json = json.dumps({"locationId": str(location)})
+    context_json = json.dumps({"locationId": str(location), "courseId": str(course_key)})
 
     factory = APIRequestFactory()
     request = factory.get(
         "/openedx-ai-extensions/v1/profile/",
         {
             "action": "summarize",
-            "courseId": str(course_key),
             "context": context_json,
         },
     )
@@ -555,6 +564,7 @@ def test_workflow_config_view_get_with_location_id_unit(
     assert "course_id" in call_kwargs
     assert "location_id" in call_kwargs
     assert call_kwargs["location_id"] == str(location)
+    assert call_kwargs["course_id"] == str(course_key)
 
 
 @pytest.mark.django_db
