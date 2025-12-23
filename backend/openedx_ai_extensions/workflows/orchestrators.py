@@ -81,12 +81,19 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
         logger.info(f"Task {task_id}: Executing {orchestrator_name}.{action} for session {session_id}")
         result = orchestrator_method(**params)
 
+        # 6. Update session metadata with result
+        session.metadata['task_result'] = result
+        session.metadata['task_status'] = 'completed'
+        session.save(update_fields=['metadata'])
+
         logger.info(f"Task {task_id}: Completed successfully")
         return result
 
     except SoftTimeLimitExceeded:
         logger.error(f"Task {task_id}: Soft time limit exceeded for session {session_id}")
-        # TODO: Update session metadata to indicate timeout
+        session.metadata['task_status'] = 'timeout'
+        session.metadata['task_error'] = 'Task exceeded time limit'
+        session.save(update_fields=['metadata'])
         raise
 
     except AIWorkflowSession.DoesNotExist:
@@ -95,7 +102,9 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
 
     except Exception as e:
         logger.error(f"Task {task_id}: Error executing {action} for session {session_id}: {str(e)}")
-        # TODO: Update session metadata to indicate error
+        session.metadata['task_status'] = 'error'
+        session.metadata['task_error'] = str(e)
+        session.save(update_fields=['metadata'])
         raise
 
 
@@ -367,13 +376,35 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         }
 
     def get_run_status(self, input_data):
-        logger.info(f"GET_RUN_STATUS: {str(input_data)}")
-        # TODO: actually run the status
-        return {
-            'status': 'processing',
-            'task_id': "some_id_must_check_it_matches",
-            'message': f"AI workflow is running {time.strftime('%Y-%m-%d %H:%M:%S')}"
-        }
+        """
+        Get the status of an async task from session metadata.
+
+        Returns:
+            dict: Status information including task result if completed
+        """
+        metadata = self.session.metadata or {}
+        task_status = metadata.get('task_status', 'processing')
+
+        if task_status == 'completed':
+            return metadata.get('task_result', {
+                'status': 'completed',
+                'message': 'Task completed but no result found'
+            })
+        elif task_status == 'error':
+            return {
+                'status': 'error',
+                'error': metadata.get('task_error', 'Unknown error occurred')
+            }
+        elif task_status == 'timeout':
+            return {
+                'status': 'timeout',
+                'error': metadata.get('task_error', 'Task exceeded time limit')
+            }
+        else:
+            return {
+                'status': 'processing',
+                'message': 'AI workflow is running'
+            }
 
 
 class ThreadedLLMResponse(SessionBasedOrchestrator):
