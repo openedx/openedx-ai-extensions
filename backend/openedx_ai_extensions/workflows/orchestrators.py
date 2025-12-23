@@ -86,18 +86,18 @@ class MockStreamResponse(BaseOrchestrator):
 
         def stream_generator():
             mock_response = (
-                "This streaming function emits incremental chunks of data as they become available,"
-                "rather than waiting for the full response to be computed. It is designed for low-latency,"
-                "real-time consumption, allowing callers to process partial results immediately. Each yielded"
-                "event represents a discrete update in the stream and may contain content, metadata,"
-                "or control signals.The stream remains open until completion or error, at which point"
-                "it is gracefully closed. Consumers are expected to iterate over the stream sequentially"
+                "This streaming function emits incremental chunks of data as they become available, "
+                "rather than waiting for the full response to be computed. It is designed for low-latency, "
+                "real-time consumption, allowing callers to process partial results immediately. Each yielded "
+                "event represents a discrete update in the stream and may contain content, metadata, "
+                "or control signals.The stream remains open until completion or error, at which point "
+                "it is gracefully closed. Consumers are expected to iterate over the stream sequentially "
                 "and handle partial data, retries, or early termination as needed."
             )
-            for char in mock_response:
-                # Simulate streaming by yielding one character at a time, with delay
+            chunk_size = 15
+            for i in range(0, len(mock_response), chunk_size):
                 time.sleep(0.01)
-                yield char.encode("utf-8")
+                yield mock_response[i:i+chunk_size].encode("utf-8")
 
         return stream_generator()
 
