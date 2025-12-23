@@ -401,9 +401,10 @@ class LLMProcessor(LitellmProcessor):
         return result
 
     def call_with_custom_prompt(self):
-        """Call LLM with a completely custom prompt provided in input_data"""
-        system_role = "You are a helpful assistant."
+        """Call LLM with a completely custom prompt provided in custom_prompt config."""
+        if not self.custom_prompt:
+            raise ValueError("Custom prompt not provided in configuration.")
 
-        result = self._call_completion_wrapper(system_role=system_role)
+        result = self._call_completion_wrapper(system_role="")
 
         return result
