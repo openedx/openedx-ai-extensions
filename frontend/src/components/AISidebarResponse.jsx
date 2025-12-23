@@ -368,6 +368,7 @@ const AISidebarResponse = ({
       });
 
       let buffer = '';
+      let wasStreaming = false;
 
       // Make API call
       const data = await callWorkflowService({
@@ -379,6 +380,7 @@ const AISidebarResponse = ({
         },
         onStreamChunk: (chunk) => {
           buffer += chunk;
+          wasStreaming = true;
           setIsSendingFollowUp(false);
 
           setChatMessages(prev => {
@@ -398,26 +400,37 @@ const AISidebarResponse = ({
         },
       });
 
-      // Extract response from various possible fields
-      let aiResponse = '';
-      if (data.response) {
-        aiResponse = data.response;
-      } else if (data.message) {
-        aiResponse = data.message;
-      } else if (data.content) {
-        aiResponse = data.content;
-      } else if (data.result) {
-        aiResponse = data.result;
-      } else {
-        aiResponse = JSON.stringify(data, null, 2);
-      }
+      // Only add a new message if streaming didn't occur
+      // If streaming occurred, the message is already updated via onStreamChunk
+      if (!wasStreaming) {
+        // Extract response from various possible fields
+        let aiResponse = '';
+        if (data.response) {
+          aiResponse = data.response;
+        } else if (data.message) {
+          aiResponse = data.message;
+        } else if (data.content) {
+          aiResponse = data.content;
+        } else if (data.result) {
+          aiResponse = data.result;
+        } else {
+          aiResponse = JSON.stringify(data, null, 2);
+        }
 
-      // Add AI response to chat
-      setChatMessages(prev => [...prev, {
-        type: 'ai',
-        content: aiResponse,
-        timestamp: new Date().toISOString(),
-      }]);
+        // Update the AI placeholder with the final response
+        setChatMessages(prev => {
+          const newMsgs = [...prev];
+          const lastIndex = newMsgs.length - 1;
+          if (newMsgs[lastIndex] && newMsgs[lastIndex].type === 'ai') {
+            newMsgs[lastIndex] = {
+              ...newMsgs[lastIndex],
+              content: aiResponse,
+              timestamp: new Date().toISOString(),
+            };
+          }
+          return newMsgs;
+        });
+      }
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[AISidebarResponse] Follow-up error:', err);
