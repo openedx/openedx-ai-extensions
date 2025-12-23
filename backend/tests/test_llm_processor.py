@@ -481,3 +481,202 @@ def test_mcp_configs_empty_allowed_list(user_session, settings):  # pylint: disa
 
     assert processor.mcp_configs == {}
     assert "tools" not in processor.extra_params
+
+
+# ============================================================================
+# Custom Prompt Tests
+# ============================================================================
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm_processor.completion")
+def test_call_with_custom_prompt_function(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test the call_with_custom_prompt function explicitly.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "call_with_custom_prompt",
+            "model": "gpt-3.5-turbo",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    mock_resp_obj = MockChunk("Custom response", is_stream=False)
+    mock_completion.return_value = mock_resp_obj
+
+    result = processor.process(input_data="User's custom input")
+
+    assert result["status"] == "success"
+    assert result["response"] == "Custom response"
+    mock_completion.assert_called_once()
+
+    # Verify the system role is the default
+    call_kwargs = mock_completion.call_args[1]
+    messages = call_kwargs["messages"]
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"] == "You are a helpful assistant."
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm_processor.completion")
+def test_call_with_custom_prompt_when_function_not_specified(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that when no function is specified, it defaults to call_with_custom_prompt.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            # No "function" key specified
+            "model": "gpt-3.5-turbo",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    mock_resp_obj = MockChunk("Default function response", is_stream=False)
+    mock_completion.return_value = mock_resp_obj
+
+    result = processor.process(input_data="Test input")
+
+    assert result["status"] == "success"
+    assert result["response"] == "Default function response"
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm_processor.completion")
+def test_custom_prompt_overrides_system_role_in_completion(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that custom_prompt from config overrides the default system role.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    custom_prompt_text = "You are a specialized math tutor. Be concise and precise."
+    config = {
+        "LLMProcessor": {
+            "function": "call_with_custom_prompt",
+            "model": "gpt-3.5-turbo",
+            "prompt": custom_prompt_text,  # This gets set as self.custom_prompt
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    mock_resp_obj = MockChunk("Math answer", is_stream=False)
+    mock_completion.return_value = mock_resp_obj
+
+    result = processor.process(input_data="What is 2+2?")
+
+    assert result["status"] == "success"
+
+    # Verify the custom prompt is used instead of default
+    call_kwargs = mock_completion.call_args[1]
+    messages = call_kwargs["messages"]
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"] == custom_prompt_text
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm_processor.responses")
+def test_custom_prompt_in_chat_with_context(
+    mock_responses, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that custom_prompt is used in chat_with_context function.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    custom_prompt_text = "You are a coding assistant specialized in Python."
+    config = {
+        "LLMProcessor": {
+            "function": "chat_with_context",
+            "model": "gpt-3.5-turbo",
+            "prompt": custom_prompt_text,
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    mock_resp_obj = MockChunk("Here's a Python solution", is_stream=False)
+    mock_responses.return_value = mock_resp_obj
+
+    result = processor.process(
+        context="Python course",
+        input_data="How do I use list comprehensions?",
+        chat_history=[]
+    )
+
+    assert result["status"] == "success"
+
+    # Verify the custom prompt is used
+    call_kwargs = mock_responses.call_args[1]
+    input_msgs = call_kwargs["input"]
+    assert input_msgs[0]["role"] == "system"
+    assert input_msgs[0]["content"] == custom_prompt_text
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm_processor.completion")
+def test_call_with_custom_prompt_streaming(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test call_with_custom_prompt with streaming enabled.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "call_with_custom_prompt",
+            "model": "gpt-3.5-turbo",
+            "stream": True,
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    # Mock streaming chunks
+    chunks = [
+        MockChunk("Streaming ", is_stream=True),
+        MockChunk("response", is_stream=True),
+    ]
+    mock_completion.return_value = iter(chunks)
+
+    generator = processor.process(input_data="Test streaming input")
+
+    # Consume generator
+    results = list(generator)
+
+    # Assertions for streaming
+    assert len(results) == 2
+    assert results[0] == b"Streaming "
+    assert results[1] == b"response"
