@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -303,10 +304,16 @@ class AIWorkflowScope(models.Model):
                 "status": "error",
             }
 
+    def clean(self):
+        super().clean()
+        if self.location_regex and not self.course_id:
+            raise ValidationError({
+                "course_id": "Required when location_regex is set.",
+            })
+
     def save(self, *args, **kwargs):
         """Override save to clear cache on changes."""
-        if self.location_regex and not self.course_id:
-            raise ValueError("AIWorkflowScope with location_regex must also have a course_id.")
+        self.full_clean()
         super().save(*args, **kwargs)
 
 
