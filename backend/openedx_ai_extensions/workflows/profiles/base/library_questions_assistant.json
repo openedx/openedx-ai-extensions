@@ -11,7 +11,7 @@ Works only in studio UI and over the CMS service_variant.
     },
     "EducatorAssistantProcessor": {
       "function": "generate_quiz_questions",
-      "config": "default"
+      "provider": "default"
     }
   },
   "actuator_config": {

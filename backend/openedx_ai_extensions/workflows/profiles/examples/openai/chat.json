@@ -9,7 +9,7 @@ Test experience. Ask ChatGPT to chat having given it the current unit context
     },
     "LLMProcessor": {
       "function": "chat_with_context",
-      "config": "openai",
+      "provider": "openai",
       "stream": true
     },
     "SubmissionProcessor": {

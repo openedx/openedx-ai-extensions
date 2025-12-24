@@ -9,7 +9,7 @@ to retrieve context from the current unit and the course outline
     },
     "LLMProcessor": {
       "function": "answer_question",
-      "config": "anthropic",
+      "provider": "anthropic",
       "enabled_tools": [
         "get_context",
         "get_location_content",

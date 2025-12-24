@@ -9,7 +9,7 @@ Test experience. Ask claude to chat having given it the current unit context
     },
     "LLMProcessor": {
       "function": "chat_with_context",
-      "config": "anthropic"
+      "provider": "anthropic"
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",

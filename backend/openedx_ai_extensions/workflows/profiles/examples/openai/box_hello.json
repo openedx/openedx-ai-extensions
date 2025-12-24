@@ -8,7 +8,7 @@ Test experience. Ask ChatGPT to say which llm model is answering
     },
     "LLMProcessor": {
       "function": "greet_from_llm",
-      "config": "openai"
+      "provider": "openai"
     }
   },
   "actuator_config": {

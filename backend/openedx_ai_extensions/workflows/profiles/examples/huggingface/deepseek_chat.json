@@ -9,7 +9,7 @@ Test experience. Use a hosted DeepSeek to chat having given it the current unit 
     },
     "LLMProcessor": {
       "function": "chat_with_context",
-      "config": "deepseek"
+      "provider": "deepseek"
     },
     "SubmissionProcessor": {
       "function": "get_chat_history",

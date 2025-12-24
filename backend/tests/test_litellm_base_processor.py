@@ -73,12 +73,12 @@ def test_litellm_processor_initialization_basic(user):  # pylint: disable=redefi
     """
     config = {
         "LitellmProcessor": {
-            "config": "default",
+            "provider": "default",
         }
     }
     processor = LitellmProcessor(config=config, user_session=None)
 
-    assert processor.config == {"config": "default"}
+    assert processor.config == {"provider": "default"}
     assert processor.config_profile == "default"
     assert processor.provider == "openai"
     assert "model" in processor.extra_params
@@ -107,9 +107,9 @@ def test_litellm_processor_initialization_no_config(mock_settings):  # pylint: d
 @pytest.mark.django_db
 def test_litellm_processor_missing_config_profile_raises_error(mock_settings):  # pylint: disable=unused-argument
     """
-    Test that missing config profile raises KeyError.
+    Test that missing config profile raises ValueError when MODEL is not defined.
     """
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="MODEL must be defined"):
         LitellmProcessor(config=None, user_session=None)
 
 
@@ -121,7 +121,7 @@ def test_litellm_processor_missing_model_raises_error(mock_settings):  # pylint:
     """
     Test that missing MODEL key raises ValueError.
     """
-    with pytest.raises(ValueError, match="missing 'MODEL' setting"):
+    with pytest.raises(ValueError, match="MODEL must be defined"):
         LitellmProcessor(config=None, user_session=None)
 
 
@@ -135,7 +135,7 @@ def test_litellm_processor_invalid_model_format_raises_error(mock_settings):  # 
     """
     Test that invalid MODEL format (None) raises ValueError.
     """
-    with pytest.raises(ValueError, match="must be in the format 'provider/model_name'"):
+    with pytest.raises(ValueError, match="have the format 'provider/model_name'"):
         LitellmProcessor(config=None, user_session=None)
 
 
@@ -152,7 +152,7 @@ def test_litellm_processor_custom_config_profile(mock_settings):  # pylint: disa
     """
     config = {
         "LitellmProcessor": {
-            "config": "custom",
+            "provider": "custom",
         }
     }
     processor = LitellmProcessor(config=config, user_session=None)
@@ -304,6 +304,27 @@ def test_enabled_tools_nonexistent_function(mock_settings):  # pylint: disable=u
     assert "tools" in processor.extra_params
     assert len(processor.extra_params["tools"]) == 1
     assert processor.extra_params["tools"][0] == TOOLS_SCHEMA["roll_dice"]
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_enabled_tools_all_nonexistent_functions(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that when all enabled_tools are nonexistent, tools parameter is not added.
+    """
+    config = {
+        "LitellmProcessor": {
+            "enabled_tools": ["nonexistent_function1", "nonexistent_function2"],
+        }
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    # No tools should be added since all are nonexistent
+    assert "tools" not in processor.extra_params
 
 
 @patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
@@ -499,7 +520,7 @@ def test_integration_custom_profile_with_tools(user):  # pylint: disable=redefin
     """
     config = {
         "LitellmProcessor": {
-            "config": "production",
+            "provider": "production",
             "enabled_tools": ["roll_dice", "get_location_content"],
         }
     }
@@ -509,5 +530,160 @@ def test_integration_custom_profile_with_tools(user):  # pylint: disable=redefin
     assert processor.provider == "openai"
     assert processor.extra_params["model"] == "openai/gpt-4-turbo"
     assert processor.extra_params["temperature"] == 0.3
+    assert "tools" in processor.extra_params
+    assert len(processor.extra_params["tools"]) == 2
+
+
+# ============================================================================
+# Error Handling Tests
+# ============================================================================
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_unknown_profile_raises_error(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that using an unknown profile raises ValueError.
+    """
+    config = {
+        "LitellmProcessor": {
+            "provider": "nonexistent",
+        }
+    }
+    with pytest.raises(ValueError, match="Unknown AI_EXTENSIONS profile 'nonexistent'"):
+        LitellmProcessor(config=config, user_session=None)
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_non_string_provider_raises_error(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that using a non-string provider raises TypeError.
+    """
+    config = {
+        "LitellmProcessor": {
+            "provider": {"not": "a string"},
+        }
+    }
+    with pytest.raises(TypeError, match="`provider` must be a string"):
+        LitellmProcessor(config=config, user_session=None)
+
+
+# ============================================================================
+# Streaming with Tools Tests
+# ============================================================================
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_streaming_with_tools_disables_streaming(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that streaming is disabled when tools are enabled.
+    """
+    config = {
+        "LitellmProcessor": {
+            "stream": True,
+            "enabled_tools": ["roll_dice"],
+        }
+    }
+    with patch('openedx_ai_extensions.processors.litellm_base_processor.logger') as mock_logger:
+        processor = LitellmProcessor(config=config, user_session=None)
+
+        # Verify streaming was disabled
+        assert processor.stream is False
+
+        # Verify warning was logged
+        mock_logger.warning.assert_called_once_with(
+            "Streaming responses with tools is not supported; disabling streaming."
+        )
+
+
+# ============================================================================
+# MCP Configs Tests
+# ============================================================================
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@patch.object(settings, "AI_EXTENSIONS_MCP_CONFIGS", new_callable=lambda: {
+    "server1": {
+        "command": "python",
+        "args": ["server1.py"],
+    },
+    "server2": {
+        "command": "node",
+        "args": ["server2.js"],
+    }
+})
+@pytest.mark.django_db
+def test_mcp_configs_single_server(mock_mcp_configs, mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that MCP configs are properly configured with a single server.
+    """
+    config = {
+        "LitellmProcessor": {
+            "mcp_configs": ["server1"],
+        }
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    assert len(processor.mcp_configs) == 1
+    assert "server1" in processor.mcp_configs
+    assert processor.mcp_configs["server1"]["command"] == "python"
+
+    # Verify tools parameter was set
+    assert "tools" in processor.extra_params
+    assert len(processor.extra_params["tools"]) == 1
+    assert processor.extra_params["tools"][0]["type"] == "mcp"
+    assert processor.extra_params["tools"][0]["server_label"] == "server1"
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@patch.object(settings, "AI_EXTENSIONS_MCP_CONFIGS", new_callable=lambda: {
+    "server1": {
+        "command": "python",
+        "args": ["server1.py"],
+    },
+    "server2": {
+        "command": "node",
+        "args": ["server2.js"],
+    }
+})
+@pytest.mark.django_db
+def test_mcp_configs_multiple_servers(mock_mcp_configs, mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that MCP configs are properly configured with multiple servers.
+    """
+    config = {
+        "LitellmProcessor": {
+            "mcp_configs": ["server1", "server2"],
+        }
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    assert len(processor.mcp_configs) == 2
+    assert "server1" in processor.mcp_configs
+    assert "server2" in processor.mcp_configs
+
+    # Verify tools parameter was set
     assert "tools" in processor.extra_params
     assert len(processor.extra_params["tools"]) == 2

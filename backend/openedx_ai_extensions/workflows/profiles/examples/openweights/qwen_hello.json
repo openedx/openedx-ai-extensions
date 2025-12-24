@@ -11,7 +11,7 @@ See: https://gist.github.com/felipemontoya/509495d3fbaa696fa2b684880a8388da
     },
     "LLMProcessor": {
       "function": "greet_from_llm",
-      "config": "qwen25"
+      "provider": "qwen25"
     }
   },
   "actuator_config": {

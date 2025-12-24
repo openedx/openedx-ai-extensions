@@ -10,7 +10,7 @@ have it explain in a different with this prompt.
       "function": "get_location_content"
     },
     "LLMProcessor": {
-      "config": "default",
+      "provider": "default",
       "stream": true,
       "prompt": "\
 You are an educational assistant embedded in an online course. \
@@ -33,14 +33,14 @@ Output only the rephrased content. \
     "UIComponents": {
       "request": {
         "component": "AIRequestComponent",
-        "config": {
+        "provider": {
           "buttonText": "Rephrase",
           "customMessage": "Explain this but differently"
         }
       },
       "response": {
         "component": "AIResponseComponent",
-        "config": {
+        "provider": {
           "customMessage": "In other words"
         }
       }
