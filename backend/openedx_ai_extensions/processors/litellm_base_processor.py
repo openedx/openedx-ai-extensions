@@ -46,7 +46,7 @@ class LitellmProcessor:
             )
 
         self.provider = model.split("/")[0]
-        self.custom_prompt = self.config.get("prompt", None)
+        self.custom_prompt = self._load_prompt()
         self.stream = self.config.get("stream", False)
 
         enabled_tools = self.config.get("enabled_tools", [])
@@ -79,6 +79,30 @@ class LitellmProcessor:
                 }
                 for key, value in self.mcp_configs.items()
             ]
+
+    def _load_prompt(self):
+        """
+        Load prompt from PromptTemplate model or inline config.
+
+        Priority:
+        1. prompt_template: Load by slug or UUID (unified key)
+        2. prompt: Use inline prompt (backwards compatibility)
+        3. None: No custom prompt
+
+        Returns:
+            str or None: The prompt text
+        """
+        # pylint: disable=import-error,import-outside-toplevel
+        from openedx_ai_extensions.workflows.models import PromptTemplate
+
+        # Try loading from PromptTemplate (handles both slug and UUID)
+        template_id = self.config.get("prompt_template")
+        if template_id:
+            prompt = PromptTemplate.load_prompt(template_id)
+            if prompt:
+                return prompt
+        # Fall back to inline prompt (backwards compatibility)
+        return self.config.get("prompt")
 
     def process(self, *args, **kwargs):
         """Process based on configured function - must be implemented by subclasses"""
