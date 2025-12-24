@@ -22,14 +22,6 @@ Overview
 
 This plugin demonstrates how AI capabilities can be integrated into Open edX in a modular and extensible way, following the principle of "open for extension, closed for modification." It provides infrastructure for AI workflows while maintaining compliance with educational requirements and Open edX standards.
 
-**Key Features (planned for V1):**
-
-- Modular workflow-based architecture for AI processing
-- Support for multiple LLM providers via LiteLLM (OpenAI, Anthropic, local models)
-- Context-aware AI assistance examples integrated into the learning experience
-- Observable workflows with event analytics in aspects
-- Configuration-driven behavior without code changes
-
 
 Current Status
 **************
@@ -44,6 +36,11 @@ This is an exploratory project developed by edunext as part of FC-111 to investi
 - Frontend integration with Learning MFE via plugin slots
 - Basic content extraction from course unit
 - AI-powered content summarization
+- Modular workflow-based architecture for AI processing
+- Support for multiple LLM providers via LiteLLM (OpenAI, Anthropic, local models)
+- Context-aware AI assistance examples integrated into the learning experience
+- Observable workflows with event analytics in aspects
+- Configuration-driven behavior without code changes
 
 
 Installation
@@ -67,6 +64,39 @@ Install the plugin in your Open edX environment using the provided tutor plugin:
     tutor images build openedx
     tutor images build mfe
     tutor local launch
+
+
+
+Getting Started
+===============
+
+After installation, you need to configure the plugin with your AI provider and set up workflows. The configuration involves:
+
+1. **Provider Setup**: Configure authentication and model routing for your chosen AI service
+2. **Scope Configuration**: Define where AI workflows will be available (courses, locations)
+3. **Profile Configuration**: Define what the AI will do and what information it will access
+
+For detailed configuration instructions, see the `Configuration Guide <docs/quickstarts/configuration_guide.rst>`_.
+
+Quick Configuration Example
+----------------------------
+
+Add to your Tutor ``config.yml``:
+
+.. code-block:: yaml
+
+   AI_EXTENSIONS:
+     openai:
+       API_KEY: "sk-proj-your-api-key"
+       MODEL: "openai/gpt-4o-mini"
+
+   PLUGINS:
+     - openedx-ai-extensions
+
+Then configure scopes and profiles in the Django admin at ``/admin/openedx_ai_extensions/``.
+
+Usage
+=====
 
 
 
@@ -112,6 +142,7 @@ References
 - `Open edX Plugin Development <https://docs.openedx.org/en/latest/developers/references/plugin_reference.html>`_
 - `LiteLLM Documentation <https://docs.litellm.ai/>`_
 - `Architectural Decision Records (ADRs) <docs/decisions/>`_
+- `AI Extension WG Demo (before v1) <https://drive.google.com/file/d/1sUj2xoldYFAvPoDuxqwG0XbIundGD0u2/view>`_
 
 License
 *******
