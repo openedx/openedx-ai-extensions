@@ -9,8 +9,71 @@ from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from openedx_ai_extensions.models import PromptTemplate
 from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 from openedx_ai_extensions.workflows.template_utils import discover_templates, parse_json5_string
+
+
+@admin.register(PromptTemplate)
+class PromptTemplateAdmin(admin.ModelAdmin):
+    """
+    Admin interface for Prompt Templates - one big textbox for easy editing.
+    """
+
+    list_display = ('slug', 'body_preview', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('slug', 'body')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+    def get_fieldsets(self, request, obj=None):
+        """Return dynamic fieldsets with UUID example if editing existing object."""
+        if obj and obj.pk:
+            # Editing existing - show UUID example
+            identification_description = (
+                f'Slug is human-readable, ID is the stable UUID reference. <br/>'
+                f'Use in profile: <code>"prompt_template": "{obj.pk}"</code> or '
+                f'<code>"prompt_template": "{obj.slug}"</code>'
+            )
+        else:
+            # Creating new
+            identification_description = (
+                'Slug is human-readable, ID will be generated automatically.'
+            )
+
+        return (
+            ('Identification', {
+                'fields': ('slug', 'id'),
+                'description': format_html(identification_description)
+            }),
+            ('Prompt Content', {
+                'fields': ('body',),
+                'description': 'The prompt template text - edit in the big textbox below.'
+            }),
+            ('Timestamps', {
+                'fields': ('created_at', 'updated_at'),
+                'classes': ('collapse',)
+            }),
+        )
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        """Customize the form to use a large textarea for body."""
+        form = super().get_form(request, obj, change=change, **kwargs)
+        if 'body' in form.base_fields:
+            form.base_fields['body'].widget = forms.Textarea(attrs={
+                'rows': 25,
+                'cols': 120,
+                'class': 'vLargeTextField',
+                'style': 'font-family: monospace; font-size: 14px;'
+            })
+        return form
+
+    def body_preview(self, obj):
+        """Show truncated body text."""
+        if obj.body:
+            preview = obj.body[:80].replace('\n', ' ')
+            return preview + ('...' if len(obj.body) > 80 else '')
+        return '-'
+    body_preview.short_description = 'Prompt Preview'
 
 
 class AIWorkflowProfileAdminForm(forms.ModelForm):
