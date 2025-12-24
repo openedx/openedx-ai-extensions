@@ -92,8 +92,7 @@ class LitellmProcessor:
         Returns:
             str or None: The prompt text
         """
-        # pylint: disable=import-error,import-outside-toplevel
-        from openedx_ai_extensions.workflows.models import PromptTemplate
+        from openedx_ai_extensions.models import PromptTemplate  # pylint: disable=import-outside-toplevel
 
         # Try loading from PromptTemplate (handles both slug and UUID)
         template_id = self.config.get("prompt_template")

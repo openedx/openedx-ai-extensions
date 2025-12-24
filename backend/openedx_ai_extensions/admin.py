@@ -9,12 +9,8 @@ from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
-from openedx_ai_extensions.workflows.models import (
-    AIWorkflowProfile,
-    AIWorkflowScope,
-    AIWorkflowSession,
-    PromptTemplate,
-)
+from openedx_ai_extensions.models import PromptTemplate
+from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 from openedx_ai_extensions.workflows.template_utils import discover_templates, parse_json5_string
 
 
