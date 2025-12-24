@@ -24,6 +24,10 @@ aniso8601==10.0.1
     # via
     #   -r requirements/test.txt
     #   tincan
+annotated-doc==0.0.4
+    # via
+    #   -r requirements/test.txt
+    #   fastapi
 annotated-types==0.7.0
     # via
     #   -r requirements/test.txt
@@ -33,6 +37,7 @@ anyio==4.11.0
     #   -r requirements/test.txt
     #   httpx
     #   openai
+    #   starlette
 apache-libcloud==3.8.0
     # via
     #   -r requirements/test.txt
@@ -238,6 +243,8 @@ faker==25.8.0
     # via
     #   -r requirements/test.txt
     #   factory-boy
+fastapi==0.127.0
+    # via -r requirements/test.txt
 fastavro==1.12.1
     # via
     #   -r requirements/test.txt
@@ -366,6 +373,8 @@ openedx-filters==2.1.0
     # via
     #   -r requirements/test.txt
     #   edx-event-routing-backends
+orjson==3.11.5
+    # via -r requirements/test.txt
 packaging==25.0
     # via
     #   -r requirements/test.txt
@@ -404,6 +413,7 @@ pycparser==2.23
 pydantic==2.11.10
     # via
     #   -r requirements/test.txt
+    #   fastapi
     #   litellm
     #   openai
 pydantic-core==2.33.2
@@ -519,6 +529,10 @@ sqlparse==0.5.3
     # via
     #   -r requirements/test.txt
     #   django
+starlette==0.50.0
+    # via
+    #   -r requirements/test.txt
+    #   fastapi
 stevedore==5.4.1
     # via
     #   -r requirements/test.txt
@@ -556,11 +570,13 @@ typing-extensions==4.13.2
     #   beautifulsoup4
     #   edx-opaque-keys
     #   exceptiongroup
+    #   fastapi
     #   huggingface-hub
     #   openai
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via

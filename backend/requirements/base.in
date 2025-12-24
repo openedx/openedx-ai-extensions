@@ -14,3 +14,7 @@ beautifulsoup4
 jsonschema
 jsonmerge
 json5
+
+# Required by litellm for work with responses, issue: https://github.com/BerriAI/litellm/issues/18193
+fastapi
+orjson

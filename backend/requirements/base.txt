@@ -14,12 +14,15 @@ amqp==5.3.1
     # via kombu
 aniso8601==10.0.1
     # via tincan
+annotated-doc==0.0.4
+    # via fastapi
 annotated-types==0.7.0
     # via pydantic
 anyio==4.11.0
     # via
     #   httpx
     #   openai
+    #   starlette
 apache-libcloud==3.8.0
     # via edx-event-routing-backends
 asgiref==3.8.1
@@ -151,6 +154,8 @@ event-tracking==3.3.0
     #   edx-event-routing-backends
 exceptiongroup==1.3.1
     # via celery
+fastapi==0.127.0
+    # via -r requirements/base.in
 fastavro==1.12.1
     # via openedx-events
 fasteners==0.20
@@ -227,6 +232,8 @@ openedx-events==10.5.0
     # via event-tracking
 openedx-filters==2.1.0
     # via edx-event-routing-backends
+orjson==3.11.5
+    # via -r requirements/base.in
 packaging==25.0
     # via
     #   huggingface-hub
@@ -245,6 +252,7 @@ pycparser==2.23
     # via cffi
 pydantic==2.11.10
     # via
+    #   fastapi
     #   litellm
     #   openai
 pydantic-core==2.33.2
@@ -306,6 +314,8 @@ soupsieve==2.8
     # via beautifulsoup4
 sqlparse==0.5.3
     # via django
+starlette==0.50.0
+    # via fastapi
 stevedore==5.4.1
     # via
     #   code-annotations
@@ -330,11 +340,13 @@ typing-extensions==4.13.2
     #   beautifulsoup4
     #   edx-opaque-keys
     #   exceptiongroup
+    #   fastapi
     #   huggingface-hub
     #   openai
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
