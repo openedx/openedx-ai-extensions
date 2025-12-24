@@ -6,3 +6,4 @@ Quick Start
    :caption: Guides
 
    configuration_guide
+   usage_guide
