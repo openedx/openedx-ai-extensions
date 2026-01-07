@@ -13,6 +13,7 @@ import { AutoAwesome, Close } from '@openedx/paragon/icons';
 import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { callWorkflowService, prepareContextData } from '../services';
+import { NO_RESPONSE_MSG } from '../services/constants';
 import { WORKFLOW_ACTIONS } from '../constants';
 import messages from '../messages';
 
@@ -228,7 +229,7 @@ const AIEducatorLibraryAssistComponent = ({
       } else {
         // Immediate response
         const immediateResponse = data.response || data.message || data.content
-          || data.result || JSON.stringify(data, null, 2);
+          || data.result || NO_RESPONSE_MSG;
         setResponse(immediateResponse);
       }
 

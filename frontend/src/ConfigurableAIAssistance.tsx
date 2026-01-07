@@ -26,6 +26,7 @@ import {
 } from './components';
 import { PluginConfiguration } from './types';
 import { WORKFLOW_ACTIONS } from './constants';
+import { NO_RESPONSE_MSG } from './services/constants';
 
 import messages from './messages';
 
@@ -230,7 +231,7 @@ const ConfigurableAIAssistance = ({
       } else if (data.error) {
         throw new Error(data.error);
       } else {
-        setResponse(JSON.stringify(data, null, 2));
+        setResponse(NO_RESPONSE_MSG);
         setHasAsked(true);
       }
 

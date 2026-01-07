@@ -31,6 +31,7 @@ import {
 } from '../services';
 import { AIChatMessage, AIModelResponse, PluginContext } from '../types';
 import { WORKFLOW_ACTIONS } from '../constants';
+import { NO_RESPONSE_MSG } from '../services/constants';
 
 import messages from '../messages';
 import './sidebar.scss';
@@ -447,7 +448,7 @@ const AISidebarResponse = ({
         } else if (data.result) {
           aiResponse = data.result;
         } else {
-          aiResponse = JSON.stringify(data, null, 2);
+          aiResponse = NO_RESPONSE_MSG;
         }
 
         // Update the AI placeholder with the final response
