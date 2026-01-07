@@ -18,6 +18,7 @@ interface GetAIAssistanceButtonProps {
   requestMessage?: string;
   buttonText?: string;
 }
+import { NO_RESPONSE_MSG } from './services/constants';
 
 /**
  * Main AI Assistant Plugin Component
@@ -85,7 +86,7 @@ const GetAIAssistanceButton = ({
         throw new Error(data.error);
       } else {
         // If API returns something but in unexpected format, try to use it
-        setResponse(JSON.stringify(data, null, 2));
+        setResponse(NO_RESPONSE_MSG);
         setHasAsked(true);
       }
 
