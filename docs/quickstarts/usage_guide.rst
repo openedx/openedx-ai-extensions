@@ -34,7 +34,7 @@ Creating the Profile
 
       /admin/openedx_ai_extensions/aiworkflowprofile/add/
 
-   .. image:: /_static/screenshots/profile_create.png
+   .. image:: /docs/_static/screenshots/profile_create.png
       :alt: Create new profile interface
 
 2. Configure the profile:
@@ -51,7 +51,7 @@ Creating the Profile
    - **Base template**: The default configuration from the selected filepath
    - **Effective configuration**: The final configuration after applying any patches
 
-   .. image:: /_static/screenshots/profile_configuration_view.png
+   .. image:: /docs/_static/screenshots/profile_configuration_view.png
       :alt: Profile configuration view showing base template and effective configuration
 
 Creating the Scope
@@ -63,7 +63,7 @@ Creating the Scope
 
       /admin/openedx_ai_extensions/aiworkflowscope/add/
 
-   .. image:: /_static/screenshots/scope_create.png
+   .. image:: /docs/_static/screenshots/scope_create.png
       :alt: Create new scope interface
 
 2. Configure the scope:
@@ -80,10 +80,10 @@ Testing the Workflow
 
 Navigate to any course unit in the LMS. You should see the AI workflow interface available to learners.
 
-.. image:: /_static/screenshots/lms_summary_workflow_1.png
+.. image:: /docs/_static/screenshots/lms_summary_workflow_1.png
    :alt: Content summary workflow in LMS unit view
 
-.. image:: /_static/screenshots/lms_summary_workflow_2.png
+.. image:: /docs/_static/screenshots/lms_summary_workflow_2.png
    :alt: Response of the summary workflow in LMS
 
 Studio Example: Library Question Assistant
@@ -132,7 +132,7 @@ Testing the Workflow
 
 Navigate to a content library in Studio. You should see the AI assistant interface available to authors.
 
-.. image:: /_static/screenshots/studio_library_assistant.png
+.. image:: /docs/_static/screenshots/studio_library_assistant.png
    :alt: Library question assistant in Studio
 
 Advanced Configuration
@@ -247,7 +247,7 @@ Example Profile
 
 The plugin includes an example at ``base.custom_prompt`` demonstrating this approach.
 
-.. image:: /_static/screenshots/inline_prompt_patch.png
+.. image:: /docs/_static/screenshots/inline_prompt_patch.png
    :alt: Inline prompt configuration in profile patch
 
 Method 2: Prompt Templates (Recommended)
