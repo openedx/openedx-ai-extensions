@@ -16,7 +16,7 @@ Different AI workflows exhibit different interaction patterns (one-shot vs. conv
 Decision
 ********
 
-AI workflow executions will emit xAPI-compliant events using Open edX’s existing eventtracking and event-routing-backends infrastructure.
+AI workflow executions will emit xAPI-compliant events using the Open edX platform’s existing eventtracking and event-routing-backends infrastructure.
 
 * Events are emitted via `eventtracking.tracker.emit()` and transformed to xAPI by ERB when Aspects is installed.
 * Direct dependencies on `eventtracking` and `event-routing-backends` are used (no `edxapp_wrapper` abstraction).
