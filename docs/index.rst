@@ -6,7 +6,7 @@
 openedx_ai_extensions
 =====================
 
-A experimental plugin for Open edX designed to explore AI extensibility
+A experimental plugin for the Open edX platform designed to explore AI extensibility
 
 Contents:
 
