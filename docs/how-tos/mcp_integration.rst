@@ -2,7 +2,7 @@ Model Context Protocol (MCP) Integration
 =========================================
 
 .. warning::
-   **Important: OpenEdx AI Extensions acts as an MCP CLIENT only**
+   **Important: Open edX AI Extensions acts as an MCP CLIENT only**
    
    This application **does not run or host MCP servers**. It only connects to external MCP servers as a client.
    
@@ -13,13 +13,13 @@ Model Context Protocol (MCP) Integration
 Overview
 --------
 
-The Model Context Protocol (MCP) is an open standard that enables AI assistants to securely interact with external tools and data sources. OpenEdx AI Extensions integrates with MCP by acting as a **client** that can connect to external MCP servers, allowing your AI workflows to leverage custom tools and capabilities.
+The Model Context Protocol (MCP) is an open standard that enables AI assistants to securely interact with external tools and data sources. Open edX AI Extensions integrates with MCP by acting as a **client** that can connect to external MCP servers, allowing your AI workflows to leverage custom tools and capabilities.
 
 Key Concepts
 ~~~~~~~~~~~~
 
 - **MCP Server**: An external service that exposes tools and resources via the MCP protocol. You must deploy and manage these servers independently.
-- **MCP Client**: OpenEdx AI Extensions acts as a client, connecting to your MCP servers and making their tools available to AI workflows.
+- **MCP Client**: Open edX AI Extensions acts as a client, connecting to your MCP servers and making their tools available to AI workflows.
 - **MCP Tools**: Functions exposed by MCP servers that the AI model can call to perform specific operations (e.g., data retrieval, computations, integrations).
 
 Architecture
@@ -28,7 +28,7 @@ Architecture
 .. code-block:: text
 
     ┌────────────────────────────────────────────┐
-    │   OpenEdX AI Extensions                    │
+    │   Open edX AI Extensions                   │
     │   (MCP Client / Orchestrator)              │
     │                                            │
     │   ┌──────────────────────┐                 │

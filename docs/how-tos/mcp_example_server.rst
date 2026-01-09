@@ -131,7 +131,7 @@ Create a file named ``run_server.py``:
 Step 3: Expose the Server with ngrok
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Since MCP clients (including OpenEdx AI Extensions) need to access the server via a public URL, you must expose your local server using ngrok:
+Since MCP clients (including Open edX AI Extensions) need to access the server via a public URL, you must expose your local server using ngrok:
 
 .. code-block:: bash
 
@@ -157,7 +157,7 @@ Create a file named ``client_example.py`` to test your server:
     Example MCP client using LiteLLM
 
     This demonstrates how to connect to an MCP server and use its tools
-    from a language model. This is similar to how OpenEdx AI Extensions
+    from a language model. This is similar to how Open edX AI Extensions
     will interact with your MCP servers.
     """
     import asyncio
@@ -224,10 +224,10 @@ Follow these steps to test the complete MCP workflow:
 
        python client_example.py
 
-Testing with OpenEdx AI Extensions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Testing with Open edX AI Extensions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To integrate this example server with OpenEdx AI Extensions:
+To integrate this example server with Open edX AI Extensions:
 
 1. **Configure the MCP server** in your Django settings:
 
@@ -317,7 +317,7 @@ Remember:
 Further Reading
 ---------------
 
-- :doc:`mcp_integration` - Main MCP integration guide for OpenEdx AI Extensions
+- :doc:`mcp_integration` - Main MCP integration guide for Open edX AI Extensions
 - `FastMCP Documentation <https://github.com/jlowin/fastmcp>`_ - Complete FastMCP framework documentation
 - `MCP Specification <https://modelcontextprotocol.io/>`_ - Official Model Context Protocol specification
 
