@@ -16,6 +16,7 @@ from django.dispatch import receiver
 from django.utils.functional import cached_property
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
+from openedx_ai_extensions.workflows.orchestrators import BaseOrchestrator
 from openedx_ai_extensions.workflows.template_utils import (
     get_effective_config,
     parse_json5_string,
@@ -279,17 +280,17 @@ class AIWorkflowScope(models.Model):
 
         try:
             # Load the orchestrator for this workflow
-            from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
-
-            orchestrator_name = self.profile.orchestrator_class  # "DirectLLMResponse"
-            orchestrator_class = getattr(orchestrators, orchestrator_name)
-            orchestrator = orchestrator_class(workflow=self, user=user, context=running_context)
+            orchestrator = BaseOrchestrator.get_orchestrator(
+                workflow=self,
+                user=user,
+                context=running_context,
+            )
 
             self.action = action
 
             if not hasattr(orchestrator, action):
                 raise NotImplementedError(
-                    f"Orchestrator '{orchestrator_name}' does not implement action '{action}'"
+                    f"Orchestrator '{self.profile.orchestrator_class}' does not implement action '{action}'"
                 )
             result = getattr(orchestrator, action)(user_input)
 
