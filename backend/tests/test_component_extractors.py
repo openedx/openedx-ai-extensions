@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from bs4 import BeautifulSoup
 from django.conf import settings
 
-from openedx_ai_extensions.processors.component_extractors import (
+from openedx_ai_extensions.processors.openedx.utils.component_extractors import (
     _assemble_problem_text,
     _check_show_answer,
     _clean_noisy_tags,
