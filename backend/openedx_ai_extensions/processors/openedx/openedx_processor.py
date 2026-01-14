@@ -10,7 +10,7 @@ from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
 
 from openedx_ai_extensions.functions.decorators import llm_tool, register_instance
-from openedx_ai_extensions.processors.component_extractors import (
+from openedx_ai_extensions.processors.openedx.utils.component_extractors import (
     COMPONENT_EXTRACTORS,
     extract_generic_info,
     extract_problem_info,
