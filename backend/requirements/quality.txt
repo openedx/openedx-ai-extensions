@@ -263,6 +263,10 @@ fsspec==2025.9.0
     # via
     #   -r requirements/test.txt
     #   huggingface-hub
+grpcio==1.76.0
+    # via
+    #   -r requirements/test.txt
+    #   litellm
 h11==0.16.0
     # via
     #   -r requirements/test.txt
@@ -339,8 +343,9 @@ kombu==5.6.1
     # via
     #   -r requirements/test.txt
     #   celery
-litellm==1.78.2
-    # via -r requirements/test.txt
+litellm==1.80.16
+    # via
+    #   -r requirements/test.txt
 markupsafe==3.0.3
     # via
     #   -r requirements/test.txt
@@ -352,7 +357,7 @@ multidict==6.7.0
     #   -r requirements/test.txt
     #   aiohttp
     #   yarl
-openai==2.4.0
+openai==2.15.0
     # via
     #   -r requirements/test.txt
     #   litellm
@@ -556,6 +561,7 @@ typing-extensions==4.13.2
     #   beautifulsoup4
     #   edx-opaque-keys
     #   exceptiongroup
+    #   grpcio
     #   huggingface-hub
     #   openai
     #   pydantic
