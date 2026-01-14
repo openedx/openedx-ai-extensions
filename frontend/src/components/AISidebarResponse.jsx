@@ -20,6 +20,7 @@ import {
   prepareContextData,
   formatErrorMessage,
 } from '../services';
+import { NO_RESPONSE_MSG } from '../services/constants';
 
 /**
  * AI Sidebar Response Component
@@ -414,7 +415,7 @@ const AISidebarResponse = ({
         } else if (data.result) {
           aiResponse = data.result;
         } else {
-          aiResponse = JSON.stringify(data, null, 2);
+          aiResponse = NO_RESPONSE_MSG;
         }
 
         // Update the AI placeholder with the final response

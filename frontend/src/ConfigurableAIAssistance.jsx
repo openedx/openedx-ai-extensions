@@ -22,6 +22,7 @@ import {
   AIEducatorLibraryAssistComponent,
   AIEducatorLibraryResponseComponent,
 } from './components';
+import { NO_RESPONSE_MSG } from './services/constants';
 
 /**
  * Component Registry
@@ -177,7 +178,7 @@ const ConfigurableAIAssistance = ({
       } else if (data.error) {
         throw new Error(data.error);
       } else {
-        setResponse(JSON.stringify(data, null, 2));
+        setResponse(NO_RESPONSE_MSG);
         setHasAsked(true);
       }
 
