@@ -66,18 +66,20 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
             'location_id': str(session.location_id),
         }
 
-        # 3. Get orchestrator class and instantiate from current module's globals
+        # 3. Resolve and instantiate orchestrator via centralized factory
         orchestrator_name = session.profile.orchestrator_class
-        orchestrator_class = sys.modules[__name__].__dict__.get(orchestrator_name)
-        if not orchestrator_class:
-            error_msg = f"Orchestrator class '{orchestrator_name}' not found in module"
-            logger.error(f"Task {task_id}: {error_msg}")
-            raise AttributeError(error_msg)
-        orchestrator = orchestrator_class(
-            workflow=session.scope,
-            user=session.user,
-            context=context
-        )
+        try:
+            orchestrator = BaseOrchestrator.get_orchestrator(
+                workflow=session.scope,
+                user=session.user,
+                context=context,
+            )
+        except (AttributeError, TypeError) as exc:
+            logger.error(
+                f"Task {task_id}: Failed to resolve orchestrator: {exc}",
+                exc_info=True,
+            )
+            raise
 
         # 4. Validate action exists
         if not hasattr(orchestrator, action):
@@ -145,6 +147,49 @@ class BaseOrchestrator:
 
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
+
+    @classmethod
+    def get_orchestrator(cls, *, workflow, user, context):
+        """
+        Resolve and instantiate an orchestrator for the given workflow.
+
+        This factory method centralizes orchestrator lookup and validation.
+        It ensures that the resolved class exists and is a subclass of
+        BaseOrchestrator, providing a single, consistent entry point
+        for orchestrator creation across the codebase.
+
+        Args:
+            workflow: AIWorkflowScope instance that defines the workflow configuration.
+            user: User for whom the workflow is being executed.
+            context: Dictionary with runtime context (e.g. course_id, location_id).
+
+        Returns:
+            BaseOrchestrator: An instantiated orchestrator for the given workflow.
+
+        Raises:
+            AttributeError: If the configured orchestrator class cannot be found.
+            TypeError: If the resolved class is not a subclass of BaseOrchestrator.
+        """
+        orchestrator_name = workflow.profile.orchestrator_class
+
+        try:
+            module = sys.modules[__name__]
+            orchestrator_class = getattr(module, orchestrator_name)
+        except AttributeError as exc:
+            raise AttributeError(
+                f"Orchestrator class '{orchestrator_name}' not found"
+            ) from exc
+
+        if not issubclass(orchestrator_class, BaseOrchestrator):
+            raise TypeError(
+                f"{orchestrator_name} is not a subclass of BaseOrchestrator"
+            )
+
+        return orchestrator_class(
+            workflow=workflow,
+            user=user,
+            context=context,
+        )
 
 
 class MockResponse(BaseOrchestrator):
