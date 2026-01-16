@@ -1,0 +1,42 @@
+/* Base preview container */
+.ai-admin-preview {
+    background: var(--body-bg);
+    color: var(--body-fg);
+    border: 1px solid var(--hairline-color);
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+/* Code blocks */
+.ai-admin-preview pre {
+    background: transparent;
+    color: inherit;
+    font-family: monospace;
+    font-size: 12px;
+    margin: 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Toggle link */
+.ai-admin-toggle {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.ai-admin-toggle:hover {
+    text-decoration: underline;
+}
+
+/* Status blocks */
+.ai-admin-preview--success {
+    background: var(--message-success-bg);
+    color: var(--message-success-fg);
+}
+
+.ai-admin-preview--error {
+    background: var(--message-error-bg);
+    color: var(--message-error-fg);
+}
