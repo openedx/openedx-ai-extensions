@@ -6,19 +6,12 @@ import json
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
-from django.utils.html import format_html, escape
+from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 
 from openedx_ai_extensions.models import PromptTemplate
-from openedx_ai_extensions.workflows.models import (
-    AIWorkflowProfile,
-    AIWorkflowScope,
-    AIWorkflowSession,
-)
-from openedx_ai_extensions.workflows.template_utils import (
-    discover_templates,
-    parse_json5_string,
-)
+from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
+from openedx_ai_extensions.workflows.template_utils import discover_templates, parse_json5_string
 
 
 @admin.register(PromptTemplate)
@@ -127,7 +120,7 @@ class AIWorkflowProfileAdminForm(forms.ModelForm):
         # Validate JSON5 syntax
         try:
             parse_json5_string(content_patch_raw)
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except Exception as exc:
             raise ValidationError(f'Invalid JSON5 syntax: {exc}') from exc
 
         return content_patch_raw
@@ -185,7 +178,7 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
         if not obj.base_filepath:
             return '-'
 
-        from openedx_ai_extensions.workflows.template_utils import (
+        from openedx_ai_extensions.workflows.template_utils import (  # pylint: disable=import-outside-toplevel
             get_template_directories,
             is_safe_template_path,
         )
