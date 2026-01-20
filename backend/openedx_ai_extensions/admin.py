@@ -47,7 +47,7 @@ class PromptTemplateAdmin(admin.ModelAdmin):
             }),
             ('Prompt Content', {
                 'fields': ('body',),
-                'description': 'The prompt template text.',
+                'description': 'The prompt template text - edit in the big textbox below.',
             }),
             ('Timestamps', {
                 'fields': ('created_at', 'updated_at'),
@@ -105,8 +105,9 @@ class AIWorkflowProfileAdminForm(forms.ModelForm):
 
         # Add help text for JSON5 editor
         self.fields['content_patch'].help_text = (
-            'JSON5 Merge Patch (RFC 7386). Supports comments, trailing commas, '
-            'and unquoted keys. Validation results appear below.'
+            'JSON5 Merge Patch (RFC 7386) to override base template values. '
+            'Supports comments (//, /* */), trailing commas, and unquoted keys. '
+            'Validation results appear in the "Preview & Validation" section below.'
         )
 
     def clean_content_patch(self):
