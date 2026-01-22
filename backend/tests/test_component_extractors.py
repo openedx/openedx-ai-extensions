@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from bs4 import BeautifulSoup
 from django.conf import settings
 
-from openedx_ai_extensions.processors.component_extractors import (
+from openedx_ai_extensions.processors.openedx.utils.component_extractors import (
     _assemble_problem_text,
     _check_show_answer,
     _clean_noisy_tags,
@@ -110,7 +110,10 @@ def test_html_to_text_with_embeds():
 
 def test_html_to_text_invalid_html():
     """Test html_to_text returns raw HTML if parsing fails."""
-    with patch("openedx_ai_extensions.processors.component_extractors.BeautifulSoup", side_effect=Exception):
+    with patch(
+        "openedx_ai_extensions.processors.openedx.utils.component_extractors.BeautifulSoup",
+        side_effect=Exception,
+    ):
         assert html_to_text("<bad>") == "<bad>"
 
 
@@ -530,7 +533,7 @@ def test_process_problem_html_empty_input():
     assert _process_problem_html(None, False) == ""
 
 
-@patch("openedx_ai_extensions.processors.component_extractors.BeautifulSoup")
+@patch("openedx_ai_extensions.processors.openedx.utils.component_extractors.BeautifulSoup")
 def test_process_problem_html_exception_handling(mock_bs):
     """Test that if processing fails, raw HTML is returned."""
     # Force an exception during processing

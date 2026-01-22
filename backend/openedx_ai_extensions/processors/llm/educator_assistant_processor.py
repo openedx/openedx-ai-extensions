@@ -8,8 +8,8 @@ import os
 
 from litellm import completion
 
-from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
-from openedx_ai_extensions.processors.llm_providers import adapt_to_provider
+from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
+from openedx_ai_extensions.processors.llm.providers import adapt_to_provider
 
 logger = logging.getLogger(__name__)
 

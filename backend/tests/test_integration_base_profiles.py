@@ -131,7 +131,7 @@ def test_summary_profile_integration(
         final_chunk.usage = MagicMock(total_tokens=150)
         yield final_chunk
 
-    with patch("openedx_ai_extensions.processors.llm_processor.completion") as mock_completion, \
+    with patch("openedx_ai_extensions.processors.llm.llm_processor.completion") as mock_completion, \
          patch("openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process") as mock_openedx:
 
         mock_completion.return_value = mock_streaming_response()
@@ -378,7 +378,7 @@ def test_library_questions_assistant_profile_integration(
         }
 
         educator_path = (
-            "openedx_ai_extensions.processors.educator_assistant_processor."
+            "openedx_ai_extensions.processors.llm.educator_assistant_processor."
             "EducatorAssistantProcessor.process"
         )
         openedx_path = (
