@@ -11,6 +11,7 @@ from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
 from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor
+from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 
 User = get_user_model()
@@ -90,8 +91,9 @@ def llm_processor(user_session, settings):  # pylint: disable=redefined-outer-na
 
 class MockDelta:
     """Mock for the delta object in a streaming chunk."""
-    def __init__(self, content):
+    def __init__(self, content, tool_calls=None):
         self.content = content
+        self.tool_calls = tool_calls
 
 
 class MockChoice:
@@ -129,6 +131,26 @@ class MockChunk:
                     ]
                 )
             ]
+
+
+class MockUsage:
+    """Mock for usage statistics."""
+    def __init__(self, total_tokens=10):
+        self.total_tokens = total_tokens
+
+
+class MockStreamChunk:
+    """Mock for a streaming chunk."""
+    def __init__(self, content, is_delta=True):
+        self.usage = MockUsage(total_tokens=5)
+        self.delta = None
+        self.choices = []
+
+        if is_delta:
+            mock_delta = MockDelta(content)
+            self.choices = [MockChoice(delta=mock_delta)]
+            self.delta = mock_delta
+            self.response = Mock(id="stream-id-123")
 
 
 # ============================================================================
@@ -927,3 +949,114 @@ class TestExtractOutputItems:
 
         result = LLMProcessor._extract_output_items(resp)
         assert not result
+
+
+# ============================================================================
+# Streaming Tool Call Tests
+# ============================================================================
+
+class MockToolStreamChunk:
+    """
+    Helper for simulating tool call chunks in a stream.
+    Structure follows: chunk.choices[0].delta.tool_calls[...]
+    """
+
+    def __init__(self, index, tool_id=None, name=None, arguments=None):
+        self.usage = MockUsage(total_tokens=5)
+
+        # 1. Create the function mock
+        func_mock = Mock()
+        func_mock.name = name
+        func_mock.arguments = arguments
+
+        # 2. Create the tool_call mock
+        tool_call_mock = Mock()
+        tool_call_mock.index = index
+        tool_call_mock.id = tool_id
+        tool_call_mock.function = func_mock
+
+        # Construct the delta
+        delta = MockDelta(content=None, tool_calls=[tool_call_mock])
+
+        # Construct the choice
+        self.choices = [MockChoice(delta=delta)]
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm_processor.adapt_to_provider")
+def test_streaming_tool_execution_recursion(
+    mock_adapt, mock_completion, llm_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that streaming correctly handles tool calls:
+    1. Buffers tool call chunks.
+    2. Executes the tool.
+    3. Recursively calls completion with tool output.
+    4. Yields the final content chunks.
+    """
+    # 1. Setup
+    mock_adapt.side_effect = lambda provider, params, **kwargs: params
+
+    # Configure processor for streaming + custom function calling
+    llm_processor.config["function"] = "summarize_content"  # Uses _call_completion_wrapper
+    llm_processor.config["stream"] = True
+    llm_processor.stream = True
+    llm_processor.extra_params["tools"] = ["mock_tool"]  # Needs to pass check in init if strict, but mainly for logic
+
+    # 2. Define a Mock Tool
+    mock_tool_func = Mock(return_value="tool_result_value")
+
+    # Patch the global AVAILABLE_TOOLS to include our mock
+    with patch.dict(AVAILABLE_TOOLS, {"mock_tool": mock_tool_func}):
+        # 3. Define Stream Sequences
+
+        # Sequence 1: The Model decides to call "mock_tool" with args {"arg": "val"}
+        # Split into multiple chunks to test buffering logic
+        tool_chunks = [
+            # Chunk 1: ID and Name
+            MockToolStreamChunk(index=0, tool_id="call_123", name="mock_tool"),
+            # Chunk 2: Start of args
+            MockToolStreamChunk(index=0, arguments='{"arg":'),
+            # Chunk 3: End of args
+            MockToolStreamChunk(index=0, arguments=' "val"}'),
+        ]
+
+        # Sequence 2: The Model sees the tool result and generates final text
+        content_chunks = [
+            MockStreamChunk("Result "),
+            MockStreamChunk("is "),
+            MockStreamChunk("tool_result_value"),
+        ]
+
+        # Configure completion to return the first sequence, then the second
+        mock_completion.side_effect = [iter(tool_chunks), iter(content_chunks)]
+
+        # 4. Execute
+        generator = llm_processor.process(context="Ctx")
+        results = list(generator)
+
+        # 5. Assertions
+
+        # Check final output (byte encoded by _handle_streaming_completion)
+        assert b"Result " in results
+        assert b"is " in results
+        assert b"tool_result_value" in results
+
+        # Check Tool Execution
+        mock_tool_func.assert_called_once_with(arg="val")
+
+        # Check Recursion (completion called twice)
+        assert mock_completion.call_count == 2
+
+        # Verify second call included the tool output
+        second_call_kwargs = mock_completion.call_args_list[1][1]
+        messages = second_call_kwargs["messages"]
+
+        # Should have: System, (Context/User), Assistant(ToolCall), Tool(Result)
+        # Finding the tool message
+        tool_msg = next((m for m in messages if m.get("role") == "tool"), None)
+        assert tool_msg is not None
+        assert tool_msg["tool_call_id"] == "call_123"
+        assert tool_msg["content"] == "tool_result_value"
+        assert tool_msg["name"] == "mock_tool"

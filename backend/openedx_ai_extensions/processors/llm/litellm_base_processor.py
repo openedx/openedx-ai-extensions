@@ -60,10 +60,6 @@ class LitellmProcessor:
             if functions_schema_filtered:
                 self.extra_params["tools"] = functions_schema_filtered
 
-        if self.stream and "tools" in self.extra_params:
-            logger.warning("Streaming responses with tools is not supported; disabling streaming.")
-            self.stream = False
-
         self.mcp_configs = {}
         allowed_mcp_configs = self.config.get("mcp_configs", [])
         if allowed_mcp_configs:
