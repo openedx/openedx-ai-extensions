@@ -40,6 +40,8 @@ The plugin uses three main configuration concepts:
 Configuring Providers
 *********************
 
+.. _tutor-configure-providers:
+
 Using Tutor Configuration (Recommended)
 ========================================
 
