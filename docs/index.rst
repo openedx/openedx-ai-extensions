@@ -3,10 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-openedx_ai_extensions
-=====================
+Open edX AI Extensibility Framework
+===================================
 
-A experimental plugin for the Open edX platform designed to explore AI extensibility
+A experimental plugin for the Open edX platform designed to explore AI extensibility,
+available `on GitHub <https://github.com/openedx/openedx-ai-extensions>`_.
 
 Contents:
 
