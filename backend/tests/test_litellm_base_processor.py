@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from openedx_ai_extensions.functions.decorators import TOOLS_SCHEMA
-from openedx_ai_extensions.processors.litellm_base_processor import LitellmProcessor
+from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
 
 User = get_user_model()
 
@@ -598,7 +598,7 @@ def test_streaming_with_tools_disables_streaming(mock_settings):  # pylint: disa
             "enabled_tools": ["roll_dice"],
         }
     }
-    with patch('openedx_ai_extensions.processors.litellm_base_processor.logger') as mock_logger:
+    with patch('openedx_ai_extensions.processors.llm.litellm_base_processor.logger') as mock_logger:
         processor = LitellmProcessor(config=config, user_session=None)
 
         # Verify streaming was disabled

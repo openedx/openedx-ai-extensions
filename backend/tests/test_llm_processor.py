@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
-from openedx_ai_extensions.processors.llm_processor import LLMProcessor
+from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor
 from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 
 User = get_user_model()
@@ -135,7 +135,7 @@ class MockChunk:
 # ============================================================================
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.responses")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
 def test_chat_with_context_initialization_non_stream(
     mock_responses, llm_processor, user_session  # pylint: disable=redefined-outer-name
 ):
@@ -168,7 +168,7 @@ def test_chat_with_context_initialization_non_stream(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.responses")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
 def test_chat_with_context_continuation_non_stream(
     mock_responses, llm_processor, user_session  # pylint: disable=redefined-outer-name
 ):
@@ -199,7 +199,7 @@ def test_chat_with_context_continuation_non_stream(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_summarize_content_non_stream(
     mock_completion, llm_processor  # pylint: disable=redefined-outer-name
 ):
@@ -223,7 +223,7 @@ def test_summarize_content_non_stream(
 # ============================================================================
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.responses")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
 def test_chat_with_context_streaming(
     mock_responses, llm_processor  # pylint: disable=redefined-outer-name
 ):
@@ -260,7 +260,7 @@ def test_chat_with_context_streaming(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_summarize_content_streaming(
     mock_completion, llm_processor  # pylint: disable=redefined-outer-name
 ):
@@ -297,7 +297,7 @@ def test_summarize_content_streaming(
 # ============================================================================
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.responses")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
 def test_chat_error_handling(
     mock_responses, llm_processor  # pylint: disable=redefined-outer-name
 ):
@@ -314,7 +314,7 @@ def test_chat_error_handling(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_completion_error_handling_stream(
     mock_completion, llm_processor  # pylint: disable=redefined-outer-name
 ):
@@ -488,7 +488,7 @@ def test_mcp_configs_empty_allowed_list(user_session, settings):  # pylint: disa
 # ============================================================================
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_call_with_custom_prompt_function(
     mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
 ):
@@ -529,7 +529,7 @@ def test_call_with_custom_prompt_function(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_call_with_custom_prompt_when_function_not_specified(
     mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
 ):
@@ -563,7 +563,7 @@ def test_call_with_custom_prompt_when_function_not_specified(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_custom_prompt_overrides_system_role_in_completion(
     mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
 ):
@@ -602,7 +602,7 @@ def test_custom_prompt_overrides_system_role_in_completion(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.responses")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
 def test_custom_prompt_in_chat_with_context(
     mock_responses, user_session, settings  # pylint: disable=redefined-outer-name
 ):
@@ -645,7 +645,7 @@ def test_custom_prompt_in_chat_with_context(
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_call_with_custom_prompt_streaming(
     mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
 ):
