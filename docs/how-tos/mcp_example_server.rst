@@ -1,3 +1,5 @@
+.. _local MCP:
+
 Setting Up a Local MCP Example Server
 ======================================
 
