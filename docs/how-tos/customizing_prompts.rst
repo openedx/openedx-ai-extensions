@@ -5,6 +5,10 @@ Customizing Prompts
 
 You can customize the AI's instructions and behavior by modifying prompts at the profile level.
 
+.. note::
+
+   This guide assumes the reader has access to the Django Admin interface for their Open edX site.
+
 Method 1: Inline Prompt in Profile Patch
 =========================================
 
@@ -54,6 +58,13 @@ Method 2: Prompt Templates (Recommended)
 =========================================
 
 For reusable prompts, create a prompt template that can be referenced by multiple profiles.
+
+.. tip::
+   Using prompt templates makes it easier to:
+
+   - Reuse prompts across multiple profiles
+   - Update prompts without modifying profile configurations
+   - Maintain a library of tested, effective prompts
 
 Creating a Prompt Template
 ---------------------------
@@ -107,9 +118,10 @@ Or using the slug:
      }
    }
 
-.. tip::
-   Using prompt templates makes it easier to:
 
-   - Reuse prompts across multiple profiles
-   - Update prompts without modifying profile configurations
-   - Maintain a library of tested, effective prompts
+
+.. seealso::
+
+  :ref:`qs config`
+
+  :ref:`qs-usage`
