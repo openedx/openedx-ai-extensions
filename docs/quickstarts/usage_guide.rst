@@ -99,7 +99,9 @@ Navigate to any course unit in the LMS. You should see the AI workflow interface
 Studio Example: Library Question Assistant
 *******************************************
 
-This example creates an AI assistant for content authors working with content libraries in Studio.
+This example creates an AI assistant for content authors working with courses in Studio.
+
+When viewed from a specific unit in a course, this assistant allows content authors to use an AI workflow to create multiple answer questions from the context of the viewed unit. Created problems are stored in a content library.
 
 Creating the Profile
 ====================
@@ -130,13 +132,9 @@ Creating the Scope
 
 2. Configure the scope:
 
-   .. admonition:: TODO
-
-      Does "course ID" and "Location regex" make sense in the Studio scope?
-
    - **Service variant**: Select ``CMS - Studio``
-   - **Course ID**: Leave empty (applies to all content libraries)
-   - **Location regex**: Leave empty (applies to all locations)
+   - **Course ID**: Leave empty (applies to all courses in Studio), or :ref:`target specific courses <target-specific-courses>`
+   - **Location regex**: Leave empty - there is no targeting locations in the Studio context
    - **Profile**: Select the profile you just created
 
 3. Click :guilabel:`Save`
@@ -144,7 +142,7 @@ Creating the Scope
 Testing the Workflow
 =====================
 
-Navigate to a content library in Studio. You should see the AI assistant interface available to authors.
+Navigate to a course in Studio. You should see the AI assistant interface available to authors in the right sidebar of the Studio course.
 
 .. image:: /_static/screenshots/studio_library_assistant.png
    :alt: Library question assistant in Studio
