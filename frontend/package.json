@@ -14,7 +14,8 @@
     "build": "make build",
     "lint": "fedx-scripts eslint --ext .js --ext .jsx .",
     "lint:fix": "fedx-scripts eslint --fix --ext .js --ext .jsx .",
-    "test": "fedx-scripts jest --coverage --passWithNoTests"
+    "test": "fedx-scripts jest --coverage --passWithNoTests",
+    "types": "tsc --noEmit"
   },
   "author": "Open edX Community",
   "license": "Apache-2.0",
