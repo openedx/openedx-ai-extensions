@@ -1,5 +1,6 @@
 import { getConfig } from '@edx/frontend-platform';
 import { PluginContext } from '../types';
+import { ENDPOINT_TYPES, EndpointType } from '../constants';
 
 /**
  * Extract course ID from current URL
@@ -66,7 +67,7 @@ export const generateRequestId = (): string => {
  * @param endpoint - Endpoint URL to validate
  * @returns True if endpoint is valid, false otherwise
  */
-export const validateEndpoint = (endpoint: string): boolean => {
+export const validateEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKFLOWS): boolean => {
   try {
     new URL(endpoint, window.location.origin);
     return true;
@@ -78,10 +79,12 @@ export const validateEndpoint = (endpoint: string): boolean => {
 /**
  * Get default API endpoint based on environment
  * Uses LMS_BASE_URL or STUDIO_BASE_URL from config
- * @param endpoint - Endpoint type ('workflows' or 'config')
+ * @param endpoint - Endpoint type ('workflows' or 'profile')
  * @returns Full endpoint URL
  */
-export const getDefaultEndpoint = (endpoint = 'workflows'): string => {
+
+
+export const getDefaultEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKFLOWS): string => {
   const config = getConfig();
   let baseUrl = config.LMS_BASE_URL as string;
   if (['authoring'].includes(config.APP_ID)) {
