@@ -170,7 +170,7 @@ Ollama Configuration Example
 vLLM Configuration Example
 --------------------------
 
-TBD
+See the `vLLM project website <https://vllm.ai/>`_ or their `GitHub project page <https://github.com/vllm-project/vllm>`_ for more information on setting up vLLM.
 
 Troubleshooting
 ***************
