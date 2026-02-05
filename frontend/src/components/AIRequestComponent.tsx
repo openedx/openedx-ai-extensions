@@ -1,5 +1,4 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 import { Button, Spinner } from '@openedx/paragon';
 import { Send } from '@openedx/paragon/icons';
 
@@ -7,6 +6,17 @@ import { Send } from '@openedx/paragon/icons';
  * AI Request Component
  * Handles the initial request interface and loading state
  */
+
+
+interface AIRequestComponentProps {
+  isLoading: boolean;
+  hasAsked: boolean;
+  onAskAI: () => void;
+  customMessage?: string;
+  buttonText?: string;
+  disabled: boolean;
+};
+
 const AIRequestComponent = ({
   isLoading,
   hasAsked,
@@ -14,7 +24,7 @@ const AIRequestComponent = ({
   customMessage = 'Get personalized AI assistance for this learning unit',
   buttonText = 'Ask AI',
   disabled = false,
-}) => {
+}: AIRequestComponentProps) => {
   // Don't render if already asked or currently loading
   if (hasAsked && !isLoading) {
     return null;
@@ -65,21 +75,6 @@ const AIRequestComponent = ({
       )}
     </div>
   );
-};
-
-AIRequestComponent.propTypes = {
-  isLoading: PropTypes.bool.isRequired,
-  hasAsked: PropTypes.bool.isRequired,
-  onAskAI: PropTypes.func.isRequired,
-  customMessage: PropTypes.string,
-  buttonText: PropTypes.string,
-  disabled: PropTypes.bool,
-};
-
-AIRequestComponent.defaultProps = {
-  customMessage: 'Need help understanding this content?',
-  buttonText: 'Get AI Assistance',
-  disabled: false,
 };
 
 export default AIRequestComponent;

@@ -1,6 +1,6 @@
 export interface PluginContext {
-  courseId: string | null;
-  locationId: string | null;
+  courseId?: string | null;
+  locationId?: string | null;
 }
 
 export interface UiComponent {
@@ -21,3 +21,19 @@ export interface ErrorResponse {
   status: number;
   timestamp: string;
 };
+
+type MessageType = 'user' | 'ai' | 'error';
+
+interface Message {
+  content: string;
+  timestamp: string;
+}
+
+export  interface AIChatMessage extends Message {
+  type: MessageType;
+  originalIndex?: number;
+}
+
+export interface AIModelResponse extends Message {
+  role: 'user' | 'assistant';
+}

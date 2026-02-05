@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
+import { logError } from '@edx/frontend-platform/logging';
 import {
   Button,
   Alert,
@@ -20,11 +20,25 @@ import {
   prepareContextData,
   formatErrorMessage,
 } from '../services';
+import { AIChatMessage, AIModelResponse, PluginContext } from '../types';
+import { WORKFLOW_ACTIONS } from '../constants';
 
 /**
  * AI Sidebar Response Component
  * Displays AI responses in a floating right sidebar
  */
+
+interface AISidebarResponseProps {
+  response: string;
+  error: string;
+  isLoading: boolean;
+  onClear: () => void;
+  onError: (errorMsg: string) => void;
+  showActions?: boolean;
+  customMessage?: string;
+  contextData?: PluginContext;
+};
+
 const AISidebarResponse = ({
   response,
   error,
@@ -34,16 +48,18 @@ const AISidebarResponse = ({
   showActions = true,
   customMessage,
   contextData = {},
-}) => {
+}: AISidebarResponseProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
+  const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
-  const chatEndRef = useRef(null);
-  const chatContainerRef = useRef(null);
-  const textareaRef = useRef(null);
+ 
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   const initialResponseAdded = useRef(false);
   const hasScrolledToBottom = useRef(false);
   const isLoadingOlderMessages = useRef(false);
@@ -59,7 +75,7 @@ const AISidebarResponse = ({
       return;
     }
 
-    let parsedData = null;
+    let parsedData;
     let isJson = false;
 
     try {
@@ -74,7 +90,7 @@ const AISidebarResponse = ({
     // --- SCENARIO 1: JSON with message history ---
     if (isJson) {
       if (!initialResponseAdded.current) {
-        let rawMessages = [];
+        let rawMessages: AIModelResponse[] = [];
 
         if (parsedData.messages && Array.isArray(parsedData.messages)) {
           rawMessages = parsedData.messages;
@@ -86,7 +102,7 @@ const AISidebarResponse = ({
         }
 
         // Formatting
-        let formattedMessages = rawMessages.map((msg, index) => ({
+        let formattedMessages: AIChatMessage[] = rawMessages.map((msg, index) => ({
           type: msg.role === 'user' ? 'user' : 'ai',
           content: msg.content,
           timestamp: msg.timestamp || new Date().toISOString(),
@@ -107,18 +123,16 @@ const AISidebarResponse = ({
             return dateA - dateB;
           }
           // Tie-breaker: original index from backend array
-          return a.originalIndex - b.originalIndex;
+          return (a?.originalIndex || 0) - (b?.originalIndex || 0);
         });
 
         setChatMessages(formattedMessages);
         setIsOpen(true);
         initialResponseAdded.current = true;
       }
-    // eslint-disable-next-line brace-style
-    }
 
-    // --- SCENARIO 2: Simple text (Streaming) ---
-    else {
+      // --- SCENARIO 2: Simple text (Streaming) ---
+    } else {
       setIsOpen(true);
 
       initialResponseAdded.current = true;
@@ -183,14 +197,13 @@ const AISidebarResponse = ({
       // Make API call
       await callWorkflowService({
         context: preparedContext,
-        action: 'clear_session',
         payload: {
+          action: WORKFLOW_ACTIONS.CLEAR_SESSION,
           requestId: `ai-request-${Date.now()}`,
         },
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[AISidebarResponse] Clear session error:', err);
+      logError('[AISidebarResponse] Clear session error:', err);
     }
   };
 
@@ -223,9 +236,9 @@ const AISidebarResponse = ({
       // Pass current message count as user input
       const data = await callWorkflowService({
         context: preparedContext,
-        action: 'lazy_load_chat_history',
         userInput: JSON.stringify({ current_messages: currentMessageCount }),
         payload: {
+          action: WORKFLOW_ACTIONS.LAZY_LOAD_CHAT_HISTORY,
           requestId: `ai-request-${Date.now()}`,
         },
       });
@@ -239,13 +252,13 @@ const AISidebarResponse = ({
       }
 
       // Extract messages from response
-      const messages = parsed.messages || [];
+      const messages: AIModelResponse[] = parsed.messages || [];
 
       // Format older messages
-      const olderMessages = (Array.isArray(messages) ? messages : []).map((msg) => ({
+      const olderMessages: AIChatMessage[] = (Array.isArray(messages) ? messages : []).map((msg) => ({
         type: msg.role === 'user' ? 'user' : 'ai',
         content: msg.content,
-        timestamp: new Date().toISOString(),
+        timestamp: msg.timestamp || new Date().toISOString(),
       }));
 
       // Only prepend if we got new messages
@@ -344,10 +357,10 @@ const AISidebarResponse = ({
     }
 
     const userMessage = followUpQuestion.trim();
-    const aiPlaceholder = {
+    const aiPlaceholder: AIChatMessage = {
       type: 'ai',
       content: '',
-      timestamp: null,
+      timestamp: '',
     };
 
     setChatMessages(prev => [...prev, {
@@ -373,9 +386,9 @@ const AISidebarResponse = ({
       // Make API call
       const data = await callWorkflowService({
         context: preparedContext,
-        action: 'run',
         userInput: userMessage,
         payload: {
+          action: WORKFLOW_ACTIONS.RUN,
           requestId: `ai-request-${Date.now()}`,
         },
         onStreamChunk: (chunk) => {
@@ -432,8 +445,7 @@ const AISidebarResponse = ({
         });
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[AISidebarResponse] Follow-up error:', err);
+      logError('[AISidebarResponse] Follow-up error:', err);
       const userFriendlyError = formatErrorMessage(err);
       // Add error message to chat
       setChatMessages(prev => [...prev, {
@@ -715,7 +727,7 @@ const AISidebarResponse = ({
                 placeholder="Type your follow-up question..."
                 value={followUpQuestion}
                 onChange={handleTextareaChange}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 disabled={isLoading || isSendingFollowUp}
                 rows={textareaRows}
                 style={{
@@ -755,28 +767,6 @@ const AISidebarResponse = ({
       </div>
     </>
   );
-};
-
-AISidebarResponse.propTypes = {
-  response: PropTypes.string,
-  error: PropTypes.string,
-  isLoading: PropTypes.bool,
-  onClear: PropTypes.func,
-  onError: PropTypes.func,
-  showActions: PropTypes.bool,
-  customMessage: PropTypes.string,
-  contextData: PropTypes.shape({}),
-};
-
-AISidebarResponse.defaultProps = {
-  response: null,
-  error: null,
-  isLoading: false,
-  onClear: null,
-  onError: null,
-  showActions: true,
-  customMessage: 'AI Assistant Response',
-  contextData: {},
 };
 
 export default AISidebarResponse;

@@ -41,15 +41,15 @@ export const extractLocationIdFromUrl = (): string | null => {
 export const prepareContextData = ({
   courseId = null,
   locationId = null,
-}: PluginContext): Record<string, string> => {
+}: PluginContext): PluginContext => {
   const resolvedLocationId = locationId || extractLocationIdFromUrl();
   const resolvedCourseId = courseId || extractCourseIdFromUrl();
-  const contextData: Record<string, any> = {
+  const contextData: PluginContext = {
     locationId: resolvedLocationId,
     courseId: resolvedCourseId,
   };
 
-  return Object.fromEntries(Object.entries(contextData).filter(([, value]) => value != null)) as Record<string, string>;
+  return Object.fromEntries(Object.entries(contextData).filter(([, value]) => value != null)) as PluginContext;
 };
 
 /**

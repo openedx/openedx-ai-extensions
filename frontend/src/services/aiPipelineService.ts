@@ -2,7 +2,7 @@
  * AI Assistant Service Module
  * Main workflow service for streaming API calls with timeout support
  */
-import { snakeCaseObject } from '@edx/frontend-platform';
+import { camelCaseObject, snakeCaseObject } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { logError } from '@edx/frontend-platform/logging';
 import {
@@ -14,9 +14,9 @@ import { DEFAULT_CHUNK_RATE_LIMIT_MS, ENDPOINT_TYPES, EndpointType, WorkflowActi
 
 interface Payload {
   action: WorkflowActionType;
-  timestamp: string;
+  timestamp?: string;
   requestId?: string;
-  userInput?: string;
+  userInput?: string | Record<string, any>;
   [key: string]: any;
 }
 
@@ -79,7 +79,7 @@ export const callWorkflowService = async ({
       responseType: 'stream',
       adapter: 'fetch',
       signal: controller.signal as AbortSignal,
-    } as any);
+    } as RequestInit);
 
     const contentType = (response.headers && (response.headers['content-type'] || response.headers['Content-Type'])) || '';
     const isJson = String(contentType).toLowerCase().includes('application/json');
@@ -130,7 +130,7 @@ export const callWorkflowService = async ({
       try {
         const jsonResult = JSON.parse(fullAccumulatedText);
         if (response.status >= 400) throw new Error(jsonResult.error || 'AI Service Error');
-        return jsonResult as WorkflowServiceResult;
+        return camelCaseObject(jsonResult) as WorkflowServiceResult;
       } catch (e: any) {
         if (e && e.message && e.message !== 'Unexpected end of JSON input') throw e;
         // parse failed

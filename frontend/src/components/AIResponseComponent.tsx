@@ -1,5 +1,4 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
 import { Button, Alert, Collapsible } from '@openedx/paragon';
 import {
@@ -11,14 +10,23 @@ import {
  * AI Response Component
  * Handles display and interaction with AI responses
  */
+
+interface AIResponseComponentProps {
+  response?: string;
+  error?: string;
+  isLoading?: boolean;
+  onClear?: () => void;
+  onError?: (error: string) => void;
+  customMessage?: string;
+};
 const AIResponseComponent = ({
   response,
   error,
   isLoading,
   onClear,
   onError,
-  customMessage,
-}) => {
+  customMessage = 'AI Assistant Response',
+}: AIResponseComponentProps) => {
   // Don't render if no response or error
   if (!response && !error) {
     return null;
@@ -89,24 +97,6 @@ const AIResponseComponent = ({
       )}
     </div>
   );
-};
-
-AIResponseComponent.propTypes = {
-  response: PropTypes.string,
-  error: PropTypes.string,
-  isLoading: PropTypes.bool,
-  onClear: PropTypes.func,
-  onError: PropTypes.func,
-  customMessage: PropTypes.string,
-};
-
-AIResponseComponent.defaultProps = {
-  response: null,
-  error: null,
-  isLoading: false,
-  onClear: null,
-  onError: null,
-  customMessage: 'AI Assistant Response',
 };
 
 export default AIResponseComponent;

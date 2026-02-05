@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import PropTypes from 'prop-types';
 
 // Import service modules
 import {
@@ -13,22 +12,28 @@ import {
   AIRequestComponent,
   AIResponseComponent,
 } from './components';
+import { WORKFLOW_ACTIONS } from './constants';
+
+interface GetAIAssistanceButtonProps {
+  requestMessage?: string;
+  buttonText?: string;
+}
 
 /**
  * Main AI Assistant Plugin Component
  * Orchestrates the AI assistance flow using modular components
  */
 const GetAIAssistanceButton = ({
-  requestMessage,
-  buttonText,
+  requestMessage = 'Need help understanding this content?',
+  buttonText = 'Get AI Assistance',
   ...props
-}) => {
+}: GetAIAssistanceButtonProps) => {
   // Core state management
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState('');
   const [error, setError] = useState('');
   const [hasAsked, setHasAsked] = useState(false);
-  const [requestId, setRequestId] = useState(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
 
   /**
    * Handle AI assistant request
@@ -51,9 +56,9 @@ const GetAIAssistanceButton = ({
       // Make API call with flexible parameters
       const data = await callWorkflowService({
         context: contextData,
-        action: 'simple_button_assistance',
         userInput: requestMessage || 'Provide learning assistance for this content',
         payload: {
+          action: WORKFLOW_ACTIONS.SIMPLE_BUTTON_ASSISTANCE,
           requestId: `ai-request-${Date.now()}`,
         },
         onStreamChunk: (chunk) => {
@@ -141,7 +146,6 @@ const GetAIAssistanceButton = ({
         response={response}
         error={error}
         isLoading={isLoading}
-        onAskAgain={handleAskAI}
         onClear={handleReset}
         onError={handleClearError}
       />
@@ -159,16 +163,6 @@ const GetAIAssistanceButton = ({
       )}
     </div>
   );
-};
-
-GetAIAssistanceButton.propTypes = {
-  requestMessage: PropTypes.string,
-  buttonText: PropTypes.string,
-};
-
-GetAIAssistanceButton.defaultProps = {
-  requestMessage: 'Need help understanding this content?',
-  buttonText: 'Get AI Assistance',
 };
 
 export default GetAIAssistanceButton;
