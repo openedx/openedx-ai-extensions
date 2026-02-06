@@ -29,7 +29,7 @@ interface Message {
   timestamp: string;
 }
 
-export  interface AIChatMessage extends Message {
+export interface AIChatMessage extends Message {
   type: MessageType;
   originalIndex?: number;
 }
