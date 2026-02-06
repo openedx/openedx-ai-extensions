@@ -132,6 +132,24 @@ class AIWorkflowProfile(models.Model):
             return {}
         return self.config.get("processor_config", {})
 
+    def clean(self):
+        """Validate the effective configuration before saving."""
+        super().clean()
+        effective_config = get_effective_config(self.base_filepath, self.content_patch_dict)
+        if effective_config is not None:
+            is_valid, errors = validate_workflow_config(effective_config)
+            if not is_valid:
+                raise ValidationError({
+                    "content_patch": errors,
+                })
+
+    def save(self, *args, **kwargs):
+        """Override save to validate and clear cached config."""
+        self.full_clean()
+        # Invalidate cached_property so it's recomputed after save
+        self.__dict__.pop("config", None)
+        super().save(*args, **kwargs)
+
 
 class AIWorkflowScope(models.Model):
     """

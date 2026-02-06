@@ -962,3 +962,78 @@ class TestWorkflowSchema(TestCase):
         # Both must be objects
         self.assertEqual(ui_components_props["properties"]["request"]["type"], "object")
         self.assertEqual(ui_components_props["properties"]["response"]["type"], "object")
+
+
+class TestAdminFormPromptTemplateValidation(TestCase):
+    """Tests that the Admin form blocks saving when prompt_template references are invalid."""
+
+    def setUp(self):
+        """Set up a temp directory with a valid base template."""
+        self.tmpdir = tempfile.mkdtemp()
+        self.temp_path = Path(self.tmpdir)
+
+        base_template = self.temp_path / "base_valid.json"
+        base_template.write_text('''{
+            "schema_version": "1.0",
+            "orchestrator_class": "DirectLLMResponse",
+            "processor_config": {
+                "LLMProcessor": {"provider": "default"}
+            },
+            "actuator_config": {
+                "UIComponents": {
+                    "request": {"component": "AIRequestComponent"},
+                    "response": {"component": "AIResponseComponent"}
+                }
+            }
+        }''')
+
+    def tearDown(self):
+        """Clean up temporary directory."""
+        shutil.rmtree(self.tmpdir)
+
+    def test_admin_form_rejects_nonexistent_prompt_template(self):
+        """Test that the admin form raises ValidationError for nonexistent prompt_template."""
+        from openedx_ai_extensions.admin import AIWorkflowProfileAdminForm  # pylint: disable=import-outside-toplevel
+
+        form_data = {
+            'slug': 'test-profile',
+            'base_filepath': 'base_valid.json',
+            'content_patch': '{"processor_config": {"LLMProcessor": {"prompt_template": "no-existe"}}}',
+        }
+
+        with override_settings(WORKFLOW_TEMPLATE_DIRS=[self.tmpdir]):
+            form = AIWorkflowProfileAdminForm(data=form_data)
+            self.assertFalse(form.is_valid())
+            # The error should mention the nonexistent prompt template
+            all_errors = str(form.errors)
+            self.assertIn("no-existe", all_errors)
+
+    def test_admin_form_accepts_existing_prompt_template(self):
+        """Test that the admin form accepts a valid prompt_template reference."""
+        from openedx_ai_extensions.admin import AIWorkflowProfileAdminForm  # pylint: disable=import-outside-toplevel
+
+        PromptTemplate.objects.create(slug="valid-admin-template", body="A real prompt.")
+
+        form_data = {
+            'slug': 'test-profile-valid',
+            'base_filepath': 'base_valid.json',
+            'content_patch': '{"processor_config": {"LLMProcessor": {"prompt_template": "valid-admin-template"}}}',
+        }
+
+        with override_settings(WORKFLOW_TEMPLATE_DIRS=[self.tmpdir]):
+            form = AIWorkflowProfileAdminForm(data=form_data)
+            self.assertTrue(form.is_valid(), f"Form errors: {form.errors}")
+
+    def test_admin_form_accepts_no_prompt_template(self):
+        """Test that the admin form accepts config without prompt_template."""
+        from openedx_ai_extensions.admin import AIWorkflowProfileAdminForm  # pylint: disable=import-outside-toplevel
+
+        form_data = {
+            'slug': 'test-profile-no-pt',
+            'base_filepath': 'base_valid.json',
+            'content_patch': '',
+        }
+
+        with override_settings(WORKFLOW_TEMPLATE_DIRS=[self.tmpdir]):
+            form = AIWorkflowProfileAdminForm(data=form_data)
+            self.assertTrue(form.is_valid(), f"Form errors: {form.errors}")

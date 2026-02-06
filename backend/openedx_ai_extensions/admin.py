@@ -11,7 +11,12 @@ from django.utils.safestring import mark_safe
 
 from openedx_ai_extensions.models import PromptTemplate
 from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
-from openedx_ai_extensions.workflows.template_utils import discover_templates, parse_json5_string
+from openedx_ai_extensions.workflows.template_utils import (
+    discover_templates,
+    get_effective_config,
+    parse_json5_string,
+    validate_workflow_config,
+)
 
 
 @admin.register(PromptTemplate)
@@ -125,6 +130,39 @@ class AIWorkflowProfileAdminForm(forms.ModelForm):
             raise ValidationError(f'Invalid JSON5 syntax: {exc}') from exc
 
         return content_patch_raw
+
+    def clean(self):
+        """Validate the effective configuration after merging base template with patch."""
+        cleaned_data = super().clean()
+
+        base_filepath = cleaned_data.get('base_filepath')
+        content_patch_raw = cleaned_data.get('content_patch', '')
+
+        if not base_filepath:
+            return cleaned_data
+
+        # Parse the content patch
+        content_patch = {}
+        if content_patch_raw and content_patch_raw.strip():
+            try:
+                content_patch = parse_json5_string(content_patch_raw)
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Already caught in clean_content_patch
+                return cleaned_data
+
+        # Get effective config and validate it
+        effective_config = get_effective_config(base_filepath, content_patch)
+        if effective_config is None:
+            return cleaned_data
+
+        is_valid, errors = validate_workflow_config(effective_config)
+        if not is_valid:
+            raise ValidationError(
+                'Effective configuration is invalid: %(errors)s',
+                params={'errors': '; '.join(errors)},
+            )
+
+        return cleaned_data
 
 
 @admin.register(AIWorkflowProfile)
