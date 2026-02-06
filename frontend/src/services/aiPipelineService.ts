@@ -10,7 +10,9 @@ import {
   getDefaultEndpoint,
 } from './utils';
 import { PluginContext } from '../types';
-import { DEFAULT_CHUNK_RATE_LIMIT_MS, ENDPOINT_TYPES, EndpointType, WorkflowActionType } from '../constants';
+import {
+  DEFAULT_CHUNK_RATE_LIMIT_MS, ENDPOINT_TYPES, EndpointType, WorkflowActionType,
+} from '../constants';
 
 interface Payload {
   action: WorkflowActionType;
@@ -64,7 +66,7 @@ export const callWorkflowService = async ({
     apiEndpoint += `?${params.toString()}`;
   }
 
-  if (userInput) requestPayload.userInput = userInput;
+  if (userInput) { requestPayload.userInput = userInput; }
 
   const controller = new AbortController();
   let timeoutId: number | undefined;
@@ -104,7 +106,9 @@ export const callWorkflowService = async ({
     };
 
     // Stream consume loop
+    // eslint-disable-next-line no-constant-condition
     while (true) {
+      // eslint-disable-next-line no-await-in-loop
       const { done, value } = await reader.read();
       if (done) { streamingComplete = true; break; }
       const chunkText = decoder.decode(value, { stream: true });
@@ -122,17 +126,18 @@ export const callWorkflowService = async ({
 
     // Wait for queue to empty
     while (chunkQueue.length > 0) {
-      await new Promise((resolve) => setTimeout(resolve, chunkRate));
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise<void>((resolve) => { setTimeout(resolve, chunkRate); });
     }
 
     // PROCESSING COMPLETE
     if (isJson) {
       try {
         const jsonResult = JSON.parse(fullAccumulatedText);
-        if (response.status >= 400) throw new Error(jsonResult.error || 'AI Service Error');
+        if (response.status >= 400) { throw new Error(jsonResult.error || 'AI Service Error'); }
         return camelCaseObject(jsonResult) as WorkflowServiceResult;
       } catch (e: any) {
-        if (e && e.message && e.message !== 'Unexpected end of JSON input') throw e;
+        if (e && e.message && e.message !== 'Unexpected end of JSON input') { throw e; }
         // parse failed
         logError('Failed to parse AI response:', e);
         throw new Error('Invalid response format from AI service');
@@ -153,6 +158,6 @@ export const callWorkflowService = async ({
     logError('Workflow Service Error:', error);
     throw error;
   } finally {
-    if (timeoutId) window.clearTimeout(timeoutId);
+    if (timeoutId) { window.clearTimeout(timeoutId); }
   }
 };

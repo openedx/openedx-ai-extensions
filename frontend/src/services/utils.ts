@@ -24,8 +24,8 @@ export const extractLocationIdFromUrl = (): string | null => {
     const pathMatch = window.location.pathname.match(/unit\/([^/]+)/);
     const StudioPathMatch = window.location.pathname.match(/(block-v1:[^/]*type@vertical[^/]*)/);
 
-    if (pathMatch) return pathMatch[0];
-    if (StudioPathMatch) return StudioPathMatch[0];
+    if (pathMatch) { return pathMatch[0]; }
+    if (StudioPathMatch) { return StudioPathMatch[0]; }
     return null;
   } catch {
     return null;
@@ -69,8 +69,8 @@ export const generateRequestId = (): string => {
  */
 export const validateEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKFLOWS): boolean => {
   try {
-    new URL(endpoint, window.location.origin);
-    return true;
+    const url = new URL(endpoint, window.location.origin);
+    return !!url;
   } catch (_) {
     return false;
   }
@@ -82,7 +82,6 @@ export const validateEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKFLO
  * @param endpoint - Endpoint type ('workflows' or 'profile')
  * @returns Full endpoint URL
  */
-
 
 export const getDefaultEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKFLOWS): string => {
   const config = getConfig();
@@ -101,10 +100,10 @@ export const getDefaultEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKF
  */
 export const formatErrorMessage = (error: Error | any): string => {
   const errorMessage = (error && error.message) ? String(error.message) : String(error || 'Unknown error occurred');
-  if (errorMessage.includes('fetch')) return 'Unable to connect to AI service. Please check your connection.';
-  if (errorMessage.includes('404')) return 'AI service not available. Please contact support.';
-  if (errorMessage.includes('500')) return 'AI service temporarily unavailable. Please try again later.';
-  if (errorMessage.includes('timeout')) return 'Request timed out. The AI service may be busy, please try again.';
+  if (errorMessage.includes('fetch')) { return 'Unable to connect to AI service. Please check your connection.'; }
+  if (errorMessage.includes('404')) { return 'AI service not available. Please contact support.'; }
+  if (errorMessage.includes('500')) { return 'AI service temporarily unavailable. Please try again later.'; }
+  if (errorMessage.includes('timeout')) { return 'Request timed out. The AI service may be busy, please try again.'; }
   return 'Failed to get AI assistance. Please try again.';
 };
 

@@ -7,7 +7,6 @@ import { Send } from '@openedx/paragon/icons';
  * Handles the initial request interface and loading state
  */
 
-
 interface AIRequestComponentProps {
   isLoading: boolean;
   hasAsked: boolean;
@@ -15,7 +14,7 @@ interface AIRequestComponentProps {
   customMessage?: string;
   buttonText?: string;
   disabled: boolean;
-};
+}
 
 const AIRequestComponent = ({
   isLoading,

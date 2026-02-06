@@ -39,7 +39,7 @@ interface AIEducatorLibraryResponseComponentProps {
   titleText?: string;
   hyperlinkText?: string;
   contextData?: PluginContext;
-};
+}
 
 const AIEducatorLibraryResponseComponent = ({
   response,
@@ -52,7 +52,6 @@ const AIEducatorLibraryResponseComponent = ({
   hyperlinkText = 'View content ›',
   contextData = {},
 }: AIEducatorLibraryResponseComponentProps) => {
-  
   // Polling state
   const [isPolling, setIsPolling] = useState(false);
   const [pollingMessage, setPollingMessage] = useState('');
@@ -121,7 +120,7 @@ const AIEducatorLibraryResponseComponent = ({
           action: WORKFLOW_ACTIONS.GET_RUN_STATUS,
           requestId: `ai-poll-${Date.now()}`,
           courseId: taskData.courseId,
-          taskId : taskData.taskId,
+          taskId: taskData.taskId,
         },
       });
 

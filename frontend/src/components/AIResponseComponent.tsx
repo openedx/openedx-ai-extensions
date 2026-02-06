@@ -18,7 +18,7 @@ interface AIResponseComponentProps {
   onClear?: () => void;
   onError?: (error: string) => void;
   customMessage?: string;
-};
+}
 const AIResponseComponent = ({
   response,
   error,

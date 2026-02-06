@@ -237,11 +237,11 @@ const AIEducatorLibraryAssistComponent = ({
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Error generating library questions:', err);
-      
+
       // Type guard for error
-      const error = err instanceof Error ? err : new Error(String(err));
+      const submitError = err instanceof Error ? err : new Error(String(err));
       const errorMessage = (err as any)?.response?.data?.error
-        || error.message
+        || submitError.message
         || 'Failed to generate questions. Please try again.';
       setError(errorMessage);
 

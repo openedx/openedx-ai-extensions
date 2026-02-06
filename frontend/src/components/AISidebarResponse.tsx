@@ -37,7 +37,7 @@ interface AISidebarResponseProps {
   showActions?: boolean;
   customMessage?: string;
   contextData?: PluginContext;
-};
+}
 
 const AISidebarResponse = ({
   response,
@@ -55,7 +55,7 @@ const AISidebarResponse = ({
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
- 
+
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);

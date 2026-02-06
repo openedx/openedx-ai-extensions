@@ -14,13 +14,13 @@ export interface PluginConfiguration {
   metadata?: {
     [key: string]: any;
   };
-};
+}
 
 export interface ErrorResponse {
   error: string;
   status: number;
   timestamp: string;
-};
+}
 
 type MessageType = 'user' | 'ai' | 'error';
 

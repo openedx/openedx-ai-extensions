@@ -18,7 +18,7 @@ interface Configuration {
   status?: string;
   courseId?: string | null;
   uiComponents?: PluginConfiguration;
-};
+}
 
 /**
  * Fetch configuration from API
@@ -28,9 +28,9 @@ export const fetchConfiguration = async (
     contextData,
     configEndpoint = null,
     signal = null,
-  }: FetchConfigurationParams
+  }: FetchConfigurationParams,
 ): Promise<PluginConfiguration | null> => {
-  if (!configEndpoint) return null;
+  if (!configEndpoint) { return null; }
 
   const params = new URLSearchParams();
   if (contextData) {
@@ -43,7 +43,7 @@ export const fetchConfiguration = async (
     signal,
   });
 
-  const componentConfig: Configuration = camelCaseObject(data)
+  const componentConfig: Configuration = camelCaseObject(data);
 
   // Handle no_config status - return null to hide components
   if (componentConfig && data.status === ProfileStatus.NO_CONFIG) {

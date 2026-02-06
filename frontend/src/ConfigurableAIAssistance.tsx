@@ -49,7 +49,7 @@ interface ConfigurableAIAssistanceProps {
   fallbackConfig?: PluginConfiguration | null;
   onConfigLoad?: (config: PluginConfiguration) => void;
   onConfigError?: (error) => void;
-};
+}
 
 const ConfigurableAIAssistance = ({
   fallbackConfig = null,
@@ -101,19 +101,19 @@ const ConfigurableAIAssistance = ({
         }
       } catch (err) {
         // Type guard for error
-        const error = err instanceof Error ? err : new Error(String(err));
+        const configErr = err instanceof Error ? err : new Error(String(err));
 
         // Ignore aborted requests
-        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        if (configErr.name === 'AbortError' || configErr.message?.includes('aborted')) {
           return;
         }
 
         // Only update state if this is still the latest request
         if (currentRequestId === requestIdRef.current) {
           // eslint-disable-next-line no-console
-          console.error('[ConfigurableAIAssistance] Configuration error:', error);
+          console.error('[ConfigurableAIAssistance] Configuration error:', configErr);
 
-          setConfigError(error.message);
+          setConfigError(configErr.message);
 
           if (fallbackConfig) {
             setConfig(fallbackConfig);
