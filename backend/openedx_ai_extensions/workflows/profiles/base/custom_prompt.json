@@ -33,14 +33,14 @@ Output only the rephrased content. \
     "UIComponents": {
       "request": {
         "component": "AIRequestComponent",
-        "provider": {
+        "config": {
           "buttonText": "Rephrase",
           "customMessage": "Explain this but differently"
         }
       },
       "response": {
         "component": "AIResponseComponent",
-        "provider": {
+        "config": {
           "customMessage": "In other words"
         }
       }
