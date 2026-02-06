@@ -19,6 +19,19 @@ from subprocess import check_call
 
 from django import setup as django_setup
 
+sys.path.insert(0, os.path.abspath('..'))  # Points to project root
+
+
+# -- Project information -----------------------------------------------------
+
+project = 'Open edX AI Extensions Framework'
+copyright = '2026, Open edX Community'
+author = 'Open edX Community'
+project_title = f"{project}"
+documentation_title = f"{project}"
+
+# The full version, including alpha/beta/rc tags
+release = 'latest'
 
 autodoc_mock_imports = [
     "submissions",
@@ -43,7 +56,7 @@ def get_version(*file_paths):
 
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(REPO_ROOT)
+sys.path.insert(0, REPO_ROOT)
 
 VERSION = get_version('../backend/openedx_ai_extensions', '__init__.py')
 # Configure Django for autodoc usage
@@ -95,13 +108,6 @@ source_suffix = '.rst'
 
 # The top level toctree document.
 top_level_doc = 'index'
-
-# General information about the project.
-project = 'openedx_ai_extensions'
-copyright = f'{datetime.now().year}, Felipe Montoya <edunext>.'  # pylint: disable=redefined-builtin
-author = 'Felipe Montoya <edunext>.'
-project_title = 'openedx_ai_extensions'
-documentation_title = f"{project_title}"
 
 # Set display_github to False if you don't want "edit on Github" button
 html_context = {

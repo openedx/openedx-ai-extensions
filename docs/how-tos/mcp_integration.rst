@@ -1,3 +1,5 @@
+.. _MCP integration:
+
 Model Context Protocol (MCP) Integration
 =========================================
 
