@@ -313,6 +313,9 @@ def _validate_semantics(config: dict) -> list[str]:
             if not isinstance(processor_value, dict):
                 errors.append(f"processor_config.{processor_name} must be an object")
 
+        # Validate that prompt_template references exist in the database
+        errors.extend(_validate_prompt_templates(processor_config))
+
     # Check actuator_config structure (required by schema 1.0)
     actuator_config = config.get("actuator_config", {})
     if not isinstance(actuator_config, dict):
@@ -331,6 +334,41 @@ def _validate_semantics(config: dict) -> list[str]:
                 response = ui_components.get("response")
                 if response is not None and not isinstance(response, dict):
                     errors.append("actuator_config.UIComponents.response must be an object")
+
+    return errors
+
+
+def _validate_prompt_templates(processor_config: dict) -> list[str]:
+    """
+    Validate that all prompt_template references in processor configs exist in the database.
+
+    Checks each processor's configuration for a ``prompt_template`` field
+    and verifies that the referenced PromptTemplate exists (by slug or UUID).
+
+    Args:
+        processor_config: The processor_config dict from the workflow configuration.
+
+    Returns:
+        List of error messages for any missing prompt templates.
+    """
+    from openedx_ai_extensions.models import PromptTemplate  # pylint: disable=import-outside-toplevel
+
+    errors = []
+
+    for processor_name, processor_value in processor_config.items():
+        if not isinstance(processor_value, dict):
+            continue
+
+        template_id = processor_value.get("prompt_template")
+        if not template_id:
+            continue
+
+        prompt = PromptTemplate.load_prompt(template_id)
+        if prompt is None:
+            errors.append(
+                f"processor_config.{processor_name}.prompt_template: "
+                f"PromptTemplate '{template_id}' does not exist"
+            )
 
     return errors
 
