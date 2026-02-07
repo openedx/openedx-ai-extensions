@@ -1,7 +1,7 @@
 import React, {
   useState, useEffect, useRef, useCallback,
 } from 'react';
-import PropTypes from 'prop-types';
+import { logError } from '@edx/frontend-platform/logging';
 import { Spinner, Alert } from '@openedx/paragon';
 
 // Import services
@@ -22,6 +22,8 @@ import {
   AIEducatorLibraryAssistComponent,
   AIEducatorLibraryResponseComponent,
 } from './components';
+import { PluginConfiguration } from './types';
+import { WORKFLOW_ACTIONS } from './constants';
 
 /**
  * Component Registry
@@ -42,16 +44,23 @@ const COMPONENT_REGISTRY = {
  * AIRequestComponent and AIResponseComponent with configuration.
  * Manages state and orchestrates the AI interaction flow.
  */
+
+interface ConfigurableAIAssistanceProps {
+  fallbackConfig?: PluginConfiguration | null;
+  onConfigLoad?: (config: PluginConfiguration) => void;
+  onConfigError?: (error) => void;
+}
+
 const ConfigurableAIAssistance = ({
-  fallbackConfig,
+  fallbackConfig = null,
   onConfigLoad,
   onConfigError,
   ...additionalProps
-}) => {
+}: ConfigurableAIAssistanceProps) => {
   // Configuration state
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [configError, setConfigError] = useState(null);
-  const [config, setConfig] = useState(null);
+  const [configError, setConfigError] = useState<null | string>(null);
+  const [config, setConfig] = useState<PluginConfiguration | null>(null);
 
   // AI interaction state
   const [isLoading, setIsLoading] = useState(false);
@@ -86,22 +95,25 @@ const ConfigurableAIAssistance = ({
         if (currentRequestId === requestIdRef.current) {
           setConfig(fetchedConfig);
 
-          if (onConfigLoad) {
+          if (onConfigLoad && fetchedConfig) {
             onConfigLoad(fetchedConfig);
           }
         }
       } catch (err) {
+        // Type guard for error
+        const configErr = err instanceof Error ? err : new Error(String(err));
+
         // Ignore aborted requests
-        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        if (configErr.name === 'AbortError' || configErr.message?.includes('aborted')) {
           return;
         }
 
         // Only update state if this is still the latest request
         if (currentRequestId === requestIdRef.current) {
           // eslint-disable-next-line no-console
-          console.error('[ConfigurableAIAssistance] Configuration error:', err);
+          console.error('[ConfigurableAIAssistance] Configuration error:', configErr);
 
-          setConfigError(err.message);
+          setConfigError(configErr.message);
 
           if (fallbackConfig) {
             setConfig(fallbackConfig);
@@ -141,17 +153,17 @@ const ConfigurableAIAssistance = ({
         ...additionalProps,
       });
 
-      const requestMessage = config?.config?.customMessage
-        || config?.config?.requestMessage
+      const requestMessage = config?.request.config?.customMessage
+        || config?.request.config?.requestMessage
         || null;
 
       let buffer = '';
       // Make API call
       const data = await callWorkflowService({
         context: contextData,
-        action: 'run',
         userInput: requestMessage,
         payload: {
+          action: WORKFLOW_ACTIONS.RUN,
           requestId: `ai-request-${Date.now()}`,
         },
         onStreamChunk: (chunk) => {
@@ -183,8 +195,7 @@ const ConfigurableAIAssistance = ({
 
       setHasAsked(true);
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[ConfigurableAIAssistance] AI Assistant Error:', err);
+      logError('[ConfigurableAIAssistance] AI Assistant Error:', err);
       const userFriendlyError = formatErrorMessage(err);
       setError(userFriendlyError);
     } finally {
@@ -329,21 +340,6 @@ const ConfigurableAIAssistance = ({
   }
 
   return null;
-};
-
-ConfigurableAIAssistance.propTypes = {
-  fallbackConfig: PropTypes.shape({
-    component: PropTypes.string.isRequired,
-    config: PropTypes.shape({}),
-  }),
-  onConfigLoad: PropTypes.func,
-  onConfigError: PropTypes.func,
-};
-
-ConfigurableAIAssistance.defaultProps = {
-  fallbackConfig: null,
-  onConfigLoad: null,
-  onConfigError: null,
 };
 
 export default ConfigurableAIAssistance;

@@ -1,12 +1,14 @@
 import React, {
   useState, useEffect, useRef, useCallback, useMemo,
 } from 'react';
-import PropTypes from 'prop-types';
+import { logError } from '@edx/frontend-platform/logging';
 import {
   Button, Alert, Card, Spinner,
 } from '@openedx/paragon';
 import { Warning } from '@openedx/paragon/icons';
 import { prepareContextData, callWorkflowService } from '../services';
+import { PluginContext } from '../types';
+import { WORKFLOW_ACTIONS } from '../constants';
 
 // Polling configuration
 const POLLING_INTERVALS = {
@@ -26,26 +28,39 @@ const MS_TO_MINUTES = 60000; // Milliseconds in a minute
  * Handles display and interaction with AI responses
  * Manages polling for async tasks
  */
+
+interface AIEducatorLibraryResponseComponentProps {
+  response?: string;
+  error?: string;
+  isLoading?: boolean;
+  onClear?: () => void;
+  onError?: (error: any) => void;
+  customMessage?: string;
+  titleText?: string;
+  hyperlinkText?: string;
+  contextData?: PluginContext;
+}
+
 const AIEducatorLibraryResponseComponent = ({
   response,
   error,
-  isLoading,
+  isLoading = false,
   onClear,
   onError,
-  customMessage,
-  titleText,
-  hyperlinkText,
-  contextData,
-}) => {
+  customMessage = 'Question generation success.',
+  titleText = 'AI Assistant',
+  hyperlinkText = 'View content ›',
+  contextData = {},
+}: AIEducatorLibraryResponseComponentProps) => {
   // Polling state
   const [isPolling, setIsPolling] = useState(false);
   const [pollingMessage, setPollingMessage] = useState('');
   const [finalResponse, setFinalResponse] = useState('');
   const [pollingError, setPollingError] = useState('');
-  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
-  const pollingIntervalRef = useRef(null);
-  const pollingStartTimeRef = useRef(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingStartTimeRef = useRef<number | null>(null);
 
   /**
    * Stop the polling interval if active
@@ -80,7 +95,7 @@ const AIEducatorLibraryResponseComponent = ({
     if (!response) { return null; }
     try {
       const parsed = JSON.parse(response);
-      if (parsed.status === 'processing' && parsed.task_id) {
+      if (parsed.status === 'processing' && parsed.taskId) {
         return parsed;
       }
     } catch (e) {
@@ -101,11 +116,11 @@ const AIEducatorLibraryResponseComponent = ({
 
       const data = await callWorkflowService({
         context: contextPayload,
-        action: 'get_run_status',
         payload: {
+          action: WORKFLOW_ACTIONS.GET_RUN_STATUS,
           requestId: `ai-poll-${Date.now()}`,
           courseId: taskData.courseId,
-          task_id: taskData.task_id,
+          taskId: taskData.taskId,
         },
       });
 
@@ -127,8 +142,7 @@ const AIEducatorLibraryResponseComponent = ({
         }
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error polling task status:', err);
+      logError('Error polling task status:', err);
       // Don't stop polling on single error
     }
   }, [stopPolling]);
@@ -148,6 +162,9 @@ const AIEducatorLibraryResponseComponent = ({
 
     let pollCount = 0;
     pollingIntervalRef.current = setInterval(() => {
+      if (pollingStartTimeRef.current === null) {
+        return;
+      }
       const elapsedMinutes = (Date.now() - pollingStartTimeRef.current) / MS_TO_MINUTES;
       pollCount += 1;
 
@@ -198,7 +215,7 @@ const AIEducatorLibraryResponseComponent = ({
    * Cancel the currently running async task
    */
   const handleCancelRun = useCallback(async () => {
-    if (!asyncTask?.task_id) { return; }
+    if (!asyncTask?.taskId) { return; }
 
     try {
       await callWorkflowService({
@@ -207,16 +224,15 @@ const AIEducatorLibraryResponseComponent = ({
           courseId: asyncTask.courseId,
           locationId: asyncTask.locationId,
         }),
-        action: 'cancel_run',
         payload: {
+          action: WORKFLOW_ACTIONS.CANCEL_RUN,
           requestId: `ai-cancel-${Date.now()}`,
           courseId: asyncTask.courseId,
-          task_id: asyncTask.task_id,
+          taskId: asyncTask.taskId,
         },
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[AIResponse] Cancel run error:', err);
+      logError('[AIResponse] Cancel run error:', err);
     }
   }, [asyncTask, contextData]);
 
@@ -227,14 +243,13 @@ const AIEducatorLibraryResponseComponent = ({
     try {
       await callWorkflowService({
         context: prepareContextData(contextData),
-        action: 'clear_session',
         payload: {
+          action: WORKFLOW_ACTIONS.CLEAR_SESSION,
           requestId: `ai-request-${Date.now()}`,
         },
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[AIResponse] Clear session error:', err);
+      logError('[AIResponse] Clear session error:', err);
     }
   }, [contextData]);
 
@@ -367,30 +382,6 @@ const AIEducatorLibraryResponseComponent = ({
       </Card.Section>
     </Card>
   );
-};
-
-AIEducatorLibraryResponseComponent.propTypes = {
-  response: PropTypes.string,
-  error: PropTypes.string,
-  isLoading: PropTypes.bool,
-  onClear: PropTypes.func,
-  onError: PropTypes.func,
-  customMessage: PropTypes.string,
-  titleText: PropTypes.string,
-  hyperlinkText: PropTypes.string,
-  contextData: PropTypes.shape({}),
-};
-
-AIEducatorLibraryResponseComponent.defaultProps = {
-  response: null,
-  error: null,
-  isLoading: false,
-  onClear: null,
-  onError: null,
-  customMessage: 'Question generation success.',
-  titleText: 'AI Assistant',
-  hyperlinkText: 'View content ›',
-  contextData: {},
 };
 
 export default AIEducatorLibraryResponseComponent;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
+import { logError, logInfo } from '@edx/frontend-platform/logging';
 import {
   Button,
   Form,
@@ -11,6 +11,23 @@ import { AutoAwesome, Close } from '@openedx/paragon/icons';
 import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { callWorkflowService, prepareContextData } from '../services';
+import { WORKFLOW_ACTIONS } from '../constants';
+
+interface AIEducatorLibraryAssistComponentProps {
+  courseId: string;
+  locationId: string;
+  setResponse: (response: string) => void;
+  hasAsked: boolean;
+  setHasAsked: (hasAsked: boolean) => void;
+  libraries?: Array<{ id: string; title: string }>;
+  titleText?: string;
+  buttonText?: string;
+  preloadPreviousSession?: boolean;
+  customMessage?: string;
+  onSuccess?: () => void;
+  onError?: (error: any) => void;
+  debug?: boolean;
+}
 
 /**
  * AI Educator Library Assist Component
@@ -24,14 +41,14 @@ const AIEducatorLibraryAssistComponent = ({
   hasAsked,
   setHasAsked,
   libraries: librariesProp,
-  titleText,
-  buttonText,
-  preloadPreviousSession,
-  customMessage,
+  titleText = 'AI Assistant',
+  buttonText = 'Start',
+  customMessage = 'Use an AI workflow to create multiple answer questions from this unit in a content library',
+  preloadPreviousSession = false,
   onSuccess,
   onError,
-  debug,
-}) => {
+  debug = false,
+}: AIEducatorLibraryAssistComponentProps) => {
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -66,8 +83,7 @@ const AIEducatorLibraryAssistComponent = ({
       const endpoint = `${baseUrl}/api/libraries/v2/?pagination=false&order=title`;
 
       if (debug) {
-        // eslint-disable-next-line no-console
-        console.log('Fetching libraries from:', endpoint);
+        logInfo('Fetching libraries from:', endpoint);
       }
 
       const { data } = await getAuthenticatedHttpClient().get(endpoint);
@@ -79,12 +95,10 @@ const AIEducatorLibraryAssistComponent = ({
       setLibrariesFetched(true);
 
       if (debug) {
-        // eslint-disable-next-line no-console
-        console.log('Fetched libraries:', fetchedLibraries);
+        logInfo('Fetched libraries:', fetchedLibraries);
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error fetching libraries:', err);
+      logError('Error fetching libraries:', err);
       setError('Failed to load libraries. Please try again.');
     } finally {
       setIsLoadingLibraries(false);
@@ -116,8 +130,8 @@ const AIEducatorLibraryAssistComponent = ({
 
         const data = await callWorkflowService({
           context: contextData,
-          action: 'get_current_session_response',
           payload: {
+            action: WORKFLOW_ACTIONS.GET_CURRENT_SESSION_RESPONSE,
             requestId: `ai-request-${Date.now()}`,
           },
         });
@@ -128,14 +142,12 @@ const AIEducatorLibraryAssistComponent = ({
           setHasAsked(true);
         } else if (debug) {
           // No previous session or empty response - do nothing, show normal component
-          // eslint-disable-next-line no-console
-          console.log('No previous session found or empty response');
+          logInfo('No previous session found or empty response');
         }
       } catch (err) {
         // Silent fail - no previous session is not an error
         if (debug) {
-          // eslint-disable-next-line no-console
-          console.log('Error loading previous session:', err);
+          logInfo('Error loading previous session:', err);
         }
       } finally {
         setIsLoading(false);
@@ -179,13 +191,13 @@ const AIEducatorLibraryAssistComponent = ({
 
       const data = await callWorkflowService({
         context: contextData,
-        action: 'run_async',
         payload: {
+          action: WORKFLOW_ACTIONS.RUN_ASYNC,
           requestId: `ai-request-${Date.now()}`,
-          user_input: {
-            library_id: selectedLibrary,
-            num_questions: numberOfQuestions,
-            extra_instructions: additionalInstructions,
+          userInput: {
+            libraryId: selectedLibrary,
+            numQuestions: numberOfQuestions,
+            extraInstructions: additionalInstructions,
           },
         },
       });
@@ -197,7 +209,7 @@ const AIEducatorLibraryAssistComponent = ({
       // Pass response to response component
       // For async tasks, pass the full response object as JSON
       // Response component will detect status: 'processing' and handle polling
-      if (data.status === 'processing' && data.task_id) {
+      if (data.status === 'processing' && data.taskId) {
         // Include context data so response component can poll
         setResponse(JSON.stringify({
           ...data,
@@ -225,8 +237,11 @@ const AIEducatorLibraryAssistComponent = ({
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Error generating library questions:', err);
-      const errorMessage = err.response?.data?.error
-        || err.message
+
+      // Type guard for error
+      const submitError = err instanceof Error ? err : new Error(String(err));
+      const errorMessage = (err as any)?.response?.data?.error
+        || submitError.message
         || 'Failed to generate questions. Please try again.';
       setError(errorMessage);
 
@@ -417,38 +432,6 @@ const AIEducatorLibraryAssistComponent = ({
       </Card.Section>
     </Card>
   );
-};
-
-AIEducatorLibraryAssistComponent.propTypes = {
-  courseId: PropTypes.string.isRequired,
-  locationId: PropTypes.string.isRequired,
-  hasAsked: PropTypes.bool.isRequired,
-  setResponse: PropTypes.func.isRequired,
-  setHasAsked: PropTypes.func.isRequired,
-  libraries: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      title: PropTypes.string.isRequired,
-    }),
-  ),
-  titleText: PropTypes.string,
-  buttonText: PropTypes.string,
-  preloadPreviousSession: PropTypes.bool,
-  customMessage: PropTypes.string,
-  onSuccess: PropTypes.func,
-  onError: PropTypes.func,
-  debug: PropTypes.bool,
-};
-
-AIEducatorLibraryAssistComponent.defaultProps = {
-  libraries: null,
-  titleText: 'AI Assistant',
-  buttonText: 'Start',
-  customMessage: 'Use an AI workflow to create multiple answer questions from this unit in a content library',
-  preloadPreviousSession: false,
-  onSuccess: null,
-  onError: null,
-  debug: false,
 };
 
 export default AIEducatorLibraryAssistComponent;
