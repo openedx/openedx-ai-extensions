@@ -60,9 +60,11 @@ def plugin_settings(settings):
     # -------------------------
 
     if not hasattr(settings, "WORKFLOW_TEMPLATE_DIRS"):
-        settings.WORKFLOW_TEMPLATE_DIRS = [
-            BASE_DIR / "workflows" / "profiles",
-        ]
+        settings.WORKFLOW_TEMPLATE_DIRS = []
+
+    profile_dir = BASE_DIR / "workflows" / "profiles"
+    if profile_dir not in settings.WORKFLOW_TEMPLATE_DIRS:
+        settings.WORKFLOW_TEMPLATE_DIRS.append(profile_dir)
 
     # -------------------------
     # ThreadedOrchestrator
