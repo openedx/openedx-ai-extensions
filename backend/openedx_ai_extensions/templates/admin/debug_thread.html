@@ -14,10 +14,13 @@
   .debug-msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; max-width: 80%; }
   .debug-msg.user { background: #e3f2fd; margin-left: auto; }
   .debug-msg.assistant { background: #f5f5f5; }
-  .debug-msg.system { background: #fff3e0; font-size: 0.9em; }
+  .debug-msg.system { background: #fff8e1; border-left: 3px solid #ffc107; font-size: 0.85em; }
+  .debug-msg.reasoning { background: #f3e5f5; border-left: 3px solid #9c27b0; font-size: 0.85em; font-style: italic; }
+  .debug-msg.tool_call { background: #e8f5e9; border-left: 3px solid #4caf50; font-size: 0.85em; font-family: monospace; }
+  .debug-msg.error { background: #ffebee; border-left: 3px solid #d32f2f; }
   .debug-msg .role { font-weight: bold; font-size: 0.8em; text-transform: uppercase; color: #555; margin-bottom: 4px; }
   .debug-msg .content { white-space: pre-wrap; word-break: break-word; }
-  .debug-msg .timestamp { font-size: 0.75em; color: #999; margin-top: 4px; }
+  .debug-msg .msg-meta { font-size: 0.75em; color: #999; margin-top: 4px; }
   .debug-error { color: #d32f2f; padding: 16px; }
   .debug-json-toggle { margin: 16px 0; }
   .debug-json { display: none; background: #f5f5f5; padding: 16px; border-radius: 4px; overflow-x: auto; }
@@ -27,7 +30,7 @@
 <h2>Debug Thread</h2>
 
 <div class="debug-json-toggle">
-  <button type="button" onclick="var el=document.getElementById('raw-json'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
+  <button type="button" onclick="var el=document.getElementById('raw-json'); el.style.display = el.style.display === 'block' ? 'none' : 'block';">
     Toggle Raw JSON
   </button>
   <button type="button" id="download-json-btn">
@@ -65,17 +68,23 @@
     </div>
   </div>
 
-  {% if result.error %}
-    <div class="debug-error">{{ result.error }}</div>
+  {% if result.combined_thread_error %}
+    <div class="debug-error">{{ result.combined_thread_error }}</div>
   {% endif %}
 
-  {% if result.local_thread %}
+  {% if result.combined_thread %}
   <div class="debug-thread">
-    {% for msg in result.local_thread %}
+    {% for msg in result.combined_thread %}
     <div class="debug-msg {{ msg.role }}">
-      <div class="role">{{ msg.role }}</div>
+      <div class="role">{{ msg.role }}{% if msg.type and msg.type != "message" %} ({{ msg.type }}){% endif %}{% if msg.source %} &middot; {{ msg.source }}{% endif %}</div>
       <div class="content">{{ msg.content }}</div>
-      {% if msg.timestamp %}<div class="timestamp">{{ msg.timestamp }}{% if msg.submission_id %} &middot; submission: {{ msg.submission_id }}{% endif %}</div>{% endif %}
+      <div class="msg-meta">
+        {% if msg.created_at %}{{ msg.created_at }}{% endif %}
+        {% if msg.timestamp %} &middot; local: {{ msg.timestamp }}{% endif %}
+        {% if msg.submission_id %} &middot; submission: {{ msg.submission_id }}{% endif %}
+        {% if msg.tokens %} &middot; tokens: {{ msg.tokens }}{% endif %}
+        {% if msg.model %} &middot; {{ msg.model }}{% endif %}
+      </div>
     </div>
     {% endfor %}
   </div>

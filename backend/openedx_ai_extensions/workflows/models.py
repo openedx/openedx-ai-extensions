@@ -430,6 +430,111 @@ class AIWorkflowSession(models.Model):
         )
         return processor.fetch_remote_thread(self.remote_response_id)
 
+    def get_combined_thread(self):
+        """
+        Build a unified chronological thread combining local and remote data.
+
+        The remote thread is the backbone (it has system messages, reasoning,
+        tool calls). Local thread enriches with submission_id and timestamp.
+        Messages are deduplicated across responses since each remote response's
+        input replays the full history.
+
+        Returns:
+            list or None: Flat list of message dicts with all available metadata.
+        """
+        local_thread = self.get_local_thread()
+        remote_thread = self.get_remote_thread()
+
+        if not remote_thread:
+            return local_thread
+
+        # Build lookup from local thread: (role, content_prefix) -> local msg
+        local_by_content = {}
+        if local_thread:
+            for msg in local_thread:
+                key = (msg["role"], msg["content"][:200])
+                # Keep the last match (most recent submission_id)
+                local_by_content[key] = msg
+
+        combined = []
+        seen = set()
+
+        for response in remote_thread:
+            if "error" in response:
+                combined.append({
+                    "role": "error",
+                    "type": "error",
+                    "content": response["error"],
+                    "response_id": response.get("id"),
+                })
+                continue
+
+            response_meta = {
+                "response_id": response["id"],
+                "created_at": response.get("created_at"),
+                "model": response.get("model"),
+            }
+
+            # Process input items (system, user, reasoning, tool results, etc.)
+            for item in response.get("input", []):
+                content = item.get("content", "")
+                content_key = (item.get("role", ""), content[:200])
+                if content_key in seen:
+                    continue
+                seen.add(content_key)
+
+                msg = {
+                    "role": item.get("role", "unknown"),
+                    "type": item.get("type", "message"),
+                    "content": content,
+                    "source": "remote",
+                    **response_meta,
+                }
+
+                # Enrich with local metadata
+                local_key = (item.get("role", ""), content[:200])
+                if local_key in local_by_content:
+                    local_msg = local_by_content.pop(local_key)
+                    msg["timestamp"] = local_msg.get("timestamp")
+                    msg["submission_id"] = local_msg.get("submission_id")
+                    msg["source"] = "both"
+
+                combined.append(msg)
+
+            # Process output items (assistant responses, tool calls)
+            for item in response.get("output", []):
+                content = item.get("content", "")
+                content_key = (item.get("role", ""), content[:200])
+                seen.add(content_key)
+
+                msg = {
+                    "role": item.get("role", "unknown"),
+                    "type": "message",
+                    "content": content,
+                    "source": "remote",
+                    "tokens": response.get("tokens"),
+                    **response_meta,
+                }
+
+                local_key = (item.get("role", ""), content[:200])
+                if local_key in local_by_content:
+                    local_msg = local_by_content.pop(local_key)
+                    msg["timestamp"] = local_msg.get("timestamp")
+                    msg["submission_id"] = local_msg.get("submission_id")
+                    msg["source"] = "both"
+
+                combined.append(msg)
+
+        # Append any local-only messages not matched to remote
+        for local_msg in local_by_content.values():
+            combined.append({
+                **local_msg,
+                "type": "message",
+                "source": "local",
+            })
+
+        return combined
+
 
 # Signal handlers for cache invalidation
 @receiver(post_save, sender=AIWorkflowScope)

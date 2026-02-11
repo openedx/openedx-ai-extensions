@@ -373,8 +373,10 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
                 "remote_response_id": session.remote_response_id,
                 "local_thread": None,
                 "remote_thread": None,
+                "combined_thread": None,
                 "local_thread_error": None,
                 "remote_thread_error": None,
+                "combined_thread_error": None,
             }
 
             try:
@@ -388,6 +390,12 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
             except Exception as e:  # pylint: disable=broad-exception-caught
                 _logger.exception("Error fetching remote thread for session %s", session.id)
                 session_data["remote_thread_error"] = str(e)
+
+            try:
+                session_data["combined_thread"] = session.get_combined_thread()
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                _logger.exception("Error building combined thread for session %s", session.id)
+                session_data["combined_thread_error"] = str(e)
 
             results.append(session_data)
 
