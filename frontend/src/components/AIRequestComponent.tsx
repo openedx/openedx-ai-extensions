@@ -45,7 +45,7 @@ const AIRequestComponent = ({
             animation="border"
             variant="primary"
             size="sm"
-            className="me-2"
+            className="mr-2"
           />
           <small className="text-muted">
             {intl.formatMessage(messages['ai.extensions.request.analyzing'])}
@@ -55,27 +55,17 @@ const AIRequestComponent = ({
 
       {/* Initial request state */}
       {!hasAsked && !isLoading && (
-        <div className="d-flex align-items-center justify-content-end">
-          <small
-            className="text-muted me-3"
-            style={{
-              paddingRight: '16px',
-            }}
-          >
+        <div className="d-flex align-items-center justify-content-end py-2">
+          <span className="text-muted mr-3 small">
             {displayMessage}
-          </small>
+          </span>
           <Button
             variant="primary"
             size="sm"
             onClick={onAskAI}
             disabled={disabled || isLoading}
             iconBefore={Send}
-            style={{
-              borderRadius: '20px',
-              fontWeight: '500',
-              paddingLeft: '16px',
-              paddingRight: '16px',
-            }}
+            className="rounded-pill"
           >
             {displayButtonText}
           </Button>

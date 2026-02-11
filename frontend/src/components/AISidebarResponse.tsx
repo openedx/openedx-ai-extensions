@@ -292,7 +292,6 @@ const AISidebarResponse = ({
         setHasMoreHistory(false);
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
       logError('[AISidebarResponse] Load more history error:', err);
       setHasMoreHistory(false);
     } finally {

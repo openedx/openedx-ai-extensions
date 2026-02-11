@@ -1,7 +1,9 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useIntl } from '@edx/frontend-platform/i18n';
-import { Button, Alert, Collapsible } from '@openedx/paragon';
+import {
+  Button, Alert, Collapsible, Card,
+} from '@openedx/paragon';
 import {
   CheckCircle,
   Warning,
@@ -68,35 +70,31 @@ const AIResponseComponent = ({
             defaultOpen
             styling="basic"
           >
-            <div
-              className="response-content p-3 mt-2 bg-light rounded border-start border-success border-3"
-              style={{
-                fontSize: '0.9rem',
-                lineHeight: '1.5',
-              }}
-            >
+            <Card variant="muted">
               {/* Response text */}
-              <div className="response-text">
+              <Card.Section>
                 <ReactMarkdown>
                   {response}
                 </ReactMarkdown>
-              </div>
-
+              </Card.Section>
               {/* Action buttons */}
-              <div className="response-actions d-flex justify-content-end align-items-center mt-3 pt-2 border-top gap-2">
-                {/* Clear button */}
-                {onClear && (
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    onClick={onClear}
-                    className="py-1 px-2"
-                  >
-                    {intl.formatMessage(messages['ai.extensions.response.clear'])}
-                  </Button>
-                )}
-              </div>
-            </div>
+              {/* Clear button */}
+              {onClear && (
+                <>
+                  <Card.Divider />
+                  <Card.Footer className="pt-3">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={onClear}
+                      className="py-1 px-2"
+                    >
+                      {intl.formatMessage(messages['ai.extensions.response.clear'])}
+                    </Button>
+                  </Card.Footer>
+                </>
+              )}
+            </Card>
           </Collapsible>
         </div>
       )}

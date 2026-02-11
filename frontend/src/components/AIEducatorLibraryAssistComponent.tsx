@@ -244,8 +244,7 @@ const AIEducatorLibraryAssistComponent = ({
         onSuccess();
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error generating library questions:', err);
+      logError('Error generating library questions:', err);
 
       // Type guard for error
       const submitError = err instanceof Error ? err : new Error(String(err));

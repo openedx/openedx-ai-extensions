@@ -115,8 +115,7 @@ const ConfigurableAIAssistance = ({
 
         // Only update state if this is still the latest request
         if (currentRequestId === requestIdRef.current) {
-          // eslint-disable-next-line no-console
-          console.error('[ConfigurableAIAssistance] Configuration error:', configErr);
+          logError('[ConfigurableAIAssistance] Configuration error:', configErr);
 
           setConfigError(configErr.message);
 
@@ -306,7 +305,7 @@ const ConfigurableAIAssistance = ({
     const responseProps = mergeProps({}, responseComponentConfig);
 
     return (
-      <div className="configurable-ai-assistance" style={{ maxWidth: '100%' }}>
+      <div className="configurable-ai-assistance w-100">
         {configError && (
           <Alert variant="warning" dismissible className="mb-2">
             <small>{intl.formatMessage(messages['ai.extensions.config.fallback.error'], { error: configError })}</small>
