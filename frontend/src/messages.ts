@@ -248,7 +248,7 @@ const messages = defineMessages({
   },
   'ai.extensions.educator.processing': {
     id: 'ai.extensions.educator.processing',
-    defaultMessage: 'Processing...',
+    defaultMessage: 'Processing',
     description: 'General processing label',
   },
   'ai.extensions.educator.last.updated': {
@@ -258,18 +258,13 @@ const messages = defineMessages({
   },
   'ai.extensions.educator.update.button': {
     id: 'ai.extensions.educator.update.button',
-    defaultMessage: 'update',
+    defaultMessage: 'Update',
     description: 'Text for manual status update button',
   },
-  'ai.extensions.educator.success.added': {
-    id: 'ai.extensions.educator.success.added',
-    defaultMessage: 'The generated questions have been added to your Content Library.',
-    description: 'Detailed success message about content being added',
-  },
-  'ai.extensions.educator.success.review': {
-    id: 'ai.extensions.educator.success.review',
-    defaultMessage: 'They are saved in an unpublished state for you to review before making them available to learners.',
-    description: 'Information about reviewing generated content',
+  'ai.extensions.educator.success.text': {
+    id: 'ai.extensions.educator.success.text',
+    defaultMessage: 'The generated questions have been added to your Content Library. {br} They are saved in an unpublished state for you to review before making them available to learners.',
+    description: 'Detailed success message about content being added and ready for review',
   },
   // General Button Plugin Messages
   'ai.extensions.button.default.message': {

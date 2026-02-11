@@ -2,7 +2,7 @@ import React, {
   useState, useEffect, useRef, useCallback, useMemo,
 } from 'react';
 import { logError } from '@edx/frontend-platform/logging';
-import { useIntl } from '@edx/frontend-platform/i18n';
+import { useIntl, FormattedMessage } from '@edx/frontend-platform/i18n';
 import {
   Button, Alert, Card, Spinner,
 } from '@openedx/paragon';
@@ -137,7 +137,7 @@ const AIEducatorLibraryResponseComponent = ({
 
       // Handle terminal states
       const isSuccess = data.status === 'completed' || data.status === 'success';
-      const isFailure = data.status === 'failed' || data.status === 'error';
+      const isFailure = data.status === 'failed' || data.status?.includes('error') || data?.error;
 
       if (isSuccess || isFailure) {
         stopPolling();
@@ -295,12 +295,12 @@ const AIEducatorLibraryResponseComponent = ({
     <Card className="ai-educator-library-response mt-3 mb-3">
       <Card.Section>
         <div className="ai-library-response-header">
-          <h3 className="d-block mb-1" style={{ fontSize: '1.25rem' }}>
+          <h3 className="d-block mb-1">
             {displayTitle}
           </h3>
-          <small className="d-block mb-2" style={{ fontSize: '0.75rem' }}>
+          <span className="d-block mb-2 x-small">
             {displayCustomMessage}
-          </small>
+          </span>
         </div>
 
         <div className="ai-response-container mt-2">
@@ -309,40 +309,32 @@ const AIEducatorLibraryResponseComponent = ({
           {(error || pollingError) && (
             <Alert
               variant="danger"
-              className="py-2 px-3 mb-2"
               dismissible
               onClose={() => {
-                if (onError) { onError(''); }
-                setPollingError('');
-              }}
+                if(onError) (onError(error))
+                handleClose()}}
+              icon={Warning}
             >
-              <div className="d-flex align-items-start">
-                <Warning className="me-2 mt-1" style={{ width: '16px', height: '16px' }} />
-                <small>{error || pollingError}</small>
-              </div>
+              {error || pollingError}
             </Alert>
           )}
 
           {/* Polling/Processing state */}
           {isPolling && !pollingError && (
             <div className="polling-container">
-              <div className="mb-2">
-                <div className="d-flex align-items-center justify-content-between mb-1">
-                  <div className="d-flex align-items-center">
-                    <small className="fw-semibold me-2">{intl.formatMessage(messages['ai.extensions.educator.processing'])}</small>
-                    <Spinner animation="border" size="sm" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleManualRefresh}
-                    className="btn btn-link p-0 text-decoration-none"
-                    style={{ fontSize: '0.75rem' }}
-                    title={lastUpdateTime ? intl.formatMessage(messages['ai.extensions.educator.last.updated'], { time: lastUpdateTime.toLocaleTimeString() }) : 'Check status'}
-                  >
-                    {intl.formatMessage(messages['ai.extensions.educator.update.button'])}
-                  </button>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <div className="d-flex align-items-center">
+                  <Spinner animation="border" size="sm" role="status" />
+                  {pollingMessage && <small className="ml-2 d-block text-muted x-small">{pollingMessage}</small>}
                 </div>
-                {pollingMessage && <small className="d-block text-muted">{pollingMessage}</small>}
+                <Button
+                  onClick={handleManualRefresh}
+                  size="sm"
+                  variant="link"
+                  title={intl.formatMessage(messages['ai.extensions.educator.last.updated'], { time: lastUpdateTime?.toLocaleTimeString() || '' })}
+                >
+                  {intl.formatMessage(messages['ai.extensions.educator.update.button'])}
+                </Button>
               </div>
               <Button
                 variant="outline-secondary"
@@ -358,26 +350,22 @@ const AIEducatorLibraryResponseComponent = ({
           {/* Success response */}
           {finalResponse && !isLoading && !isPolling && (
             <div className="response-container">
-              <div className="mb-2">
-                <p className="mb-2" style={{ fontSize: '0.875rem' }}>
-                  {intl.formatMessage(messages['ai.extensions.educator.success.added'])}
-                </p>
-                <p className="mb-2" style={{ fontSize: '0.875rem' }}>
-                  {intl.formatMessage(messages['ai.extensions.educator.success.review'])}
+              <div className="mb-2 x-small">
+                <p className="mb-2">
+                  <FormattedMessage {...messages['ai.extensions.educator.success.text']} values={{ br: <br /> }} />
                 </p>
                 {hyperlinkUrl && (
-                  <a href={hyperlinkUrl} target="_blank" rel="noopener noreferrer" className="fw-semibold">
+                  <a href={hyperlinkUrl} target="_blank" rel="noopener noreferrer">
                     {displayHyperlinkText}
                   </a>
                 )}
               </div>
               {handleClearAndClose && (
-                <div className="d-flex justify-content-end mt-3">
+                <div className="d-flex justify-content-end">
                   <Button
                     variant="outline-secondary"
                     size="sm"
                     onClick={handleClearAndClose}
-                    className="py-1 px-2"
                   >
                     {intl.formatMessage(messages['ai.extensions.response.clear'])}
                   </Button>

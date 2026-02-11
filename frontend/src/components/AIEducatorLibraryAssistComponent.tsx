@@ -324,12 +324,10 @@ const AIEducatorLibraryAssistComponent = ({
           <div className="mt-3">
             <Form onSubmit={handleSubmit}>
               {/* Library selection */}
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3" size="sm" controlId="library">
                 <Form.Label>
-                  <small>
-                    {intl.formatMessage(messages['ai.extensions.educator.library.label'])}
-                    <span className="text-danger">*</span>
-                  </small>
+                  {intl.formatMessage(messages['ai.extensions.educator.library.label'])}
+                  <span className="text-danger">*</span>
                 </Form.Label>
                 <Form.Control
                   as="select"
@@ -337,7 +335,6 @@ const AIEducatorLibraryAssistComponent = ({
                   onChange={(e) => setSelectedLibrary(e.target.value)}
                   disabled={isLoading || isLoadingLibraries}
                   required
-                  size="sm"
                 >
                   <option value="">
                     {isLoadingLibraries
@@ -355,20 +352,19 @@ const AIEducatorLibraryAssistComponent = ({
                     <option disabled>{intl.formatMessage(messages['ai.extensions.educator.library.none'])}</option>
                   )}
                 </Form.Control>
-                <Form.Text className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  {isLoadingLibraries
+                <Form.Text>
+                  <small>{isLoadingLibraries
                     ? intl.formatMessage(messages['ai.extensions.educator.library.help.loading'])
                     : intl.formatMessage(messages['ai.extensions.educator.library.help.select'])}
+                  </small>
                 </Form.Text>
               </Form.Group>
 
               {/* Number of questions */}
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3" size="sm" controlId="questionNumber">
                 <Form.Label>
-                  <small>
-                    {intl.formatMessage(messages['ai.extensions.educator.questions.label'])}
-                    <span className="text-danger">*</span>
-                  </small>
+                  {intl.formatMessage(messages['ai.extensions.educator.questions.label'])}
+                  <span className="text-danger">*</span>
                 </Form.Label>
                 <Form.Control
                   type="number"
@@ -378,17 +374,16 @@ const AIEducatorLibraryAssistComponent = ({
                   onChange={(e) => setNumberOfQuestions(parseInt(e.target.value, 10))}
                   disabled={isLoading}
                   required
-                  size="sm"
                 />
-                <Form.Text className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  {intl.formatMessage(messages['ai.extensions.educator.questions.help'])}
+                <Form.Text>
+                  <small>{intl.formatMessage(messages['ai.extensions.educator.questions.help'])}</small>
                 </Form.Text>
               </Form.Group>
 
               {/* Additional instructions */}
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3" size="sm" controlId="additionalIntruction">
                 <Form.Label>
-                  <small>{intl.formatMessage(messages['ai.extensions.educator.instructions.label'])}</small>
+                  {intl.formatMessage(messages['ai.extensions.educator.instructions.label'])}
                 </Form.Label>
                 <Form.Control
                   as="textarea"
@@ -397,10 +392,9 @@ const AIEducatorLibraryAssistComponent = ({
                   onChange={(e) => setAdditionalInstructions(e.target.value)}
                   disabled={isLoading}
                   placeholder={intl.formatMessage(messages['ai.extensions.educator.instructions.placeholder'])}
-                  style={{ fontSize: '0.875rem' }}
                 />
-                <Form.Text className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  {intl.formatMessage(messages['ai.extensions.educator.instructions.help'])}
+                <Form.Text>
+                  <small>{intl.formatMessage(messages['ai.extensions.educator.instructions.help'])}</small>
                 </Form.Text>
               </Form.Group>
 
@@ -419,7 +413,7 @@ const AIEducatorLibraryAssistComponent = ({
                         animation="border"
                         size="sm"
                         className="me-2"
-                        role="status"
+                        aria-hidden
                       />
                       {intl.formatMessage(messages['ai.extensions.educator.generating'])}
                     </>
