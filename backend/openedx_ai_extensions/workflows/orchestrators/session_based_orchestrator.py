@@ -110,7 +110,8 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             user=self.user,
             scope=self.workflow,
             profile=self.workflow.profile,
-            defaults={},
+            course_id=self.course_id,
+            location_id=self.location_id,
         )
 
     def clear_session(self, _):

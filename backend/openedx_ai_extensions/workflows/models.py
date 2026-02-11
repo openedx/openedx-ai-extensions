@@ -385,7 +385,7 @@ class AIWorkflowSession(models.Model):
     metadata = models.JSONField(default=dict, help_text="Additional session metadata")
 
     class Meta:
-        unique_together = ("user", "scope", "profile")
+        unique_together = ("user", "scope", "profile", "course_id", "location_id")
 
 
 # Signal handlers for cache invalidation
