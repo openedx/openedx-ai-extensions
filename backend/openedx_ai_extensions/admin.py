@@ -347,18 +347,14 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
         return redirect(f"debug-thread/?ids={ids}")
 
     def debug_thread_view(self, request):
-        """Render the full local thread for selected sessions."""
+        """Render the full local and remote threads for selected sessions."""
         if not (
             self.has_view_permission(request)
             and request.user.has_perm("submissions.view_submission")
         ):
             raise PermissionDenied
 
-        from openedx_ai_extensions.processors.openedx.submission_processor import (  # pylint: disable=import-outside-toplevel
-            SubmissionProcessor,
-        )
-
-        logger = logging.getLogger(__name__)
+        _logger = logging.getLogger(__name__)
 
         ids = request.GET.get("ids", "").split(",")
         ids = [i.strip() for i in ids if i.strip()]
@@ -376,22 +372,22 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
                 "local_submission_id": session.local_submission_id,
                 "remote_response_id": session.remote_response_id,
                 "local_thread": None,
-                "error": None,
+                "remote_thread": None,
+                "local_thread_error": None,
+                "remote_thread_error": None,
             }
 
-            if session.local_submission_id:
-                try:
-                    processor = SubmissionProcessor(
-                        config=session.profile.processor_config if session.profile else {},
-                        user_session=session,
-                    )
-                    messages = processor.get_full_thread()
-                    session_data["local_thread"] = messages
-                except Exception as e:  # pylint: disable=broad-exception-caught
-                    logger.exception("Error fetching local thread for session %s", session.id)
-                    session_data["error"] = str(e)
-            else:
-                session_data["error"] = "No local_submission_id"
+            try:
+                session_data["local_thread"] = session.get_local_thread()
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                _logger.exception("Error fetching local thread for session %s", session.id)
+                session_data["local_thread_error"] = str(e)
+
+            try:
+                session_data["remote_thread"] = session.get_remote_thread()
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                _logger.exception("Error fetching remote thread for session %s", session.id)
+                session_data["remote_thread_error"] = str(e)
 
             results.append(session_data)
 

@@ -387,6 +387,49 @@ class AIWorkflowSession(models.Model):
     class Meta:
         unique_together = ("user", "scope", "profile", "course_id", "location_id")
 
+    def get_local_thread(self):
+        """
+        Fetch the full local conversation thread from submissions.
+
+        Returns:
+            list or None: Messages in chronological order, or None if no submission exists.
+        """
+        from openedx_ai_extensions.processors.openedx.submission_processor import (  # pylint: disable=import-outside-toplevel
+            SubmissionProcessor,
+        )
+
+        if not self.local_submission_id:
+            return None
+
+        processor = SubmissionProcessor(
+            config=self.profile.processor_config if self.profile else {},
+            user_session=self,
+        )
+        return processor.get_full_thread()
+
+    def get_remote_thread(self):
+        """
+        Fetch the full remote conversation thread from the LLM provider via LiteLLM.
+
+        Instantiates an LLMProcessor with the profile's processor config so that
+        provider credentials (api_key, api_base, etc.) are resolved and passed through.
+
+        Returns:
+            list or None: Chronologically ordered response dicts, or None if no remote ID exists.
+        """
+        from openedx_ai_extensions.processors.llm.llm_processor import (  # pylint: disable=import-outside-toplevel
+            LLMProcessor,
+        )
+
+        if not self.remote_response_id:
+            return None
+
+        processor = LLMProcessor(
+            config=self.profile.processor_config if self.profile else {},
+            user_session=self,
+        )
+        return processor.fetch_remote_thread(self.remote_response_id)
+
 
 # Signal handlers for cache invalidation
 @receiver(post_save, sender=AIWorkflowScope)
