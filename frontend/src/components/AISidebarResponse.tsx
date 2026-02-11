@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { logError } from '@edx/frontend-platform/logging';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Button,
   Alert,
@@ -22,6 +23,8 @@ import {
 } from '../services';
 import { AIChatMessage, AIModelResponse, PluginContext } from '../types';
 import { WORKFLOW_ACTIONS } from '../constants';
+
+import messages from '../messages';
 
 /**
  * AI Sidebar Response Component
@@ -49,6 +52,7 @@ const AISidebarResponse = ({
   customMessage,
   contextData = {},
 }: AISidebarResponseProps) => {
+  const intl = useIntl();
   const [isOpen, setIsOpen] = useState(false);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
@@ -252,10 +256,10 @@ const AISidebarResponse = ({
       }
 
       // Extract messages from response
-      const messages: AIModelResponse[] = parsed.messages || [];
+      const aIMessages: AIModelResponse[] = parsed.messages || [];
 
       // Format older messages
-      const olderMessages: AIChatMessage[] = (Array.isArray(messages) ? messages : []).map((msg) => ({
+      const olderMessages: AIChatMessage[] = (Array.isArray(aIMessages) ? aIMessages : []).map((msg) => ({
         type: msg.role === 'user' ? 'user' : 'ai',
         content: msg.content,
         timestamp: msg.timestamp || new Date().toISOString(),
@@ -289,7 +293,7 @@ const AISidebarResponse = ({
       }
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[AISidebarResponse] Load more history error:', err);
+      logError('[AISidebarResponse] Load more history error:', err);
       setHasMoreHistory(false);
     } finally {
       setIsLoadingHistory(false);
@@ -346,6 +350,8 @@ const AISidebarResponse = ({
       onClear();
     }
   };
+
+  const displayTitle = customMessage || intl.formatMessage(messages['ai.extensions.sidebar.default.title']);
 
   /**
    * Handle follow-up question submission
@@ -520,7 +526,7 @@ const AISidebarResponse = ({
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Escape' && handleClose()}
-          aria-label="Close sidebar"
+          aria-label={intl.formatMessage(messages['ai.extensions.sidebar.close.label'])}
         />
       )}
 
@@ -541,6 +547,9 @@ const AISidebarResponse = ({
           flexDirection: 'column',
           overflowY: 'auto',
         }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={intl.formatMessage(messages['ai.extensions.sidebar.aria.label'])}
       >
         {/* Header */}
         <div
@@ -554,8 +563,8 @@ const AISidebarResponse = ({
           }}
         >
           <div className="d-flex align-items-center">
-            <CheckCircle className="text-success me-2" style={{ width: '20px', height: '20px' }} />
-            <strong style={{ fontSize: '1rem' }}>{customMessage || 'AI Assistant Response'}</strong>
+            <CheckCircle className="text-success me-2" style={{ width: '20px', height: '20px' }} aria-hidden="true" />
+            <strong style={{ fontSize: '1rem' }}>{displayTitle}</strong>
           </div>
           <div className="d-flex align-items-center gap-2">
             {/* Settings dropdown with Clear option */}
@@ -567,11 +576,11 @@ const AISidebarResponse = ({
                 className="p-2"
                 style={{ minWidth: 'auto' }}
               >
-                <Settings style={{ width: '16px', height: '16px' }} />
+                <Settings style={{ width: '16px', height: '16px' }} aria-hidden="true" />
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 <Dropdown.Item onClick={handleClearAndClose}>
-                  Clear Chat
+                  {intl.formatMessage(messages['ai.extensions.sidebar.clear.chat'])}
                 </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
@@ -581,9 +590,9 @@ const AISidebarResponse = ({
               onClick={handleClose}
               className="btn btn-secondary btn-sm p-2"
               style={{ minWidth: 'auto' }}
-              aria-label="Close sidebar"
+              aria-label={intl.formatMessage(messages['ai.extensions.sidebar.close.label'])}
             >
-              <Close style={{ width: '16px', height: '16px' }} />
+              <Close style={{ width: '16px', height: '16px' }} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -596,10 +605,10 @@ const AISidebarResponse = ({
         >
           {/* Loading indicator for lazy loading at top */}
           {isLoadingHistory && (
-            <div className="d-flex align-items-center justify-content-center py-3 gap-2">
-              <div className="spinner-border spinner-border-sm text-primary" role="status" aria-label="Loading history" />
+            <div className="d-flex align-items-center justify-content-center py-3 gap-2" role="status" aria-live="polite">
+              <div className="spinner-border spinner-border-sm text-primary" aria-hidden="true" />
               <span className="text-muted" style={{ fontSize: '0.85rem' }}>
-                Loading older messages...
+                {intl.formatMessage(messages['ai.extensions.sidebar.loading.history'])}
               </span>
             </div>
           )}
@@ -614,7 +623,7 @@ const AISidebarResponse = ({
                 className="text-muted"
                 style={{ fontSize: '0.85rem', textDecoration: 'none' }}
               >
-                Load older messages ↑
+                {intl.formatMessage(messages['ai.extensions.sidebar.load.older'])}
               </Button>
             </div>
           )}
@@ -628,7 +637,7 @@ const AISidebarResponse = ({
               onClose={() => onError && onError('')}
             >
               <div className="d-flex align-items-start">
-                <Warning className="me-2 mt-1" style={{ width: '16px', height: '16px' }} />
+                <Warning className="me-2 mt-1" style={{ width: '16px', height: '16px' }} aria-hidden="true" />
                 <div>{error}</div>
               </div>
             </Alert>
@@ -701,10 +710,10 @@ const AISidebarResponse = ({
 
           {/* Loading state for follow-up */}
           {isSendingFollowUp && (
-            <div className="d-flex align-items-center justify-content-center py-3 gap-2">
-              <div className="spinner-border spinner-border-sm text-primary" role="status" aria-label="Loading" />
+            <div className="d-flex align-items-center justify-content-center py-3 gap-2" role="status" aria-live="polite">
+              <div className="spinner-border spinner-border-sm text-primary" aria-hidden="true" />
               <span className="text-muted" style={{ fontSize: '0.85rem' }}>
-                Thinking...
+                {intl.formatMessage(messages['ai.extensions.sidebar.thinking'])}
               </span>
             </div>
           )}
@@ -724,12 +733,13 @@ const AISidebarResponse = ({
               <textarea
                 ref={textareaRef}
                 className="form-control"
-                placeholder="Type your follow-up question..."
+                placeholder={intl.formatMessage(messages['ai.extensions.sidebar.input.label'])}
                 value={followUpQuestion}
                 onChange={handleTextareaChange}
                 onKeyDown={handleKeyPress}
                 disabled={isLoading || isSendingFollowUp}
                 rows={textareaRows}
+                aria-label={intl.formatMessage(messages['ai.extensions.sidebar.input.label'])}
                 style={{
                   fontSize: '0.9rem',
                   borderRadius: '6px',
@@ -745,7 +755,7 @@ const AISidebarResponse = ({
                 onClick={handleFollowUpSubmit}
                 disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
                 className="btn btn-primary btn-sm"
-                aria-label="Send message"
+                aria-label={intl.formatMessage(messages['ai.extensions.sidebar.send.label'])}
                 style={{
                   position: 'absolute',
                   right: '8px',
@@ -759,7 +769,7 @@ const AISidebarResponse = ({
                   justifyContent: 'center',
                 }}
               >
-                <Send style={{ width: '16px', height: '16px' }} />
+                <Send style={{ width: '16px', height: '16px' }} aria-hidden="true" />
               </button>
             </div>
           </div>

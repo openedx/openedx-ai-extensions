@@ -2,6 +2,7 @@ import React, {
   useState, useEffect, useRef, useCallback, useMemo,
 } from 'react';
 import { logError } from '@edx/frontend-platform/logging';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Button, Alert, Card, Spinner,
 } from '@openedx/paragon';
@@ -9,6 +10,7 @@ import { Warning } from '@openedx/paragon/icons';
 import { prepareContextData, callWorkflowService } from '../services';
 import { PluginContext } from '../types';
 import { WORKFLOW_ACTIONS } from '../constants';
+import messages from '../messages';
 
 // Polling configuration
 const POLLING_INTERVALS = {
@@ -47,11 +49,12 @@ const AIEducatorLibraryResponseComponent = ({
   isLoading = false,
   onClear,
   onError,
-  customMessage = 'Question generation success.',
-  titleText = 'AI Assistant',
-  hyperlinkText = 'View content ›',
+  customMessage,
+  titleText,
+  hyperlinkText,
   contextData = {},
 }: AIEducatorLibraryResponseComponentProps) => {
+  const intl = useIntl();
   // Polling state
   const [isPolling, setIsPolling] = useState(false);
   const [pollingMessage, setPollingMessage] = useState('');
@@ -61,6 +64,11 @@ const AIEducatorLibraryResponseComponent = ({
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingStartTimeRef = useRef<number | null>(null);
+
+  // Default display values
+  const displayTitle = titleText || intl.formatMessage(messages['ai.extensions.educator.title']);
+  const displayCustomMessage = customMessage || intl.formatMessage(messages['ai.extensions.educator.success.message']);
+  const displayHyperlinkText = hyperlinkText || intl.formatMessage(messages['ai.extensions.educator.hyperlink.text']);
 
   /**
    * Stop the polling interval if active
@@ -136,16 +144,16 @@ const AIEducatorLibraryResponseComponent = ({
         setIsPolling(false);
 
         if (isSuccess) {
-          setFinalResponse(extractResponseData(data, 'Task completed successfully'));
+          setFinalResponse(extractResponseData(data, intl.formatMessage(messages['ai.extensions.educator.task.completed'])));
         } else {
-          setPollingError(data.error || data.message || 'Task failed');
+          setPollingError(data.error || data.message || intl.formatMessage(messages['ai.extensions.educator.task.failed']));
         }
       }
     } catch (err) {
       logError('Error polling task status:', err);
       // Don't stop polling on single error
     }
-  }, [stopPolling]);
+  }, [stopPolling, intl]);
 
   /**
    * Start polling for async task status
@@ -154,7 +162,7 @@ const AIEducatorLibraryResponseComponent = ({
   const startPolling = useCallback((taskData) => {
     pollingStartTimeRef.current = Date.now();
     setIsPolling(true);
-    setPollingMessage(taskData.message || 'Processing your request...');
+    setPollingMessage(taskData.message || intl.formatMessage(messages['ai.extensions.educator.task.processing']));
     setFinalResponse('');
     setPollingError('');
 
@@ -172,7 +180,7 @@ const AIEducatorLibraryResponseComponent = ({
       if (elapsedMinutes >= POLLING_TIMEOUTS.MAX_DURATION) {
         stopPolling();
         setIsPolling(false);
-        setPollingError('Task is taking longer than expected. Please check back later.');
+        setPollingError(intl.formatMessage(messages['ai.extensions.educator.task.timeout']));
         return;
       }
 
@@ -187,7 +195,7 @@ const AIEducatorLibraryResponseComponent = ({
 
       pollTaskStatus(taskData);
     }, POLLING_INTERVALS.INITIAL);
-  }, [pollTaskStatus, stopPolling]);
+  }, [pollTaskStatus, stopPolling, intl]);
 
   // Effect to handle response changes
   useEffect(() => {
@@ -288,10 +296,10 @@ const AIEducatorLibraryResponseComponent = ({
       <Card.Section>
         <div className="ai-library-response-header">
           <h3 className="d-block mb-1" style={{ fontSize: '1.25rem' }}>
-            {titleText}
+            {displayTitle}
           </h3>
           <small className="d-block mb-2" style={{ fontSize: '0.75rem' }}>
-            {customMessage}
+            {displayCustomMessage}
           </small>
         </div>
 
@@ -321,7 +329,7 @@ const AIEducatorLibraryResponseComponent = ({
               <div className="mb-2">
                 <div className="d-flex align-items-center justify-content-between mb-1">
                   <div className="d-flex align-items-center">
-                    <small className="fw-semibold me-2">Processing...</small>
+                    <small className="fw-semibold me-2">{intl.formatMessage(messages['ai.extensions.educator.processing'])}</small>
                     <Spinner animation="border" size="sm" />
                   </div>
                   <button
@@ -329,9 +337,9 @@ const AIEducatorLibraryResponseComponent = ({
                     onClick={handleManualRefresh}
                     className="btn btn-link p-0 text-decoration-none"
                     style={{ fontSize: '0.75rem' }}
-                    title={lastUpdateTime ? `Last updated: ${lastUpdateTime.toLocaleTimeString()}` : 'Check status'}
+                    title={lastUpdateTime ? intl.formatMessage(messages['ai.extensions.educator.last.updated'], { time: lastUpdateTime.toLocaleTimeString() }) : 'Check status'}
                   >
-                    update
+                    {intl.formatMessage(messages['ai.extensions.educator.update.button'])}
                   </button>
                 </div>
                 {pollingMessage && <small className="d-block text-muted">{pollingMessage}</small>}
@@ -342,7 +350,7 @@ const AIEducatorLibraryResponseComponent = ({
                 onClick={handleCancelAndClose}
                 className="w-100"
               >
-                Cancel
+                {intl.formatMessage(messages['ai.extensions.educator.cancel'])}
               </Button>
             </div>
           )}
@@ -352,15 +360,14 @@ const AIEducatorLibraryResponseComponent = ({
             <div className="response-container">
               <div className="mb-2">
                 <p className="mb-2" style={{ fontSize: '0.875rem' }}>
-                  The generated questions have been added to your Content Library.
+                  {intl.formatMessage(messages['ai.extensions.educator.success.added'])}
                 </p>
                 <p className="mb-2" style={{ fontSize: '0.875rem' }}>
-                  They are saved in an <strong>unpublished</strong> state for you to review before making them
-                  available to learners.
+                  {intl.formatMessage(messages['ai.extensions.educator.success.review'])}
                 </p>
                 {hyperlinkUrl && (
                   <a href={hyperlinkUrl} target="_blank" rel="noopener noreferrer" className="fw-semibold">
-                    {hyperlinkText || 'View content ›'}
+                    {displayHyperlinkText}
                   </a>
                 )}
               </div>
@@ -372,7 +379,7 @@ const AIEducatorLibraryResponseComponent = ({
                     onClick={handleClearAndClose}
                     className="py-1 px-2"
                   >
-                    Clear
+                    {intl.formatMessage(messages['ai.extensions.response.clear'])}
                   </Button>
                 </div>
               )}

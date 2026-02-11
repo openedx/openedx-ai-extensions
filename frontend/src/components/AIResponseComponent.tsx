@@ -1,10 +1,12 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import { Button, Alert, Collapsible } from '@openedx/paragon';
 import {
   CheckCircle,
   Warning,
 } from '@openedx/paragon/icons';
+import messages from '../messages';
 
 /**
  * AI Response Component
@@ -25,8 +27,11 @@ const AIResponseComponent = ({
   isLoading,
   onClear,
   onError,
-  customMessage = 'AI Assistant Response',
+  customMessage,
 }: AIResponseComponentProps) => {
+  const intl = useIntl();
+  const displayMessage = customMessage || intl.formatMessage(messages['ai.extensions.response.default.title']);
+
   // Don't render if no response or error
   if (!response && !error) {
     return null;
@@ -57,7 +62,7 @@ const AIResponseComponent = ({
             title={(
               <div className="d-flex align-items-center">
                 <CheckCircle className="text-success me-2" style={{ width: '16px', height: '16px' }} />
-                <small className="text-success fw-semibold">{customMessage}</small>
+                <small className="text-success fw-semibold">{displayMessage}</small>
               </div>
             )}
             defaultOpen
@@ -87,7 +92,7 @@ const AIResponseComponent = ({
                     onClick={onClear}
                     className="py-1 px-2"
                   >
-                    Clear
+                    {intl.formatMessage(messages['ai.extensions.response.clear'])}
                   </Button>
                 )}
               </div>

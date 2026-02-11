@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { logError, logInfo } from '@edx/frontend-platform/logging';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Button,
   Form,
   Spinner,
   Alert,
   Card,
+  Stack,
 } from '@openedx/paragon';
 import { AutoAwesome, Close } from '@openedx/paragon/icons';
 import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { callWorkflowService, prepareContextData } from '../services';
 import { WORKFLOW_ACTIONS } from '../constants';
+import messages from '../messages';
 
 interface AIEducatorLibraryAssistComponentProps {
   courseId: string;
@@ -41,17 +44,23 @@ const AIEducatorLibraryAssistComponent = ({
   hasAsked,
   setHasAsked,
   libraries: librariesProp,
-  titleText = 'AI Assistant',
-  buttonText = 'Start',
-  customMessage = 'Use an AI workflow to create multiple answer questions from this unit in a content library',
+  titleText,
+  buttonText,
+  customMessage,
   preloadPreviousSession = false,
   onSuccess,
   onError,
   debug = false,
 }: AIEducatorLibraryAssistComponentProps) => {
+  const intl = useIntl();
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Default display values
+  const displayTitle = titleText || intl.formatMessage(messages['ai.extensions.educator.title']);
+  const displayButtonText = buttonText || intl.formatMessage(messages['ai.extensions.educator.start']);
+  const displayCustomMessage = customMessage || intl.formatMessage(messages['ai.extensions.educator.default.message']);
 
   // Libraries state
   const [libraries, setLibraries] = useState(librariesProp || []);
@@ -99,7 +108,7 @@ const AIEducatorLibraryAssistComponent = ({
       }
     } catch (err) {
       logError('Error fetching libraries:', err);
-      setError('Failed to load libraries. Please try again.');
+      setError(intl.formatMessage(messages['ai.extensions.educator.library.loading']));
     } finally {
       setIsLoadingLibraries(false);
     }
@@ -170,12 +179,12 @@ const AIEducatorLibraryAssistComponent = ({
 
     // Validation
     if (!selectedLibrary) {
-      setError('Please select a library');
+      setError(intl.formatMessage(messages['ai.extensions.educator.library.select']));
       return;
     }
 
     if (numberOfQuestions < 1 || numberOfQuestions > 20) {
-      setError('Number of questions must be between 1 and 20');
+      setError(intl.formatMessage(messages['ai.extensions.educator.questions.help']));
       return;
     }
 
@@ -242,7 +251,7 @@ const AIEducatorLibraryAssistComponent = ({
       const submitError = err instanceof Error ? err : new Error(String(err));
       const errorMessage = (err as any)?.response?.data?.error
         || submitError.message
-        || 'Failed to generate questions. Please try again.';
+        || intl.formatMessage(messages['ai.extensions.educator.error.questions']);
       setError(errorMessage);
 
       if (onError) {
@@ -280,11 +289,11 @@ const AIEducatorLibraryAssistComponent = ({
     <Card className="ai-educator-library-assist mt-3 mb-3">
       <Card.Section>
         <div className="ai-library-assist-header">
-          <h3 className="d-block mb-1" style={{ fontSize: '1.25rem' }}>
-            {titleText}
+          <h3 className="d-block mb-1">
+            {displayTitle}
           </h3>
-          <small className="d-block mb-2" style={{ fontSize: '0.75rem' }}>
-            {customMessage}
+          <small className="d-block mb-2 x-small">
+            {displayCustomMessage}
           </small>
           <Button
             variant={showForm ? 'outline-secondary' : 'outline-primary'}
@@ -294,7 +303,7 @@ const AIEducatorLibraryAssistComponent = ({
             iconBefore={showForm ? Close : AutoAwesome}
             className="w-100"
           >
-            {showForm ? 'Cancel' : buttonText}
+            {showForm ? intl.formatMessage(messages['ai.extensions.educator.cancel']) : displayButtonText}
           </Button>
         </div>
 
@@ -318,7 +327,7 @@ const AIEducatorLibraryAssistComponent = ({
               <Form.Group className="mb-3">
                 <Form.Label>
                   <small>
-                    Library
+                    {intl.formatMessage(messages['ai.extensions.educator.library.label'])}
                     <span className="text-danger">*</span>
                   </small>
                 </Form.Label>
@@ -331,7 +340,9 @@ const AIEducatorLibraryAssistComponent = ({
                   size="sm"
                 >
                   <option value="">
-                    {isLoadingLibraries ? 'Loading libraries...' : 'Select a library...'}
+                    {isLoadingLibraries
+                      ? intl.formatMessage(messages['ai.extensions.educator.library.loading'])
+                      : intl.formatMessage(messages['ai.extensions.educator.library.select'])}
                   </option>
                   {libraries && libraries.length > 0 && (
                     libraries.map((library) => (
@@ -341,13 +352,13 @@ const AIEducatorLibraryAssistComponent = ({
                     ))
                   )}
                   {!isLoadingLibraries && (!libraries || libraries.length === 0) && (
-                    <option disabled>No libraries available</option>
+                    <option disabled>{intl.formatMessage(messages['ai.extensions.educator.library.none'])}</option>
                   )}
                 </Form.Control>
                 <Form.Text className="text-muted" style={{ fontSize: '0.75rem' }}>
                   {isLoadingLibraries
-                    ? 'Loading available libraries...'
-                    : 'Select the library where questions will be added'}
+                    ? intl.formatMessage(messages['ai.extensions.educator.library.help.loading'])
+                    : intl.formatMessage(messages['ai.extensions.educator.library.help.select'])}
                 </Form.Text>
               </Form.Group>
 
@@ -355,7 +366,7 @@ const AIEducatorLibraryAssistComponent = ({
               <Form.Group className="mb-3">
                 <Form.Label>
                   <small>
-                    Number of Questions
+                    {intl.formatMessage(messages['ai.extensions.educator.questions.label'])}
                     <span className="text-danger">*</span>
                   </small>
                 </Form.Label>
@@ -370,14 +381,14 @@ const AIEducatorLibraryAssistComponent = ({
                   size="sm"
                 />
                 <Form.Text className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  Number of questions to generate (1-50)
+                  {intl.formatMessage(messages['ai.extensions.educator.questions.help'])}
                 </Form.Text>
               </Form.Group>
 
               {/* Additional instructions */}
               <Form.Group className="mb-3">
                 <Form.Label>
-                  <small>Additional Instructions (Optional)</small>
+                  <small>{intl.formatMessage(messages['ai.extensions.educator.instructions.label'])}</small>
                 </Form.Label>
                 <Form.Control
                   as="textarea"
@@ -385,16 +396,16 @@ const AIEducatorLibraryAssistComponent = ({
                   value={additionalInstructions}
                   onChange={(e) => setAdditionalInstructions(e.target.value)}
                   disabled={isLoading}
-                  placeholder="Add any specific instructions for the AI..."
+                  placeholder={intl.formatMessage(messages['ai.extensions.educator.instructions.placeholder'])}
                   style={{ fontSize: '0.875rem' }}
                 />
                 <Form.Text className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  Provide additional context or instructions for question generation
+                  {intl.formatMessage(messages['ai.extensions.educator.instructions.help'])}
                 </Form.Text>
               </Form.Group>
 
               {/* Action buttons */}
-              <div className="d-flex flex-column gap-2">
+              <Stack gap={2}>
                 <Button
                   variant="primary"
                   type="submit"
@@ -408,12 +419,12 @@ const AIEducatorLibraryAssistComponent = ({
                         animation="border"
                         size="sm"
                         className="me-2"
-                        as="span"
+                        role="status"
                       />
-                      Generating...
+                      {intl.formatMessage(messages['ai.extensions.educator.generating'])}
                     </>
                   ) : (
-                    'Generate Questions'
+                    intl.formatMessage(messages['ai.extensions.educator.generate.button'])
                   )}
                 </Button>
                 <Button
@@ -423,9 +434,9 @@ const AIEducatorLibraryAssistComponent = ({
                   size="sm"
                   className="w-100"
                 >
-                  Cancel
+                  {intl.formatMessage(messages['ai.extensions.educator.cancel'])}
                 </Button>
-              </div>
+              </Stack>
             </Form>
           </div>
         )}

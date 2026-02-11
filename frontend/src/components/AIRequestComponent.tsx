@@ -1,6 +1,8 @@
 import React from 'react';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import { Button, Spinner } from '@openedx/paragon';
 import { Send } from '@openedx/paragon/icons';
+import messages from '../messages';
 
 /**
  * AI Request Component
@@ -20,10 +22,15 @@ const AIRequestComponent = ({
   isLoading,
   hasAsked,
   onAskAI,
-  customMessage = 'Get personalized AI assistance for this learning unit',
-  buttonText = 'Ask AI',
+  customMessage,
+  buttonText,
   disabled = false,
 }: AIRequestComponentProps) => {
+  const intl = useIntl();
+
+  const displayMessage = customMessage || intl.formatMessage(messages['ai.extensions.request.default.message']);
+  const displayButtonText = buttonText || intl.formatMessage(messages['ai.extensions.request.default.button']);
+
   // Don't render if already asked or currently loading
   if (hasAsked && !isLoading) {
     return null;
@@ -40,7 +47,9 @@ const AIRequestComponent = ({
             size="sm"
             className="me-2"
           />
-          <small className="text-muted">Analyzing content...</small>
+          <small className="text-muted">
+            {intl.formatMessage(messages['ai.extensions.request.analyzing'])}
+          </small>
         </div>
       )}
 
@@ -53,7 +62,7 @@ const AIRequestComponent = ({
               paddingRight: '16px',
             }}
           >
-            {customMessage}
+            {displayMessage}
           </small>
           <Button
             variant="primary"
@@ -68,7 +77,7 @@ const AIRequestComponent = ({
               paddingRight: '16px',
             }}
           >
-            {buttonText}
+            {displayButtonText}
           </Button>
         </div>
       )}
@@ -77,3 +86,4 @@ const AIRequestComponent = ({
 };
 
 export default AIRequestComponent;
+
