@@ -1,7 +1,7 @@
 AI Extensibility Framework
 ###########################
 
-|Status Badge| |License Badge|
+|Status Badge| |License Badge| |Documentation Badge|
 
 .. |Status Badge| image:: https://img.shields.io/badge/Status-Experimental-orange
    :alt: Experimental Status
@@ -9,9 +9,13 @@ AI Extensibility Framework
 .. |License Badge| image:: https://img.shields.io/badge/License-AGPL%20v3-blue
    :alt: License
 
+.. |Documentation Badge| image:: https://img.shields.io/badge/Documentation-green
+   :target: https://docs.openedx.org/projects/openedx-ai-extensions/en/latest/index.html
+   :alt: AI Extensibility Framework documentation
+
 **An experimental Open edX plugin for AI-powered educational workflows**
 
-The AI Extensibility Framework is a proof-of-concept plugin that explores artificial intelligence integration in Open edX. It provides a modular, extensible architecture for building AI-powered workflows that enhance the learning experience.
+The AI Extensibility Framework is a proof-of-concept plugin that explores artificial intelligence integration in the Open edX platform. It provides a modular, extensible architecture for building AI-powered workflows that enhance the learning experience.
 
 .. contents::
    :local:
@@ -29,11 +33,11 @@ Current Status
 .. warning::
    **Experimental** - This plugin is in active development and should not be used in production environments.
 
-This is an exploratory project developed by edunext as part of FC-111 to investigate AI extensibility patterns for Open edX. The plugin serves as a testing ground for AI integration concepts that may inform future development.
+This is an exploratory project developed by edunext as part of FC-111 to investigate AI extensibility patterns for the Open edX platform. The plugin serves as a testing ground for AI integration concepts that may inform future development.
 
 **What Works:**
 
-- Frontend integration with Learning MFE via plugin slots
+- Frontend integration with Learning MFE and Authoring MFE via plugin slots
 - Basic content extraction from course unit
 - AI-powered content summarization
 - Modular workflow-based architecture for AI processing
@@ -41,6 +45,10 @@ This is an exploratory project developed by edunext as part of FC-111 to investi
 - Context-aware AI assistance examples integrated into the learning experience
 - Observable workflows with event analytics in aspects
 - Configuration-driven behavior without code changes
+
+**Documentation**
+
+Documentation is available on `ReadTheDocs <https://docs.openedx.org/projects/openedx-ai-extensions/en/latest/index.html>`_.
 
 
 Installation
@@ -122,7 +130,7 @@ Significant architectural decisions are documented in ADRs (Architectural Decisi
 Contributing
 ************
 
-We welcome contributions! This is an experimental project exploring AI integration patterns for Open edX.
+We welcome contributions! This is an experimental project exploring AI integration patterns for the Open edX platform.
 
 **How to Contribute:**
 
@@ -131,6 +139,8 @@ We welcome contributions! This is an experimental project exploring AI integrati
 3. Make your changes following the code standards
 4. Write or update tests as needed
 5. Submit a pull request with a clear description
+
+See the `Contributing to the Open edX Project quickstart <https://docs.openedx.org/en/latest/developers/quickstarts/so_you_want_to_contribute.html>`_ for more details about the project's code quality standards and review norms.
 
 For questions or discussions, please use the `Open edX discussion forum <https://discuss.openedx.org>`_.
 
@@ -143,6 +153,7 @@ References
 - `LiteLLM Documentation <https://docs.litellm.ai/>`_
 - `Architectural Decision Records (ADRs) <docs/decisions/>`_
 - `AI Extension WG Demo (before v1) <https://drive.google.com/file/d/1sUj2xoldYFAvPoDuxqwG0XbIundGD0u2/view>`_
+- `AI Extension Framework documentation <https://docs.openedx.org/projects/openedx-ai-extensions/en/latest/index.html>`_
 
 License
 *******

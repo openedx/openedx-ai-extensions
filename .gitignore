@@ -71,6 +71,10 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# sphinx-apidocs - generate these on every docs build, don't check them in
+docs/modules.rst
+docs/openedx_ai_extensions.*
+
 # PyBuilder
 .pybuilder/
 target/

@@ -1,14 +1,24 @@
+.. _qs config:
+
 Configuration Guide
 ###################
 
 This guide walks you through the essential configuration steps to get AI workflows running in your Open edX installation.
+
+.. note::
+
+  These instructions are written for site operators. You'll need access to your site backend; it is recommend to use `Tutor <https://docs.tutor.edly.io/>`_.
+
+.. contents::
+ :local:
+ :depth: 1
 
 Prerequisites
 *************
 
 Before configuring the plugin, ensure you have:
 
-- Completed the plugin installation
+- Completed the :ref:`plugin installation <readme>`
 - Access to your Tutor configuration files (``config.yml``)
 - An API key from a supported LLM provider (OpenAI, Anthropic, or a local model server)
 - Django admin access to your Open edX instance
@@ -16,7 +26,7 @@ Before configuring the plugin, ensure you have:
 Core Concepts
 *************
 
-The plugin uses two main configuration concepts:
+The plugin uses three main configuration concepts:
 
 **Provider**
    Handles authentication and model routing. Defines which AI service to use and how to connect to it.
@@ -29,6 +39,8 @@ The plugin uses two main configuration concepts:
 
 Configuring Providers
 *********************
+
+.. _tutor-configure-providers:
 
 Using Tutor Configuration (Recommended)
 ========================================
@@ -155,6 +167,10 @@ Ollama Configuration Example
        API_BASE: "http://ollama:11434"
        MODEL: "ollama/llama3.2:1b"
 
+vLLM Configuration Example
+--------------------------
+
+See the `vLLM project website <https://vllm.ai/>`_ or their `GitHub project page <https://github.com/vllm-project/vllm>`_ for more information on setting up vLLM.
 
 Troubleshooting
 ***************
@@ -178,3 +194,11 @@ If configured profiles don't appear in the UI:
 - Ensure the provider referenced in the profile exists in your configuration
 
 For additional support, visit the `GitHub Issues <https://github.com/openedx/openedx-ai-extensions/issues>`_ page.
+
+.. seealso::
+
+  :ref:`qs-usage`
+
+  :ref:`local MCP`
+
+  :ref:`MCP Integration`
