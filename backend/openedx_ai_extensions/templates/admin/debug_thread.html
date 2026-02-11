@@ -1,0 +1,88 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Debug Thread{% endblock %}
+
+{% block content %}
+<style>
+  .debug-session { margin-bottom: 2em; border: 1px solid #ddd; border-radius: 4px; }
+  .debug-session-header { background: #f8f8f8; padding: 12px 16px; border-bottom: 1px solid #ddd; }
+  .debug-session-header h3 { margin: 0 0 8px 0; }
+  .debug-session-header .meta { color: #666; font-size: 0.9em; }
+  .debug-session-header .meta span { margin-right: 16px; }
+  .debug-thread { padding: 16px; }
+  .debug-msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; max-width: 80%; }
+  .debug-msg.user { background: #e3f2fd; margin-left: auto; }
+  .debug-msg.assistant { background: #f5f5f5; }
+  .debug-msg.system { background: #fff3e0; font-size: 0.9em; }
+  .debug-msg .role { font-weight: bold; font-size: 0.8em; text-transform: uppercase; color: #555; margin-bottom: 4px; }
+  .debug-msg .content { white-space: pre-wrap; word-break: break-word; }
+  .debug-msg .timestamp { font-size: 0.75em; color: #999; margin-top: 4px; }
+  .debug-error { color: #d32f2f; padding: 16px; }
+  .debug-json-toggle { margin: 16px 0; }
+  .debug-json { display: none; background: #f5f5f5; padding: 16px; border-radius: 4px; overflow-x: auto; }
+  .debug-json pre { margin: 0; font-size: 0.85em; }
+</style>
+
+<h2>Debug Thread</h2>
+
+<div class="debug-json-toggle">
+  <button type="button" onclick="var el=document.getElementById('raw-json'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
+    Toggle Raw JSON
+  </button>
+  <button type="button" id="download-json-btn">
+    Download JSON
+  </button>
+  <script>
+    document.getElementById('download-json-btn').addEventListener('click', function() {
+      var data = document.getElementById('json-data').textContent;
+      var ids = {{ session_ids_json|safe }};
+      var filename = 'debug_thread_ai_workflow_session_' + ids.join('_') + '.json';
+      var a = document.createElement('a');
+      a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  </script>
+</div>
+<div id="raw-json" class="debug-json">
+  <pre id="json-data">{{ results_json }}</pre>
+</div>
+
+{% for result in results %}
+<div class="debug-session">
+  <div class="debug-session-header">
+    <h3>Session: {{ result.user }}</h3>
+    <div class="meta">
+      <span><strong>ID:</strong> {{ result.session_id }}</span>
+      {% if result.course_id %}<span><strong>Course:</strong> {{ result.course_id }}</span>{% endif %}
+      {% if result.location_id %}<span><strong>Location:</strong> {{ result.location_id }}</span>{% endif %}
+      {% if result.profile %}<span><strong>Profile:</strong> {{ result.profile }}</span>{% endif %}
+      {% if result.local_submission_id %}<span><strong>Submission:</strong> {{ result.local_submission_id }}</span>{% endif %}
+      {% if result.remote_response_id %}<span><strong>Remote:</strong> {{ result.remote_response_id }}</span>{% endif %}
+    </div>
+  </div>
+
+  {% if result.error %}
+    <div class="debug-error">{{ result.error }}</div>
+  {% endif %}
+
+  {% if result.local_thread %}
+  <div class="debug-thread">
+    {% for msg in result.local_thread %}
+    <div class="debug-msg {{ msg.role }}">
+      <div class="role">{{ msg.role }}</div>
+      <div class="content">{{ msg.content }}</div>
+      {% if msg.timestamp %}<div class="timestamp">{{ msg.timestamp }}{% if msg.submission_id %} &middot; submission: {{ msg.submission_id }}{% endif %}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% empty %}
+  <p>No sessions selected.</p>
+{% endfor %}
+
+{% endblock %}

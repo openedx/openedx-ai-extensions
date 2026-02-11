@@ -2,10 +2,14 @@
 Django admin configuration for AI Extensions models.
 """
 import json
+import logging
 
 from django import forms
 from django.contrib import admin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import JsonResponse
+from django.template.response import TemplateResponse
+from django.urls import path
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 
@@ -323,6 +327,87 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
     list_display = ("user", "course_id", "location_id")
     search_fields = ("user__username", "course_id", "location_id")
     readonly_fields = ("local_submission_id", "remote_response_id", "metadata")
+    actions = ["debug_thread"]
+
+    def get_urls(self):
+        custom_urls = [
+            path(
+                "debug-thread/",
+                self.admin_site.admin_view(self.debug_thread_view),
+                name="aiworkflowsession_debug_thread",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    @admin.action(description="Debug thread")
+    def debug_thread(self, request, queryset):
+        """Redirect selected sessions to the debug thread view."""
+        ids = ",".join(str(s.id) for s in queryset)
+        from django.shortcuts import redirect  # pylint: disable=import-outside-toplevel
+        return redirect(f"debug-thread/?ids={ids}")
+
+    def debug_thread_view(self, request):
+        """Render the full local thread for selected sessions."""
+        if not (
+            self.has_view_permission(request)
+            and request.user.has_perm("submissions.view_submission")
+        ):
+            raise PermissionDenied
+
+        from openedx_ai_extensions.processors.openedx.submission_processor import (  # pylint: disable=import-outside-toplevel
+            SubmissionProcessor,
+        )
+
+        logger = logging.getLogger(__name__)
+
+        ids = request.GET.get("ids", "").split(",")
+        ids = [i.strip() for i in ids if i.strip()]
+
+        sessions = AIWorkflowSession.objects.filter(id__in=ids).select_related("user", "scope", "profile")
+
+        results = []
+        for session in sessions:
+            session_data = {
+                "session_id": str(session.id),
+                "user": session.user.username,
+                "course_id": str(session.course_id) if session.course_id else None,
+                "location_id": str(session.location_id) if session.location_id else None,
+                "profile": session.profile.slug if session.profile else None,
+                "local_submission_id": session.local_submission_id,
+                "remote_response_id": session.remote_response_id,
+                "local_thread": None,
+                "error": None,
+            }
+
+            if session.local_submission_id:
+                try:
+                    processor = SubmissionProcessor(
+                        config=session.profile.processor_config if session.profile else {},
+                        user_session=session,
+                    )
+                    messages = processor.get_full_thread()
+                    session_data["local_thread"] = messages
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.exception("Error fetching local thread for session %s", session.id)
+                    session_data["error"] = str(e)
+            else:
+                session_data["error"] = "No local_submission_id"
+
+            results.append(session_data)
+
+        # JSON response if requested
+        if request.GET.get("format") == "json":
+            return JsonResponse({"sessions": results}, json_dumps_params={"indent": 2})
+
+        session_ids = [r["session_id"] for r in results]
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Debug Thread",
+            "results": results,
+            "results_json": json.dumps(results, indent=2, default=str),
+            "session_ids_json": json.dumps(session_ids),
+        }
+        return TemplateResponse(request, "admin/debug_thread.html", context)
 
 
 @admin.register(AIWorkflowScope)
