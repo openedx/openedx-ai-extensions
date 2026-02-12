@@ -56,7 +56,6 @@ const GetAIAssistanceButton = ({
       // Make API call with flexible parameters
       const data = await callWorkflowService({
         context: contextData,
-        userInput: requestMessage || 'Provide learning assistance for this content',
         payload: {
           action: WORKFLOW_ACTIONS.SIMPLE_BUTTON_ASSISTANCE,
           requestId: `ai-request-${Date.now()}`,
