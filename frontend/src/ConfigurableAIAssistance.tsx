@@ -153,15 +153,10 @@ const ConfigurableAIAssistance = ({
         ...additionalProps,
       });
 
-      const requestMessage = config?.request.config?.customMessage
-        || config?.request.config?.requestMessage
-        || null;
-
       let buffer = '';
       // Make API call
       const data = await callWorkflowService({
         context: contextData,
-        userInput: requestMessage,
         payload: {
           action: WORKFLOW_ACTIONS.RUN,
           requestId: `ai-request-${Date.now()}`,
@@ -201,7 +196,7 @@ const ConfigurableAIAssistance = ({
     } finally {
       setIsLoading(false);
     }
-  }, [config, additionalProps]);
+  }, [additionalProps]);
 
   /**
    * Reset component state for new request
