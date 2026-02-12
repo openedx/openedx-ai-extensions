@@ -609,3 +609,61 @@ def test_threaded_llm_response_orchestrator_history_error(
 
     assert "error" in result
     assert result["status"] == "SubmissionProcessor error"
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.orchestrators.LLMProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator.SubmissionProcessor")
+def test_session_based_orchestrator_get_run_status(
+    mock_submission_processor_class,
+    mock_responses_processor_class,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
+):
+    """
+    Test SessionBasedOrchestrator.get_run_status method with different task statuses.
+    """
+    # Mock LLMProcessor and SubmissionProcessor
+    mock_responses = Mock()
+    mock_responses_processor_class.return_value = mock_responses
+    mock_submission = Mock()
+    mock_submission_processor_class.return_value = mock_submission
+
+    workflow_scope.location_id = None
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
+
+    # Test 1: Processing status (default)
+    result = orchestrator.get_run_status({})
+    assert result["status"] == "processing"
+    assert result["message"] == "AI workflow is running"
+
+    # Test 2: Completed status with result
+    orchestrator.session.metadata = {
+        "task_status": "completed",
+        "task_result": {"status": "done", "response": "Test response"}
+    }
+    orchestrator.session.save()
+    result = orchestrator.get_run_status({})
+    assert result["status"] == "done"
+    assert result["response"] == "Test response"
+
+    # Test 3: Error status
+    orchestrator.session.metadata = {
+        "task_status": "error",
+        "task_error": "Something went wrong"
+    }
+    orchestrator.session.save()
+    result = orchestrator.get_run_status({})
+    assert result["status"] == "error"
+    assert result["error"] == "Something went wrong"
+
+    # Test 4: Timeout status
+    orchestrator.session.metadata = {
+        "task_status": "timeout",
+        "task_error": "Task exceeded time limit"
+    }
+    orchestrator.session.save()
+    result = orchestrator.get_run_status({})
+    assert result["status"] == "timeout"
+    assert result["error"] == "Task exceeded time limit"
