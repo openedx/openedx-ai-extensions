@@ -153,3 +153,34 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             'task_id': task.id,
             'message': 'AI workflow has started'
         }
+
+    def get_run_status(self, input_data):  # pylint: disable=unused-argument
+        """
+        Get the status of an async task from session metadata.
+
+        Returns:
+            dict: Status information including task result if completed
+        """
+        metadata = self.session.metadata or {}
+        task_status = metadata.get('task_status', 'processing')
+
+        if task_status == 'completed':
+            return metadata.get('task_result', {
+                'status': 'completed',
+                'message': 'Task completed but no result found'
+            })
+        elif task_status == 'error':
+            return {
+                'status': 'error',
+                'error': metadata.get('task_error', 'Unknown error occurred')
+            }
+        elif task_status == 'timeout':
+            return {
+                'status': 'timeout',
+                'error': metadata.get('task_error', 'Task exceeded time limit')
+            }
+        else:
+            return {
+                'status': 'processing',
+                'message': 'AI workflow is running'
+            }
