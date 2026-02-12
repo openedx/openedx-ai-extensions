@@ -196,7 +196,7 @@ const ConfigurableAIAssistance = ({
     } finally {
       setIsLoading(false);
     }
-  }, [config, additionalProps]);
+  }, [additionalProps]);
 
   /**
    * Reset component state for new request

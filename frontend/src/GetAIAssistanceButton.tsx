@@ -100,7 +100,7 @@ const GetAIAssistanceButton = ({
     } finally {
       setIsLoading(false);
     }
-  }, [requestMessage, props]);
+  }, [props]);
 
   /**
    * Reset component state for new request
