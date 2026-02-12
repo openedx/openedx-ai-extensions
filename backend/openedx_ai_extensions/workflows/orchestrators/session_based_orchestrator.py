@@ -43,8 +43,8 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
 
         # 2. Build context from session
         context = {
-            'course_id': str(session.course_id),
-            'location_id': str(session.location_id),
+            'course_id': str(session.course_id) if session.course_id is not None else None,
+            'location_id': str(session.location_id) if session.location_id is not None else None,
         }
 
         # 3. Resolve and instantiate orchestrator via centralized factory
@@ -138,6 +138,10 @@ class SessionBasedOrchestrator(BaseOrchestrator):
 
         self.session.course_id = self.course_id
         self.session.location_id = self.location_id
+        self.session.metadata = self.session.metadata or {}
+        self.session.metadata['task_status'] = 'processing'
+        self.session.metadata.pop('task_result', None)
+        self.session.metadata.pop('task_error', None)
         self.session.save()
 
         task = _execute_orchestrator_async.delay(
