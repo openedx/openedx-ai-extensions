@@ -13,6 +13,8 @@ from django.conf import settings
 from jsonmerge import merge
 from jsonschema import Draft7Validator
 
+from openedx_ai_extensions.models import PromptTemplate
+
 logger = logging.getLogger(__name__)
 
 
@@ -351,7 +353,6 @@ def _validate_prompt_templates(processor_config: dict) -> list[str]:
     Returns:
         List of error messages for any missing prompt templates.
     """
-    from openedx_ai_extensions.models import PromptTemplate  # pylint: disable=import-outside-toplevel
 
     errors = []
 

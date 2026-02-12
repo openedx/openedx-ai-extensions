@@ -7,6 +7,7 @@ import logging
 from django.conf import settings
 
 from openedx_ai_extensions.functions.decorators import TOOLS_SCHEMA
+from openedx_ai_extensions.models import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,6 @@ class LitellmProcessor:
         Returns:
             str or None: The prompt text
         """
-        from openedx_ai_extensions.models import PromptTemplate  # pylint: disable=import-outside-toplevel
 
         # Try loading from PromptTemplate (handles both slug and UUID)
         template_id = self.config.get("prompt_template")
