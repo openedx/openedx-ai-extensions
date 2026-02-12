@@ -452,7 +452,9 @@ class AIWorkflowSession(models.Model):
         local_by_content = {}
         if local_thread:
             for msg in local_thread:
-                key = (msg["role"], msg["content"][:200])
+                role = msg.get("role", "")
+                content = msg.get("content", "")
+                key = (role, content[:200])
                 # Keep the last match (most recent submission_id)
                 local_by_content[key] = msg
 
@@ -460,17 +462,20 @@ class AIWorkflowSession(models.Model):
         seen = set()
 
         for response in remote_thread:
+            if not isinstance(response, dict):
+                continue
+
             if "error" in response:
                 combined.append({
                     "role": "error",
                     "type": "error",
-                    "content": response["error"],
+                    "content": response.get("error", "Unknown error"),
                     "response_id": response.get("id"),
                 })
                 continue
 
             response_meta = {
-                "response_id": response["id"],
+                "response_id": response.get("id", "unknown"),
                 "created_at": response.get("created_at"),
                 "model": response.get("model"),
             }

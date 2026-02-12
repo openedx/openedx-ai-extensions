@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 {% load i18n %}
 
-{% block title %}Debug Thread{% endblock %}
+{% block title %}Debug AI Workflow Session Thread{% endblock %}
 
 {% block content %}
 <style>
@@ -18,10 +18,12 @@
   .debug-msg.reasoning { background: #f3e5f5; border-left: 3px solid #9c27b0; font-size: 0.85em; font-style: italic; }
   .debug-msg.tool_call { background: #e8f5e9; border-left: 3px solid #4caf50; font-size: 0.85em; font-family: monospace; }
   .debug-msg.error { background: #ffebee; border-left: 3px solid #d32f2f; }
+  .debug-msg.unknown { background: #eceff1; border-left: 3px solid #90a4ae; }
   .debug-msg .role { font-weight: bold; font-size: 0.8em; text-transform: uppercase; color: #555; margin-bottom: 4px; }
   .debug-msg .content { white-space: pre-wrap; word-break: break-word; }
   .debug-msg .msg-meta { font-size: 0.75em; color: #999; margin-top: 4px; }
   .debug-error { color: #d32f2f; padding: 16px; }
+  .debug-empty { color: #999; padding: 16px; font-style: italic; }
   .debug-json-toggle { margin: 16px 0; }
   .debug-json { display: none; background: #f5f5f5; padding: 16px; border-radius: 4px; overflow-x: auto; }
   .debug-json pre { margin: 0; font-size: 0.85em; }
@@ -38,9 +40,11 @@
   </button>
   <script>
     document.getElementById('download-json-btn').addEventListener('click', function() {
-      var data = document.getElementById('json-data').textContent;
+      var el = document.getElementById('json-data');
+      if (!el) return;
+      var data = el.textContent;
       var ids = {{ session_ids_json|safe }};
-      var filename = 'debug_thread_ai_workflow_session_' + ids.join('_') + '.json';
+      var filename = 'debug_thread_ai_workflow_session_' + (ids.length ? ids.join('_') : 'empty') + '.json';
       var a = document.createElement('a');
       a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
       a.download = filename;
@@ -57,9 +61,9 @@
 {% for result in results %}
 <div class="debug-session">
   <div class="debug-session-header">
-    <h3>Session: {{ result.user }}</h3>
+    <h3>Session: {{ result.user|default:"unknown" }}</h3>
     <div class="meta">
-      <span><strong>ID:</strong> {{ result.session_id }}</span>
+      <span><strong>ID:</strong> {{ result.session_id|default:"-" }}</span>
       {% if result.course_id %}<span><strong>Course:</strong> {{ result.course_id }}</span>{% endif %}
       {% if result.location_id %}<span><strong>Location:</strong> {{ result.location_id }}</span>{% endif %}
       {% if result.profile %}<span><strong>Profile:</strong> {{ result.profile }}</span>{% endif %}
@@ -68,16 +72,26 @@
     </div>
   </div>
 
+  {% if result.local_thread_error %}
+    <div class="debug-error">Local thread error: {{ result.local_thread_error }}</div>
+  {% endif %}
+  {% if result.remote_thread_error %}
+    <div class="debug-error">Remote thread error: {{ result.remote_thread_error }}</div>
+  {% endif %}
   {% if result.combined_thread_error %}
-    <div class="debug-error">{{ result.combined_thread_error }}</div>
+    <div class="debug-error">Combined thread error: {{ result.combined_thread_error }}</div>
   {% endif %}
 
   {% if result.combined_thread %}
   <div class="debug-thread">
     {% for msg in result.combined_thread %}
-    <div class="debug-msg {{ msg.role }}">
-      <div class="role">{{ msg.role }}{% if msg.type and msg.type != "message" %} ({{ msg.type }}){% endif %}{% if msg.source %} &middot; {{ msg.source }}{% endif %}</div>
-      <div class="content">{{ msg.content }}</div>
+    <div class="debug-msg {{ msg.role|default:'unknown' }}">
+      <div class="role">
+        {{ msg.role|default:"unknown" }}
+        {% if msg.type and msg.type != "message" %} ({{ msg.type }}){% endif %}
+        {% if msg.source == "both" %} &middot; source: remote and local{% elif msg.source %} &middot; source: {{ msg.source }}{% endif %}
+      </div>
+      <div class="content">{{ msg.content|default:"(empty)" }}</div>
       <div class="msg-meta">
         {% if msg.created_at %}{{ msg.created_at }}{% endif %}
         {% if msg.timestamp %} &middot; local: {{ msg.timestamp }}{% endif %}
@@ -88,6 +102,8 @@
     </div>
     {% endfor %}
   </div>
+  {% elif not result.combined_thread_error %}
+    <div class="debug-empty">No thread data available for this session.</div>
   {% endif %}
 </div>
 {% empty %}

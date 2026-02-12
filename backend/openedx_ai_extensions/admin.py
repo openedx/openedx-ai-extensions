@@ -339,7 +339,7 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
         ]
         return custom_urls + super().get_urls()
 
-    @admin.action(description="Debug thread")
+    @admin.action(description="Debug AI Workflow Session Thread")
     def debug_thread(self, request, queryset):
         """Redirect selected sessions to the debug thread view."""
         ids = ",".join(str(s.id) for s in queryset)
@@ -356,8 +356,18 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
 
         _logger = logging.getLogger(__name__)
 
-        ids = request.GET.get("ids", "").split(",")
-        ids = [i.strip() for i in ids if i.strip()]
+        raw_ids = request.GET.get("ids", "").split(",")
+        ids = [i.strip() for i in raw_ids if i.strip()]
+
+        if not ids:
+            context = {
+                **self.admin_site.each_context(request),
+                "title": "Debug AI Workflow Session Thread",
+                "results": [],
+                "results_json": "[]",
+                "session_ids_json": "[]",
+            }
+            return TemplateResponse(request, "admin/debug_thread.html", context)
 
         sessions = AIWorkflowSession.objects.filter(id__in=ids).select_related("user", "scope", "profile")
 
@@ -365,7 +375,7 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
         for session in sessions:
             session_data = {
                 "session_id": str(session.id),
-                "user": session.user.username,
+                "user": getattr(session.user, "username", "unknown") if session.user else "unknown",
                 "course_id": str(session.course_id) if session.course_id else None,
                 "location_id": str(session.location_id) if session.location_id else None,
                 "profile": session.profile.slug if session.profile else None,
@@ -406,7 +416,7 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
         session_ids = [r["session_id"] for r in results]
         context = {
             **self.admin_site.each_context(request),
-            "title": "Debug Thread",
+            "title": "Debug AI Workflow Session Thread",
             "results": results,
             "results_json": json.dumps(results, indent=2, default=str),
             "session_ids_json": json.dumps(session_ids),
