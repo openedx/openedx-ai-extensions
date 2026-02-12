@@ -1,0 +1,18 @@
+.ai-sidebar-chat {
+    .user-message {
+          border-radius: 20px 20px 0px;
+    }
+    .ai-message {
+        border-radius: 20px 20px 20px 0px;
+    }
+}
+
+.ai-sidebar-chat-button {
+    width: fit-content;
+    position: absolute;  right: 1.5rem; bottom: 1.5rem; z-index: 2000;
+}
+
+.ai-sidebar-chat-input textarea {
+    resize: none;
+    padding: 1rem 4rem 1rem 1rem;
+}

@@ -6,6 +6,13 @@ import {
   Button,
   Alert,
   Dropdown,
+  ModalLayer,
+  ButtonGroup,
+  Icon,
+  Scrollable,
+  Spinner,
+  Card,
+  Form,
 } from '@openedx/paragon';
 import {
   Send,
@@ -13,6 +20,7 @@ import {
   Warning,
   Close,
   Settings,
+  ExpandLess,
 } from '@openedx/paragon/icons';
 
 // Import AI services
@@ -25,6 +33,7 @@ import { AIChatMessage, AIModelResponse, PluginContext } from '../types';
 import { WORKFLOW_ACTIONS } from '../constants';
 
 import messages from '../messages';
+import './sidebar.scss';
 
 /**
  * AI Sidebar Response Component
@@ -109,7 +118,9 @@ const AISidebarResponse = ({
         let formattedMessages: AIChatMessage[] = rawMessages.map((msg, index) => ({
           type: msg.role === 'user' ? 'user' : 'ai',
           content: msg.content,
-          timestamp: msg.timestamp || new Date().toISOString(),
+          timestamp: (msg.timestamp && !Number.isNaN(Date.parse(msg.timestamp)))
+            ? msg.timestamp
+            : new Date().toISOString(),
           originalIndex: index,
         }));
 
@@ -406,11 +417,15 @@ const AISidebarResponse = ({
             const lastIndex = newMsgs.length - 1;
             // Update only the last message content (the AI placeholder)
             if (newMsgs[lastIndex] && newMsgs[lastIndex].type === 'ai') {
+              let validTimestamp = newMsgs[lastIndex].timestamp;
+              if (!validTimestamp || Number.isNaN(Date.parse(validTimestamp))) {
+                validTimestamp = new Date().toISOString();
+              }
               newMsgs[lastIndex] = {
                 ...newMsgs[lastIndex],
                 content: buffer,
                 type: 'ai',
-                timestamp: newMsgs[lastIndex].timestamp ?? new Date().toISOString(),
+                timestamp: validTimestamp,
               };
             }
             return newMsgs;
@@ -440,10 +455,14 @@ const AISidebarResponse = ({
           const newMsgs = [...prev];
           const lastIndex = newMsgs.length - 1;
           if (newMsgs[lastIndex] && newMsgs[lastIndex].type === 'ai') {
+            let validTimestamp = newMsgs[lastIndex].timestamp;
+            if (!validTimestamp || Number.isNaN(Date.parse(validTimestamp))) {
+              validTimestamp = new Date().toISOString();
+            }
             newMsgs[lastIndex] = {
               ...newMsgs[lastIndex],
               content: aiResponse,
-              timestamp: new Date().toISOString(),
+              timestamp: validTimestamp,
             };
           }
           return newMsgs;
@@ -477,7 +496,7 @@ const AISidebarResponse = ({
     }
 
     // Calculate number of rows needed (max 10)
-    const lineHeight = 24; // Approximate line height in pixels
+    const lineHeight = 30; // Approximate line height in pixels
     const maxRows = 10;
     const minRows = 1;
 
@@ -507,75 +526,34 @@ const AISidebarResponse = ({
   }
 
   return (
-    <>
-      {/* Overlay */}
-      {isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            zIndex: 1040,
-            transition: 'opacity 0.3s ease',
-          }}
-          onClick={handleClose}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Escape' && handleClose()}
-          aria-label={intl.formatMessage(messages['ai.extensions.sidebar.close.label'])}
-        />
-      )}
+    <ModalLayer
+      isOpen={isOpen}
+      isBlocking
+      onClose={onClear}
+    >
 
       {/* Sidebar */}
       <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: isOpen ? 0 : '-400px',
-          width: '400px',
-          maxWidth: '90vw',
-          height: '100vh',
-          backgroundColor: '#fff',
-          boxShadow: '-2px 0 8px rgba(0, 0, 0, 0.15)',
-          zIndex: 1050,
-          transition: 'right 0.3s ease',
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-        }}
+        className="vh-100 bg-white right mis-auto w-xs mw-xs d-flex flex-column ai-sidebar-chat"
         role="dialog"
         aria-modal="true"
         aria-label={intl.formatMessage(messages['ai.extensions.sidebar.aria.label'])}
       >
         {/* Header */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid #dee2e6',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: '#f8f9fa',
-          }}
-        >
+        <div className="d-flex justify-content-between p-3 border bg-light-200">
           <div className="d-flex align-items-center">
-            <CheckCircle className="text-success me-2" style={{ width: '20px', height: '20px' }} aria-hidden="true" />
+            <CheckCircle className="text-success mr-2" aria-hidden="true" />
             <strong style={{ fontSize: '1rem' }}>{displayTitle}</strong>
           </div>
-          <div className="d-flex align-items-center gap-2">
-            {/* Settings dropdown with Clear option */}
+          <ButtonGroup size="sm">
             <Dropdown>
               <Dropdown.Toggle
                 variant="light"
                 size="sm"
                 id="sidebar-settings-dropdown"
                 className="p-2"
-                style={{ minWidth: 'auto' }}
               >
-                <Settings style={{ width: '16px', height: '16px' }} aria-hidden="true" />
+                <Icon src={Settings} aria-label="Settings" size="sm" />
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 <Dropdown.Item onClick={handleClearAndClose}>
@@ -583,30 +561,29 @@ const AISidebarResponse = ({
                 </Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
+
             {/* Close button */}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={handleClose}
-              className="btn btn-secondary btn-sm p-2"
-              style={{ minWidth: 'auto' }}
               aria-label={intl.formatMessage(messages['ai.extensions.sidebar.close.label'])}
             >
-              <Close style={{ width: '16px', height: '16px' }} aria-hidden="true" />
-            </button>
-          </div>
+              <Icon src={Close} aria-hidden="true" size="sm" />
+            </Button>
+          </ButtonGroup>
         </div>
 
         {/* Content */}
-        <div
+        <Scrollable
           ref={chatContainerRef}
-          style={{ flex: 1, overflowY: 'auto', padding: '20px' }}
           onScroll={handleScroll}
+          className="flex-grow-1 p-3"
         >
           {/* Loading indicator for lazy loading at top */}
-          {isLoadingHistory && (
-            <div className="d-flex align-items-center justify-content-center py-3 gap-2" role="status" aria-live="polite">
-              <div className="spinner-border spinner-border-sm text-primary" aria-hidden="true" />
-              <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+          {isLoading && (
+            <div className="d-flex align-items-center justify-content-center mb-4">
+              <Spinner animation="border" size="sm" role="status" />
+              <span className="text-muted x-small ml-2">
                 {intl.formatMessage(messages['ai.extensions.sidebar.loading.history'])}
               </span>
             </div>
@@ -616,11 +593,10 @@ const AISidebarResponse = ({
           {hasMoreHistory && !isLoadingHistory && (
             <div className="text-center mb-3">
               <Button
-                variant="link"
+                variant="tertiary"
                 size="sm"
                 onClick={handleLoadMoreHistory}
-                className="text-muted"
-                style={{ fontSize: '0.85rem', textDecoration: 'none' }}
+                iconAfter={ExpandLess}
               >
                 {intl.formatMessage(messages['ai.extensions.sidebar.load.older'])}
               </Button>
@@ -631,14 +607,12 @@ const AISidebarResponse = ({
           {error && (
             <Alert
               variant="danger"
-              className="mb-3"
+              className="mb-3 align-items-center"
               dismissible
               onClose={() => onError && onError('')}
+              icon={Warning}
             >
-              <div className="d-flex align-items-start">
-                <Warning className="me-2 mt-1" style={{ width: '16px', height: '16px' }} aria-hidden="true" />
-                <div>{error}</div>
-              </div>
+              {error}
             </Alert>
           )}
 
@@ -651,55 +625,26 @@ const AISidebarResponse = ({
                   return null;
                 }
                 const messageKey = `${message.timestamp}-${index}`;
-                let bgColor = '#f8f9fa';
-                let textColor = '#212529';
+                let variant = 'muted';
                 let className = 'ai-message';
 
                 if (message.type === 'user') {
-                  bgColor = '#007bff';
-                  textColor = '#fff';
-                  className = 'user-message';
+                  variant = 'dark';
+                  className = 'mis-auto user-message';
                 } else if (message.type === 'error') {
-                  bgColor = '#f8d7da';
-                  textColor = '#721c24';
-                  className = 'error-message';
+                  className = 'bg-danger';
                 }
-
                 return (
-                  <div
-                    key={messageKey}
-                    className={`message-bubble mb-3 ${className}`}
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      backgroundColor: bgColor,
-                      color: textColor,
-                      marginLeft: message.type === 'user' ? '20%' : '0',
-                      marginRight: message.type === 'user' ? '0' : '20%',
-                    }}
-                  >
-                    <div
-                      className="message-content"
-                      style={{
-                        fontSize: '0.9rem',
-                        lineHeight: '1.5',
-                      }}
-                    >
+                  <Card className={`small my-3 w-75 ${className}`} variant={variant} key={messageKey}>
+                    <Card.Section className="pb-2">
                       <ReactMarkdown>
                         {message.content}
                       </ReactMarkdown>
-                    </div>
-                    <div
-                      className="message-time text-muted"
-                      style={{
-                        fontSize: '0.7rem',
-                        marginTop: '6px',
-                        opacity: 0.7,
-                      }}
-                    >
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </div>
-                  </div>
+                    </Card.Section>
+                    <Card.Footer className={`message-time x-small d-flex ${variant === 'muted' && 'flex-row-reverse'}`}>
+                      <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+                    </Card.Footer>
+                  </Card>
                 );
               })}
               {/* Scroll anchor */}
@@ -709,72 +654,46 @@ const AISidebarResponse = ({
 
           {/* Loading state for follow-up */}
           {isSendingFollowUp && (
-            <div className="d-flex align-items-center justify-content-center py-3 gap-2" role="status" aria-live="polite">
-              <div className="spinner-border spinner-border-sm text-primary" aria-hidden="true" />
-              <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+            <div className="d-flex align-items-center justify-content-center mb-4">
+              <Spinner animation="border" size="sm" role="status" />
+              <span className="text-muted x-small ml-2">
                 {intl.formatMessage(messages['ai.extensions.sidebar.thinking'])}
               </span>
             </div>
           )}
-        </div>
+        </Scrollable>
 
         {/* Footer Actions */}
         {showActions && (response || error || chatMessages.length > 0) && (
-          <div
-            style={{
-              padding: '16px 20px',
-              borderTop: '1px solid #dee2e6',
-              backgroundColor: '#f8f9fa',
-            }}
-          >
+          <div className="px-2 py-3 border-top position-relative">
             {/* Textarea with send button inside */}
-            <div style={{ position: 'relative' }}>
-              <textarea
-                ref={textareaRef}
-                className="form-control"
-                placeholder={intl.formatMessage(messages['ai.extensions.sidebar.input.label'])}
-                value={followUpQuestion}
-                onChange={handleTextareaChange}
-                onKeyDown={handleKeyPress}
-                disabled={isLoading || isSendingFollowUp}
-                rows={textareaRows}
-                aria-label={intl.formatMessage(messages['ai.extensions.sidebar.input.label'])}
-                style={{
-                  fontSize: '0.9rem',
-                  borderRadius: '6px',
-                  paddingRight: '50px',
-                  resize: 'none',
-                  overflowY: textareaRows >= 10 ? 'auto' : 'hidden',
-                  lineHeight: '1.5',
-                }}
-              />
-              {/* Send button positioned inside textarea */}
-              <button
-                type="button"
-                onClick={handleFollowUpSubmit}
-                disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
-                className="btn btn-primary btn-sm"
-                aria-label={intl.formatMessage(messages['ai.extensions.sidebar.send.label'])}
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  bottom: textareaRows > 1 ? '8px' : '50%',
-                  transform: textareaRows > 1 ? 'none' : 'translateY(50%)',
-                  padding: '6px 8px',
-                  minWidth: 'auto',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Send style={{ width: '16px', height: '16px' }} aria-hidden="true" />
-              </button>
-            </div>
+            <Form.Control
+              size="sm"
+              as="textarea"
+              ref={textareaRef}
+              placeholder={intl.formatMessage(messages['ai.extensions.sidebar.input.label'])}
+              value={followUpQuestion}
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyPress}
+              disabled={isLoading || isSendingFollowUp}
+              rows={textareaRows}
+              aria-label={intl.formatMessage(messages['ai.extensions.sidebar.input.label'])}
+              className="ai-sidebar-chat-input"
+            />
+            {/* Send button positioned inside textarea */}
+            <Button
+              size="sm"
+              className="ai-sidebar-chat-button"
+              onClick={handleFollowUpSubmit}
+              disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
+              aria-label={intl.formatMessage(messages['ai.extensions.sidebar.close.label'])}
+            >
+              <Icon src={Send} aria-hidden="true" size="xs" />
+            </Button>
           </div>
         )}
       </div>
-    </>
+    </ModalLayer>
   );
 };
 

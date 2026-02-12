@@ -101,12 +101,12 @@ const messages = defineMessages({
   },
   'ai.extensions.sidebar.loading.history': {
     id: 'ai.extensions.sidebar.loading.history',
-    defaultMessage: 'Loading previous messages...',
+    defaultMessage: 'Loading previous messages',
     description: 'Status message announced to screen readers when chat history is loading',
   },
   'ai.extensions.sidebar.thinking': {
     id: 'ai.extensions.sidebar.thinking',
-    defaultMessage: 'AI is thinking...',
+    defaultMessage: 'AI is thinking',
     description: 'Status message announced to screen readers when AI is generating a response',
   },
   'ai.extensions.sidebar.clear.chat': {
@@ -116,7 +116,7 @@ const messages = defineMessages({
   },
   'ai.extensions.sidebar.load.older': {
     id: 'ai.extensions.sidebar.load.older',
-    defaultMessage: 'Load older messages ↑',
+    defaultMessage: 'Load older messages',
     description: 'Text for loading older messages in the sidebar',
   },
   'ai.extensions.sidebar.default.title': {
