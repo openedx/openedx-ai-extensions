@@ -75,7 +75,7 @@ def test_base_orchestrator_init(mock_workflow, mock_user):  # pylint: disable=re
 # ============================================================================
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.workflows.orchestrators.tracker")
+@patch("openedx_ai_extensions.workflows.orchestrators.base_orchestrator.tracker")
 def test_emit_workflow_event(mock_tracker, mock_workflow, mock_user):  # pylint: disable=redefined-outer-name
     """
     Test that _emit_workflow_event calls tracker.emit with correct payload.
@@ -117,7 +117,7 @@ def test_get_orchestrator_success(monkeypatch, mock_workflow, mock_user):  # pyl
     """
     Test get_orchestrator returns an instance of the resolved class.
     """
-    from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.workflows.orchestrators import orchestrators  # pylint: disable=import-outside-toplevel
 
     class MockOrchestrator(BaseOrchestrator):
         def run(self, input_data):
@@ -156,7 +156,7 @@ def test_get_orchestrator_type_error(monkeypatch, mock_workflow, mock_user):  # 
     """
     Test get_orchestrator raises TypeError when resolved class is not a subclass of BaseOrchestrator.
     """
-    from openedx_ai_extensions.workflows import orchestrators  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.workflows.orchestrators import orchestrators  # pylint: disable=import-outside-toplevel
 
     class NotAnOrchestrator:
         pass
