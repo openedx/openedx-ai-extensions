@@ -530,13 +530,22 @@ class AIWorkflowSession(models.Model):
 
                 combined.append(msg)
 
-        # Append any local-only messages not matched to remote
+        # Insert any local-only messages at their correct chronological position
         for local_msg in local_by_content.values():
-            combined.append({
+            entry = {
                 **local_msg,
                 "type": "message",
                 "source": "local",
-            })
+            }
+            ts = str(local_msg.get("timestamp", ""))
+            # Find the right position: before the first message with a later timestamp
+            insert_at = len(combined)
+            for i, existing in enumerate(combined):
+                existing_ts = str(existing.get("timestamp") or existing.get("created_at") or "")
+                if existing_ts and ts and existing_ts > ts:
+                    insert_at = i
+                    break
+            combined.insert(insert_at, entry)
 
         return combined
 
