@@ -4,7 +4,7 @@ LLM Processing using LiteLLM for multiple providers
 
 import json
 import logging
-import os
+from pathlib import Path
 
 from litellm import completion
 
@@ -72,10 +72,10 @@ class EducatorAssistantProcessor(LitellmProcessor):
         requested_questions = input_data.get('num_questions')
         extra_instructions = input_data.get('extra_instructions')
 
-        prompt_file_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            'prompts',
-            'default_generate_quiz_questions.txt'
+        prompt_file_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "prompts"
+            / "default_generate_quiz_questions.txt"
         )
         try:
             with open(prompt_file_path, "r") as f:
