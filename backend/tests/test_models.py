@@ -4,13 +4,15 @@ Tests for the `openedx-ai-extensions` models module.
 """
 
 import time
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
+from opaque_keys.edx.locator import BlockUsageLocator
 
 from openedx_ai_extensions.models import PromptTemplate
+from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 
 User = get_user_model()
 
@@ -189,3 +191,187 @@ class TestPromptTemplate:
         uuid_mixed = str(prompt_template.id).replace('a', 'A').replace('b', 'B')
         result = PromptTemplate.load_prompt(uuid_mixed)
         assert result == prompt_template.body
+
+
+# ============================================================================
+# AIWorkflowSession Thread Tests
+# ============================================================================
+
+
+@pytest.fixture
+def workflow_profile(db):  # pylint: disable=unused-argument
+    """Create a test workflow profile."""
+    return AIWorkflowProfile.objects.create(
+        slug="test-thread-profile",
+        base_filepath="base/default.json",
+        content_patch='{}',
+    )
+
+
+@pytest.fixture
+def workflow_scope(workflow_profile, course_key):  # pylint: disable=redefined-outer-name
+    """Create a test workflow scope."""
+    return AIWorkflowScope.objects.create(
+        location_regex=".*",
+        course_id=course_key,
+        service_variant="lms",
+        profile=workflow_profile,
+        enabled=True,
+    )
+
+
+@pytest.fixture
+def session_with_ids(user, course_key, workflow_scope, workflow_profile):  # pylint: disable=redefined-outer-name
+    """Create a session with both local and remote IDs."""
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-1")
+    return AIWorkflowSession.objects.create(
+        user=user,
+        scope=workflow_scope,
+        profile=workflow_profile,
+        course_id=course_key,
+        location_id=location,
+        local_submission_id="sub-123",
+        remote_response_id="resp-456",
+    )
+
+
+@pytest.fixture
+def session_no_ids(user, course_key, workflow_scope, workflow_profile):  # pylint: disable=redefined-outer-name
+    """Create a session with no submission or response IDs."""
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-1")
+    return AIWorkflowSession.objects.create(
+        user=user,
+        scope=workflow_scope,
+        profile=workflow_profile,
+        course_id=course_key,
+        location_id=location,
+    )
+
+
+@pytest.mark.django_db
+class TestAIWorkflowSessionThreads:
+    """Tests for get_local_thread, get_remote_thread, get_combined_thread."""
+
+    # pylint: disable=redefined-outer-name
+
+    def test_get_local_thread_no_submission(self, session_no_ids):
+        """Returns None when no local_submission_id."""
+        assert session_no_ids.get_local_thread() is None
+
+    @patch("openedx_ai_extensions.processors.openedx.submission_processor.SubmissionProcessor.get_full_thread")
+    def test_get_local_thread_with_submission(self, mock_thread, session_with_ids):
+        """Calls SubmissionProcessor.get_full_thread when submission exists."""
+        mock_thread.return_value = [{"role": "user", "content": "Hi"}]
+        result = session_with_ids.get_local_thread()
+        assert result == [{"role": "user", "content": "Hi"}]
+        mock_thread.assert_called_once()
+
+    def test_get_remote_thread_no_response_id(self, session_no_ids):
+        """Returns None when no remote_response_id."""
+        assert session_no_ids.get_remote_thread() is None
+
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.LLMProcessor.fetch_remote_thread")
+    def test_get_remote_thread_with_response_id(self, mock_fetch, session_with_ids):
+        """Calls LLMProcessor.fetch_remote_thread when response ID exists."""
+        mock_fetch.return_value = [{"id": "resp-456", "output": []}]
+        result = session_with_ids.get_remote_thread()
+        assert result == [{"id": "resp-456", "output": []}]
+        mock_fetch.assert_called_once_with("resp-456")
+
+    @patch.object(AIWorkflowSession, "get_remote_thread", return_value=None)
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_no_remote(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
+        """Returns local thread when remote is None."""
+        local = [{"role": "user", "content": "Hello"}]
+        mock_local.return_value = local
+        result = session_with_ids.get_combined_thread()
+        assert result == local
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_remote_only(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
+        """Handles remote thread with no local thread."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [{"role": "user", "content": "Hi", "type": "message"}],
+                "output": [{"role": "assistant", "content": "Hello!"}],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 2
+        roles = [m["role"] for m in result]
+        assert "user" in roles
+        assert "assistant" in roles
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_deduplication(self, mock_local, mock_remote, session_with_ids):
+        """Messages appearing in both local and remote are deduplicated."""
+        mock_local.return_value = [
+            {"role": "user", "content": "Hello", "timestamp": "2024-01-01T00:00:00", "submission_id": "sub-1"},
+        ]
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [{"role": "user", "content": "Hello", "type": "message"}],
+                "output": [],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        # Should be deduplicated: one message with source="both"
+        assert len(result) == 1
+        assert result[0]["source"] == "both"
+        assert result[0]["submission_id"] == "sub-1"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_local_only_messages(self, mock_local, mock_remote, session_with_ids):
+        """Local-only messages are inserted at correct position."""
+        mock_local.return_value = [
+            {"role": "user", "content": "Local only msg", "timestamp": "2024-01-01T12:00:00"},
+        ]
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-02T00:00:00",
+                "model": "gpt-4",
+                "input": [{"role": "user", "content": "Remote msg", "type": "message"}],
+                "output": [],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        # Local-only should be inserted before the remote message (earlier timestamp)
+        assert len(result) == 2
+        assert result[0]["source"] == "local"
+        assert result[1]["source"] == "remote"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_error_response(self, mock_local, mock_remote, session_with_ids):
+        """Error responses in remote thread are handled."""
+        mock_local.return_value = None
+        mock_remote.return_value = [
+            {"id": "resp-1", "error": "API timeout"},
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["role"] == "error"
+        assert "API timeout" in result[0]["content"]
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_skips_non_dict(self, mock_local, mock_remote, session_with_ids):
+        """Non-dict items in remote thread are skipped."""
+        mock_local.return_value = None
+        mock_remote.return_value = ["not-a-dict", None, 42]
+        result = session_with_ids.get_combined_thread()
+        assert result == []
