@@ -169,3 +169,44 @@ def test_get_orchestrator_type_error(monkeypatch, mock_workflow, mock_user):  # 
         BaseOrchestrator.get_orchestrator(workflow=mock_workflow, user=mock_user, context=context)
 
     assert "MockOrchestrator is not a subclass of BaseOrchestrator" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_get_orchestrator_import_error(mock_workflow, mock_user):  # pylint: disable=redefined-outer-name
+    """
+    Test get_orchestrator raises ImportError when module path is invalid.
+    """
+    # Use a dotted path with a non-existent module
+    mock_workflow.profile.orchestrator_class = "non_existent_module.path.SomeOrchestrator"
+    context = {"location_id": None, "course_id": None}
+
+    with pytest.raises(ImportError) as exc_info:
+        BaseOrchestrator.get_orchestrator(workflow=mock_workflow, user=mock_user, context=context)
+
+    assert "Could not import module" in str(exc_info.value)
+    assert "non_existent_module.path" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.importlib.import_module")
+def test_get_orchestrator_class_not_found_in_module(
+    mock_import, mock_workflow, mock_user
+):  # pylint: disable=redefined-outer-name
+    """
+    Test get_orchestrator raises AttributeError when class doesn't exist in a valid module.
+    This tests the inner AttributeError handling when getattr fails (lines 196-199),
+    though the error is re-raised and caught by the outer handler.
+    """
+    # Mock a module that imports successfully but doesn't have the required class
+    mock_module = type('MockModule', (), {})()
+    mock_import.return_value = mock_module
+
+    # Use a dotted path with a valid module but non-existent class
+    mock_workflow.profile.orchestrator_class = "some.module.NonExistentOrchestrator"
+    context = {"location_id": None, "course_id": None}
+
+    with pytest.raises(AttributeError) as exc_info:
+        BaseOrchestrator.get_orchestrator(workflow=mock_workflow, user=mock_user, context=context)
+
+    # The outer exception handler catches and re-raises, so we see its message
+    assert "Orchestrator class 'some.module.NonExistentOrchestrator' not found" in str(exc_info.value)

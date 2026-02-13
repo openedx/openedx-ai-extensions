@@ -32,15 +32,57 @@ import messages from './messages';
 /**
  * Component Registry
  * Maps component names from config to actual React components
+ * This registry is extensible - plugins can add their own components
  */
-const COMPONENT_REGISTRY = {
+const COMPONENT_REGISTRY: Record<string, React.ComponentType<any>> = {
   AIRequestComponent,
   AIResponseComponent,
   AISidebarResponse,
   AIEducatorLibraryAssistComponent,
   AIEducatorLibraryResponseComponent,
-  // Future components can be added here
 };
+
+/**
+ * Register a component in the COMPONENT_REGISTRY
+ * Allows plugins to dynamically add their own components
+ *
+ * @param name - The name to register the component under
+ * @param component - The React component to register
+ *
+ * @example
+ * // From another plugin like ai-badges:
+ * import { registerComponent } from '@openedx/openedx-ai-extensions-ui';
+ * import MyCustomComponent from './MyCustomComponent';
+ *
+ * registerComponent('MyCustomComponent', MyCustomComponent);
+ */
+export function registerComponent(
+  name: string,
+  component: React.ComponentType<any>,
+): void {
+  COMPONENT_REGISTRY[name] = component;
+}
+
+/**
+ * Register multiple components at once
+ *
+ * @param components - Object mapping component names to components
+ *
+ * @example
+ * import { registerComponents } from '@openedx/openedx-ai-extensions-ui';
+ *
+ * registerComponents({
+ *   AIRequestBadgesComponent,
+ *   AIResponseBadgesComponent,
+ * });
+ */
+export function registerComponents(
+  components: Record<string, React.ComponentType<any>>,
+): void {
+  Object.entries(components).forEach(([name, component]) => {
+    registerComponent(name, component);
+  });
+}
 
 /**
  * Configurable AI Assistance Wrapper Component
