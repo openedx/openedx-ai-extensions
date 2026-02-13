@@ -11,9 +11,12 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-filters = settings.AI_EXTENSIONS_FIELD_FILTERS
-ALLOWED_FIELDS = filters.get("allowed_fields", [])
-ALLOWED_FIELD_SUBSTRINGS = filters.get("allowed_field_substrings", [])
+
+def _get_field_filters():
+    """Return field filters from settings, accessed lazily to avoid import-time errors."""
+    return getattr(settings, "AI_EXTENSIONS_FIELD_FILTERS", {})
+
+
 # -----------------------------
 # Embedded content helpers
 # -----------------------------
@@ -32,7 +35,7 @@ def _extract_iframes(soup: BeautifulSoup) -> list[str]:
         src = iframe.get("src")
         title = iframe.get("title", "").strip() or "iframe"
         if src:
-            embeddings.append(f"[Embedded iframe: title=\"{title}\", src=\"{src}\"]")
+            embeddings.append(f'[Embedded iframe: title="{title}", src="{src}"]')
     return embeddings
 
 
@@ -52,9 +55,11 @@ def _extract_objects(soup: BeautifulSoup) -> list[str]:
         title = obj.get("title", "").strip() or "Object"
         if data:
             if "pdf" in mime.lower() or data.lower().endswith(".pdf"):
-                embeddings.append(f"[Embedded PDF: title=\"{title}\", file=\"{data}\"]")
+                embeddings.append(f'[Embedded PDF: title="{title}", file="{data}"]')
             else:
-                embeddings.append(f"[Embedded object: title=\"{title}\", type=\"{mime}\", file=\"{data}\"]")
+                embeddings.append(
+                    f'[Embedded object: title="{title}", type="{mime}", file="{data}"]'
+                )
     return embeddings
 
 
@@ -70,7 +75,7 @@ def _extract_images(soup: BeautifulSoup) -> list[str]:
         src = img.get("src")
         alt = img.get("alt", "").strip() or "image"
         if src:
-            embeddings.append(f"[Embedded image: alt=\"{alt}\", src=\"{src}\"]")
+            embeddings.append(f'[Embedded image: alt="{alt}", src="{src}"]')
     return embeddings
 
 
@@ -92,7 +97,9 @@ def _extract_media(soup: BeautifulSoup) -> list[str]:
         title = media.get("title", "").strip() or media.name
         if sources:
             sources_str = ", ".join(sources)
-            embeddings.append(f"[Embedded {media.name}: title=\"{title}\", sources=\"{sources_str}\"]")
+            embeddings.append(
+                f'[Embedded {media.name}: title="{title}", sources="{sources_str}"]'
+            )
     return embeddings
 
 
@@ -107,7 +114,7 @@ def _extract_embeds(soup: BeautifulSoup) -> list[str]:
     for embed in soup.find_all("embed"):
         src = embed.get("src")
         if src:
-            embeddings.append(f"[Embedded content: tag=embed, src=\"{src}\"]")
+            embeddings.append(f'[Embedded content: tag=embed, src="{src}"]')
     return embeddings
 
 
@@ -126,9 +133,9 @@ def _extract_xblocks(soup: BeautifulSoup) -> list[str]:
         if xblock_type or block_id:
             desc = "[Embedded XBlock"
             if xblock_type:
-                desc += f": type=\"{xblock_type}\""
+                desc += f': type="{xblock_type}"'
             if block_id:
-                desc += f", id=\"{block_id}\""
+                desc += f', id="{block_id}"'
             desc += "]"
             embeddings.append(desc)
     return embeddings
@@ -159,11 +166,15 @@ def _check_show_answer(show_answer):
 # Helpers
 # ---------------------------------------------------------
 
+
 def html_to_text(raw_html: str) -> str:
     """
     Convert HTML into clean, LLM-friendly text, preserving embedded content info.
     """
-    logger.debug("html_to_text: started cleaning HTML (%d chars)", len(raw_html) if raw_html else 0)
+    logger.debug(
+        "html_to_text: started cleaning HTML (%d chars)",
+        len(raw_html) if raw_html else 0,
+    )
     try:
         soup = BeautifulSoup(raw_html, "html.parser")
 
@@ -178,7 +189,11 @@ def html_to_text(raw_html: str) -> str:
         # Remove noisy tags after extraction
         _clean_noisy_tags(soup)
 
-        clean = "\n".join(line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip())
+        clean = "\n".join(
+            line.strip()
+            for line in soup.get_text(separator="\n").splitlines()
+            if line.strip()
+        )
 
         if embeddings:
             clean += "\n\n" + "\n".join(embeddings)
@@ -211,9 +226,14 @@ def _load_transcript_content(block) -> Optional[dict]:
         from edxval.api import get_video_transcript_data
 
         edx_video_id = getattr(block, "edx_video_id", None)
-        logger.debug("_load_transcript_content: fetching transcript via edxval for video %s", edx_video_id)
+        logger.debug(
+            "_load_transcript_content: fetching transcript via edxval for video %s",
+            edx_video_id,
+        )
 
-        transcript = get_video_transcript_data(video_id=edx_video_id, language_code=language_code)
+        transcript = get_video_transcript_data(
+            video_id=edx_video_id, language_code=language_code
+        )
 
         content = transcript["content"]
         if isinstance(content, bytes):
@@ -223,7 +243,9 @@ def _load_transcript_content(block) -> Optional[dict]:
         try:
             content = json.loads(content)
         except json.JSONDecodeError:
-            logger.warning("_load_transcript_content: transcript content is not valid JSON, returning raw content")
+            logger.warning(
+                "_load_transcript_content: transcript content is not valid JSON, returning raw content"
+            )
 
         logger.debug("_load_transcript_content: transcript content successfully loaded")
         return content.get("text") if isinstance(content, dict) else content
@@ -237,8 +259,12 @@ def _remove_sensitive_content(soup: BeautifulSoup):
     """Remove hints, solutions, and correctness info when show_answer=False."""
     sensitive_tags = ["choicehint", "solution", "demandhint", "hint"]
     sensitive_selectors = [
-        ".solution-span", ".detailed-solution", ".feedback-hint",
-        ".notification-submit", ".status", ".correctness",
+        ".solution-span",
+        ".detailed-solution",
+        ".feedback-hint",
+        ".notification-submit",
+        ".status",
+        ".correctness",
     ]
     for tag_name in sensitive_tags:
         for tag in soup.find_all(tag_name):
@@ -272,8 +298,12 @@ def _extract_solution_feedback(soup: BeautifulSoup) -> list[str]:
     _pull("solution", "Solution")
 
     sensitive_selectors = [
-        ".solution-span", ".detailed-solution", ".feedback-hint",
-        ".notification-submit", ".status", ".correctness",
+        ".solution-span",
+        ".detailed-solution",
+        ".feedback-hint",
+        ".notification-submit",
+        ".status",
+        ".correctness",
     ]
     for selector in sensitive_selectors:
         for tag in soup.select(selector):
@@ -289,15 +319,28 @@ def _clean_noisy_tags(soup: BeautifulSoup):
     """
     Remove noisy HTML tags that are not useful for LLM text extraction.
     """
-    noisy_tags = ["script", "style", "iframe", "embed", "object", "video", "audio", "img"]
+    noisy_tags = [
+        "script",
+        "style",
+        "iframe",
+        "embed",
+        "object",
+        "video",
+        "audio",
+        "img",
+    ]
     for tag in soup.find_all(noisy_tags):
         tag.extract()
 
 
-def _assemble_problem_text(soup: BeautifulSoup, extracted_sections: list[str], show_answer: bool) -> str:
+def _assemble_problem_text(
+    soup: BeautifulSoup, extracted_sections: list[str], show_answer: bool
+) -> str:
     """Assemble clean text and append solution/feedback if show_answer=True."""
     base_text = "\n".join(
-        line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip()
+        line.strip()
+        for line in soup.get_text(separator="\n").splitlines()
+        if line.strip()
     )
     if show_answer and extracted_sections:
         base_text += "\n" + "\n".join(extracted_sections)
@@ -330,6 +373,7 @@ def _process_problem_html(raw_html: str, show_answer: bool) -> str:
 # Block Extractors
 # ---------------------------------------------------------
 
+
 def extract_video_info(block) -> dict:
     """Extract rich metadata for video blocks, including transcripts."""
     logger.debug("extract_video_info: extracting video block %s", block.location)
@@ -344,10 +388,14 @@ def extract_video_info(block) -> dict:
 
     transcript_text = _load_transcript_content(block)
     if transcript_text:
-        logger.debug("extract_video_info: transcript found (%d chars)", len(str(transcript_text)))
+        logger.debug(
+            "extract_video_info: transcript found (%d chars)", len(str(transcript_text))
+        )
         info["transcript_text"] = transcript_text
     else:
-        logger.info("extract_video_info: no transcript available for block %s", block.location)
+        logger.info(
+            "extract_video_info: no transcript available for block %s", block.location
+        )
 
     return info
 
@@ -399,14 +447,17 @@ def _is_field_allowed(field_name: str) -> bool:
     """
     Returns True if field_name is explicitly allowed or matches an allowed substring.
     """
+    filters = _get_field_filters()
+    allowed_fields = filters.get("allowed_fields", [])
+    allowed_field_substrings = filters.get("allowed_field_substrings", [])
     fname = field_name.lower()
 
     # 1. Exact allow-list
-    if fname in ALLOWED_FIELDS:
+    if fname in allowed_fields:
         return True
 
     # 2. Substring allow-list
-    for substring in ALLOWED_FIELD_SUBSTRINGS:
+    for substring in allowed_field_substrings:
         if substring in fname:
             return True
 
@@ -423,7 +474,9 @@ def extract_generic_info(block) -> dict:
     safe_fields = {}
     for field in getattr(block, "fields", []):
         if not _is_field_allowed(field):
-            logger.debug("extract_generic_info: excluded field '%s' (not allowed)", field)
+            logger.debug(
+                "extract_generic_info: excluded field '%s' (not allowed)", field
+            )
             continue
 
         value = getattr(block, field, None)
@@ -435,7 +488,7 @@ def extract_generic_info(block) -> dict:
             logger.debug(
                 "extract_generic_info: excluded field '%s' (unsupported type %s)",
                 field,
-                type(value)
+                type(value),
             )
 
     return {
