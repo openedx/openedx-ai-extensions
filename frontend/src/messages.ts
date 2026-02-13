@@ -89,6 +89,11 @@ const messages = defineMessages({
     defaultMessage: 'Close AI Assistant',
     description: 'Label for button that closes the AI sidebar',
   },
+  'ai.extensions.sidebar.settings.label': {
+    id: 'ai.extensions.sidebar.settings.label',
+    defaultMessage: 'Chat settings',
+    description: 'Label for the settings button in the sidebar header',
+  },
   'ai.extensions.sidebar.input.label': {
     id: 'ai.extensions.sidebar.input.label',
     defaultMessage: 'Type your question here',
@@ -157,13 +162,23 @@ const messages = defineMessages({
   },
   'ai.extensions.educator.library.loading': {
     id: 'ai.extensions.educator.library.loading',
-    defaultMessage: 'Loading libraries...',
+    defaultMessage: 'Loading libraries',
     description: 'Status message while fetching libraries',
   },
   'ai.extensions.educator.library.select': {
     id: 'ai.extensions.educator.library.select',
-    defaultMessage: 'Select a library...',
+    defaultMessage: 'Select a library',
     description: 'Placeholder for library selection',
+  },
+  'ai.extensions.educator.library.loading.error': {
+    id: 'ai.extensions.educator.library.loading.error',
+    defaultMessage: 'Failed to load libraries. ',
+    description: 'Error message while fetching libraries',
+  },
+  'ai.extensions.educator.library.select.error': {
+    id: 'ai.extensions.educator.library.select.error',
+    defaultMessage: 'Please select a library',
+    description: 'Error message when no library is selected',
   },
   'ai.extensions.educator.library.none': {
     id: 'ai.extensions.educator.library.none',
@@ -187,8 +202,13 @@ const messages = defineMessages({
   },
   'ai.extensions.educator.questions.help': {
     id: 'ai.extensions.educator.questions.help',
-    defaultMessage: 'Number of questions to generate (1-50)',
+    defaultMessage: 'Number of questions to generate (1-20)',
     description: 'Help text for number of questions',
+  },
+  'ai.extensions.educator.questions.error': {
+    id: 'ai.extensions.educator.questions.error',
+    defaultMessage: 'Number of questions must be between 1 and 20',
+    description: 'Error message when number of questions is out of range',
   },
   'ai.extensions.educator.instructions.label': {
     id: 'ai.extensions.educator.instructions.label',

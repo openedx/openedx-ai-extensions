@@ -529,7 +529,9 @@ const AISidebarResponse = ({
     <ModalLayer
       isOpen={isOpen}
       isBlocking
-      onClose={onClear}
+      // This is a requiered prop for the ModalLayer component. However, we are not using it.
+      // The modal is closed by the close button in the header.
+      onClose={() => { }}
     >
 
       {/* Sidebar */}
@@ -553,7 +555,7 @@ const AISidebarResponse = ({
                 id="sidebar-settings-dropdown"
                 className="p-2"
               >
-                <Icon src={Settings} aria-label="Settings" size="sm" />
+                <Icon src={Settings} aria-label={intl.formatMessage(messages['ai.extensions.sidebar.settings.label'])} size="sm" />
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 <Dropdown.Item onClick={handleClearAndClose}>
@@ -580,7 +582,7 @@ const AISidebarResponse = ({
           className="flex-grow-1 p-3"
         >
           {/* Loading indicator for lazy loading at top */}
-          {isLoading && (
+          {isLoadingHistory && (
             <div className="d-flex align-items-center justify-content-center mb-4">
               <Spinner animation="border" size="sm" role="status" />
               <span className="text-muted x-small ml-2">
@@ -641,7 +643,7 @@ const AISidebarResponse = ({
                         {message.content}
                       </ReactMarkdown>
                     </Card.Section>
-                    <Card.Footer className={`message-time x-small d-flex ${variant === 'muted' && 'flex-row-reverse'}`}>
+                    <Card.Footer className={`message-time x-small d-flex ${variant === 'muted' ? 'flex-row-reverse' : ''}`}>
                       <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
                     </Card.Footer>
                   </Card>
@@ -683,10 +685,10 @@ const AISidebarResponse = ({
             {/* Send button positioned inside textarea */}
             <Button
               size="sm"
-              className="ai-sidebar-chat-button"
+              className="ai-sidebar-chat-button zindex-1"
               onClick={handleFollowUpSubmit}
               disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
-              aria-label={intl.formatMessage(messages['ai.extensions.sidebar.close.label'])}
+              aria-label={intl.formatMessage(messages['ai.extensions.sidebar.send.label'])}
             >
               <Icon src={Send} aria-hidden="true" size="xs" />
             </Button>

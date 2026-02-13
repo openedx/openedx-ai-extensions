@@ -311,7 +311,7 @@ const AIEducatorLibraryResponseComponent = ({
               variant="danger"
               dismissible
               onClose={() => {
-                if (onError) { (onError(error)); }
+                if (onError) { (onError('')); }
                 handleClose();
               }}
               icon={Warning}

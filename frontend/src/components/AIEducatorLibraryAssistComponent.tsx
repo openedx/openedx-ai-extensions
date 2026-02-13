@@ -108,7 +108,7 @@ const AIEducatorLibraryAssistComponent = ({
       }
     } catch (err) {
       logError('Error fetching libraries:', err);
-      setError(intl.formatMessage(messages['ai.extensions.educator.library.loading']));
+      setError(intl.formatMessage(messages['ai.extensions.educator.library.loading.error']));
     } finally {
       setIsLoadingLibraries(false);
     }
@@ -179,12 +179,12 @@ const AIEducatorLibraryAssistComponent = ({
 
     // Validation
     if (!selectedLibrary) {
-      setError(intl.formatMessage(messages['ai.extensions.educator.library.select']));
+      setError(intl.formatMessage(messages['ai.extensions.educator.library.select.error']));
       return;
     }
 
     if (numberOfQuestions < 1 || numberOfQuestions > 20) {
-      setError(intl.formatMessage(messages['ai.extensions.educator.questions.help']));
+      setError(intl.formatMessage(messages['ai.extensions.educator.questions.error']));
       return;
     }
 
@@ -380,7 +380,7 @@ const AIEducatorLibraryAssistComponent = ({
               </Form.Group>
 
               {/* Additional instructions */}
-              <Form.Group className="mb-3" size="sm" controlId="additionalIntruction">
+              <Form.Group className="mb-3" size="sm" controlId="additionalInstruction">
                 <Form.Label>
                   {intl.formatMessage(messages['ai.extensions.educator.instructions.label'])}
                 </Form.Label>
