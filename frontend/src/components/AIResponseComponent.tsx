@@ -1,10 +1,14 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Button, Alert, Collapsible } from '@openedx/paragon';
+import { useIntl } from '@edx/frontend-platform/i18n';
+import {
+  Button, Alert, Collapsible, Card,
+} from '@openedx/paragon';
 import {
   CheckCircle,
   Warning,
 } from '@openedx/paragon/icons';
+import messages from '../messages';
 
 /**
  * AI Response Component
@@ -25,8 +29,11 @@ const AIResponseComponent = ({
   isLoading,
   onClear,
   onError,
-  customMessage = 'AI Assistant Response',
+  customMessage,
 }: AIResponseComponentProps) => {
+  const intl = useIntl();
+  const displayMessage = customMessage || intl.formatMessage(messages['ai.extensions.response.default.title']);
+
   // Don't render if no response or error
   if (!response && !error) {
     return null;
@@ -57,41 +64,37 @@ const AIResponseComponent = ({
             title={(
               <div className="d-flex align-items-center">
                 <CheckCircle className="text-success me-2" style={{ width: '16px', height: '16px' }} />
-                <small className="text-success fw-semibold">{customMessage}</small>
+                <small className="text-success fw-semibold">{displayMessage}</small>
               </div>
             )}
             defaultOpen
             styling="basic"
           >
-            <div
-              className="response-content p-3 mt-2 bg-light rounded border-start border-success border-3"
-              style={{
-                fontSize: '0.9rem',
-                lineHeight: '1.5',
-              }}
-            >
+            <Card variant="muted">
               {/* Response text */}
-              <div className="response-text">
+              <Card.Section>
                 <ReactMarkdown>
                   {response}
                 </ReactMarkdown>
-              </div>
-
+              </Card.Section>
               {/* Action buttons */}
-              <div className="response-actions d-flex justify-content-end align-items-center mt-3 pt-2 border-top gap-2">
-                {/* Clear button */}
-                {onClear && (
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    onClick={onClear}
-                    className="py-1 px-2"
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
+              {/* Clear button */}
+              {onClear && (
+                <>
+                  <Card.Divider />
+                  <Card.Footer className="pt-3">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={onClear}
+                      className="py-1 px-2"
+                    >
+                      {intl.formatMessage(messages['ai.extensions.response.clear'])}
+                    </Button>
+                  </Card.Footer>
+                </>
+              )}
+            </Card>
           </Collapsible>
         </div>
       )}
