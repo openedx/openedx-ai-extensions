@@ -1,6 +1,8 @@
 import React from 'react';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import { Button, Spinner } from '@openedx/paragon';
 import { Send } from '@openedx/paragon/icons';
+import messages from '../messages';
 
 /**
  * AI Request Component
@@ -20,10 +22,15 @@ const AIRequestComponent = ({
   isLoading,
   hasAsked,
   onAskAI,
-  customMessage = 'Get personalized AI assistance for this learning unit',
-  buttonText = 'Ask AI',
+  customMessage,
+  buttonText,
   disabled = false,
 }: AIRequestComponentProps) => {
+  const intl = useIntl();
+
+  const displayMessage = customMessage || intl.formatMessage(messages['ai.extensions.request.default.message']);
+  const displayButtonText = buttonText || intl.formatMessage(messages['ai.extensions.request.default.button']);
+
   // Don't render if already asked or currently loading
   if (hasAsked && !isLoading) {
     return null;
@@ -38,37 +45,29 @@ const AIRequestComponent = ({
             animation="border"
             variant="primary"
             size="sm"
-            className="me-2"
+            className="mr-2"
           />
-          <small className="text-muted">Analyzing content...</small>
+          <small className="text-muted">
+            {intl.formatMessage(messages['ai.extensions.request.analyzing'])}
+          </small>
         </div>
       )}
 
       {/* Initial request state */}
       {!hasAsked && !isLoading && (
-        <div className="d-flex align-items-center justify-content-end">
-          <small
-            className="text-muted me-3"
-            style={{
-              paddingRight: '16px',
-            }}
-          >
-            {customMessage}
-          </small>
+        <div className="d-flex align-items-center justify-content-end py-2">
+          <span className="text-muted mr-3 small">
+            {displayMessage}
+          </span>
           <Button
             variant="primary"
             size="sm"
             onClick={onAskAI}
             disabled={disabled || isLoading}
             iconBefore={Send}
-            style={{
-              borderRadius: '20px',
-              fontWeight: '500',
-              paddingLeft: '16px',
-              paddingRight: '16px',
-            }}
+            className="rounded-pill"
           >
-            {buttonText}
+            {displayButtonText}
           </Button>
         </div>
       )}

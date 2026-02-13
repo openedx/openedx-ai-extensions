@@ -1,8 +1,10 @@
 import React, {
   useState, useEffect, useRef, useCallback,
 } from 'react';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import { logError } from '@edx/frontend-platform/logging';
 import { Spinner, Alert } from '@openedx/paragon';
+import { Info } from '@openedx/paragon/icons';
 
 // Import services
 import {
@@ -24,6 +26,8 @@ import {
 } from './components';
 import { PluginConfiguration } from './types';
 import { WORKFLOW_ACTIONS } from './constants';
+
+import messages from './messages';
 
 /**
  * Component Registry
@@ -57,6 +61,7 @@ const ConfigurableAIAssistance = ({
   onConfigError,
   ...additionalProps
 }: ConfigurableAIAssistanceProps) => {
+  const intl = useIntl();
   // Configuration state
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [configError, setConfigError] = useState<null | string>(null);
@@ -110,8 +115,7 @@ const ConfigurableAIAssistance = ({
 
         // Only update state if this is still the latest request
         if (currentRequestId === requestIdRef.current) {
-          // eslint-disable-next-line no-console
-          console.error('[ConfigurableAIAssistance] Configuration error:', configErr);
+          logError('[ConfigurableAIAssistance] Configuration error:', configErr);
 
           setConfigError(configErr.message);
 
@@ -217,18 +221,18 @@ const ConfigurableAIAssistance = ({
   // Show loading spinner while loading configuration
   if (isLoadingConfig) {
     return (
-      <div className="d-flex align-items-center gap-2 p-3">
-        <Spinner animation="border" size="sm" />
+      <div className="d-flex align-items-center justify-content-center p-3">
+        <Spinner animation="border" size="sm" role="status" />
       </div>
     );
   }
 
   // Show error if configuration failed and no fallback
-  if (configError && !config) {
+  if (configError && !fallbackConfig) {
     return (
-      <Alert variant="danger">
-        <Alert.Heading>Configuration Error</Alert.Heading>
-        <p>Failed to load AI extensions configuration: {configError}</p>
+      <Alert variant="danger" icon={Info}>
+        <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.alert.heading'])}</Alert.Heading>
+        <p>{intl.formatMessage(messages['ai.extensions.config.alert.message'], { error: configError })}</p>
       </Alert>
     );
   }
@@ -248,8 +252,8 @@ const ConfigurableAIAssistance = ({
     if (!requestConfig) {
       return (
         <Alert variant="danger">
-          <Alert.Heading>Invalid Configuration</Alert.Heading>
-          <p>Request component configuration is missing.</p>
+          <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.invalid.heading'])}</Alert.Heading>
+          <p>{intl.formatMessage(messages['ai.extensions.config.missing.request'])}</p>
         </Alert>
       );
     }
@@ -258,8 +262,8 @@ const ConfigurableAIAssistance = ({
     if (!responseConfig) {
       return (
         <Alert variant="danger">
-          <Alert.Heading>Invalid Configuration</Alert.Heading>
-          <p>Response component configuration is missing.</p>
+          <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.invalid.heading'])}</Alert.Heading>
+          <p>{intl.formatMessage(messages['ai.extensions.config.missing.response'])}</p>
         </Alert>
       );
     }
@@ -271,10 +275,10 @@ const ConfigurableAIAssistance = ({
     if (!RequestComponent) {
       return (
         <Alert variant="danger">
-          <Alert.Heading>Unknown Component</Alert.Heading>
-          <p>Request component &quot;{requestComponentName}&quot; is not available.</p>
+          <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.unknown.heading'])}</Alert.Heading>
+          <p>{intl.formatMessage(messages['ai.extensions.config.unknown.request'], { componentName: requestComponentName })}</p>
           <p className="mb-0 text-muted small">
-            Available components: {Object.keys(COMPONENT_REGISTRY).join(', ')}
+            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: Object.keys(COMPONENT_REGISTRY).join(', ') })}
           </p>
         </Alert>
       );
@@ -287,10 +291,10 @@ const ConfigurableAIAssistance = ({
     if (!ResponseComponent) {
       return (
         <Alert variant="danger">
-          <Alert.Heading>Unknown Component</Alert.Heading>
-          <p>Response component &quot;{responseComponentName}&quot; is not available.</p>
+          <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.unknown.heading'])}</Alert.Heading>
+          <p>{intl.formatMessage(messages['ai.extensions.config.unknown.response'], { componentName: responseComponentName })}</p>
           <p className="mb-0 text-muted small">
-            Available components: {Object.keys(COMPONENT_REGISTRY).join(', ')}
+            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: Object.keys(COMPONENT_REGISTRY).join(', ') })}
           </p>
         </Alert>
       );
@@ -301,10 +305,10 @@ const ConfigurableAIAssistance = ({
     const responseProps = mergeProps({}, responseComponentConfig);
 
     return (
-      <div className="configurable-ai-assistance" style={{ maxWidth: '100%' }}>
+      <div className="configurable-ai-assistance w-100">
         {configError && (
           <Alert variant="warning" dismissible className="mb-2">
-            <small>Using fallback configuration due to error: {configError}</small>
+            <small>{intl.formatMessage(messages['ai.extensions.config.fallback.error'], { error: configError })}</small>
           </Alert>
         )}
 

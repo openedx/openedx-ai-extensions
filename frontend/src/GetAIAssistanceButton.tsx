@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useIntl } from '@edx/frontend-platform/i18n';
 
 // Import service modules
 import {
@@ -13,6 +14,7 @@ import {
   AIResponseComponent,
 } from './components';
 import { WORKFLOW_ACTIONS } from './constants';
+import messages from './messages';
 
 interface GetAIAssistanceButtonProps {
   requestMessage?: string;
@@ -24,16 +26,21 @@ interface GetAIAssistanceButtonProps {
  * Orchestrates the AI assistance flow using modular components
  */
 const GetAIAssistanceButton = ({
-  requestMessage = 'Need help understanding this content?',
-  buttonText = 'Get AI Assistance',
+  requestMessage,
+  buttonText,
   ...props
 }: GetAIAssistanceButtonProps) => {
+  const intl = useIntl();
   // Core state management
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState('');
   const [error, setError] = useState('');
   const [hasAsked, setHasAsked] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+
+  // Default display values
+  const displayRequestMessage = requestMessage || intl.formatMessage(messages['ai.extensions.button.default.message']);
+  const displayButtonText = buttonText || intl.formatMessage(messages['ai.extensions.button.default.text']);
 
   /**
    * Handle AI assistant request
@@ -135,8 +142,8 @@ const GetAIAssistanceButton = ({
         isLoading={isLoading}
         hasAsked={hasAsked && !error} // Only hide if successful AND no error
         onAskAI={handleAskAI}
-        customMessage={requestMessage}
-        buttonText={buttonText}
+        customMessage={displayRequestMessage}
+        buttonText={displayButtonText}
         disabled={false} // Never disable - let API decide what to do
       />
 
