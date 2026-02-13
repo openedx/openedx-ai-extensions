@@ -123,7 +123,7 @@ class DirectLLMResponse(BaseOrchestrator):
         # --- 7. Return Structured Non-Streaming Result ---
         # If execution reaches this point, we have a successful, non-streaming result (Dict).
         response_data = {
-            'response': llm_result.get('response', 'No response available'),
+            'response': llm_result.get('response') or 'No response available',
             'status': 'completed',
             'metadata': {
                 'tokens_used': llm_result.get('tokens_used'),
@@ -242,7 +242,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             }
 
         return {
-            "response": result.get("response", "{}"),
+            "response": result.get("response") or "{}",
             "status": "completed",
         }
 
@@ -312,7 +312,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
                     "status": "SubmissionProcessor error",
                 }
             return {
-                "response": history_result.get("response", "No response available"),
+                "response": history_result.get("response") or "No response available",
                 "status": "completed",
             }
 
@@ -359,7 +359,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # --- BRANCH C: Handle Non-Streaming (Standard) ---
         messages = [
-            {"role": "assistant", "content": llm_result.get("response", "")},
+            {"role": "assistant", "content": llm_result.get("response") or ""},
         ]
         if input_data:
             messages.insert(0, {"role": "user", "content": input_data})
@@ -382,7 +382,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # 4. Return result
         return {
-            "response": llm_result.get("response", "No response available"),
+            "response": llm_result.get("response") or "No response available",
             "status": "completed",
             "metadata": {
                 "tokens_used": llm_result.get("tokens_used"),
