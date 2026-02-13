@@ -39,7 +39,12 @@ class SubmissionProcessor:
         function = getattr(self, function_name)
         return function(context, input_data)
 
-    def _process_messages(self, current_messages_count=0, use_max_context=True, include_submission_id=False):
+    def _process_messages(
+        self,
+        current_messages_count=0,
+        use_max_context=True,
+        include_submission_id=False,
+    ):
         """
         Retrieve messages from submissions.
         If current_messages_count > 0, return only new messages not already loaded.
@@ -292,13 +297,21 @@ class SubmissionProcessor:
         # Use the original student_item for the lookup so it matches
         saved_dict = self.student_item_dict
         self.student_item_dict = {
-            "student_id": original_student_item.get("student_id", saved_dict["student_id"]),
-            "course_id": original_student_item.get("course_id", saved_dict["course_id"]),
+            "student_id": original_student_item.get(
+                "student_id", saved_dict["student_id"]
+            ),
+            "course_id": original_student_item.get(
+                "course_id", saved_dict["course_id"]
+            ),
             "item_id": original_student_item.get("item_id", saved_dict["item_id"]),
-            "item_type": original_student_item.get("item_type", saved_dict["item_type"]),
+            "item_type": original_student_item.get(
+                "item_type", saved_dict["item_type"]
+            ),
         }
         try:
-            messages, _ = self._process_messages(use_max_context=False, include_submission_id=True)
+            messages, _ = self._process_messages(
+                use_max_context=False, include_submission_id=True
+            )
             # Sort by timestamp to guarantee chronological order
             messages.sort(key=lambda m: m.get("timestamp", ""))
             return messages

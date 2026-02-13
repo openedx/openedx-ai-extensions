@@ -394,9 +394,8 @@ class AIWorkflowSession(models.Model):
         Returns:
             list or None: Messages in chronological order, or None if no submission exists.
         """
-        from openedx_ai_extensions.processors.openedx.submission_processor import (  # pylint: disable=import-outside-toplevel
-            SubmissionProcessor,
-        )
+        # pylint: disable=import-outside-toplevel
+        from openedx_ai_extensions.processors.openedx.submission_processor import SubmissionProcessor
 
         if not self.local_submission_id:
             return None
