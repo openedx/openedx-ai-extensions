@@ -578,39 +578,6 @@ def test_non_string_provider_raises_error(mock_settings):  # pylint: disable=unu
 
 
 # ============================================================================
-# Streaming with Tools Tests
-# ============================================================================
-
-
-@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
-    "default": {
-        "MODEL": "openai/gpt-4",
-    }
-})
-@pytest.mark.django_db
-def test_streaming_with_tools_disables_streaming(mock_settings):  # pylint: disable=unused-argument
-    """
-    Test that streaming is disabled when tools are enabled.
-    """
-    config = {
-        "LitellmProcessor": {
-            "stream": True,
-            "enabled_tools": ["roll_dice"],
-        }
-    }
-    with patch('openedx_ai_extensions.processors.llm.litellm_base_processor.logger') as mock_logger:
-        processor = LitellmProcessor(config=config, user_session=None)
-
-        # Verify streaming was disabled
-        assert processor.stream is False
-
-        # Verify warning was logged
-        mock_logger.warning.assert_called_once_with(
-            "Streaming responses with tools is not supported; disabling streaming."
-        )
-
-
-# ============================================================================
 # MCP Configs Tests
 # ============================================================================
 

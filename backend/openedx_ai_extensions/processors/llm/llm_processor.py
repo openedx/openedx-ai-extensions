@@ -128,33 +128,90 @@ class LLMProcessor(LitellmProcessor):
 
         return params
 
-    def _yield_threaded_stream(self, response):
+    def _yield_threaded_stream(self, response, params=None):
         """
         Helper generator to handle streaming logic for threaded responses.
+        Handles tool calls execution recursively during streaming.
         """
         total_tokens = None
-        try:
+        try:  # pylint: disable=R1702
             for chunk in response:
-                if hasattr(chunk, "usage") and chunk.usage:
+                # Track token usage from the response metadata
+                chunk_response = getattr(chunk, "response", None)
+                if chunk_response and hasattr(chunk_response, "usage") and chunk_response.usage:
+                    total_tokens = chunk_response.usage.total_tokens
+                elif hasattr(chunk, "usage") and chunk.usage:
                     total_tokens = chunk.usage.total_tokens
 
-                if getattr(chunk, "response", None):
-                    resp = getattr(chunk, "response", None)
-                    if resp is not None:
-                        response_id = getattr(resp, "id", None)
-                        self.user_session.remote_response_id = response_id
-                        self.user_session.save()
+                # Persist thread ID for ongoing conversation context
+                if chunk_response:
+                    if chunk_response is not None and self.user_session:
+                        response_id = getattr(chunk_response, "id", None)
+                        if response_id:
+                            self.user_session.remote_response_id = response_id
+                            self.user_session.save()
+
+                # Stream text deltas, filtering out empty JSON artifacts
                 if hasattr(chunk, "delta"):
-                    yield chunk.delta
+                    yield chunk.delta if chunk.delta != "{}" else ""
+
+                # Check for completed tool call requests
+                chunk_type = getattr(chunk, "type", None)
+                if chunk_type == "response.output_item.done":
+                    item = chunk.item
+                    if getattr(item, "type", None) == "function_call":
+                        logger.info(f"[LLM STREAM] Intercepted tool call: {item.name}")
+
+                        function_name = item.name
+                        call_id = item.call_id
+                        arguments_str = item.arguments
+
+                        # Add function call intent to history (required for API consistency)
+                        if params is not None:
+                            params["input"].append({
+                                "type": "function_call",
+                                "call_id": call_id,
+                                "name": function_name,
+                                "arguments": arguments_str
+                            })
+
+                        # Parse arguments and execute the local function
+                        try:
+                            function_args = json.loads(arguments_str)
+                        except json.JSONDecodeError:
+                            function_args = {}
+
+                        if function_name in AVAILABLE_TOOLS:
+                            func = AVAILABLE_TOOLS[function_name]
+                            try:
+                                tool_output = func(**function_args)
+                            except Exception as e:  # pylint: disable=broad-exception-caught
+                                tool_output = f"Error: {str(e)}"
+                        else:
+                            tool_output = "Error: Tool not found."
+
+                        if params is None:
+                            yield "\n[System Error: Missing params]".encode("utf-8")
+                            return
+
+                        # Add tool output to history and re-trigger LLM response
+                        params["input"].append({
+                            "type": "function_call_output",
+                            "call_id": call_id,
+                            "output": str(tool_output)
+                        })
+
+                        # Recursively stream the new response interpreting the tool output
+                        new_response = responses(**params)
+                        yield from self._yield_threaded_stream(new_response, params)
+                        return
 
             if total_tokens is not None:
                 logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
-            else:
-                logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error during threaded AI streaming: {e}", exc_info=True)
-            yield f"\n[AI Error: {e}]"
+            logger.error(f"Error: {e}", exc_info=True)
+            yield f"\n[AI Error: {e}]".encode("utf-8")
 
     def _call_responses_wrapper(self, params, initialize=False):
         """
@@ -164,7 +221,7 @@ class LLMProcessor(LitellmProcessor):
             response = self._responses_with_tools(tool_calls=[], params=params)
 
             if params["stream"]:
-                return self._yield_threaded_stream(response)
+                return self._yield_threaded_stream(response, params=params)
 
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)

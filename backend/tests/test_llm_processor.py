@@ -10,8 +10,8 @@ from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
-from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor
 from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
+from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor
 from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 
 User = get_user_model()
@@ -983,8 +983,8 @@ class MockToolStreamChunk:
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm_processor.completion")
-@patch("openedx_ai_extensions.processors.llm_processor.adapt_to_provider")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.adapt_to_provider")
 def test_streaming_tool_execution_recursion(
     mock_adapt, mock_completion, llm_processor  # pylint: disable=redefined-outer-name
 ):
@@ -1060,3 +1060,114 @@ def test_streaming_tool_execution_recursion(
         assert tool_msg["tool_call_id"] == "call_123"
         assert tool_msg["content"] == "tool_result_value"
         assert tool_msg["name"] == "mock_tool"
+
+
+# ============================================================================
+# Threaded Streaming & Tool Call Tests (Responses API)
+# ============================================================================
+
+class MockResponseUsage:
+    """Helper to mock usage in Responses API."""
+
+    def __init__(self, total):
+        self.total_tokens = total
+
+
+class MockResponsesChunk:
+    """Helper to mock chunks specifically for the Responses API stream."""
+
+    def __init__(self, chunk_type, **kwargs):
+        self.type = chunk_type
+        self.delta = kwargs.get("delta")
+        self.item = kwargs.get("item")
+        self.response = None
+        usage_total = kwargs.get("usage_total")
+        response_id = kwargs.get("response_id")
+        if usage_total or response_id:
+            self.response = Mock(
+                usage=MockResponseUsage(usage_total) if usage_total else None,
+                id=response_id
+            )
+        if usage_total:
+            self.usage = MockResponseUsage(usage_total)
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.logger")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
+def test_yield_threaded_stream_text_and_tokens(
+    mock_responses, mock_logger, llm_processor, user_session  # pylint: disable=W0621,W0613
+):
+    """
+    Test verifies text yielding and ensures token usage is LOGGED properly.
+    """
+    chunks = [
+        MockResponsesChunk("response.created", response_id="resp_123"),
+        MockResponsesChunk("response.delta", delta="Hello"),
+        MockResponsesChunk("response.delta", delta="{}"),
+        MockResponsesChunk("response.delta", delta=" world"),
+        MockResponsesChunk("response.completed", usage_total=42)
+    ]
+    # pylint: disable=protected-access
+    generator = llm_processor._yield_threaded_stream(iter(chunks))
+    results = list(generator)
+
+    assert "Hello" in results
+    assert " world" in results
+    assert "{}" not in results
+
+    user_session.refresh_from_db()
+    assert user_session.remote_response_id == "resp_123"
+
+    found_token_log = any(
+        "Tokens used: 42" in str(args)
+        for args, _ in mock_logger.info.call_args_list
+    )
+    assert found_token_log, "Total tokens (42) were not logged as expected."
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
+def test_yield_threaded_stream_recursive_tool_call(
+    mock_responses, llm_processor   # pylint: disable=W0621
+):
+    """
+    Test recursive tool execution in threaded stream.
+    """
+    mock_dice_roll = Mock(return_value="[6]")
+
+    with patch.dict("openedx_ai_extensions.functions.decorators.AVAILABLE_TOOLS",
+                    {"roll_dice": mock_dice_roll}):
+        item_mock = Mock(
+            type="function_call",
+            call_id="call_abc",
+            arguments='{"n_dice": 1}'
+        )
+        item_mock.name = "roll_dice"
+
+        stream_a = [
+            MockResponsesChunk("response.output_item.done", item=item_mock)
+        ]
+
+        stream_b = [
+            MockResponsesChunk("response.delta", delta="You rolled a 6")
+        ]
+
+        mock_responses.return_value = iter(stream_b)
+
+        params = {"input": [{"role": "user", "content": "Roll dice"}], "stream": True}
+        # pylint: disable=protected-access
+        generator = llm_processor._yield_threaded_stream(iter(stream_a), params=params)
+        results = list(generator)
+
+        assert "Error: Tool not found." not in str(results)
+
+        assert "You rolled a 6" in results
+
+        mock_dice_roll.assert_called_once_with(n_dice=1)
+
+        history = params["input"]
+        assert history[1]["type"] == "function_call"
+        assert history[1]["name"] == "roll_dice"
+
+        mock_responses.assert_called_once()
