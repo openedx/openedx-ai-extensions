@@ -12,14 +12,12 @@ import {
   AIRequestComponent,
   AIResponseComponent,
 } from './components';
-import { WORKFLOW_ACTIONS } from './constants';
+import {NO_RESPONSE_MSG, WORKFLOW_ACTIONS} from './constants';
 
 interface GetAIAssistanceButtonProps {
   requestMessage?: string;
   buttonText?: string;
 }
-import { NO_RESPONSE_MSG } from './services/constants';
-
 /**
  * Main AI Assistant Plugin Component
  * Orchestrates the AI assistance flow using modular components
