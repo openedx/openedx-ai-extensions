@@ -13,9 +13,8 @@ import { AutoAwesome, Close } from '@openedx/paragon/icons';
 import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { callWorkflowService, prepareContextData } from '../services';
-import { NO_RESPONSE_MSG } from '../services/constants';
-import { WORKFLOW_ACTIONS } from '../constants';
 import messages from '../messages';
+import { WORKFLOW_ACTIONS, NO_RESPONSE_MSG } from '../constants';
 
 interface AIEducatorLibraryAssistComponentProps {
   courseId: string;

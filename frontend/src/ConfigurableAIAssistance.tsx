@@ -25,8 +25,7 @@ import {
   AIEducatorLibraryResponseComponent,
 } from './components';
 import { PluginConfiguration } from './types';
-import { WORKFLOW_ACTIONS } from './constants';
-import { NO_RESPONSE_MSG } from './services/constants';
+import { WORKFLOW_ACTIONS, NO_RESPONSE_MSG } from './constants';
 
 import messages from './messages';
 
