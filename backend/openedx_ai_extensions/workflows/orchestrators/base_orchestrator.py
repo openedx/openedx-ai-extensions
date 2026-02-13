@@ -61,22 +61,39 @@ class BaseOrchestrator:
             TypeError: If the resolved class is not a subclass of BaseOrchestrator.
         """
         orchestrator_name = workflow.profile.orchestrator_class
-        module_path = "openedx_ai_extensions.workflows.orchestrators.orchestrators"
+
+        LOCAL_PATH_MAPPING = {
+            "MockResponse": "openedx_ai_extensions.workflows.orchestrators.mock_orchestrator",
+            "MockStreamResponse": "openedx_ai_extensions.workflows.orchestrators.mock_orchestrator",
+            "DirectLLMResponse": "openedx_ai_extensions.workflows.orchestrators.direct_orchestrator",
+            "EducatorAssistantOrchestrator": "openedx_ai_extensions.workflows.orchestrators.direct_orchestrator",
+            "ThreadedLLMResponse": "openedx_ai_extensions.workflows.orchestrators.threaded_orchestrator",
+        }
 
         try:
+            if orchestrator_name in LOCAL_PATH_MAPPING:
+                module_path = LOCAL_PATH_MAPPING[orchestrator_name]
+                class_name = orchestrator_name
+            else:
+                module_path, class_name = orchestrator_name.rsplit('.', 1)
+
             module = importlib.import_module(module_path)
-            orchestrator_class = getattr(module, orchestrator_name)
+            orchestrator_class = getattr(module, class_name)
+
+        except ValueError as exc:
+            raise AttributeError(f"Invalid orchestrator name format: {orchestrator_name}") from exc
         except ImportError as exc:
             raise ImportError(
                 f"Could not import module '{module_path}' for orchestrator '{orchestrator_name}'"
             ) from exc
         except AttributeError as exc:
             raise AttributeError(
-                f"Orchestrator class '{orchestrator_name}' not found in module '{module_path}'"
+                f"Orchestrator class '{class_name}' not found in module '{module_path}'"
             ) from exc
+
         if not issubclass(orchestrator_class, BaseOrchestrator):
             raise TypeError(
-                f"{orchestrator_name} is not a subclass of BaseOrchestrator"
+                f"{class_name} is not a subclass of BaseOrchestrator"
             )
 
         return orchestrator_class(
