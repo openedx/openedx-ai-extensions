@@ -1,6 +1,9 @@
 import RedLine from './plugin';
 import GetAIAssistanceButton from './GetAIAssistanceButton';
-import ConfigurableAIAssistance from './ConfigurableAIAssistance';
+import ConfigurableAIAssistance, {
+  registerComponent,
+  registerComponents,
+} from './ConfigurableAIAssistance';
 import { AIEducatorLibraryAssistComponent } from './components';
 
 /*
@@ -9,12 +12,17 @@ import { AIEducatorLibraryAssistComponent } from './components';
  * - ConfigurableAIAssistance: Fetches runtime config from API and renders appropriate component
  * - GetAIAssistanceButton: Direct component for advanced users who want manual control
  * - AIEducatorLibraryAssistComponent: Component for educators to generate library questions using AI
+ * - registerComponent: Function to register a single component from external plugins
+ * - registerComponents: Function to register multiple components at once
  *
- * If we want to add more plugins, we would import them above and then add them to the list of exports below.
+ * Plugins like ai-badges can use registerComponent/registerComponents to add their own components
+ * to the internal component registry, making them available for use with ConfigurableAIAssistance.
  */
 export {
   GetAIAssistanceButton,
   ConfigurableAIAssistance,
   RedLine,
   AIEducatorLibraryAssistComponent,
+  registerComponent,
+  registerComponents,
 };

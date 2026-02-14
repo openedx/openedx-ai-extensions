@@ -113,31 +113,6 @@ def test_base_orchestrator_run_raises_not_implemented(mock_workflow, mock_user):
 # ============================================================================
 
 @pytest.mark.django_db
-def test_get_orchestrator_success(monkeypatch, mock_workflow, mock_user):  # pylint: disable=redefined-outer-name
-    """
-    Test get_orchestrator returns an instance of the resolved class.
-    """
-    from openedx_ai_extensions.workflows.orchestrators import orchestrators  # pylint: disable=import-outside-toplevel
-
-    class MockOrchestrator(BaseOrchestrator):
-        def run(self, input_data):
-            return {"status": "ok"}
-
-    monkeypatch.setitem(orchestrators.__dict__, "MockOrchestrator", MockOrchestrator)
-
-    context = {"location_id": "loc-1", "course_id": "course-1"}
-    orchestrator = BaseOrchestrator.get_orchestrator(
-        workflow=mock_workflow,
-        user=mock_user,
-        context=context
-    )
-
-    assert isinstance(orchestrator, MockOrchestrator)
-    assert orchestrator.workflow == mock_workflow
-    assert orchestrator.user == mock_user
-
-
-@pytest.mark.django_db
 def test_get_orchestrator_attribute_error(mock_workflow, mock_user):  # pylint: disable=redefined-outer-name
     """
     Test get_orchestrator raises AttributeError when class does not exist.
@@ -152,20 +127,41 @@ def test_get_orchestrator_attribute_error(mock_workflow, mock_user):  # pylint: 
 
 
 @pytest.mark.django_db
-def test_get_orchestrator_type_error(monkeypatch, mock_workflow, mock_user):  # pylint: disable=redefined-outer-name
+def test_get_orchestrator_import_error(mock_workflow, mock_user):  # pylint: disable=redefined-outer-name
     """
-    Test get_orchestrator raises TypeError when resolved class is not a subclass of BaseOrchestrator.
+    Test get_orchestrator raises ImportError when module path is invalid.
     """
-    from openedx_ai_extensions.workflows.orchestrators import orchestrators  # pylint: disable=import-outside-toplevel
-
-    class NotAnOrchestrator:
-        pass
-
-    monkeypatch.setitem(orchestrators.__dict__, "MockOrchestrator", NotAnOrchestrator)
-
+    # Use a dotted path with a non-existent module
+    mock_workflow.profile.orchestrator_class = "non_existent_module.path.SomeOrchestrator"
     context = {"location_id": None, "course_id": None}
 
-    with pytest.raises(TypeError) as exc_info:
+    with pytest.raises(ImportError) as exc_info:
         BaseOrchestrator.get_orchestrator(workflow=mock_workflow, user=mock_user, context=context)
 
-    assert "MockOrchestrator is not a subclass of BaseOrchestrator" in str(exc_info.value)
+    assert "Could not import module" in str(exc_info.value)
+    assert "non_existent_module.path" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.base_orchestrator.importlib.import_module")
+def test_get_orchestrator_class_not_found_in_module(
+    mock_import, mock_workflow, mock_user
+):  # pylint: disable=redefined-outer-name
+    """
+    Test get_orchestrator raises AttributeError when class doesn't exist in a valid module.
+    This tests the inner AttributeError handling when getattr fails (lines 196-199),
+    though the error is re-raised and caught by the outer handler.
+    """
+    # Mock a module that imports successfully but doesn't have the required class
+    mock_module = type('MockModule', (), {})()
+    mock_import.return_value = mock_module
+
+    # Use a dotted path with a valid module but non-existent class
+    mock_workflow.profile.orchestrator_class = "some.module.NonExistentOrchestrator"
+    context = {"location_id": None, "course_id": None}
+
+    with pytest.raises(AttributeError) as exc_info:
+        BaseOrchestrator.get_orchestrator(workflow=mock_workflow, user=mock_user, context=context)
+
+    # The error message should contain the class name and module path
+    assert "Orchestrator class 'NonExistentOrchestrator' not found in module 'some.module'" in str(exc_info.value)
