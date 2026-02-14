@@ -79,5 +79,18 @@ PLUGIN_SLOTS.add_items(
             },
           }""",
         ),
+        (
+            "authoring",
+            "org.openedx.frontend.authoring.additional_course_plugin.v1",
+            """
+            {
+                op: PLUGIN_OPERATIONS.Insert,
+                widget: {
+                    id: 'custom_additional_course',
+                    type: DIRECT_PLUGIN,
+                    RenderWidget: BadgeCreationCard
+                },
+            }"""
+        )
     ]
 )

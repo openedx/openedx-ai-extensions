@@ -1,1 +1,1 @@
-const { ConfigurableAIAssistance } = await import("@openedx/openedx-ai-extensions-ui");
+const { ConfigurableAIAssistance, BadgeCreationCard } = await import("@openedx/openedx-ai-extensions-ui");
