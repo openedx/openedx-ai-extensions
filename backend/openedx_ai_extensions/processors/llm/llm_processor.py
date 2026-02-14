@@ -4,8 +4,9 @@ Responses processor for threaded AI conversations using LiteLLM
 
 import json
 import logging
+from datetime import datetime, timezone
 
-from litellm import completion, responses
+from litellm import completion, get_responses, list_input_items, responses
 
 from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
@@ -330,6 +331,13 @@ class LLMProcessor(LitellmProcessor):
                   Maintain clarity, accuracy, and educational value in every response.
                   Adapt depth and complexity of explanations to the learner’s level when interacting with students.
                   Avoid hallucinating facts or adding external content unless explicitly allowed.
+                  Default to concise responses (3–6 sentences maximum) unless
+                  the learner explicitly asks for a detailed explanation.
+                  Do not provide long summaries unless specifically requested.
+                  Prefer guided questioning over full explanations.
+                  Ask clarifying questions when the learner’s intent is ambiguous.
+                  Encourage learners to articulate their thinking before providing full answers.
+                  Expand only if the learner asks for more depth.
 
               - Learner Assistance Mode
                   When interacting with learners:
@@ -408,3 +416,99 @@ class LLMProcessor(LitellmProcessor):
         result = self._call_completion_wrapper(system_role="")
 
         return result
+
+    def fetch_remote_thread(self, response_id):
+        """
+        Fetch the full remote conversation thread by walking the
+        previous_response_id chain via LiteLLM.
+
+        Uses provider credentials from self.extra_params resolved during __init__.
+
+        Args:
+            response_id: The LiteLLM-wrapped response ID.
+
+        Returns:
+            list: Chronologically ordered list of response dicts, each containing
+                  id, created_at, model, tokens, input messages, and output messages.
+        """
+        chain = []
+        current_id = response_id
+
+        while current_id:
+            try:
+                resp = get_responses(
+                    response_id=current_id,
+                    custom_llm_provider=self.provider,
+                    **self.extra_params,
+                )
+                input_items_result = list_input_items(
+                    response_id=current_id, order="asc", limit=100,
+                    custom_llm_provider=self.provider,
+                    **self.extra_params,
+                )
+                input_items = input_items_result.get("data", []) if isinstance(input_items_result, dict) else []
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to retrieve remote response %s: %s", current_id, e)
+                chain.append({"id": current_id, "error": str(e)})
+                break
+
+            created_at = getattr(resp, "created_at", None)
+            if created_at:
+                created_at = datetime.fromtimestamp(created_at, tz=timezone.utc).isoformat()
+
+            response_data = {
+                "id": getattr(resp, "id", current_id),
+                "created_at": created_at,
+                "model": getattr(resp, "model", "unknown"),
+                "previous_response_id": getattr(resp, "previous_response_id", None),
+                "tokens": resp.usage.total_tokens if getattr(resp, "usage", None) else None,
+                "input": [self._extract_input_item(item) for item in input_items],
+                "output": self._extract_output_items(resp),
+            }
+            chain.append(response_data)
+            current_id = getattr(resp, "previous_response_id", None)
+
+        chain.reverse()
+        return chain
+
+    @staticmethod
+    def _extract_input_item(item):
+        """Convert a provider input item to a serializable dict."""
+        if isinstance(item, dict):
+            role = item.get("role", item.get("type", "unknown"))
+            content = item.get("content", item.get("text", ""))
+            item_type = item.get("type", "unknown")
+        else:
+            item_type = getattr(item, "type", "unknown")
+            role = getattr(item, "role", item_type)
+            content = getattr(item, "content", None)
+
+        if isinstance(content, list):
+            parts = []
+            for c in content:
+                if isinstance(c, dict):
+                    parts.append(c.get("text", str(c)))
+                else:
+                    parts.append(getattr(c, "text", str(c)))
+            content = " ".join(parts)
+        elif content is None:
+            content = getattr(item, "text", "") if not isinstance(item, dict) else ""
+
+        return {"type": item_type, "role": role, "content": str(content)}
+
+    @staticmethod
+    def _extract_output_items(resp):
+        """Convert provider output items to serializable dicts."""
+        items = []
+        for item in getattr(resp, "output", []) or []:
+            item_type = getattr(item, "type", "unknown")
+            if item_type == "message":
+                for block in getattr(item, "content", []):
+                    if getattr(block, "type", None) == "output_text":
+                        items.append({"role": "assistant", "content": block.text})
+            elif item_type == "function_call":
+                items.append({
+                    "role": "tool_call",
+                    "content": f"{getattr(item, 'name', '?')}({getattr(item, 'arguments', '')})",
+                })
+        return items

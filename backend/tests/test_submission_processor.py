@@ -835,3 +835,88 @@ def test_get_chat_history_returns_error_without_submission_id(
 
     assert "error" in result
     assert result["error"] == "No submission ID associated with the session"
+
+
+# ============================================================================
+# SubmissionProcessor.get_full_thread() Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_get_full_thread_no_submission_id(
+    user_session_no_submission,  # pylint: disable=redefined-outer-name
+):
+    """Test that get_full_thread returns None when no submission ID exists."""
+    processor = SubmissionProcessor(config={}, user_session=user_session_no_submission)
+    result = processor.get_full_thread()
+    assert result is None
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
+def test_get_full_thread_returns_sorted_messages(
+    mock_api, user_session,  # pylint: disable=redefined-outer-name
+):
+    """Test that get_full_thread returns messages sorted by timestamp."""
+    mock_api.get_submission_and_student.return_value = {
+        "student_item": {
+            "student_id": "testuser",
+            "course_id": "course-v1:edX+DemoX+Demo_Course",
+            "item_id": "test-item",
+            "item_type": "ai_chat",
+        }
+    }
+    mock_api.get_submissions.return_value = [
+        {
+            "uuid": "sub-2",
+            "answer": json.dumps([{"role": "user", "content": "Second"}]),
+            "created_at": "2024-02-02T00:00:00",
+        },
+        {
+            "uuid": "sub-1",
+            "answer": json.dumps([{"role": "user", "content": "First"}]),
+            "created_at": "2024-01-01T00:00:00",
+        },
+    ]
+
+    processor = SubmissionProcessor(config={}, user_session=user_session)
+    result = processor.get_full_thread()
+
+    assert result is not None
+    assert len(result) == 2
+    # Should be sorted by timestamp (chronological)
+    assert result[0]["content"] == "First"
+    assert result[1]["content"] == "Second"
+    # Each message should have a submission_id
+    assert "submission_id" in result[0]
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
+def test_get_full_thread_restores_student_item(
+    mock_api, user_session,  # pylint: disable=redefined-outer-name
+):
+    """Test that get_full_thread restores original student_item_dict after use."""
+    mock_api.get_submission_and_student.return_value = {
+        "student_item": {
+            "student_id": "different-user",
+            "course_id": "different-course",
+            "item_id": "different-item",
+            "item_type": "different-type",
+        }
+    }
+    mock_api.get_submissions.return_value = [
+        {
+            "uuid": "sub-1",
+            "answer": json.dumps([{"role": "user", "content": "test"}]),
+            "created_at": "2024-01-01T00:00:00",
+        }
+    ]
+
+    processor = SubmissionProcessor(config={}, user_session=user_session)
+    original_dict = processor.student_item_dict.copy()
+
+    processor.get_full_thread()
+
+    # student_item_dict should be restored to original
+    assert processor.student_item_dict == original_dict

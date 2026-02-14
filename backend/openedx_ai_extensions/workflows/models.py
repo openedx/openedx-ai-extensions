@@ -385,7 +385,168 @@ class AIWorkflowSession(models.Model):
     metadata = models.JSONField(default=dict, help_text="Additional session metadata")
 
     class Meta:
-        unique_together = ("user", "scope", "profile")
+        unique_together = ("user", "scope", "profile", "course_id", "location_id")
+
+    def get_local_thread(self):
+        """
+        Fetch the full local conversation thread from submissions.
+
+        Returns:
+            list or None: Messages in chronological order, or None if no submission exists.
+        """
+        # pylint: disable=import-outside-toplevel
+        from openedx_ai_extensions.processors.openedx.submission_processor import SubmissionProcessor
+
+        if not self.local_submission_id:
+            return None
+
+        processor = SubmissionProcessor(
+            config=self.profile.processor_config if self.profile else {},
+            user_session=self,
+        )
+        return processor.get_full_thread()
+
+    def get_remote_thread(self):
+        """
+        Fetch the full remote conversation thread from the LLM provider via LiteLLM.
+
+        Instantiates an LLMProcessor with the profile's processor config so that
+        provider credentials (api_key, api_base, etc.) are resolved and passed through.
+
+        Returns:
+            list or None: Chronologically ordered response dicts, or None if no remote ID exists.
+        """
+        from openedx_ai_extensions.processors.llm.llm_processor import (  # pylint: disable=import-outside-toplevel
+            LLMProcessor,
+        )
+
+        if not self.remote_response_id:
+            return None
+
+        processor = LLMProcessor(
+            config=self.profile.processor_config if self.profile else {},
+            user_session=self,
+        )
+        return processor.fetch_remote_thread(self.remote_response_id)
+
+    def get_combined_thread(self):
+        """
+        Build a unified chronological thread combining local and remote data.
+
+        The remote thread is the backbone (it has system messages, reasoning,
+        tool calls). Local thread enriches with submission_id and timestamp.
+        Messages are deduplicated across responses since each remote response's
+        input replays the full history.
+
+        Returns:
+            list or None: Flat list of message dicts with all available metadata.
+        """
+        local_thread = self.get_local_thread()
+        remote_thread = self.get_remote_thread()
+
+        if not remote_thread:
+            return local_thread
+
+        # Build lookup from local thread: (role, content_prefix) -> local msg
+        local_by_content = {}
+        if local_thread:
+            for msg in local_thread:
+                role = msg.get("role", "")
+                content = msg.get("content", "")
+                key = (role, content[:200])
+                # Keep the last match (most recent submission_id)
+                local_by_content[key] = msg
+
+        combined = []
+        seen = set()
+
+        for response in remote_thread:
+            if not isinstance(response, dict):
+                continue
+
+            if "error" in response:
+                combined.append({
+                    "role": "error",
+                    "type": "error",
+                    "content": response.get("error", "Unknown error"),
+                    "response_id": response.get("id"),
+                })
+                continue
+
+            response_meta = {
+                "response_id": response.get("id", "unknown"),
+                "created_at": response.get("created_at"),
+                "model": response.get("model"),
+            }
+
+            # Process input items (system, user, reasoning, tool results, etc.)
+            for item in response.get("input", []):
+                content = item.get("content", "")
+                content_key = (item.get("role", ""), content[:200])
+                if content_key in seen:
+                    continue
+                seen.add(content_key)
+
+                msg = {
+                    "role": item.get("role", "unknown"),
+                    "type": item.get("type", "message"),
+                    "content": content,
+                    "source": "remote",
+                    **response_meta,
+                }
+
+                # Enrich with local metadata
+                local_key = (item.get("role", ""), content[:200])
+                if local_key in local_by_content:
+                    local_msg = local_by_content.pop(local_key)
+                    msg["timestamp"] = local_msg.get("timestamp")
+                    msg["submission_id"] = local_msg.get("submission_id")
+                    msg["source"] = "both"
+
+                combined.append(msg)
+
+            # Process output items (assistant responses, tool calls)
+            for item in response.get("output", []):
+                content = item.get("content", "")
+                content_key = (item.get("role", ""), content[:200])
+                seen.add(content_key)
+
+                msg = {
+                    "role": item.get("role", "unknown"),
+                    "type": "message",
+                    "content": content,
+                    "source": "remote",
+                    "tokens": response.get("tokens"),
+                    **response_meta,
+                }
+
+                local_key = (item.get("role", ""), content[:200])
+                if local_key in local_by_content:
+                    local_msg = local_by_content.pop(local_key)
+                    msg["timestamp"] = local_msg.get("timestamp")
+                    msg["submission_id"] = local_msg.get("submission_id")
+                    msg["source"] = "both"
+
+                combined.append(msg)
+
+        # Insert any local-only messages at their correct chronological position
+        for local_msg in local_by_content.values():
+            entry = {
+                **local_msg,
+                "type": "message",
+                "source": "local",
+            }
+            ts = str(local_msg.get("timestamp", ""))
+            # Find the right position: before the first message with a later timestamp
+            insert_at = len(combined)
+            for i, existing in enumerate(combined):
+                existing_ts = str(existing.get("timestamp") or existing.get("created_at") or "")
+                if existing_ts and ts and existing_ts > ts:
+                    insert_at = i
+                    break
+            combined.insert(insert_at, entry)
+
+        return combined
 
 
 # Signal handlers for cache invalidation

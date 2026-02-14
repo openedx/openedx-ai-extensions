@@ -1,6 +1,7 @@
 """
 Tests for the LLMProcessor module.
 """
+# pylint: disable=redefined-outer-name,protected-access
 
 from unittest.mock import Mock, patch
 
@@ -51,7 +52,7 @@ def workflow_scope(workflow_profile, course_key):  # pylint: disable=redefined-o
 
 
 @pytest.fixture
-def user_session(user, course_key, workflow_scope, db):  # pylint: disable=redefined-outer-name,unused-argument
+def user_session(user, course_key, workflow_scope, db):  # pylint: disable=unused-argument
     """Create and return a test user session with a valid location."""
     location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-123")
 
@@ -713,3 +714,216 @@ def test_call_with_custom_prompt_missing_prompt_raises_error(
 
     with pytest.raises(ValueError, match="Custom prompt not provided in configuration"):
         processor.process(input_data="Test input")
+
+
+# ============================================================================
+# LLMProcessor.fetch_remote_thread Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+class TestFetchRemoteThread:
+    """Tests for fetch_remote_thread, _extract_input_item, _extract_output_items."""
+
+    def _make_processor(self, user_session, settings):
+        """Create a processor for testing."""
+        settings.AI_EXTENSIONS = {
+            "default": {"MODEL": "openai/gpt-3.5-turbo", "API_KEY": "test-key"}
+        }
+        config = {
+            "LLMProcessor": {"function": "chat_with_context", "model": "gpt-3.5-turbo"}
+        }
+        return LLMProcessor(config=config, user_session=user_session)
+
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.list_input_items")
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.get_responses")
+    def test_fetch_single_response(self, mock_get, mock_list, user_session, settings):
+        """Test fetching a single-response thread."""
+        processor = self._make_processor(user_session, settings)
+
+        mock_resp = Mock()
+        mock_resp.id = "resp-1"
+        mock_resp.created_at = 1700000000
+        mock_resp.model = "gpt-4"
+        mock_resp.previous_response_id = None
+        mock_usage = Mock()
+        mock_usage.total_tokens = 42
+        mock_resp.usage = mock_usage
+        mock_resp.output = []
+
+        mock_get.return_value = mock_resp
+        mock_list.return_value = {"data": []}
+
+        result = processor.fetch_remote_thread("resp-1")
+
+        assert len(result) == 1
+        assert result[0]["id"] == "resp-1"
+        assert result[0]["model"] == "gpt-4"
+        assert result[0]["tokens"] == 42
+
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.list_input_items")
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.get_responses")
+    def test_fetch_chained_responses(self, mock_get, mock_list, user_session, settings):
+        """Test fetching a multi-response chain (follows previous_response_id)."""
+        processor = self._make_processor(user_session, settings)
+
+        resp2 = Mock(id="resp-2", created_at=1700000002, model="gpt-4",
+                     previous_response_id="resp-1", usage=None, output=[])
+        resp1 = Mock(id="resp-1", created_at=1700000001, model="gpt-4",
+                     previous_response_id=None, usage=None, output=[])
+
+        mock_get.side_effect = [resp2, resp1]
+        mock_list.return_value = {"data": []}
+
+        result = processor.fetch_remote_thread("resp-2")
+
+        assert len(result) == 2
+        # Should be chronological (reversed)
+        assert result[0]["id"] == "resp-1"
+        assert result[1]["id"] == "resp-2"
+
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.list_input_items")
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.get_responses")
+    def test_fetch_handles_api_error(  # pylint: disable=unused-argument
+        self, mock_get, mock_list, user_session, settings,
+    ):
+        """Test graceful handling of API errors."""
+        processor = self._make_processor(user_session, settings)
+        mock_get.side_effect = Exception("API timeout")
+
+        result = processor.fetch_remote_thread("resp-1")
+
+        assert len(result) == 1
+        assert "error" in result[0]
+        assert "API timeout" in result[0]["error"]
+
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.list_input_items")
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.get_responses")
+    def test_fetch_no_created_at(self, mock_get, mock_list, user_session, settings):
+        """Test response without created_at timestamp."""
+        processor = self._make_processor(user_session, settings)
+
+        mock_resp = Mock(id="resp-1", created_at=None, model="gpt-4",
+                         previous_response_id=None, usage=None, output=[])
+        mock_get.return_value = mock_resp
+        mock_list.return_value = {"data": []}
+
+        result = processor.fetch_remote_thread("resp-1")
+        assert result[0]["created_at"] is None
+
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.list_input_items")
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.get_responses")
+    def test_fetch_with_input_items(self, mock_get, mock_list, user_session, settings):
+        """Test that input items are extracted."""
+        processor = self._make_processor(user_session, settings)
+
+        mock_resp = Mock(id="resp-1", created_at=None, model="gpt-4",
+                         previous_response_id=None, usage=None, output=[])
+        mock_get.return_value = mock_resp
+        mock_list.return_value = {
+            "data": [{"role": "user", "content": "Hello", "type": "message"}]
+        }
+
+        result = processor.fetch_remote_thread("resp-1")
+        assert len(result[0]["input"]) == 1
+        assert result[0]["input"][0]["role"] == "user"
+
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.list_input_items")
+    @patch("openedx_ai_extensions.processors.llm.llm_processor.get_responses")
+    def test_fetch_list_input_items_non_dict(self, mock_get, mock_list, user_session, settings):
+        """Test handling when list_input_items returns non-dict."""
+        processor = self._make_processor(user_session, settings)
+
+        mock_resp = Mock(id="resp-1", created_at=None, model="gpt-4",
+                         previous_response_id=None, usage=None, output=[])
+        mock_get.return_value = mock_resp
+        mock_list.return_value = "not-a-dict"
+
+        result = processor.fetch_remote_thread("resp-1")
+        assert result[0]["input"] == []
+
+
+class TestExtractInputItem:
+    """Tests for _extract_input_item static method."""
+
+    def test_dict_input(self):
+        """Test extracting from a dict item."""
+        item = {"role": "user", "content": "Hello", "type": "message"}
+        result = LLMProcessor._extract_input_item(item)
+        assert result == {"type": "message", "role": "user", "content": "Hello"}
+
+    def test_object_input(self):
+        """Test extracting from an object item."""
+        item = Mock(type="message", role="user", content="Hello")
+        result = LLMProcessor._extract_input_item(item)
+        assert result["role"] == "user"
+        assert result["content"] == "Hello"
+
+    def test_list_content(self):
+        """Test extracting when content is a list."""
+        item = {"role": "user", "content": [{"text": "Part 1"}, {"text": "Part 2"}], "type": "message"}
+        result = LLMProcessor._extract_input_item(item)
+        assert result["content"] == "Part 1 Part 2"
+
+    def test_list_content_with_objects(self):
+        """Test extracting when content list contains objects."""
+        part = Mock(text="Object text")
+        item = {"role": "user", "content": [part], "type": "message"}
+        result = LLMProcessor._extract_input_item(item)
+        assert "Object text" in result["content"]
+
+    def test_none_content_object(self):
+        """Test extracting when content is None on an object."""
+        item = Mock(type="message", role="user", content=None, text="fallback text")
+        result = LLMProcessor._extract_input_item(item)
+        assert result["content"] == "fallback text"
+
+    def test_none_content_dict(self):
+        """Test extracting when content is None in a dict."""
+        item = {"role": "user", "type": "message"}
+        result = LLMProcessor._extract_input_item(item)
+        assert result["content"] == ""
+
+
+class TestExtractOutputItems:
+    """Tests for _extract_output_items static method."""
+
+    def test_message_output(self):
+        """Test extracting message output items."""
+        block = Mock(type="output_text", text="Hello world")
+        output_item = Mock(type="message", content=[block])
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert result == [{"role": "assistant", "content": "Hello world"}]
+
+    def test_function_call_output(self):
+        """Test extracting function call output items."""
+        output_item = Mock(type="function_call", name="search", arguments='{"q":"test"}')
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert len(result) == 1
+        assert result[0]["role"] == "tool_call"
+        assert "search" in result[0]["content"]
+
+    def test_empty_output(self):
+        """Test with no output items."""
+        resp = Mock(output=[])
+        result = LLMProcessor._extract_output_items(resp)
+        assert not result
+
+    def test_none_output(self):
+        """Test with None output."""
+        resp = Mock(output=None)
+        result = LLMProcessor._extract_output_items(resp)
+        assert not result
+
+    def test_skips_non_output_text_blocks(self):
+        """Test that non-output_text blocks in message items are skipped."""
+        block = Mock(type="image", text="ignored")
+        output_item = Mock(type="message", content=[block])
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert not result
