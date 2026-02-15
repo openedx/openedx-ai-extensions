@@ -10,16 +10,7 @@ import { CoursePagesCard } from '../components';
 import { BadgeCreationModal } from './components/';
 import messages from './messages';
 
-
-interface BadgeCreationCardProps {
-  courseId: string;
-  courseName?: string;
-}
-
-const BadgeCreationCard = ({
-  courseId,
-  courseName,
-}: BadgeCreationCardProps) => {
+const BadgeCreationCard = () => {
   const intl = useIntl();
   const [isModalOpen, openModal, closeModal] = useToggle(false);
 
@@ -33,8 +24,6 @@ const BadgeCreationCard = ({
       />
 
       <BadgeCreationModal
-        courseId={courseId}
-        courseName={courseName}
         isOpen={isModalOpen}
         onClose={closeModal}
       />
