@@ -512,3 +512,11 @@ class LLMProcessor(LitellmProcessor):
                     "content": f"{getattr(item, 'name', '?')}({getattr(item, 'arguments', '')})",
                 })
         return items
+
+    def call_completion(self, context, system_role):
+        """
+        Public method to call completion with a given system role.
+        Returns either a generator (if stream=True) or a response dict.
+        """
+        self.context = context
+        return self._call_completion_wrapper(system_role=system_role)
