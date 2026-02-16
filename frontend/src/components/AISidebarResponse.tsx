@@ -9,7 +9,6 @@ import {
   ModalLayer,
   ButtonGroup,
   Icon,
-  Scrollable,
   Spinner,
   Card,
   Form,
@@ -76,12 +75,26 @@ const AISidebarResponse = ({
   const initialResponseAdded = useRef(false);
   const hasScrolledToBottom = useRef(false);
   const isLoadingOlderMessages = useRef(false);
+  const isUserNearBottom = useRef(true);
+  const isProgrammaticScroll = useRef(false);
+  const isAutoFollowEnabled = useRef(true);
+  const lastScrollTop = useRef(0);
+  const isDismissed = useRef(false);
   const previousMessageCount = useRef(0);
   const [textareaRows, setTextareaRows] = useState(1);
+
+  // Reset dismissed flag only when starting a new request.
+  useEffect(() => {
+    if (isLoading) {
+      isDismissed.current = false;
+    }
+  }, [isLoading]);
 
   // Show sidebar when response or error arrives
   useEffect(() => {
     if (!response && !error) { return; }
+
+    if (isDismissed.current) { return; }
 
     if (error) {
       setIsOpen(true);
@@ -188,17 +201,23 @@ const AISidebarResponse = ({
     }
   }, [response, error]);
 
-  // Auto-scroll to bottom when new messages arrive (but not when loading older messages)
+  // Auto-scroll to bottom when new messages arrive, only if user is near bottom.
   useEffect(() => {
-    // Only scroll to bottom if we're not currently loading older messages
-    if (chatEndRef.current && !isLoadingOlderMessages.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      // Mark that we've scrolled to bottom after initial load
-      if (!hasScrolledToBottom.current) {
-        setTimeout(() => {
-          hasScrolledToBottom.current = true;
-        }, 500); // Wait for smooth scroll to complete
-      }
+    const scrollContainer = chatContainerRef.current;
+    if (!scrollContainer || isLoadingOlderMessages.current) {
+      return;
+    }
+
+    if (isAutoFollowEnabled.current && isUserNearBottom.current) {
+      isProgrammaticScroll.current = true;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      lastScrollTop.current = scrollContainer.scrollTop;
+    }
+
+    if (!hasScrolledToBottom.current) {
+      setTimeout(() => {
+        hasScrolledToBottom.current = true;
+      }, 500);
     }
   }, [chatMessages, isSendingFollowUp]);
 
@@ -287,7 +306,9 @@ const AISidebarResponse = ({
           if (scrollContainer) {
             const scrollHeightAfter = scrollContainer.scrollHeight;
             const scrollDiff = scrollHeightAfter - scrollHeightBefore;
+            isProgrammaticScroll.current = true;
             scrollContainer.scrollTop = scrollTopBefore + scrollDiff;
+            lastScrollTop.current = scrollContainer.scrollTop;
           }
         }, 0);
       }
@@ -318,7 +339,33 @@ const AISidebarResponse = ({
    * Handle scroll event to detect when user reaches top
    */
   const handleScroll = (e) => {
-    const { scrollTop } = e.target;
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+    } = e.target;
+
+    if (isProgrammaticScroll.current) {
+      isProgrammaticScroll.current = false;
+      lastScrollTop.current = scrollTop;
+      return;
+    }
+
+    const previousScrollTop = lastScrollTop.current;
+    const delta = scrollTop - previousScrollTop;
+    lastScrollTop.current = scrollTop;
+
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const nearBottom = distanceFromBottom < 40;
+    isUserNearBottom.current = nearBottom;
+
+    // If the user scrolls up, stop auto-follow immediately.
+    if (delta < -2) {
+      isAutoFollowEnabled.current = false;
+    } else if (nearBottom) {
+      // Re-enable auto-follow only when the user returns to bottom.
+      isAutoFollowEnabled.current = true;
+    }
 
     // Only trigger lazy load after initial scroll to bottom is complete
     // This prevents loading during the initial auto-scroll
@@ -347,6 +394,7 @@ const AISidebarResponse = ({
   };
 
   const handleClose = () => {
+    isDismissed.current = true;
     setIsOpen(false);
     setFollowUpQuestion('');
     setChatMessages([]);
@@ -355,6 +403,8 @@ const AISidebarResponse = ({
     initialResponseAdded.current = false;
     hasScrolledToBottom.current = false;
     isLoadingOlderMessages.current = false;
+    isUserNearBottom.current = true;
+    isProgrammaticScroll.current = false;
     previousMessageCount.current = 0;
     if (onClear) {
       onClear();
@@ -528,10 +578,7 @@ const AISidebarResponse = ({
   return (
     <ModalLayer
       isOpen={isOpen}
-      isBlocking
-      // This is a requiered prop for the ModalLayer component. However, we are not using it.
-      // The modal is closed by the close button in the header.
-      onClose={() => { }}
+      onClose={handleClose}
     >
 
       {/* Sidebar */}
@@ -576,10 +623,11 @@ const AISidebarResponse = ({
         </div>
 
         {/* Content */}
-        <Scrollable
+        <div
           ref={chatContainerRef}
           onScroll={handleScroll}
           className="flex-grow-1 p-3"
+          style={{ overflowY: 'auto' }}
         >
           {/* Loading indicator for lazy loading at top */}
           {isLoadingHistory && (
@@ -663,7 +711,7 @@ const AISidebarResponse = ({
               </span>
             </div>
           )}
-        </Scrollable>
+        </div>
 
         {/* Footer Actions */}
         {showActions && (response || error || chatMessages.length > 0) && (
