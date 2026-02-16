@@ -39,7 +39,12 @@ class SubmissionProcessor:
         function = getattr(self, function_name)
         return function(context, input_data)
 
-    def _process_messages(self, current_messages_count=0, use_max_context=True):
+    def _process_messages(
+        self,
+        current_messages_count=0,
+        use_max_context=True,
+        include_submission_id=False,
+    ):
         """
         Retrieve messages from submissions.
         If current_messages_count > 0, return only new messages not already loaded.
@@ -73,9 +78,12 @@ class SubmissionProcessor:
                 submission_messages_copy = [
                     msg for msg in submission_messages_copy if msg.get("role") != "system"
                 ]
+                submission_uuid = submission.get("uuid", "")
                 for msg in submission_messages_copy:
                     if isinstance(msg, dict):
                         msg["timestamp"] = timestamp
+                        if include_submission_id:
+                            msg["submission_id"] = submission_uuid
                 # Extend to maintain chronological order (oldest to newest)
                 all_messages.extend(submission_messages_copy)
 
@@ -265,3 +273,47 @@ class SubmissionProcessor:
             return messages
         else:
             return None
+
+    def get_full_thread(self):
+        """
+        Retrieve the full message history with timestamps for debugging.
+
+        Uses the submission's own student_item to ensure the lookup key matches
+        what was used at creation time, even if the session's fields have changed.
+
+        Returns:
+            list: All messages in chronological order with role, content, and timestamp,
+                  or None if no submission exists.
+        """
+        if not self.user_session.local_submission_id:
+            return None
+
+        # Look up the submission directly by UUID to get the original student_item
+        submission = submissions_api.get_submission_and_student(
+            self.user_session.local_submission_id
+        )
+        original_student_item = submission.get("student_item", {})
+
+        # Use the original student_item for the lookup so it matches
+        saved_dict = self.student_item_dict
+        self.student_item_dict = {
+            "student_id": original_student_item.get(
+                "student_id", saved_dict["student_id"]
+            ),
+            "course_id": original_student_item.get(
+                "course_id", saved_dict["course_id"]
+            ),
+            "item_id": original_student_item.get("item_id", saved_dict["item_id"]),
+            "item_type": original_student_item.get(
+                "item_type", saved_dict["item_type"]
+            ),
+        }
+        try:
+            messages, _ = self._process_messages(
+                use_max_context=False, include_submission_id=True
+            )
+            # Sort by timestamp to guarantee chronological order
+            messages.sort(key=lambda m: m.get("timestamp", ""))
+            return messages
+        finally:
+            self.student_item_dict = saved_dict
