@@ -48,6 +48,11 @@ interface AISidebarResponseProps {
   showActions?: boolean;
   customMessage?: string;
   contextData?: PluginContext;
+  /**
+   * Incrementing signal from parent to request opening the sidebar.
+   * Used to reopen after user dismissed it while streaming continues.
+   */
+  openSidebarSignal?: number;
 }
 
 const AISidebarResponse = ({
@@ -59,6 +64,7 @@ const AISidebarResponse = ({
   showActions = true,
   customMessage,
   contextData = {},
+  openSidebarSignal,
 }: AISidebarResponseProps) => {
   const intl = useIntl();
   const [isOpen, setIsOpen] = useState(false);
@@ -80,8 +86,26 @@ const AISidebarResponse = ({
   const isAutoFollowEnabled = useRef(true);
   const lastScrollTop = useRef(0);
   const isDismissed = useRef(false);
+  const didInitOpenSignal = useRef(false);
   const previousMessageCount = useRef(0);
   const [textareaRows, setTextareaRows] = useState(1);
+
+  // Allow parent to request reopening the sidebar (without starting a new request).
+  useEffect(() => {
+    if (openSidebarSignal === undefined) {
+      return;
+    }
+
+    if (!didInitOpenSignal.current) {
+      didInitOpenSignal.current = true;
+      return;
+    }
+
+    isDismissed.current = false;
+    isAutoFollowEnabled.current = true;
+    isUserNearBottom.current = true;
+    setIsOpen(true);
+  }, [openSidebarSignal]);
 
   // Reset dismissed flag only when starting a new request.
   useEffect(() => {
@@ -94,10 +118,10 @@ const AISidebarResponse = ({
   useEffect(() => {
     if (!response && !error) { return; }
 
-    if (isDismissed.current) { return; }
-
     if (error) {
-      setIsOpen(true);
+      if (!isDismissed.current) {
+        setIsOpen(true);
+      }
       return;
     }
 
@@ -155,13 +179,17 @@ const AISidebarResponse = ({
         });
 
         setChatMessages(formattedMessages);
-        setIsOpen(true);
+        if (!isDismissed.current) {
+          setIsOpen(true);
+        }
         initialResponseAdded.current = true;
       }
 
       // --- SCENARIO 2: Simple text (Streaming) ---
     } else {
-      setIsOpen(true);
+      if (!isDismissed.current) {
+        setIsOpen(true);
+      }
 
       initialResponseAdded.current = true;
       setChatMessages((prevMessages) => {
@@ -397,18 +425,7 @@ const AISidebarResponse = ({
     isDismissed.current = true;
     setIsOpen(false);
     setFollowUpQuestion('');
-    setChatMessages([]);
-    setHasMoreHistory(false);
-    setIsLoadingHistory(false);
-    initialResponseAdded.current = false;
-    hasScrolledToBottom.current = false;
-    isLoadingOlderMessages.current = false;
-    isUserNearBottom.current = true;
-    isProgrammaticScroll.current = false;
-    previousMessageCount.current = 0;
-    if (onClear) {
-      onClear();
-    }
+    setTextareaRows(1);
   };
 
   const displayTitle = customMessage || intl.formatMessage(messages['ai.extensions.sidebar.default.title']);

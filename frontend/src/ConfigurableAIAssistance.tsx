@@ -114,6 +114,7 @@ const ConfigurableAIAssistance = ({
   const [response, setResponse] = useState('');
   const [error, setError] = useState('');
   const [hasAsked, setHasAsked] = useState(false);
+  const [openSidebarSignal, setOpenSidebarSignal] = useState(0);
 
   const configEndpoint = getDefaultEndpoint('profile');
   const requestIdRef = useRef(0);
@@ -244,6 +245,10 @@ const ConfigurableAIAssistance = ({
     }
   }, [additionalProps]);
 
+  const handleOpenSidebar = useCallback(() => {
+    setOpenSidebarSignal((prev) => prev + 1);
+  }, []);
+
   /**
    * Reset component state for new request
    */
@@ -361,6 +366,7 @@ const ConfigurableAIAssistance = ({
           setResponse={setResponse}
           setHasAsked={setHasAsked}
           onAskAI={handleAskAI}
+          onOpenSidebar={handleOpenSidebar}
           disabled={false}
           {...requestProps}
         />
@@ -374,6 +380,7 @@ const ConfigurableAIAssistance = ({
           onClear={handleReset}
           onError={handleClearError}
           contextData={additionalProps}
+          openSidebarSignal={openSidebarSignal}
           {...responseProps}
         />
       </div>

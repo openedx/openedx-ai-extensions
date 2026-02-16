@@ -13,6 +13,7 @@ interface AIRequestComponentProps {
   isLoading: boolean;
   hasAsked: boolean;
   onAskAI: () => void;
+  onOpenSidebar?: () => void;
   customMessage?: string;
   buttonText?: string;
   disabled: boolean;
@@ -22,6 +23,7 @@ const AIRequestComponent = ({
   isLoading,
   hasAsked,
   onAskAI,
+  onOpenSidebar,
   customMessage,
   buttonText,
   disabled = false,
@@ -31,10 +33,7 @@ const AIRequestComponent = ({
   const displayMessage = customMessage || intl.formatMessage(messages['ai.extensions.request.default.message']);
   const displayButtonText = buttonText || intl.formatMessage(messages['ai.extensions.request.default.button']);
 
-  // Don't render if already asked or currently loading
-  if (hasAsked && !isLoading) {
-    return null;
-  }
+  const shouldShowOpenButton = hasAsked && !isLoading && typeof onOpenSidebar === 'function';
 
   return (
     <div className="ai-request-container">
@@ -63,6 +62,25 @@ const AIRequestComponent = ({
             variant="primary"
             size="sm"
             onClick={onAskAI}
+            disabled={disabled || isLoading}
+            iconBefore={Send}
+            className="rounded-pill"
+          >
+            {displayButtonText}
+          </Button>
+        </div>
+      )}
+
+      {/* Re-open sidebar state (keep original button available) */}
+      {shouldShowOpenButton && (
+        <div className="d-flex align-items-center justify-content-end py-2">
+          <span className="text-muted mr-3 small">
+            {displayMessage}
+          </span>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onOpenSidebar}
             disabled={disabled || isLoading}
             iconBefore={Send}
             className="rounded-pill"
