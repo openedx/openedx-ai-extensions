@@ -13,7 +13,7 @@ import {
   AIRequestComponent,
   AIResponseComponent,
 } from './components';
-import {NO_RESPONSE_MSG, WORKFLOW_ACTIONS} from './constants';
+import { NO_RESPONSE_MSG, WORKFLOW_ACTIONS } from './constants';
 import messages from './messages';
 
 interface GetAIAssistanceButtonProps {
