@@ -13,7 +13,7 @@ import {
   AIRequestComponent,
   AIResponseComponent,
 } from './components';
-import { WORKFLOW_ACTIONS } from './constants';
+import { NO_RESPONSE_MSG, WORKFLOW_ACTIONS } from './constants';
 import messages from './messages';
 
 interface GetAIAssistanceButtonProps {
@@ -92,7 +92,7 @@ const GetAIAssistanceButton = ({
         throw new Error(data.error);
       } else {
         // If API returns something but in unexpected format, try to use it
-        setResponse(JSON.stringify(data, null, 2));
+        setResponse(NO_RESPONSE_MSG);
         setHasAsked(true);
       }
 
