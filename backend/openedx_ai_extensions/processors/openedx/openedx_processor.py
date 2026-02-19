@@ -315,7 +315,9 @@ class OpenEdXProcessor:
             "name": "get_course_info",
             "description": (
                 "Get basic course information including title, short description, "
-                "description, and overview for a given course ID"
+                "description, and overview for a given course ID. "
+                "Returns all fields by default, or only specific fields if configured "
+                "via the 'fields' parameter in processor_config."
             ),
             "parameters": {
                 "type": "object",
@@ -333,7 +335,35 @@ class OpenEdXProcessor:
         }
     })
     def get_course_info(self, course_id=None):
-        """Get basic course info (title, description, overview) for a given course ID"""
+        """Get basic course info for a given course ID.
+        
+        Returns course information fields. By default, returns all available fields.
+        Can be configured to return specific fields via processor_config.
+        
+        Configuration example in workflow profile JSON:
+            "processor_config": {
+                "OpenEdXProcessor": {
+                    "function": "get_course_info",
+                    "fields": ["title", "short_description"]
+                }
+            }
+        
+        Available fields:
+            - title: Course display name
+            - subtitle: Course subtitle
+            - short_description: Brief course description
+            - description: Detailed course description
+            - overview: Course overview content (HTML)
+            - outline: Course structure (sections, subsections, units) as JSON
+            - syllabus: Course syllabus content
+            - duration: Course duration information
+        
+        Args:
+            course_id: Course ID string. If not provided, uses the current course.
+            
+        Returns:
+            dict: Course information with requested fields, or all fields if not configured.
+        """
         try:
             # pylint: disable=import-error,import-outside-toplevel
             from openedx.core.djangoapps.models.course_details import CourseDetails
@@ -344,12 +374,23 @@ class OpenEdXProcessor:
             course_details = CourseDetails.fetch(course_key)
             course_block = modulestore().get_course(course_key)
 
-            return {
-                "title": course_block.display_name,
-                "short_description": course_details.short_description,
-                "description": course_details.description,
-                "overview": str(course_details.overview),
+            full_info = {
+                "title": str(course_block.display_name or ""),
+                "subtitle": str(course_details.subtitle or ""),
+                "short_description": str(course_details.short_description or ""),
+                "description": str(course_details.description or ""),
+                "overview": str(course_details.overview or ""),
+                "outline": str(self.get_course_outline() or ""),
+                "syllabus": str(course_details.syllabus or ""),
+                "duration": str(course_details.duration or ""),
             }
+
+            # Filter by configured fields if specified
+            fields = self.config.get("fields")
+            if fields:
+                return {k: v for k, v in full_info.items() if k in fields}
+
+            return full_info
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             return {"error": f"Error accessing course info: {str(exc)}"}
