@@ -314,19 +314,28 @@ class OpenEdXProcessor:
         "function": {
             "name": "get_course_info",
             "description": (
-                "Get basic course information including title, short description, "
-                "description, and overview for a given course ID. "
-                "Returns all fields by default, or only specific fields if configured "
-                "via the 'fields' parameter in processor_config."
+                "Retrieve course metadata. Use the 'fields' parameter to include the "
+                "'outline' if course structure is needed."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "course_id": {
                         "type": "string",
+                        "description": "The unique course ID string. Defaults to current course."
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "title", "subtitle", "short_description", "description",
+                                "overview", "syllabus", "duration", "outline"
+                            ]
+                        },
                         "description": (
-                            "The string representation of the course ID, "
-                            "if not provided uses the current course"
+                            "Specific fields to return. Include 'outline' here to see "
+                            "the course structure."
                         )
                     }
                 },
@@ -334,35 +343,40 @@ class OpenEdXProcessor:
             }
         }
     })
-    def get_course_info(self, course_id=None):
-        """Get basic course info for a given course ID.
-        
-        Returns course information fields. By default, returns all available fields.
-        Can be configured to return specific fields via processor_config.
-        
-        Configuration example in workflow profile JSON:
-            "processor_config": {
-                "OpenEdXProcessor": {
-                    "function": "get_course_info",
-                    "fields": ["title", "short_description"]
-                }
-            }
-        
-        Available fields:
-            - title: Course display name
-            - subtitle: Course subtitle
-            - short_description: Brief course description
-            - description: Detailed course description
-            - overview: Course overview content (HTML)
-            - outline: Course structure (sections, subsections, units) as JSON
-            - syllabus: Course syllabus content
-            - duration: Course duration information
-        
+    def get_course_info(self, course_id=None, fields=None):
+        """
+        Retrieve metadata for a specific course.
+
         Args:
-            course_id: Course ID string. If not provided, uses the current course.
-            
+            course_id (str, optional): The unique identifier for the course.
+            fields (list, optional): List of specific fields to return.
+                Overrides the workflow configuration if provided.
+
         Returns:
-            dict: Course information with requested fields, or all fields if not configured.
+            dict: A dictionary containing the requested course fields.
+
+        Configuration:
+            The returned fields can be filtered via `processor_config` in the
+            workflow profile JSON.
+
+            Example::
+
+                "processor_config": {
+                    "OpenEdXProcessor": {
+                        "function": "get_course_info",
+                        "fields": ["title", "short_description"]
+                    }
+                }
+
+        Available Fields:
+            * title: Course display name.
+            * subtitle: Course subtitle.
+            * short_description: Brief summary of the course.
+            * description: Full-length course description.
+            * overview: Course overview content (HTML).
+            * syllabus: Course syllabus content.
+            * duration: Estimated time to complete the course.
+            * outline: Hierarchical course structure (JSON). *Not included by default.*
         """
         try:
             # pylint: disable=import-error,import-outside-toplevel
@@ -374,21 +388,24 @@ class OpenEdXProcessor:
             course_details = CourseDetails.fetch(course_key)
             course_block = modulestore().get_course(course_key)
 
+            requested_fields = fields or self.config.get("fields")
+
             full_info = {
                 "title": str(course_block.display_name or ""),
                 "subtitle": str(course_details.subtitle or ""),
                 "short_description": str(course_details.short_description or ""),
                 "description": str(course_details.description or ""),
                 "overview": str(course_details.overview or ""),
-                "outline": str(self.get_course_outline() or ""),
                 "syllabus": str(course_details.syllabus or ""),
                 "duration": str(course_details.duration or ""),
             }
 
-            # Filter by configured fields if specified
-            fields = self.config.get("fields")
-            if fields:
-                return {k: v for k, v in full_info.items() if k in fields}
+            if not requested_fields or "outline" in requested_fields:
+                full_info["outline"] = str(self.get_course_outline(course_id=course_id) or "")
+
+            # Filter response
+            if requested_fields:
+                return {k: v for k, v in full_info.items() if k in requested_fields}
 
             return full_info
 
