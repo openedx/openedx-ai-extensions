@@ -6,7 +6,7 @@ import json
 import logging
 
 from django.conf import settings
-from opaque_keys.edx.keys import UsageKey
+from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locator import CourseLocator
 
 from openedx_ai_extensions.functions.decorators import llm_tool, register_instance
@@ -307,3 +307,107 @@ class OpenEdXProcessor:
         return (
             f"{settings.LEARNING_MICROFRONTEND_URL}/course/{self.course_id}/{location_id or self.location_id}"
         )
+
+    @llm_tool(schema={
+        "type": "function",
+        "name": "get_course_info",
+        "function": {
+            "name": "get_course_info",
+            "description": (
+                "Retrieve course metadata. Use the 'fields' parameter to include the "
+                "'outline' if course structure is needed."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "course_id": {
+                        "type": "string",
+                        "description": "The unique course ID string. Defaults to current course."
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "title", "subtitle", "short_description", "description",
+                                "overview", "syllabus", "duration", "outline"
+                            ]
+                        },
+                        "description": (
+                            "Specific fields to return. Include 'outline' here to see "
+                            "the course structure."
+                        )
+                    }
+                },
+                "required": []
+            }
+        }
+    })
+    def get_course_info(self, course_id=None, fields=None):
+        """
+        Retrieve metadata for a specific course.
+
+        Args:
+            course_id (str, optional): The unique identifier for the course.
+            fields (list, optional): List of specific fields to return.
+                Overrides the workflow configuration if provided.
+
+        Returns:
+            dict: A dictionary containing the requested course fields.
+
+        Configuration:
+            The returned fields can be filtered via `processor_config` in the
+            workflow profile JSON.
+
+            Example::
+
+                "processor_config": {
+                    "OpenEdXProcessor": {
+                        "function": "get_course_info",
+                        "fields": ["title", "short_description"]
+                    }
+                }
+
+        Available Fields:
+            * title: Course display name.
+            * subtitle: Course subtitle.
+            * short_description: Brief summary of the course.
+            * description: Full-length course description.
+            * overview: Course overview content (HTML).
+            * syllabus: Course syllabus content.
+            * duration: Estimated time to complete the course.
+            * outline: Hierarchical course structure (JSON). *Not included by default.*
+        """
+        try:
+            # pylint: disable=import-error,import-outside-toplevel
+            from openedx.core.djangoapps.models.course_details import CourseDetails
+            from xmodule.modulestore.django import modulestore
+
+            course_id = course_id or self.course_id
+            course_key = CourseKey.from_string(course_id)
+            course_details = CourseDetails.fetch(course_key)
+            course_block = modulestore().get_course(course_key)
+
+            requested_fields = fields or self.config.get("fields")
+
+            full_info = {
+                "title": str(course_block.display_name or ""),
+                "subtitle": str(course_details.subtitle or ""),
+                "short_description": str(course_details.short_description or ""),
+                "description": str(course_details.description or ""),
+                "overview": str(course_details.overview or ""),
+                "syllabus": str(course_details.syllabus or ""),
+                "duration": str(course_details.duration or ""),
+            }
+
+            if not requested_fields or "outline" in requested_fields:
+                full_info["outline"] = str(self.get_course_outline(course_id=course_id) or "")
+
+            # Filter response
+            if requested_fields:
+                return {k: v for k, v in full_info.items() if k in requested_fields}
+
+            return full_info
+
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            return {"error": f"Error accessing course info: {str(exc)}"}
