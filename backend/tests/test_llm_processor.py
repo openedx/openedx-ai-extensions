@@ -884,6 +884,34 @@ class TestExtractInputItem:
         result = LLMProcessor._extract_input_item(item)
         assert result["content"] == ""
 
+    def test_function_call_output_uses_output_field(self):
+        """function_call_output items use the 'output' field as content (not the missing 'content' field)."""
+        item = {
+            "type": "function_call_output",
+            "call_id": "call_xyz789",
+            "output": '{"temperature": 18, "unit": "celsius"}',
+        }
+        result = LLMProcessor._extract_input_item(item)
+        assert "18" in result["content"]
+        assert result["type"] == "function_call_output"
+
+    def test_function_call_output_preserves_call_id(self):
+        """function_call_output items preserve call_id for correlation with the original function_call."""
+        item = {
+            "type": "function_call_output",
+            "call_id": "call_xyz789",
+            "output": "done",
+        }
+        result = LLMProcessor._extract_input_item(item)
+        assert result["call_id"] == "call_xyz789"
+
+    def test_function_call_output_as_object(self):
+        """function_call_output also works when the item is an object, not a dict."""
+        item = Mock(type="function_call_output", call_id="call_abc", output="result text", content=None)
+        result = LLMProcessor._extract_input_item(item)
+        assert result["content"] == "result text"
+        assert result["call_id"] == "call_abc"
+
 
 class TestExtractOutputItems:
     """Tests for _extract_output_items static method."""
@@ -895,17 +923,79 @@ class TestExtractOutputItems:
         resp = Mock(output=[output_item])
 
         result = LLMProcessor._extract_output_items(resp)
-        assert result == [{"role": "assistant", "content": "Hello world"}]
+        assert result == [{"type": "message", "role": "assistant", "content": "Hello world"}]
 
     def test_function_call_output(self):
         """Test extracting function call output items."""
-        output_item = Mock(type="function_call", name="search", arguments='{"q":"test"}')
+        output_item = Mock(type="function_call", arguments='{"q":"test"}')
+        output_item.name = "search"  # 'name' is special on Mock; set as attribute
         resp = Mock(output=[output_item])
 
         result = LLMProcessor._extract_output_items(resp)
         assert len(result) == 1
         assert result[0]["role"] == "tool_call"
         assert "search" in result[0]["content"]
+
+    def test_function_call_has_type_field(self):
+        """function_call output items carry type='function_call', not 'message'."""
+        output_item = Mock(type="function_call", arguments='{"location":"Paris"}', call_id="call_xyz")
+        output_item.name = "get_weather"  # 'name' is special on Mock; set as attribute
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert result[0]["type"] == "function_call"
+
+    def test_function_call_preserves_structured_fields(self):
+        """function_call output items expose name, arguments, and call_id as separate fields."""
+        output_item = Mock(type="function_call", arguments='{"location": "Paris"}', call_id="call_xyz789")
+        output_item.name = "get_weather"  # 'name' is special on Mock; set as attribute
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        item = result[0]
+        assert item["name"] == "get_weather"
+        assert item["arguments"] == '{"location": "Paris"}'
+        assert item["call_id"] == "call_xyz789"
+        # Content is still a human-readable fallback string for renderers that don't know about tool calls.
+        assert "get_weather" in item["content"]
+        assert "Paris" in item["content"]
+
+    def test_reasoning_item_included_with_summary(self):
+        """reasoning output items are included using their summary text as content."""
+        summary = Mock(text="I need to check the weather in Paris.")
+        output_item = Mock(type="reasoning", summary=[summary])
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert len(result) == 1
+        assert result[0]["type"] == "reasoning"
+        assert result[0]["role"] == "reasoning"
+        assert "Paris" in result[0]["content"]
+
+    def test_reasoning_item_with_dict_summary(self):
+        """reasoning items whose summary entries are plain dicts (as returned by some providers) work."""
+        output_item = Mock(type="reasoning", summary=[{"type": "summary_text", "text": "Thinking..."}])
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert len(result) == 1
+        assert result[0]["content"] == "Thinking..."
+
+    def test_reasoning_item_without_summary_skipped(self):
+        """reasoning items with no summary text produce no output entry."""
+        output_item = Mock(type="reasoning", summary=[])
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert not result
+
+    def test_unknown_type_silently_dropped(self):
+        """Output items of unknown types (file_search_call, web_search_call, etc.) are silently dropped."""
+        output_item = Mock(type="file_search_call")
+        resp = Mock(output=[output_item])
+
+        result = LLMProcessor._extract_output_items(resp)
+        assert not result
 
     def test_empty_output(self):
         """Test with no output items."""
