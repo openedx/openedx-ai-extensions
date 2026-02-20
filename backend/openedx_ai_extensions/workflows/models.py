@@ -429,7 +429,7 @@ class AIWorkflowSession(models.Model):
         )
         return processor.fetch_remote_thread(self.remote_response_id)
 
-    def get_combined_thread(self):
+    def get_combined_thread(self):  # pylint: disable=too-many-statements
         """
         Build a unified chronological thread combining local and remote data.
 
@@ -523,9 +523,7 @@ class AIWorkflowSession(models.Model):
                     **response_meta,
                 }
                 # Pass through structured fields for tool-call items.
-                for extra_key in ("name", "arguments", "call_id"):
-                    if item.get(extra_key) is not None:
-                        msg[extra_key] = item[extra_key]
+                msg.update({k: item[k] for k in ("name", "arguments", "call_id") if item.get(k) is not None})
 
                 local_key = (item.get("role", ""), content_str[:200])
                 if local_key in local_by_content:

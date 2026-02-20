@@ -416,7 +416,9 @@ class TestAIWorkflowSessionThreads:
 
     @patch.object(AIWorkflowSession, "get_remote_thread")
     @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
-    def test_combined_thread_remote_input_content_as_list(self, mock_local, mock_remote, session_with_ids):
+    def test_combined_thread_remote_input_content_as_list(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
         """Remote input item with list content (multimodal API response) does not crash."""
         mock_remote.return_value = [
             {
@@ -439,7 +441,9 @@ class TestAIWorkflowSessionThreads:
 
     @patch.object(AIWorkflowSession, "get_remote_thread")
     @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
-    def test_combined_thread_remote_output_content_as_list(self, mock_local, mock_remote, session_with_ids):
+    def test_combined_thread_remote_output_content_as_list(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
         """Remote output item with list content (multimodal API response) does not crash."""
         mock_remote.return_value = [
             {
@@ -490,7 +494,9 @@ class TestAIWorkflowSessionThreads:
 
     @patch.object(AIWorkflowSession, "get_remote_thread")
     @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
-    def test_combined_thread_output_type_is_preserved(self, mock_local, mock_remote, session_with_ids):
+    def test_combined_thread_output_type_is_preserved(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
         """Output items carry the real 'type' from the extracted item, not a hardcoded 'message'."""
         mock_remote.return_value = [
             {
@@ -520,7 +526,9 @@ class TestAIWorkflowSessionThreads:
 
     @patch.object(AIWorkflowSession, "get_remote_thread")
     @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
-    def test_combined_thread_function_call_fields_propagated(self, mock_local, mock_remote, session_with_ids):
+    def test_combined_thread_function_call_fields_propagated(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
         """Function call output items expose name, arguments, and call_id in the combined thread."""
         mock_remote.return_value = [
             {
