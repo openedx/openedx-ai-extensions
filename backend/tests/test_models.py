@@ -375,3 +375,113 @@ class TestAIWorkflowSessionThreads:
         mock_remote.return_value = ["not-a-dict", None, 42]
         result = session_with_ids.get_combined_thread()
         assert result == []
+
+    # --- Non-string content from the API ---
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_local_content_as_list(self, mock_local, mock_remote, session_with_ids):
+        """Local message with list content (multimodal) does not crash when a remote thread is present."""
+        # The fix (content_str = ... if isinstance ...) lives in the local-thread
+        # indexing loop, which only runs when remote_thread is truthy.
+        mock_local.return_value = [
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "Hello from a list"}],
+                "timestamp": "2024-01-01T00:00:00",
+                "submission_id": "sub-1",
+            }
+        ]
+        mock_remote.return_value = [
+            {"id": "resp-1", "created_at": "2024-01-02T00:00:00", "model": "gpt-4", "input": [], "output": []}
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["source"] == "local"
+        assert result[0]["content"] == [{"type": "text", "text": "Hello from a list"}]
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_local_content_as_none(self, mock_local, mock_remote, session_with_ids):
+        """Local message with explicit None content does not crash."""
+        mock_local.return_value = [
+            {"role": "user", "content": None, "timestamp": "2024-01-01T00:00:00", "submission_id": "sub-1"}
+        ]
+        mock_remote.return_value = [
+            {"id": "resp-1", "created_at": "2024-01-02T00:00:00", "model": "gpt-4", "input": [], "output": []}
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["source"] == "local"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_remote_input_content_as_list(self, mock_local, mock_remote, session_with_ids):
+        """Remote input item with list content (multimodal API response) does not crash."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [
+                    {
+                        "role": "user",
+                        "type": "message",
+                        "content": [{"type": "text", "text": "Hello"}],
+                    }
+                ],
+                "output": [],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["role"] == "user"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_remote_output_content_as_list(self, mock_local, mock_remote, session_with_ids):
+        """Remote output item with list content (multimodal API response) does not crash."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [],
+                "output": [
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "Hello back"}],
+                    }
+                ],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["role"] == "assistant"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_dedup_with_list_content(self, mock_local, mock_remote, session_with_ids):
+        """Deduplication works when both local and remote carry the same list content."""
+        content_blocks = [{"type": "text", "text": "Hello"}]
+        mock_local.return_value = [
+            {
+                "role": "user",
+                "content": content_blocks,
+                "timestamp": "2024-01-01T00:00:00",
+                "submission_id": "sub-1",
+            }
+        ]
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [{"role": "user", "type": "message", "content": content_blocks}],
+                "output": [],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["source"] == "both"
+        assert result[0]["submission_id"] == "sub-1"
