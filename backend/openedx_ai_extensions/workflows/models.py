@@ -453,7 +453,8 @@ class AIWorkflowSession(models.Model):
             for msg in local_thread:
                 role = msg.get("role", "")
                 content = msg.get("content", "")
-                key = (role, content[:200])
+                content_str = content if isinstance(content, str) else str(content)
+                key = (role, content_str[:200])
                 # Keep the last match (most recent submission_id)
                 local_by_content[key] = msg
 
