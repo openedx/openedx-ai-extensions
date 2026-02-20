@@ -485,3 +485,67 @@ class TestAIWorkflowSessionThreads:
         assert len(result) == 1
         assert result[0]["source"] == "both"
         assert result[0]["submission_id"] == "sub-1"
+
+    # --- type field and tool-call field propagation ---
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_output_type_is_preserved(self, mock_local, mock_remote, session_with_ids):
+        """Output items carry the real 'type' from the extracted item, not a hardcoded 'message'."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [],
+                "output": [
+                    {"type": "message", "role": "assistant", "content": "Hello!"},
+                    {
+                        "type": "function_call",
+                        "role": "tool_call",
+                        "name": "get_weather",
+                        "arguments": '{"location": "Paris"}',
+                        "call_id": "call_xyz",
+                        "content": "get_weather({\"location\": \"Paris\"})",
+                    },
+                    {"type": "reasoning", "role": "reasoning", "content": "Thinking about weather."},
+                ],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        types = {msg["type"] for msg in result}
+        assert "message" in types
+        assert "function_call" in types
+        assert "reasoning" in types
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_function_call_fields_propagated(self, mock_local, mock_remote, session_with_ids):
+        """Function call output items expose name, arguments, and call_id in the combined thread."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [],
+                "output": [
+                    {
+                        "type": "function_call",
+                        "role": "tool_call",
+                        "name": "get_weather",
+                        "arguments": '{"location": "Paris"}',
+                        "call_id": "call_xyz789",
+                        "content": "get_weather({\"location\": \"Paris\"})",
+                    }
+                ],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        item = result[0]
+        assert item["type"] == "function_call"
+        assert item["name"] == "get_weather"
+        assert item["arguments"] == '{"location": "Paris"}'
+        assert item["call_id"] == "call_xyz789"
+        # content is still present as a human-readable fallback
+        assert "get_weather" in item["content"]

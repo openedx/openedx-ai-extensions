@@ -516,12 +516,16 @@ class AIWorkflowSession(models.Model):
 
                 msg = {
                     "role": item.get("role", "unknown"),
-                    "type": "message",
+                    "type": item.get("type", "message"),
                     "content": content,
                     "source": "remote",
                     "tokens": response.get("tokens"),
                     **response_meta,
                 }
+                # Pass through structured fields for tool-call items.
+                for extra_key in ("name", "arguments", "call_id"):
+                    if item.get(extra_key) is not None:
+                        msg[extra_key] = item[extra_key]
 
                 local_key = (item.get("role", ""), content_str[:200])
                 if local_key in local_by_content:
