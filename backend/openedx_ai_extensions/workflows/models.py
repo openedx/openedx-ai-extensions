@@ -483,7 +483,8 @@ class AIWorkflowSession(models.Model):
             # Process input items (system, user, reasoning, tool results, etc.)
             for item in response.get("input", []):
                 content = item.get("content", "")
-                content_key = (item.get("role", ""), content[:200])
+                content_str = content if isinstance(content, str) else str(content)
+                content_key = (item.get("role", ""), content_str[:200])
                 if content_key in seen:
                     continue
                 seen.add(content_key)
@@ -497,7 +498,7 @@ class AIWorkflowSession(models.Model):
                 }
 
                 # Enrich with local metadata
-                local_key = (item.get("role", ""), content[:200])
+                local_key = (item.get("role", ""), content_str[:200])
                 if local_key in local_by_content:
                     local_msg = local_by_content.pop(local_key)
                     msg["timestamp"] = local_msg.get("timestamp")
@@ -509,7 +510,8 @@ class AIWorkflowSession(models.Model):
             # Process output items (assistant responses, tool calls)
             for item in response.get("output", []):
                 content = item.get("content", "")
-                content_key = (item.get("role", ""), content[:200])
+                content_str = content if isinstance(content, str) else str(content)
+                content_key = (item.get("role", ""), content_str[:200])
                 seen.add(content_key)
 
                 msg = {
@@ -521,7 +523,7 @@ class AIWorkflowSession(models.Model):
                     **response_meta,
                 }
 
-                local_key = (item.get("role", ""), content[:200])
+                local_key = (item.get("role", ""), content_str[:200])
                 if local_key in local_by_content:
                     local_msg = local_by_content.pop(local_key)
                     msg["timestamp"] = local_msg.get("timestamp")
