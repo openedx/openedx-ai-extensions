@@ -1,6 +1,11 @@
 export interface PluginContext {
   courseId?: string | null;
   locationId?: string | null;
+  /**
+   * Discriminator for multi-scope setups.
+   * Must match the ui_slot_selector_id configured in the backend AIWorkflowScope admin.
+   */
+  uiSlotSelectorId?: string | null;
 }
 
 export interface UiComponent {

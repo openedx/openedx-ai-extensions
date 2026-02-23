@@ -113,12 +113,18 @@ interface ConfigurableAIAssistanceProps {
   fallbackConfig?: PluginConfiguration | null;
   onConfigLoad?: (config: PluginConfiguration) => void;
   onConfigError?: (error) => void;
+  id?: string | null;
+  courseId?: string | null;
+  locationId?: string | null;
+  uiSlotSelectorId?: string | null;
+  [key: string]: any;
 }
 
 const ConfigurableAIAssistance = ({
   fallbackConfig = null,
   onConfigLoad,
   onConfigError,
+  id = null,
   ...additionalProps
 }: ConfigurableAIAssistanceProps) => {
   const intl = useIntl();
@@ -148,6 +154,7 @@ const ConfigurableAIAssistance = ({
 
       const contextData = prepareContextData({
         ...additionalProps,
+        uiSlotSelectorId: additionalProps.uiSlotSelectorId || id,
       });
 
       try {
@@ -165,12 +172,21 @@ const ConfigurableAIAssistance = ({
             onConfigLoad(fetchedConfig);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         // Type guard for error
         const configErr = err instanceof Error ? err : new Error(String(err));
 
         // Ignore aborted requests
         if (configErr.name === 'AbortError' || configErr.message?.includes('aborted')) {
+          return;
+        }
+
+        // 404 means no scope is configured for this widget — silently hide it
+        const httpStatus = err?.response?.status || err?.customAttributes?.httpErrorStatus;
+        if (httpStatus === 404) {
+          if (currentRequestId === requestIdRef.current) {
+            setConfig(null);
+          }
           return;
         }
 
@@ -216,6 +232,7 @@ const ConfigurableAIAssistance = ({
       // Prepare context data
       const contextData = prepareContextData({
         ...additionalProps,
+        uiSlotSelectorId: additionalProps.uiSlotSelectorId || id,
       });
 
       let buffer = '';
@@ -261,7 +278,7 @@ const ConfigurableAIAssistance = ({
     } finally {
       setIsLoading(false);
     }
-  }, [additionalProps]);
+  }, [additionalProps, id]);
 
   const handleOpenSidebar = useCallback(() => {
     setOpenSidebarSignal((prev) => prev + 1);
@@ -399,7 +416,7 @@ const ConfigurableAIAssistance = ({
           onAskAgain={handleAskAI}
           onClear={handleReset}
           onError={handleClearError}
-          contextData={additionalProps}
+          contextData={{ ...additionalProps, uiSlotSelectorId: additionalProps.uiSlotSelectorId || id }}
           openSidebarSignal={openSidebarSignal}
           {...responseProps}
         />
