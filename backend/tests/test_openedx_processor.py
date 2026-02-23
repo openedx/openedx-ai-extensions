@@ -384,6 +384,7 @@ def test_get_course_info_all_fields(mock_edx_imports, mock_keys):
     assert result["overview"] == "<p>Overview content</p>"
     assert result["syllabus"] == "Course syllabus"
     assert result["duration"] == "4 weeks"
+    assert "outline" not in result
 
 
 def test_get_course_info_specific_fields(mock_edx_imports, mock_keys):

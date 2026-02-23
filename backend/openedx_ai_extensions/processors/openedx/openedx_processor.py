@@ -388,7 +388,7 @@ class OpenEdXProcessor:
             course_details = CourseDetails.fetch(course_key)
             course_block = modulestore().get_course(course_key)
 
-            requested_fields = fields or self.config.get("fields")
+            requested_fields = fields if fields is not None else self.config.get("fields")
 
             full_info = {
                 "title": str(course_block.display_name or ""),
@@ -400,8 +400,8 @@ class OpenEdXProcessor:
                 "duration": str(course_details.duration or ""),
             }
 
-            if not requested_fields or "outline" in requested_fields:
-                full_info["outline"] = str(self.get_course_outline(course_id=course_id) or "")
+            if requested_fields and "outline" in requested_fields:
+                full_info["outline"] = self.get_course_outline(course_id=course_id)
 
             # Filter response
             if requested_fields:
