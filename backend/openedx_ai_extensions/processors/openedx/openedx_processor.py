@@ -314,8 +314,12 @@ class OpenEdXProcessor:
         "function": {
             "name": "get_course_info",
             "description": (
-                "Retrieve course metadata. Use the 'fields' parameter to include the "
-                "'outline' if course structure is needed."
+                "Retrieve course-level metadata including title, subtitle, descriptions, overview, "
+                "syllabus, duration, and optionally the hierarchical course structure (sections -> "
+                "subsections -> units). Use this to understand what a course is about, provide summaries, "
+                "explain organization, or navigate structure. By default returns all fields except 'outline'. "
+                "The 'outline' must be explicitly requested and returns hierarchical JSON. "
+                "For actual unit content (text, problems, videos), use get_location_content instead."
             ),
             "parameters": {
                 "type": "object",
