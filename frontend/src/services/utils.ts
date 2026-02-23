@@ -41,12 +41,14 @@ export const extractLocationIdFromUrl = (): string | null => {
 export const prepareContextData = ({
   courseId = null,
   locationId = null,
+  uiSlotSelectorId = null,
 }: PluginContext): PluginContext => {
   const resolvedLocationId = locationId || extractLocationIdFromUrl();
   const resolvedCourseId = courseId || extractCourseIdFromUrl();
   const contextData: PluginContext = {
     locationId: resolvedLocationId,
     courseId: resolvedCourseId,
+    uiSlotSelectorId: uiSlotSelectorId || null,
   };
 
   return Object.fromEntries(Object.entries(contextData).filter(([, value]) => value != null)) as PluginContext;

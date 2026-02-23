@@ -19,6 +19,11 @@ import messages from './messages';
 interface GetAIAssistanceButtonProps {
   requestMessage?: string;
   buttonText?: string;
+  id?: string | null;
+  courseId?: string | null;
+  locationId?: string | null;
+  uiSlotSelectorId?: string | null;
+  [key: string]: any;
 }
 
 /**
@@ -28,6 +33,7 @@ interface GetAIAssistanceButtonProps {
 const GetAIAssistanceButton = ({
   requestMessage,
   buttonText,
+  id = null,
   ...props
 }: GetAIAssistanceButtonProps) => {
   const intl = useIntl();
@@ -57,6 +63,7 @@ const GetAIAssistanceButton = ({
       // Prepare context data - captures everything available
       const contextData = prepareContextData({
         ...props,
+        uiSlotSelectorId: props.uiSlotSelectorId || id,
       });
 
       let buffer = '';
@@ -107,7 +114,7 @@ const GetAIAssistanceButton = ({
     } finally {
       setIsLoading(false);
     }
-  }, [props]);
+  }, [props, id]);
 
   /**
    * Reset component state for new request
