@@ -29,6 +29,11 @@ def mock_edx_imports():
         "lms.djangoapps": MagicMock(),
         "lms.djangoapps.course_blocks": MagicMock(),
         "lms.djangoapps.course_blocks.api": MagicMock(),
+        "openedx": MagicMock(),
+        "openedx.core": MagicMock(),
+        "openedx.core.djangoapps": MagicMock(),
+        "openedx.core.djangoapps.models": MagicMock(),
+        "openedx.core.djangoapps.models.course_details": MagicMock(),
     }):
         yield
 
@@ -339,3 +344,137 @@ def test_process_defaults_to_no_context(processor):
 
         mock_no_context.assert_called_once_with("arg1")
         assert result == "default_response"
+
+
+# ============================================================================
+# Tests: Course Info
+# ============================================================================
+
+def test_get_course_info_all_fields(mock_edx_imports, mock_keys):
+    """Test retrieving all course info fields without outline."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from openedx.core.djangoapps.models.course_details import CourseDetails
+    from xmodule.modulestore.django import modulestore
+
+    test_processor = OpenEdXProcessor(course_id="course-v1:org+name+version")
+
+    # Mock CourseDetails
+    mock_details = MagicMock()
+    mock_details.subtitle = "Test Subtitle"
+    mock_details.short_description = "Short description"
+    mock_details.description = "Full description"
+    mock_details.overview = "<p>Overview content</p>"
+    mock_details.syllabus = "Course syllabus"
+    mock_details.duration = "4 weeks"
+    CourseDetails.fetch.return_value = mock_details
+
+    # Mock course block
+    mock_course_block = MagicMock()
+    mock_course_block.display_name = "Test Course"
+    mock_store = modulestore.return_value
+    mock_store.get_course.return_value = mock_course_block
+
+    result = test_processor.get_course_info()
+
+    assert result["title"] == "Test Course"
+    assert result["subtitle"] == "Test Subtitle"
+    assert result["short_description"] == "Short description"
+    assert result["description"] == "Full description"
+    assert result["overview"] == "<p>Overview content</p>"
+    assert result["syllabus"] == "Course syllabus"
+    assert result["duration"] == "4 weeks"
+    assert "outline" not in result
+
+
+def test_get_course_info_specific_fields(mock_edx_imports, mock_keys):
+    """Test retrieving only specific course info fields."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from openedx.core.djangoapps.models.course_details import CourseDetails
+    from xmodule.modulestore.django import modulestore
+
+    test_processor = OpenEdXProcessor(course_id="course-v1:org+name+version")
+
+    mock_details = MagicMock()
+    mock_details.subtitle = "Test Subtitle"
+    mock_details.short_description = "Short description"
+    CourseDetails.fetch.return_value = mock_details
+
+    mock_course_block = MagicMock()
+    mock_course_block.display_name = "Test Course"
+    mock_store = modulestore.return_value
+    mock_store.get_course.return_value = mock_course_block
+
+    result = test_processor.get_course_info(fields=["title", "subtitle"])
+
+    assert result == {"title": "Test Course", "subtitle": "Test Subtitle"}
+    assert "short_description" not in result
+    assert "outline" not in result
+
+
+def test_get_course_info_with_outline(mock_edx_imports, mock_keys):
+    """Test retrieving course info including outline."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from openedx.core.djangoapps.models.course_details import CourseDetails
+    from xmodule.modulestore.django import modulestore
+
+    test_processor = OpenEdXProcessor(course_id="course-v1:org+name+version")
+
+    mock_details = MagicMock()
+    mock_details.subtitle = ""
+    CourseDetails.fetch.return_value = mock_details
+
+    mock_course_block = MagicMock()
+    mock_course_block.display_name = "Test Course"
+    mock_store = modulestore.return_value
+    mock_store.get_course.return_value = mock_course_block
+
+    mock_outline = [{"display_name": "Section 1"}]
+
+    with patch.object(test_processor, 'get_course_outline', return_value=json.dumps(mock_outline)):
+        result = test_processor.get_course_info(fields=["title", "outline"])
+
+    assert result["title"] == "Test Course"
+    assert result["outline"] == json.dumps(mock_outline)
+    assert "subtitle" not in result
+
+
+def test_get_course_info_from_config(mock_edx_imports, mock_keys):
+    """Test that fields can be specified via processor config."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from openedx.core.djangoapps.models.course_details import CourseDetails
+    from xmodule.modulestore.django import modulestore
+
+    config = {"OpenEdXProcessor": {"fields": ["title", "duration"]}}
+    test_processor = OpenEdXProcessor(processor_config=config, course_id="course-v1:org+name+version")
+
+    mock_details = MagicMock()
+    mock_details.duration = "6 weeks"
+    CourseDetails.fetch.return_value = mock_details
+
+    mock_course_block = MagicMock()
+    mock_course_block.display_name = "Test Course"
+    mock_store = modulestore.return_value
+    mock_store.get_course.return_value = mock_course_block
+
+    result = test_processor.get_course_info()
+
+    assert result == {"title": "Test Course", "duration": "6 weeks"}
+
+
+def test_get_course_info_error_handling(mock_edx_imports, mock_keys):
+    """Test that exceptions are caught and returned as errors."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from openedx.core.djangoapps.models.course_details import CourseDetails
+
+    CourseDetails.fetch.side_effect = Exception("Database error")
+
+    test_processor = OpenEdXProcessor(course_id="course-v1:org+name+version")
+    result = test_processor.get_course_info()
+
+    assert "error" in result
+    assert "Database error" in result["error"]
