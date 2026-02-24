@@ -494,7 +494,16 @@ class LLMProcessor(LitellmProcessor):
         elif content is None:
             content = getattr(item, "text", "") if not isinstance(item, dict) else ""
 
-        return {"type": item_type, "role": role, "content": str(content)}
+        result = {"type": item_type, "role": role, "content": str(content)}
+
+        # Preserve structured fields for tool-result items so they can be rendered.
+        if item_type == "function_call_output":
+            output = item.get("output", "") if isinstance(item, dict) else getattr(item, "output", "")
+            call_id = item.get("call_id") if isinstance(item, dict) else getattr(item, "call_id", None)
+            result["content"] = str(output) if output else result["content"]
+            result["call_id"] = call_id
+
+        return result
 
     @staticmethod
     def _extract_output_items(resp):
@@ -505,10 +514,24 @@ class LLMProcessor(LitellmProcessor):
             if item_type == "message":
                 for block in getattr(item, "content", []):
                     if getattr(block, "type", None) == "output_text":
-                        items.append({"role": "assistant", "content": block.text})
+                        items.append({"type": "message", "role": "assistant", "content": block.text})
             elif item_type == "function_call":
+                name = getattr(item, "name", "?")
+                arguments = getattr(item, "arguments", "")
                 items.append({
+                    "type": "function_call",
                     "role": "tool_call",
-                    "content": f"{getattr(item, 'name', '?')}({getattr(item, 'arguments', '')})",
+                    "name": name,
+                    "arguments": arguments,
+                    "call_id": getattr(item, "call_id", None),
+                    "content": f"{name}({arguments})",
                 })
+            elif item_type == "reasoning":
+                summary = getattr(item, "summary", []) or []
+                summary_text = " ".join(
+                    s.get("text", "") if isinstance(s, dict) else getattr(s, "text", "")
+                    for s in summary
+                )
+                if summary_text:
+                    items.append({"type": "reasoning", "role": "reasoning", "content": summary_text})
         return items

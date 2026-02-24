@@ -429,7 +429,7 @@ class AIWorkflowSession(models.Model):
         )
         return processor.fetch_remote_thread(self.remote_response_id)
 
-    def get_combined_thread(self):
+    def get_combined_thread(self):  # pylint: disable=too-many-statements
         """
         Build a unified chronological thread combining local and remote data.
 
@@ -453,7 +453,8 @@ class AIWorkflowSession(models.Model):
             for msg in local_thread:
                 role = msg.get("role", "")
                 content = msg.get("content", "")
-                key = (role, content[:200])
+                content_str = content if isinstance(content, str) else str(content)
+                key = (role, content_str[:200])
                 # Keep the last match (most recent submission_id)
                 local_by_content[key] = msg
 
@@ -482,7 +483,8 @@ class AIWorkflowSession(models.Model):
             # Process input items (system, user, reasoning, tool results, etc.)
             for item in response.get("input", []):
                 content = item.get("content", "")
-                content_key = (item.get("role", ""), content[:200])
+                content_str = content if isinstance(content, str) else str(content)
+                content_key = (item.get("role", ""), content_str[:200])
                 if content_key in seen:
                     continue
                 seen.add(content_key)
@@ -496,7 +498,7 @@ class AIWorkflowSession(models.Model):
                 }
 
                 # Enrich with local metadata
-                local_key = (item.get("role", ""), content[:200])
+                local_key = (item.get("role", ""), content_str[:200])
                 if local_key in local_by_content:
                     local_msg = local_by_content.pop(local_key)
                     msg["timestamp"] = local_msg.get("timestamp")
@@ -508,19 +510,22 @@ class AIWorkflowSession(models.Model):
             # Process output items (assistant responses, tool calls)
             for item in response.get("output", []):
                 content = item.get("content", "")
-                content_key = (item.get("role", ""), content[:200])
+                content_str = content if isinstance(content, str) else str(content)
+                content_key = (item.get("role", ""), content_str[:200])
                 seen.add(content_key)
 
                 msg = {
                     "role": item.get("role", "unknown"),
-                    "type": "message",
+                    "type": item.get("type", "message"),
                     "content": content,
                     "source": "remote",
                     "tokens": response.get("tokens"),
                     **response_meta,
                 }
+                # Pass through structured fields for tool-call items.
+                msg.update({k: item[k] for k in ("name", "arguments", "call_id") if item.get(k) is not None})
 
-                local_key = (item.get("role", ""), content[:200])
+                local_key = (item.get("role", ""), content_str[:200])
                 if local_key in local_by_content:
                     local_msg = local_by_content.pop(local_key)
                     msg["timestamp"] = local_msg.get("timestamp")
