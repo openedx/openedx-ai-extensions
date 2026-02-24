@@ -88,7 +88,7 @@ PLUGIN_SLOTS.add_items(
                 widget: {
                     id: 'custom_additional_course',
                     type: DIRECT_PLUGIN,
-                    RenderWidget: BadgeCreationCard
+                    RenderWidget: AIExtensionsCard
                 },
             }"""
         )
