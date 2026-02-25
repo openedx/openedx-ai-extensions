@@ -64,6 +64,25 @@ class LitellmProcessor:
             logger.warning("Streaming responses with tools is not supported; disabling streaming.")
             self.stream = False
 
+        # -------------------------
+        # LLM-level caching
+        # -------------------------
+        # When enabled, `caching=True` is forwarded to every LiteLLM
+        # `completion()` call so that identical prompt+model requests are
+        # served from the configured cache backend instead of hitting the API.
+        # Requires AI_EXTENSIONS_LLM_CACHE to be configured in settings.
+        #
+        # Profile config syntax (inside the LLMProcessor section):
+        #   "cache": true          — enable with default TTL
+        #   "cache": {"enabled": true, "ttl": 3600}  — enable with custom TTL
+        cache_option = self.config.get("cache", False)
+        if isinstance(cache_option, bool):
+            self.caching_enabled = cache_option
+        elif isinstance(cache_option, dict):
+            self.caching_enabled = bool(cache_option.get("enabled", False))
+        else:
+            self.caching_enabled = False
+
         self.mcp_configs = {}
         allowed_mcp_configs = self.config.get("mcp_configs", [])
         if allowed_mcp_configs:

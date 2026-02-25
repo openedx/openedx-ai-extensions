@@ -56,7 +56,7 @@ class LLMProcessor(LitellmProcessor):
 
         # Log tokens at end
         if total_tokens is not None:
-            logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
+            logger.info(f"[LLM STREAM] Tokens used: {chunk.usage}")
         else:
             logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
 
@@ -65,7 +65,7 @@ class LLMProcessor(LitellmProcessor):
         content = response.choices[0].message.content
         total_tokens = response.usage.total_tokens if response.usage else 0
         logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
-
+        logger.info(f"-=----------------------------------------------------------------------------------------LLM response usage: {response.usage}")
         return {
             "response": content,
             "tokens_used": total_tokens,
@@ -116,6 +116,10 @@ class LLMProcessor(LitellmProcessor):
 
         # Add optional parameters only if configured
         params.update(self.extra_params)
+
+        # Enable LiteLLM's built-in response cache when requested.
+        if self.caching_enabled:
+            params["caching"] = True
 
         has_user_input = bool(self.input_data or self.chat_history)
         params = adapt_to_provider(
@@ -175,6 +179,7 @@ class LLMProcessor(LitellmProcessor):
                 self.user_session.save()
             total_tokens = response.usage.total_tokens if response.usage else 0
             logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
+            logger.info(f"-=----------------------------------------------------------------------------------------LLM response usage: {response.usage}")
 
             result = {
                 "response": content,
@@ -216,6 +221,12 @@ class LLMProcessor(LitellmProcessor):
             )
 
         params.update(self.extra_params)
+
+        # Enable LiteLLM's built-in response cache when requested.
+        # LiteLLM will serve a cached reply for identical model+messages
+        # combinations, saving both latency and token costs.
+        if self.caching_enabled:
+            params["caching"] = True
 
         has_user_input = bool(self.input_data)
         params = adapt_to_provider(
