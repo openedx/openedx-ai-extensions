@@ -2,10 +2,14 @@
 openedx_ai_extensions Django application initialization.
 """
 
+import logging
+
 from django.apps import AppConfig
 from edx_django_utils.plugins.constants import PluginSettings, PluginSignals, PluginURLs
 
 from openedx_ai_extensions import __version__
+
+logger = logging.getLogger(__name__)
 
 
 class OpenedxAIExtensionsConfig(AppConfig):
@@ -33,6 +37,41 @@ class OpenedxAIExtensionsConfig(AppConfig):
         from openedx_ai_extensions import tasks  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
         from openedx_ai_extensions.xapi import \
             transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
+
+        self._configure_llm_cache()
+
+    def _configure_llm_cache(self):
+        """
+        Initialise the LiteLLM cache backend from ``AI_EXTENSIONS_LLM_CACHE``.
+
+        The setting is a dict with at least ``{"enabled": True/False}``.
+        Additional keys are forwarded verbatim to ``litellm.Cache(**kwargs)``.
+
+        Example (Redis)::
+
+            AI_EXTENSIONS_LLM_CACHE = {
+                "enabled": True,
+                "type": "redis",
+                "host": "localhost",
+                "port": 6379,
+            }
+        """
+        try:
+            import litellm  # pylint: disable=import-outside-toplevel
+            from django.conf import settings  # pylint: disable=import-outside-toplevel
+
+            cache_config = getattr(settings, "AI_EXTENSIONS_LLM_CACHE", {})
+            if not isinstance(cache_config, dict) or not cache_config.get("enabled"):
+                return
+
+            cache_kwargs = {k: v for k, v in cache_config.items() if k != "enabled"}
+            litellm.cache = litellm.Cache(**cache_kwargs)
+            logger.info(
+                "LiteLLM cache initialised (type=%s)",
+                cache_kwargs.get("type", "default"),
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Failed to initialise LiteLLM cache")
 
     plugin_app = {
         "url_config": {
