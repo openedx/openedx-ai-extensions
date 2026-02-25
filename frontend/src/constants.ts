@@ -27,3 +27,4 @@ export const WORKFLOW_ACTIONS = {
 } as const;
 
 export type WorkflowActionType = typeof WORKFLOW_ACTIONS[keyof typeof WORKFLOW_ACTIONS];
+export const NO_RESPONSE_MSG = 'No response available';

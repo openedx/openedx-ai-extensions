@@ -25,7 +25,7 @@ import {
   AIEducatorLibraryResponseComponent,
 } from './components';
 import { PluginConfiguration } from './types';
-import { WORKFLOW_ACTIONS } from './constants';
+import { WORKFLOW_ACTIONS, NO_RESPONSE_MSG } from './constants';
 
 import messages from './messages';
 
@@ -231,7 +231,7 @@ const ConfigurableAIAssistance = ({
       } else if (data.error) {
         throw new Error(data.error);
       } else {
-        setResponse(JSON.stringify(data, null, 2));
+        setResponse(NO_RESPONSE_MSG);
         setHasAsked(true);
       }
 
