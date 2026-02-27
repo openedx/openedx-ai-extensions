@@ -382,6 +382,7 @@ kombu==5.6.1
     #   celery
 litellm==1.80.16
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/quality.txt
 lxml[html-clean]==5.3.2
     # via
@@ -433,7 +434,7 @@ pbr==6.1.1
     # via
     #   -r requirements/quality.txt
     #   stevedore
-pip-tools==7.5.1
+pip-tools==7.5.3
     # via -r requirements/pip-tools.txt
 platformdirs==4.3.7
     # via
@@ -694,6 +695,8 @@ yarl==1.22.0
     # via
     #   -r requirements/quality.txt
     #   aiohttp
+yattag==1.16.1
+    # via -r requirements/quality.txt
 zipp==3.23.0
     # via
     #   -r requirements/quality.txt

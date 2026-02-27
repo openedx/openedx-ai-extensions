@@ -417,16 +417,32 @@
 - Output rules
 
   - Generate exactly [{{NUM_QUESTIONS}}] questions.
-  - Ensure the JSON contains no markdown, no escaping, and no additional comments.
+  - Return a single JSON object (no markdown fences, no extra text outside the JSON) with this structure:
 
-  - The output MUST be a VALID JSON and "data" MUST BE a VALID XML, Follow exactly same XML structure as given in Examples. No text outside the JSON. following output structure:
-            {{
-              'collection': 'Name of the collection based on the course context',
-              'items': [
-                {{
-                  "category": "problem",
-                  "data": "<problem ...<OLX markup here>...  </problem>"
-                }},
-                ...
-              ]
-            }}
+      {
+        "collection_name": "Descriptive name for the question set based on the context",
+        "problems": [
+          {
+            "display_name": "Short title for the problem",
+            "question_html": "Full question text (may include simple HTML tags)",
+            "problem_type": "<one of: multiplechoiceresponse | choiceresponse | optionresponse | numericalresponse | stringresponse>",
+            "choices": [
+              {
+                "text": "Choice text",
+                "is_correct": true,
+                "feedback": "Feedback shown to the learner for this choice"
+              }
+            ],
+            "answer_value": "Correct answer string (for numericalresponse/stringresponse only; use empty string for choice types)",
+            "tolerance": "Numeric tolerance (for numericalresponse only, e.g. '5' or '10%'; use empty string otherwise)",
+            "explanation": "Detailed explanation of the correct answer",
+            "demand_hints": ["Hint 1", "Hint 2", "Hint 3"]
+          }
+        ]
+      }
+
+  - For multiplechoiceresponse, choiceresponse, optionresponse: populate "choices", leave "answer_value" and "tolerance" as "".
+  - For numericalresponse: populate "answer_value" and "tolerance", leave "choices" as [].
+  - For stringresponse: populate "answer_value", leave "choices" as [] and "tolerance" as "".
+  - Always include at least 2 demand_hints per problem.
+  - problem_type values map directly to OLX XML tags — use them exactly as listed.

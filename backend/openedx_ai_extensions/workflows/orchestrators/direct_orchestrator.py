@@ -1,7 +1,11 @@
 """
 Orchestrators for handling different AI workflow patterns in Open edX.
 """
+import json
 import logging
+from pathlib import Path
+
+from yattag import Doc, indent
 
 from openedx_ai_extensions.processors import (
     ContentLibraryProcessor,
@@ -109,16 +113,33 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         if 'error' in content_result:
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
 
-        # 2. Process with LLM processor
-        llm_processor = EducatorAssistantProcessor(
-            config=self.profile.processor_config,
-            user=self.user,
-            context=content_result
+        schema_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "schemas"
+            / "educator_quiz_questions.json"
         )
+
+        # 2. Process with LLM processor using structured output schema
+        with open(schema_path, 'r', encoding='utf-8') as f:
+            llm_processor = EducatorAssistantProcessor(
+                config=self.profile.processor_config,
+                user=self.user,
+                context=content_result,
+                extra_params={"response_format": json.load(f)}
+            )
         llm_result = llm_processor.process(input_data=input_data)
 
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
+
+        items = []
+        for problem in llm_result.get("response").get("problems", []):
+            try:
+                olx_content = json_to_olx(problem)
+                items.append(olx_content)
+            except Exception as e:  # pylint: disable=broad-except
+                logger.exception(f"Error converting problem to OLX: {e}")
+                continue
 
         lib_key_str = input_data.get('library_id')
 
@@ -129,9 +150,9 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         )
 
         collection_key = library_processor.create_collection_and_add_items(
-            title=llm_result["response"].get("collection", "AI Generated Questions"),
+            title=llm_result.get("response", {}).get("collection_name", "AI Generated Questions"),
             description="AI-generated quiz questions",
-            items=llm_result["response"]["items"]
+            items=items
         )
 
         metadata = {
@@ -154,3 +175,70 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
                 'model_used': llm_result.get('model_used')
             }
         }
+
+
+def json_to_olx(p):
+    """
+    Convert a problem dict (from LLM structured response) to an OLX-compatible dict.
+
+    Returns a dict with 'category' and 'data' keys expected by ContentLibraryProcessor.
+    """
+    doc, tag, text, line = Doc().ttl()
+    problem_type = p['problem_type']
+
+    with tag('problem', display_name=p['display_name']):
+
+        # TYPE 1: MULTIPLE CHOICE (single) / CHECKBOXES (multi) / DROPDOWN
+        if problem_type in ('multiplechoiceresponse', 'choiceresponse', 'optionresponse'):
+            inner_tag_map = {
+                'multiplechoiceresponse': 'choicegroup',
+                'choiceresponse': 'checkboxgroup',
+                'optionresponse': 'optioninput',
+            }
+            inner_tag = inner_tag_map[problem_type]
+            # optionresponse uses <option>/<optionhint>, others use <choice>/<choicehint>
+            item_tag = 'option' if problem_type == 'optionresponse' else 'choice'
+            hint_tag = 'optionhint' if problem_type == 'optionresponse' else 'choicehint'
+
+            with tag(problem_type):
+                line('div', p.get('question_html', ''))
+                with tag(inner_tag):
+                    for c in p.get('choices', []):
+                        with tag(item_tag, correct=str(c['is_correct']).lower()):
+                            text(c['text'])
+                            if c.get('feedback'):
+                                with tag(hint_tag):
+                                    line('div', c['feedback'])
+                with tag('solution'):
+                    with tag('div', klass='detailed-solution'):
+                        line('p', p.get('explanation', ''))
+
+        # TYPE 2: NUMERICAL RESPONSE
+        elif problem_type == 'numericalresponse':
+            line('div', p.get('question_html', ''))
+            tolerance = p.get('tolerance', '')
+            with tag('numericalresponse', answer=str(p.get('answer_value', ''))):
+                if tolerance and tolerance not in ('<UNKNOWN>', ''):
+                    doc.stag('responseparam', type='tolerance', default=tolerance)
+                doc.stag('formulaequationinput')
+                with tag('solution'):
+                    with tag('div', klass='detailed-solution'):
+                        line('p', p.get('explanation', ''))
+
+        # TYPE 3: TEXT / STRING RESPONSE
+        elif problem_type == 'stringresponse':
+            with tag('stringresponse', answer=str(p.get('answer_value', '')), type='ci'):
+                line('label', p.get('question_html', ''))
+                doc.stag('textline', size='20')
+                with tag('solution'):
+                    with tag('div', klass='detailed-solution'):
+                        line('p', p.get('explanation', ''))
+
+        # DEMAND HINTS — always outside the response type tag, inside <problem>
+        if p.get('demand_hints'):
+            with tag('demandhint'):
+                for hint in p['demand_hints']:
+                    with tag('hint'):
+                        line('div', hint)
+
+    return {'category': 'problem', 'data': indent(doc.getvalue())}

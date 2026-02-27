@@ -215,6 +215,7 @@ kombu==5.6.1
     # via celery
 litellm==1.80.16
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/base.in
 markupsafe==3.0.3
     # via jinja2
@@ -357,6 +358,8 @@ wcwidth==0.2.14
     # via prompt-toolkit
 yarl==1.22.0
     # via aiohttp
+yattag==1.16.1
+    # via -r requirements/base.in
 zipp==3.23.0
     # via importlib-metadata
 
