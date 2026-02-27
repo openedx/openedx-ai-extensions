@@ -15,6 +15,9 @@ import {
   callWorkflowService,
   formatErrorMessage,
 } from './services';
+import {
+  registerEntry, getComponent, getEntries, REGISTRY_NAMES, AISettingsTab,
+} from './extensionRegistry';
 
 // Import available components
 import {
@@ -29,21 +32,21 @@ import { WORKFLOW_ACTIONS } from './constants';
 
 import messages from './messages';
 
-/**
- * Component Registry
- * Maps component names from config to actual React components
- * This registry is extensible - plugins can add their own components
- */
-const COMPONENT_REGISTRY: Record<string, React.ComponentType<any>> = {
-  AIRequestComponent,
-  AIResponseComponent,
-  AISidebarResponse,
-  AIEducatorLibraryAssistComponent,
-  AIEducatorLibraryResponseComponent,
-};
+// Register built-in workflow components into the central registry.
+// Uses COMPONENTS registry which silently overwrites on re-registration (HMR-safe).
+[
+  ['AIRequestComponent', AIRequestComponent],
+  ['AIResponseComponent', AIResponseComponent],
+  ['AISidebarResponse', AISidebarResponse],
+  ['AIEducatorLibraryAssistComponent', AIEducatorLibraryAssistComponent],
+  ['AIEducatorLibraryResponseComponent', AIEducatorLibraryResponseComponent],
+].forEach(([id, component]) => registerEntry(
+  REGISTRY_NAMES.COMPONENTS,
+  { id: id as string, component: component as React.ComponentType<any> },
+));
 
 /**
- * Register a component in the COMPONENT_REGISTRY
+ * Register a single workflow component in the COMPONENTS registry
  * Allows plugins to dynamically add their own components
  *
  * @param name - The name to register the component under
@@ -60,28 +63,43 @@ export function registerComponent(
   name: string,
   component: React.ComponentType<any>,
 ): void {
-  COMPONENT_REGISTRY[name] = component;
+  registerEntry(REGISTRY_NAMES.COMPONENTS, { id: name, component });
 }
 
 /**
- * Register multiple components at once
+ * Register components or a settings tab, with an optional registry name.
  *
- * @param components - Object mapping component names to components
+ * @example Old-style batch (unchanged):
+ *   registerComponents({ AIRequestBadgesComponent, AIResponseBadgesComponent });
  *
- * @example
- * import { registerComponents } from '@openedx/openedx-ai-extensions-ui';
+ * @example Named registry — settings tab:
+ *   registerComponents('settings', { id: 'ai-badges', label: 'AI Badges', component: AIBadgesTab });
  *
- * registerComponents({
- *   AIRequestBadgesComponent,
- *   AIResponseBadgesComponent,
- * });
+ * @example Single-entry form without registry name (label silently ignored):
+ *   registerComponents({ id: 'my-component', label: 'ignored', component: MyComponent });
  */
+export function registerComponents(components: Record<string, React.ComponentType<any>>): void;
+export function registerComponents(registryName: string, entry: AISettingsTab): void;
+export function registerComponents(entry: { id: string; label?: string; component: React.ComponentType<any> }): void;
 export function registerComponents(
-  components: Record<string, React.ComponentType<any>>,
+  componentsOrRegistryOrEntry:
+  | Record<string, React.ComponentType<any>>
+  | string
+  | { id: string; label?: string; component: React.ComponentType<any> },
+  entry?: AISettingsTab,
 ): void {
-  Object.entries(components).forEach(([name, component]) => {
-    registerComponent(name, component);
-  });
+  if (typeof componentsOrRegistryOrEntry === 'string') {
+    if (!entry) { return; }
+    registerEntry(componentsOrRegistryOrEntry, entry);
+  } else if ('id' in componentsOrRegistryOrEntry && 'component' in componentsOrRegistryOrEntry) {
+    // Single-entry form without registry name: use id as key, ignore label
+    const { id, component } = componentsOrRegistryOrEntry as { id: string; component: React.ComponentType<any> };
+    registerComponent(id, component);
+  } else {
+    // Old-style: Record<string, ComponentType>
+    Object.entries(componentsOrRegistryOrEntry as Record<string, React.ComponentType<any>>)
+      .forEach(([name, component]) => registerComponent(name, component));
+  }
 }
 
 /**
@@ -317,15 +335,16 @@ const ConfigurableAIAssistance = ({
 
     // Get request component
     const { component: requestComponentName, config: requestComponentConfig = {} } = requestConfig;
-    const RequestComponent = COMPONENT_REGISTRY[requestComponentName];
+    const RequestComponent = getComponent(requestComponentName);
 
     if (!RequestComponent) {
+      const available = getEntries(REGISTRY_NAMES.COMPONENTS).map((e) => e.id).join(', ');
       return (
         <Alert variant="danger">
           <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.unknown.heading'])}</Alert.Heading>
           <p>{intl.formatMessage(messages['ai.extensions.config.unknown.request'], { componentName: requestComponentName })}</p>
           <p className="mb-0 text-muted small">
-            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: Object.keys(COMPONENT_REGISTRY).join(', ') })}
+            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: available })}
           </p>
         </Alert>
       );
@@ -333,15 +352,16 @@ const ConfigurableAIAssistance = ({
 
     // Get response component
     const { component: responseComponentName, config: responseComponentConfig = {} } = responseConfig;
-    const ResponseComponent = COMPONENT_REGISTRY[responseComponentName];
+    const ResponseComponent = getComponent(responseComponentName);
 
     if (!ResponseComponent) {
+      const available = getEntries(REGISTRY_NAMES.COMPONENTS).map((e) => e.id).join(', ');
       return (
         <Alert variant="danger">
           <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.unknown.heading'])}</Alert.Heading>
           <p>{intl.formatMessage(messages['ai.extensions.config.unknown.response'], { componentName: responseComponentName })}</p>
           <p className="mb-0 text-muted small">
-            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: Object.keys(COMPONENT_REGISTRY).join(', ') })}
+            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: available })}
           </p>
         </Alert>
       );

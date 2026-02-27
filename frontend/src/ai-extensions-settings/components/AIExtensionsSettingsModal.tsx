@@ -5,8 +5,8 @@
  *
  * Tab rendering is driven by two sources:
  *  1. The built-in core Workflows tab defined in this file.
- *  2. External tabs registered at runtime via `registerAISettingsTab()` from
- *     any plugin (e.g. openedx-ai-badges registers its badge tabs here).
+ *  2. External tabs registered at runtime via `registerComponents(REGISTRY_NAMES.SETTINGS, …)`
+ *     from any plugin (e.g. openedx-ai-badges registers its badge tabs here).
  *
  * All registered tabs are always shown — no backend trip required.
  */
@@ -20,7 +20,7 @@ import {
 } from '@openedx/paragon';
 import WorkflowsConfigTab from './WorkflowsConfigTab';
 import messages from '../messages';
-import { getRegisteredAISettingsTabs, AISettingsTab } from '../../AISettingsTabRegistry';
+import { getEntries, REGISTRY_NAMES, AISettingsTab } from '../../extensionRegistry';
 
 interface AIExtensionsSettingsModalProps {
   isOpen: boolean;
@@ -34,7 +34,8 @@ const AIExtensionsSettingsModal = ({
   onClose,
 }: AIExtensionsSettingsModalProps) => {
   const intl = useIntl();
-  const firstTabId = getRegisteredAISettingsTabs()[0]?.id ?? WORKFLOWS_TAB_ID;
+  const registeredTabs = getEntries(REGISTRY_NAMES.SETTINGS) as AISettingsTab[];
+  const firstTabId = registeredTabs[0]?.id ?? WORKFLOWS_TAB_ID;
   const [activeTab, setActiveTab] = useState(firstTabId);
 
   const workflowsCoreTab: AISettingsTab = {
@@ -43,7 +44,7 @@ const AIExtensionsSettingsModal = ({
     component: WorkflowsConfigTab,
   };
 
-  const visibleTabs: AISettingsTab[] = [...getRegisteredAISettingsTabs(), workflowsCoreTab];
+  const visibleTabs: AISettingsTab[] = [...registeredTabs, workflowsCoreTab];
 
   return (
     <FullscreenModal
