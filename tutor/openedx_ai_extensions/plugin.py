@@ -86,7 +86,7 @@ PLUGIN_SLOTS.add_items(
             {
                 op: PLUGIN_OPERATIONS.Insert,
                 widget: {
-                    id: 'custom_additional_course',
+                    id: 'ai-extensions-settings-card',
                     type: DIRECT_PLUGIN,
                     RenderWidget: AIExtensionsCard
                 },

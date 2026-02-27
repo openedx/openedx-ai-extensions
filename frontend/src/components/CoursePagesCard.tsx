@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Badge, Card, Icon, IconButton,
 } from '@openedx/paragon';
@@ -5,15 +6,17 @@ import { AutoAwesome } from '@openedx/paragon/icons';
 
 interface CoursePagesCardProps {
   title: string;
-  description: string;
+  description: React.ReactNode;
   badge?: string;
-  onClick: () => void;
+  actionLabel?: string;
+  onClick: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 const CoursePagesCard = ({
   title,
   description,
   badge,
+  actionLabel = 'Open AI Extensions Settings',
   onClick,
 }: CoursePagesCardProps) => (
   <Card
@@ -30,7 +33,7 @@ const CoursePagesCard = ({
       }
       actions={(
         <div className="mt-1">
-          <IconButton src={AutoAwesome} alt="Create AI Badge" onClick={onClick} iconAs={Icon} />
+          <IconButton src={AutoAwesome} alt={actionLabel} onClick={onClick} iconAs={Icon} />
         </div>
       )}
       size="sm"
