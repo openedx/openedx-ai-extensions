@@ -480,7 +480,7 @@ class AIWorkflowConfigAdmin(admin.ModelAdmin):
         "course_id",
         "location_regex",
         "ui_slot_selector_id",
-        "priority",
+        "specificity_index",
         "service_variant",
         "profile",
         "enabled",
@@ -502,13 +502,14 @@ class AIWorkflowConfigAdmin(admin.ModelAdmin):
         (
             "Multi-scope Disambiguation",
             {
-                "fields": ("ui_slot_selector_id", "priority"),
+                "fields": ("ui_slot_selector_id",),
                 "description": (
                     "<strong>ui_slot_selector_id</strong>: must match the <code>uiSlotSelectorId</code> prop "
                     "passed by the frontend widget. Required when multiple scopes share the "
                     "same location. <br>"
-                    "<strong>priority</strong>: higher value wins when multiple scopes with the "
-                    "same <code>ui_slot_selector_id</code> match the same location (e.g. overlapping regex)."
+                    "<strong>specificity_index</strong> is computed automatically on save as the count of "
+                    "non-null discriminator fields (<code>course_id</code>, <code>ui_slot_selector_id</code>, "
+                    "<code>location_regex</code>). Higher value wins when multiple scopes match the same location."
                 ),
             },
         ),

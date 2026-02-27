@@ -209,11 +209,14 @@ class AIWorkflowScope(models.Model):
         ),
     )
 
-    priority = models.IntegerField(
+    specificity_index = models.IntegerField(
         default=0,
+        editable=False,
         help_text=(
-            "Resolution priority when multiple scopes match the same location_regex and ui_slot_selector_id. "
-            "Higher value wins. Scopes with equal priority and equal matches raise an error."
+            "Auto-calculated resolution specificity. "
+            "Computed as the sum of non-null discriminator fields: "
+            "course_id (1) + ui_slot_selector_id (1) + location_regex (1). "
+            "Higher value means more specific. Populated automatically on save."
         ),
     )
 
@@ -325,8 +328,9 @@ class AIWorkflowScope(models.Model):
     def _get_profile_for_ui_slot(cls, course_id, location_id, ui_slot_selector_id, service_variant):
         """Resolve a scope for a given ui_slot_selector_id.
 
-        Returns the highest-priority matching scope. Raises ValueError if none match
-        or if there is an equal-priority tie.
+        Prefers location-specific scopes (location_regex is set) over course-level
+        fallbacks (location_regex is NULL). Within each tier, sorts by specificity_index
+        descending. Raises ValueError if no scope matches or if two scopes tie.
         """
         candidates = cls.objects.filter(
             enabled=True,
@@ -335,12 +339,20 @@ class AIWorkflowScope(models.Model):
             course_id=course_id,
         )
 
-        matching = []
+        # Separate location-specific from course-level (no location_regex) candidates
+        location_specific = []
+        course_level = []
         for scope in candidates:
             if not cls._matches_location(scope, location_id):
                 continue
             scope.location_id = location_id
-            matching.append(scope)
+            if scope.location_regex:
+                location_specific.append(scope)
+            else:
+                course_level.append(scope)
+
+        # Prefer location-specific scopes; fall back to course-level only if none match
+        matching = location_specific if location_specific else course_level
 
         if not matching:
             raise ValueError(
@@ -349,12 +361,12 @@ class AIWorkflowScope(models.Model):
                 "Make sure a scope with a matching ui_slot_selector_id exists and is enabled."
             )
 
-        matching.sort(key=lambda s: s.priority, reverse=True)
-        if len(matching) > 1 and matching[0].priority == matching[1].priority:
+        matching.sort(key=lambda s: s.specificity_index, reverse=True)
+        if len(matching) > 1 and matching[0].specificity_index == matching[1].specificity_index:
             raise ValueError(
                 f"Multiple AIWorkflowScope entries tie for ui_slot_selector_id='{ui_slot_selector_id}' "
-                f"at location '{location_id}' with equal priority {matching[0].priority}. "
-                "Assign distinct priorities to resolve the ambiguity."
+                f"at location '{location_id}' with equal specificity_index {matching[0].specificity_index}. "
+                "Use distinct location_regex patterns to resolve the ambiguity."
             )
 
         return matching[0]
@@ -462,36 +474,20 @@ class AIWorkflowScope(models.Model):
             }
 
     def clean(self):
+        """Validate the scope before saving."""
         super().clean()
         if self.location_regex and not self.course_id:
             raise ValidationError({
                 "course_id": "Required when location_regex is set.",
             })
 
-        # Guard against duplicate legacy (NULL ui_slot_selector_id) scopes for the
-        # same course + location_regex.  A scope with a ui_slot_selector_id is always
-        # allowed to coexist with legacy scopes so the frontend can opt-in via the
-        # slot selector while old integrations continue to use the legacy path.
-        if self.location_regex and self.course_id and not self.ui_slot_selector_id:
-            legacy_siblings = AIWorkflowScope.objects.filter(
-                course_id=self.course_id,
-                location_regex=self.location_regex,
-                enabled=True,
-                ui_slot_selector_id__isnull=True,
-            ).exclude(pk=self.pk)
-
-            if legacy_siblings.exists():
-                raise ValidationError({
-                    "ui_slot_selector_id": (
-                        "A legacy scope (no ui_slot_selector_id) already exists for this "
-                        "course + location_regex combination. "
-                        "Set a unique ui_slot_selector_id on both scopes so each frontend "
-                        "widget can resolve exactly one scope."
-                    ),
-                })
+    def _compute_specificity_index(self) -> int:
+        """Calculate specificity_index as count of non-null discriminator fields."""
+        return bool(self.course_id) + bool(self.ui_slot_selector_id) + bool(self.location_regex)
 
     def save(self, *args, **kwargs):
-        """Override save to clear cache on changes."""
+        """Override save to compute specificity_index and clear cache on changes."""
+        self.specificity_index = self._compute_specificity_index()
         self.full_clean()
         super().save(*args, **kwargs)
 

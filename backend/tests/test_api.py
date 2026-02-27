@@ -330,7 +330,6 @@ def test_config_endpoint_multi_scope_requires_ui_slot_selector_id(  # pylint: di
         profile=profile_a,
         enabled=True,
         ui_slot_selector_id="slot-a",
-        priority=0,
     )
     AIWorkflowScope.objects.create(
         location_regex=r"unit-ambiguous$",
@@ -339,7 +338,6 @@ def test_config_endpoint_multi_scope_requires_ui_slot_selector_id(  # pylint: di
         profile=profile_b,
         enabled=True,
         ui_slot_selector_id="slot-b",
-        priority=0,
     )
 
     context = json.dumps({"courseId": str(course_key), "locationId": str(location)})
@@ -381,7 +379,6 @@ def test_config_endpoint_multi_scope_with_selector_returns_200(  # pylint: disab
         profile=profile_a,
         enabled=True,
         ui_slot_selector_id="slot-a",
-        priority=0,
     )
     AIWorkflowScope.objects.create(
         location_regex=r"unit-choose$",
@@ -390,7 +387,6 @@ def test_config_endpoint_multi_scope_with_selector_returns_200(  # pylint: disab
         profile=profile_b,
         enabled=True,
         ui_slot_selector_id="slot-b",
-        priority=0,
     )
 
     context = json.dumps({

@@ -163,15 +163,6 @@ const ConfigurableAIAssistance = ({
           return;
         }
 
-        // 404 means no scope is configured for this widget — silently hide it
-        const httpStatus = err?.response?.status || err?.customAttributes?.httpErrorStatus;
-        if (httpStatus === 404) {
-          if (currentRequestId === requestIdRef.current) {
-            setConfig(null);
-          }
-          return;
-        }
-
         // Only update state if this is still the latest request
         if (currentRequestId === requestIdRef.current) {
           logError('[ConfigurableAIAssistance] Configuration error:', configErr);

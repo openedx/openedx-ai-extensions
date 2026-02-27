@@ -5,8 +5,6 @@ Refactored to use Django models and workflow orchestrators
 
 import json
 import logging
-import sys
-import traceback
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
@@ -116,23 +114,15 @@ class AIGenericWorkflowView(View):
             )
 
             if is_generator(result):
-                def safe_stream():
-                    try:
-                        yield from result
-                    except Exception:  # pylint: disable=broad-exception-caught
-                        print("🤖 WORKFLOW STREAM ERROR (see traceback below)", file=sys.stderr, flush=True)
-                        traceback.print_exc()
-                        logger.exception("🤖 WORKFLOW STREAM ERROR")
-
                 return StreamingHttpResponse(
-                    safe_stream(),
+                    result,
                     content_type="text/plain"
                 )
 
             # Check result status and return appropriate HTTP status
             result_status = result.get("status", "success")
             if result_status == "error":
-                http_status = 503  # Service Unavailable (e.g. missing LLM credentials)
+                http_status = 500  # Internal Server Error (e.g. missing LLM credentials)
             elif result_status in ["validation_error", "bad_request"]:
                 http_status = 400  # Bad Request for validation issues
             else:
@@ -163,8 +153,6 @@ class AIGenericWorkflowView(View):
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print("🤖 WORKFLOW ERROR (see traceback below)", file=sys.stderr, flush=True)
-            traceback.print_exc()
             logger.exception("🤖 WORKFLOW ERROR")
             return JsonResponse(
                 {
@@ -244,8 +232,6 @@ class AIWorkflowProfileView(APIView):
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print("🤖 CONFIG PROFILE ERROR (see traceback below)", file=sys.stderr, flush=True)
-            traceback.print_exc()
             logger.exception("🤖 CONFIG PROFILE ERROR")
             return Response(
                 {
