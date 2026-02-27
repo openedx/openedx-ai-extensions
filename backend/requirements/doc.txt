@@ -125,6 +125,7 @@ cryptography==46.0.3
     # via
     #   -r requirements/test.txt
     #   django-fernet-fields-v2
+    #   secretstorage
 ddt==1.7.2
     # via -r requirements/test.txt
 distro==1.9.0
@@ -134,6 +135,7 @@ distro==1.9.0
 django==4.2.20
     # via
     #   -c https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt
+    #   -r requirements/test.txt
     #   django-config-models
     #   django-crum
     #   django-extensions
@@ -330,6 +332,10 @@ jaraco-context==6.0.1
     # via keyring
 jaraco-functools==4.1.0
     # via keyring
+jeepney==0.9.0
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.1.6
     # via
     #   -r requirements/test.txt
@@ -542,6 +548,8 @@ rpds-py==0.27.1
     #   -r requirements/test.txt
     #   jsonschema
     #   referencing
+secretstorage==3.5.0
+    # via keyring
 six==1.17.0
     # via
     #   -r requirements/test.txt
@@ -672,6 +680,8 @@ yarl==1.22.0
     # via
     #   -r requirements/test.txt
     #   aiohttp
+yattag==1.16.1
+    # via -r requirements/test.txt
 zipp==3.23.0
     # via
     #   -r requirements/test.txt
