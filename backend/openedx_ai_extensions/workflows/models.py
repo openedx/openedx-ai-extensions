@@ -222,7 +222,7 @@ class AIWorkflowScope(models.Model):
 
     @classmethod
     @functools.lru_cache(maxsize=128)
-    def get_profile(cls, course_id, location_id):
+    def get_profile(cls, course_id=None, location_id=None):
         """
         Get configuration for a specific action, course, and location and service variant.
 
