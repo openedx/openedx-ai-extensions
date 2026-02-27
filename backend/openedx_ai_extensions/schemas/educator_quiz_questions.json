@@ -1,0 +1,55 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "StructuredOpenEdxProblem",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "collection_name": { "type": "string" },
+        "problems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "display_name": { "type": "string" },
+              "question_html": { "type": "string" },
+              "problem_type": {
+                "type": "string",
+                "enum": ["multiplechoiceresponse", "choiceresponse", "optionresponse", "numericalresponse", "stringresponse"]
+              },
+              "choices": {
+                "type": "array",
+                "description": "Used for Multiple Choice, Checkboxes, and Dropdowns",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": { "type": "string" },
+                    "is_correct": { "type": "boolean" },
+                    "feedback": { "type": "string" }
+                  },
+                  "required": ["text", "is_correct", "feedback"],
+                  "additionalProperties": false
+                }
+              },
+              "answer_value": {
+                "type": "string",
+                "description": "Used ONLY for Numerical (e.g. '42') or Text (e.g. 'Paris') inputs"
+              },
+              "tolerance": {
+                "type": "string",
+                "description": "Used ONLY for Numerical inputs (e.g. '5' or '10%')"
+              },
+              "explanation": { "type": "string" },
+              "demand_hints": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["display_name", "question_html", "problem_type", "choices", "answer_value", "tolerance", "explanation", "demand_hints"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["collection_name", "problems"],
+      "additionalProperties": false
+    }
+  }
+}

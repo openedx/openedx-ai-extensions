@@ -15,10 +15,11 @@ logger = logging.getLogger(__name__)
 class LitellmProcessor:
     """Base class for processors that use LiteLLM for AI/LLM operations"""
 
-    def __init__(self, config=None, user_session=None):
+    def __init__(self, config=None, user_session=None, extra_params=None):
         config = config or {}
         self.config = config.get(self.__class__.__name__, {})
         self.user_session = user_session
+        self.extra_params = extra_params or {}
 
         provider_spec = self.config.get("provider", "default")
         self.config_profile = provider_spec
@@ -37,7 +38,7 @@ class LitellmProcessor:
 
         base_params = {k.lower(): v for k, v in provider.items()}
         override_params = {k.lower(): v for k, v in options.items()}
-        self.extra_params = {**base_params, **override_params}
+        self.extra_params = {**base_params, **override_params, **self.extra_params}
 
         model = self.extra_params.get("model")
         if not isinstance(model, str) or "/" not in model:
