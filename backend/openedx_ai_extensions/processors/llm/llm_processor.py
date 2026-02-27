@@ -128,33 +128,90 @@ class LLMProcessor(LitellmProcessor):
 
         return params
 
-    def _yield_threaded_stream(self, response):
+    def _yield_threaded_stream(self, response, params=None):
         """
         Helper generator to handle streaming logic for threaded responses.
+        Handles tool calls execution recursively during streaming.
         """
         total_tokens = None
-        try:
+        try:  # pylint: disable=R1702
             for chunk in response:
-                if hasattr(chunk, "usage") and chunk.usage:
+                # Track token usage from the response metadata
+                chunk_response = getattr(chunk, "response", None)
+                if chunk_response and hasattr(chunk_response, "usage") and chunk_response.usage:
+                    total_tokens = chunk_response.usage.total_tokens
+                elif hasattr(chunk, "usage") and chunk.usage:
                     total_tokens = chunk.usage.total_tokens
 
-                if getattr(chunk, "response", None):
-                    resp = getattr(chunk, "response", None)
-                    if resp is not None:
-                        response_id = getattr(resp, "id", None)
-                        self.user_session.remote_response_id = response_id
-                        self.user_session.save()
+                # Persist thread ID for ongoing conversation context
+                if chunk_response:
+                    if chunk_response is not None and self.user_session:
+                        response_id = getattr(chunk_response, "id", None)
+                        if response_id:
+                            self.user_session.remote_response_id = response_id
+                            self.user_session.save()
+
+                # Stream text deltas, filtering out empty JSON artifacts
                 if hasattr(chunk, "delta"):
-                    yield chunk.delta
+                    yield chunk.delta if chunk.delta != "{}" else ""
+
+                # Check for completed tool call requests
+                chunk_type = getattr(chunk, "type", None)
+                if chunk_type == "response.output_item.done":
+                    item = chunk.item
+                    if getattr(item, "type", None) == "function_call":
+                        logger.info(f"[LLM STREAM] Intercepted tool call: {item.name}")
+
+                        function_name = item.name
+                        call_id = item.call_id
+                        arguments_str = item.arguments
+
+                        # Add function call intent to history (required for API consistency)
+                        if params is not None:
+                            params["input"].append({
+                                "type": "function_call",
+                                "call_id": call_id,
+                                "name": function_name,
+                                "arguments": arguments_str
+                            })
+
+                        # Parse arguments and execute the local function
+                        try:
+                            function_args = json.loads(arguments_str)
+                        except json.JSONDecodeError:
+                            function_args = {}
+
+                        if function_name in AVAILABLE_TOOLS:
+                            func = AVAILABLE_TOOLS[function_name]
+                            try:
+                                tool_output = func(**function_args)
+                            except Exception as e:  # pylint: disable=broad-exception-caught
+                                tool_output = f"Error: {str(e)}"
+                        else:
+                            tool_output = "Error: Tool not found."
+
+                        if params is None:
+                            yield "\n[System Error: Missing params]".encode("utf-8")
+                            return
+
+                        # Add tool output to history and re-trigger LLM response
+                        params["input"].append({
+                            "type": "function_call_output",
+                            "call_id": call_id,
+                            "output": str(tool_output)
+                        })
+
+                        # Recursively stream the new response interpreting the tool output
+                        new_response = responses(**params)
+                        yield from self._yield_threaded_stream(new_response, params)
+                        return
 
             if total_tokens is not None:
                 logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
-            else:
-                logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error during threaded AI streaming: {e}", exc_info=True)
-            yield f"\n[AI Error: {e}]"
+            logger.error(f"Error: {e}", exc_info=True)
+            yield f"\n[AI Error: {e}]".encode("utf-8")
 
     def _call_responses_wrapper(self, params, initialize=False):
         """
@@ -164,7 +221,7 @@ class LLMProcessor(LitellmProcessor):
             response = self._responses_with_tools(tool_calls=[], params=params)
 
             if params["stream"]:
-                return self._yield_threaded_stream(response)
+                return self._yield_threaded_stream(response, params=params)
 
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)
@@ -246,12 +303,26 @@ class LLMProcessor(LitellmProcessor):
         """Handle tool calls recursively until no more tool calls are present."""
         for tool_call in tool_calls:
             function_name = tool_call.function.name
-            function_to_call = AVAILABLE_TOOLS[function_name]
-            function_args = json.loads(tool_call.function.arguments)
 
-            function_response = function_to_call(
-                **function_args,
-            )
+            # Ensure tool exists
+            if function_name not in AVAILABLE_TOOLS:
+                logger.error(f"Tool '{function_name}' requested by LLM but not available locally.")
+                continue
+
+            function_to_call = AVAILABLE_TOOLS[function_name]
+            logger.info(f"[LLM] Tool call: {function_to_call}")
+
+            try:
+                function_args = json.loads(tool_call.function.arguments)
+                function_response = function_to_call(**function_args)
+                logger.info(f"[LLM] Response from tool call: {function_response}")
+            except json.JSONDecodeError:
+                function_response = "Error: Invalid JSON arguments provided."
+                logger.error(f"Failed to parse JSON arguments for {function_name}")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                function_response = f"Error executing tool: {str(e)}"
+                logger.error(f"Error executing tool {function_name}: {e}")
+
             params["messages"].append(
                 {
                     "tool_call_id": tool_call.id,
@@ -264,10 +335,9 @@ class LLMProcessor(LitellmProcessor):
         # Call completion again with updated messages
         response = completion(**params)
 
-        # For streaming, return the generator immediately
-        # Tool calls are not supported in streaming mode
+        # For streaming, we need to handle the stream to detect tool calls
         if params.get("stream"):
-            return response
+            return self._handle_streaming_tool_calls(response, params)
 
         # For non-streaming, check for tool calls and handle recursively
         new_tool_calls = response.choices[0].message.tool_calls
@@ -276,6 +346,99 @@ class LLMProcessor(LitellmProcessor):
             return self._completion_with_tools(new_tool_calls, params)
 
         return response
+
+    def _handle_streaming_tool_calls(self, response, params):
+        """
+        Generator that handles streaming responses containing tool calls.
+        It accumulates tool call chunks, executes them, and recursively calls completion.
+        """
+        tool_calls_buffer = {}  # index -> {id, function: {name, arguments}}
+        accumulating_tools = False
+        logger.info("[LLM STREAM] Streaming tool calls")
+
+        for chunk in response:
+            delta = chunk.choices[0].delta
+
+            # If there is content, yield it immediately to the user
+            if delta.content:
+                yield chunk
+
+            # If there are tool calls, buffer them
+            if delta.tool_calls:
+                if not accumulating_tools:
+                    logger.info("[AI STREAM] Start: buffer function")
+                accumulating_tools = True
+                for tc_chunk in delta.tool_calls:
+                    idx = tc_chunk.index
+
+                    if idx not in tool_calls_buffer:
+                        tool_calls_buffer[idx] = {
+                            "id": "",
+                            "type": "function",
+                            "function": {"name": "", "arguments": ""}
+                        }
+
+                    if tc_chunk.id:
+                        tool_calls_buffer[idx]["id"] += tc_chunk.id
+
+                    if tc_chunk.function:
+                        if tc_chunk.function.name:
+                            tool_calls_buffer[idx]["function"]["name"] += tc_chunk.function.name
+                        if tc_chunk.function.arguments:
+                            tool_calls_buffer[idx]["function"]["arguments"] += tc_chunk.function.arguments
+
+        # If we accumulated tool calls, reconstruct them and recurse
+        if accumulating_tools and tool_calls_buffer:
+
+            # Helper classes to mimic the object structure LiteLLM expects in _completion_with_tools
+            class FunctionMock:
+                def __init__(self, name, arguments):
+                    self.name = name
+                    self.arguments = arguments
+
+            class ToolCallMock:
+                def __init__(self, t_id, name, arguments):
+                    self.id = t_id
+                    self.function = FunctionMock(name, arguments)
+                    self.type = "function"
+
+            # Prepare list for the recursive call
+            reconstructed_tool_calls = []
+
+            # Prepare message to append to history (as dict for JSON serialization)
+            assistant_message_tool_calls = []
+
+            for idx in sorted(tool_calls_buffer.keys()):
+                data = tool_calls_buffer[idx]
+
+                # Create object for internal logic
+                tc_obj = ToolCallMock(
+                    t_id=data['id'],
+                    name=data['function']['name'],
+                    arguments=data['function']['arguments']
+                )
+                reconstructed_tool_calls.append(tc_obj)
+
+                # Create dict for history
+                assistant_message_tool_calls.append({
+                    "id": data['id'],
+                    "type": "function",
+                    "function": {
+                        "name": data['function']['name'],
+                        "arguments": data['function']['arguments']
+                    }
+                })
+
+            # Append the Assistant's intent to call tools to the history
+            params["messages"].append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": assistant_message_tool_calls
+            })
+
+            # Recursively call completion with the reconstructed tools
+            # yield from delegates the generation of the next stream (result of tool) to this generator
+            yield from self._completion_with_tools(reconstructed_tool_calls, params)
 
     def _responses_with_tools(self, tool_calls, params):
         """Handle tool calls recursively until no more tool calls are present."""
