@@ -79,5 +79,18 @@ PLUGIN_SLOTS.add_items(
             },
           }""",
         ),
+        (
+            "authoring",
+            "org.openedx.frontend.authoring.additional_course_plugin.v1",
+            """
+            {
+                op: PLUGIN_OPERATIONS.Insert,
+                widget: {
+                    id: 'ai-extensions-settings-card',
+                    type: DIRECT_PLUGIN,
+                    RenderWidget: AIExtensionsCard
+                },
+            }"""
+        )
     ]
 )
