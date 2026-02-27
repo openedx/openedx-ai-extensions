@@ -10,6 +10,7 @@ import {
   registerAISettingsTab,
   getRegisteredAISettingsTabs,
 } from './AISettingsTabRegistry';
+export * as services from './services';
 
 /*
  * Export both the configurable wrapper and the direct component.
