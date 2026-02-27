@@ -479,9 +479,44 @@ class AIWorkflowConfigAdmin(admin.ModelAdmin):
     list_display = (
         "course_id",
         "location_regex",
+        "ui_slot_selector_id",
+        "specificity_index",
         "service_variant",
         "profile",
         "enabled",
     )
-    search_fields = ("course_id", "location_regex", "profile__slug")
-    list_filter = ("service_variant", "enabled")
+    search_fields = ("course_id", "location_regex", "ui_slot_selector_id", "profile__slug")
+    list_filter = ("service_variant", "enabled", "ui_slot_selector_id")
+    fieldsets = (
+        (
+            "Scope Matching",
+            {
+                "fields": ("course_id", "location_regex", "service_variant"),
+                "description": (
+                    "Define which course/location this scope applies to. "
+                    "<code>location_regex</code> is a Python regex matched against the "
+                    "unit/block location ID."
+                ),
+            },
+        ),
+        (
+            "Multi-scope Disambiguation",
+            {
+                "fields": ("ui_slot_selector_id",),
+                "description": (
+                    "<strong>ui_slot_selector_id</strong>: must match the <code>uiSlotSelectorId</code> prop "
+                    "passed by the frontend widget. Required when multiple scopes share the "
+                    "same location. <br>"
+                    "<strong>specificity_index</strong> is computed automatically on save as the count of "
+                    "non-null discriminator fields (<code>course_id</code>, <code>ui_slot_selector_id</code>, "
+                    "<code>location_regex</code>). Higher value wins when multiple scopes match the same location."
+                ),
+            },
+        ),
+        (
+            "Profile & Status",
+            {
+                "fields": ("profile", "enabled"),
+            },
+        ),
+    )

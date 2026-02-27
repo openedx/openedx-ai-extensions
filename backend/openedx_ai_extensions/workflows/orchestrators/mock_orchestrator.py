@@ -50,6 +50,6 @@ class MockStreamResponse(BaseOrchestrator):
             chunk_size = 15
             for i in range(0, len(mock_response), chunk_size):
                 time.sleep(0.01)
-                yield mock_response[i:i+chunk_size].encode("utf-8")
+                yield mock_response[i:i + chunk_size].encode("utf-8")
 
         return stream_generator()

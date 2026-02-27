@@ -376,6 +376,152 @@ class TestAIWorkflowSessionThreads:
         result = session_with_ids.get_combined_thread()
         assert result == []
 
+
+# ==========================================================================
+# AIWorkflowScope Resolution (multi-scope per location)
+# ==========================================================================
+
+
+@pytest.mark.django_db
+class TestAIWorkflowScopeResolution:
+    """Tests for AIWorkflowScope.get_profile resolution logic."""
+
+    # pylint: disable=redefined-outer-name
+
+    @staticmethod
+    def _create_profile(slug: str) -> AIWorkflowProfile:
+        return AIWorkflowProfile.objects.create(
+            slug=slug,
+            base_filepath="base/default.json",
+            content_patch="{}",
+        )
+
+    def test_multi_scope_selects_most_specific(self, course_key):
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-1"
+
+        profile_course_level = self._create_profile("multi-scope-course-level")
+        profile_location_specific = self._create_profile("multi-scope-location-specific")
+
+        # Course-level scope: no location_regex → specificity_index = 2 (course_id + ui_slot_selector_id)
+        AIWorkflowScope.objects.create(
+            location_regex=None,
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_course_level,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        # Location-specific scope: has location_regex → specificity_index = 3
+        scope_specific = AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_location_specific,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="slot-a")
+        assert resolved.id == scope_specific.id
+        assert resolved.profile.slug == "multi-scope-location-specific"
+
+    def test_multi_scope_tie_specificity_raises(self, course_key):
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-1"
+
+        profile1 = self._create_profile("multi-scope-tie-1")
+        profile2 = self._create_profile("multi-scope-tie-2")
+
+        # Both scopes have the same location_regex → both get specificity_index=3 → tie
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile1,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile2,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        with pytest.raises(ValueError, match=r"tie.*equal specificity_index"):
+            AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="slot-a")
+
+    def test_legacy_prefers_legacy_scope_when_present(self, course_key):
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-legacy"
+
+        profile_legacy = self._create_profile("legacy-profile")
+        profile_slot = self._create_profile("slot-profile")
+
+        legacy_scope = AIWorkflowScope.objects.create(
+            location_regex=r"unit-legacy$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_legacy,
+            enabled=True,
+            ui_slot_selector_id=None,
+        )
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-legacy$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_slot,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, location_id)
+        assert resolved.id == legacy_scope.id
+        assert resolved.profile.slug == "legacy-profile"
+
+    def test_legacy_falls_back_to_single_slot_match(self, course_key):
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-fallback"
+
+        profile_slot = self._create_profile("single-slot-fallback")
+
+        scope = AIWorkflowScope.objects.create(
+            location_regex=r"unit-fallback$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_slot,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, location_id)
+        assert resolved.id == scope.id
+
+    def test_legacy_multiple_slot_matches_without_selector_raises(self, course_key):
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-ambiguous"
+
+        profile1 = self._create_profile("ambiguous-slot-1")
+        profile2 = self._create_profile("ambiguous-slot-2")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-ambiguous$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile1,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-ambiguous$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile2,
+            enabled=True,
+            ui_slot_selector_id="slot-b",
+        )
+
+        with pytest.raises(ValueError, match=r"no uiSlotSelectorId"):
+            AIWorkflowScope.get_profile(course_key, location_id)
+
     # --- Non-string content from the API ---
 
     @patch.object(AIWorkflowSession, "get_remote_thread")

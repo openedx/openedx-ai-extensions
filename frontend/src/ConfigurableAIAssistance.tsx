@@ -113,12 +113,18 @@ interface ConfigurableAIAssistanceProps {
   fallbackConfig?: PluginConfiguration | null;
   onConfigLoad?: (config: PluginConfiguration) => void;
   onConfigError?: (error) => void;
+  id?: string | null;
+  courseId?: string | null;
+  locationId?: string | null;
+  uiSlotSelectorId?: string | null;
+  [key: string]: any;
 }
 
 const ConfigurableAIAssistance = ({
   fallbackConfig = null,
   onConfigLoad,
   onConfigError,
+  id = null,
   ...additionalProps
 }: ConfigurableAIAssistanceProps) => {
   const intl = useIntl();
@@ -148,6 +154,7 @@ const ConfigurableAIAssistance = ({
 
       const contextData = prepareContextData({
         ...additionalProps,
+        uiSlotSelectorId: additionalProps.uiSlotSelectorId || id,
       });
 
       try {
@@ -165,7 +172,7 @@ const ConfigurableAIAssistance = ({
             onConfigLoad(fetchedConfig);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         // Type guard for error
         const configErr = err instanceof Error ? err : new Error(String(err));
 
@@ -216,6 +223,7 @@ const ConfigurableAIAssistance = ({
       // Prepare context data
       const contextData = prepareContextData({
         ...additionalProps,
+        uiSlotSelectorId: additionalProps.uiSlotSelectorId || id,
       });
 
       let buffer = '';
@@ -261,7 +269,7 @@ const ConfigurableAIAssistance = ({
     } finally {
       setIsLoading(false);
     }
-  }, [additionalProps]);
+  }, [additionalProps, id]);
 
   const handleOpenSidebar = useCallback(() => {
     setOpenSidebarSignal((prev) => prev + 1);
@@ -399,7 +407,7 @@ const ConfigurableAIAssistance = ({
           onAskAgain={handleAskAI}
           onClear={handleReset}
           onError={handleClearError}
-          contextData={additionalProps}
+          contextData={{ ...additionalProps, uiSlotSelectorId: additionalProps.uiSlotSelectorId || id }}
           openSidebarSignal={openSidebarSignal}
           {...responseProps}
         />

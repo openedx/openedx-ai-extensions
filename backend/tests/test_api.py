@@ -301,6 +301,109 @@ def test_config_endpoint_ui_components_structure(api_client):  # pylint: disable
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("user")
+def test_config_endpoint_multi_scope_requires_ui_slot_selector_id(  # pylint: disable=redefined-outer-name
+    api_client, course_key,
+):
+    """When multiple selector scopes match and no selector is provided, return 404 no_config."""
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
+
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-ambiguous")
+
+    profile_a = AIWorkflowProfile.objects.create(
+        slug="api-multi-scope-a",
+        description="A",
+        base_filepath="base/default.json",
+        content_patch="{}",
+    )
+    profile_b = AIWorkflowProfile.objects.create(
+        slug="api-multi-scope-b",
+        description="B",
+        base_filepath="base/default.json",
+        content_patch="{}",
+    )
+
+    AIWorkflowScope.objects.create(
+        location_regex=r"unit-ambiguous$",
+        course_id=course_key,
+        service_variant="lms",
+        profile=profile_a,
+        enabled=True,
+        ui_slot_selector_id="slot-a",
+    )
+    AIWorkflowScope.objects.create(
+        location_regex=r"unit-ambiguous$",
+        course_id=course_key,
+        service_variant="lms",
+        profile=profile_b,
+        enabled=True,
+        ui_slot_selector_id="slot-b",
+    )
+
+    context = json.dumps({"courseId": str(course_key), "locationId": str(location)})
+    response = api_client.get(url, {"action": "explain_like_five", "context": context})
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data.get("status") == "no_config"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_config_endpoint_multi_scope_with_selector_returns_200(  # pylint: disable=redefined-outer-name
+    api_client, course_key,
+):
+    """When uiSlotSelectorId is provided, the matching selector scope is returned."""
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
+
+    location = BlockUsageLocator(course_key, block_type="vertical", block_id="unit-choose")
+
+    profile_a = AIWorkflowProfile.objects.create(
+        slug="api-multi-scope-choose-a",
+        description="A",
+        base_filepath="base/default.json",
+        content_patch="{}",
+    )
+    profile_b = AIWorkflowProfile.objects.create(
+        slug="api-multi-scope-choose-b",
+        description="B",
+        base_filepath="base/default.json",
+        content_patch="{}",
+    )
+
+    AIWorkflowScope.objects.create(
+        location_regex=r"unit-choose$",
+        course_id=course_key,
+        service_variant="lms",
+        profile=profile_a,
+        enabled=True,
+        ui_slot_selector_id="slot-a",
+    )
+    AIWorkflowScope.objects.create(
+        location_regex=r"unit-choose$",
+        course_id=course_key,
+        service_variant="lms",
+        profile=profile_b,
+        enabled=True,
+        ui_slot_selector_id="slot-b",
+    )
+
+    context = json.dumps({
+        "courseId": str(course_key),
+        "locationId": str(location),
+        "uiSlotSelectorId": "slot-b",
+    })
+    response = api_client.get(url, {"action": "explain_like_five", "context": context})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("course_id") == str(course_key)
+    assert "ui_components" in data
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
 def test_workflows_post_with_invalid_json(api_client):  # pylint: disable=redefined-outer-name
     """
     Test POST request to workflows endpoint with invalid JSON.
