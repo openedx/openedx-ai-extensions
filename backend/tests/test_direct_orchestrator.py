@@ -1,24 +1,15 @@
 """
-Tests for direct_orchestrator.py — covers EducatorAssistantOrchestrator and json_to_olx.
-
-Targeted lines:
-  98-101  get_current_session_response
-  114     OpenEdXProcessor error early return in EducatorAssistantOrchestrator.run
-  133-142 LLM processor instantiation + error return
-  186-244 json_to_olx (all problem types and branches)
+Tests for direct_orchestrator.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
 
-from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
-from openedx_ai_extensions.workflows.orchestrators.direct_orchestrator import (
-    EducatorAssistantOrchestrator,
-    json_to_olx,
-)
+from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope
+from openedx_ai_extensions.workflows.orchestrators.direct_orchestrator import EducatorAssistantOrchestrator, json_to_olx
 
 User = get_user_model()
 
