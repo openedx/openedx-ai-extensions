@@ -72,7 +72,7 @@ class LitellmProcessor:
         if cache_option and cache_settings.get("enabled", False) is not True:
             logger.warning("Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching.")
             cache_option = False
-        self.extra_params["caching"] = cache_option
+        self.caching_enabled = cache_option
 
         self.mcp_configs = {}
         allowed_mcp_configs = self.config.get("mcp_configs", [])
