@@ -687,3 +687,30 @@ def test_mcp_configs_multiple_servers(mock_mcp_configs, mock_settings):  # pylin
     # Verify tools parameter was set
     assert "tools" in processor.extra_params
     assert len(processor.extra_params["tools"]) == 2
+
+
+# ============================================================================
+# Caching Configuration Tests
+# ============================================================================
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@patch.object(settings, "AI_EXTENSIONS_LLM_CACHE", new_callable=lambda: {"enabled": True})
+@pytest.mark.django_db
+def test_caching_enabled_when_configured(mock_cache_settings, mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that caching is enabled when cache=True in config and AI_EXTENSIONS_LLM_CACHE
+    has enabled=True.
+    """
+    config = {
+        "LitellmProcessor": {
+            "cache": True,
+        }
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    assert processor.caching_enabled is True
