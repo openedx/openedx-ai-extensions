@@ -65,6 +65,12 @@ class LitellmProcessor:
             logger.warning("Streaming responses with tools is not supported; disabling streaming.")
             self.stream = False
 
+        cache_option = self.config.get("cache", False)
+        if cache_option and settings.AI_EXTENSIONS_LLM_CACHE.get("enabled", False) is not True:
+            logger.warning("Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching.")
+            cache_option = False
+        self.extra_params["caching"] = cache_option
+
         self.mcp_configs = {}
         allowed_mcp_configs = self.config.get("mcp_configs", [])
         if allowed_mcp_configs:
