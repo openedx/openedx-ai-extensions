@@ -345,7 +345,6 @@ kombu==5.6.1
     #   celery
 litellm==1.80.16
     # via
-    #   -c requirements/constraints.txt
     #   -r requirements/test.txt
 markupsafe==3.0.3
     # via
@@ -599,8 +598,6 @@ yarl==1.22.0
     # via
     #   -r requirements/test.txt
     #   aiohttp
-yattag==1.16.1
-    # via -r requirements/test.txt
 zipp==3.23.0
     # via
     #   -r requirements/test.txt

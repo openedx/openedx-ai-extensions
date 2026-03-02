@@ -11,12 +11,12 @@ from openedx_ai_extensions.processors import (
     LLMProcessor,
     OpenEdXProcessor,
 )
+from openedx_ai_extensions.processors.openedx.utils.json_to_olx import json_to_olx
 from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.xapi.constants import EVENT_NAME_WORKFLOW_COMPLETED
 
 from .base_orchestrator import BaseOrchestrator
 from .session_based_orchestrator import SessionBasedOrchestrator
-from openedx_ai_extensions.processors.openedx.utils.json_to_olx import json_to_olx
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +135,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         for problem in llm_result.get("response").get("problems", []):
             try:
                 olx_content = json_to_olx(problem)
-                items.append({
-                    "category": "problem",
-                    "data": olx_content
-                })
+                items.append(olx_content)
             except Exception as e:  # pylint: disable=broad-except
                 logger.exception(f"Error converting problem to OLX: {e}")
                 continue
