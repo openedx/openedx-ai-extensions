@@ -62,7 +62,14 @@ class LitellmProcessor:
                 self.extra_params["tools"] = functions_schema_filtered
 
         cache_option = self.config.get("cache", False)
-        if cache_option and settings.AI_EXTENSIONS_LLM_CACHE.get("enabled", False) is not True:
+        cache_settings = getattr(settings, "AI_EXTENSIONS_LLM_CACHE", {})
+        if not isinstance(cache_settings, dict):
+            logger.warning(
+                "AI_EXTENSIONS_LLM_CACHE setting must be a dict; got %r. Disabling caching.",
+                type(cache_settings).__name__,
+            )
+            cache_settings = {}
+        if cache_option and cache_settings.get("enabled", False) is not True:
             logger.warning("Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching.")
             cache_option = False
         self.extra_params["caching"] = cache_option
