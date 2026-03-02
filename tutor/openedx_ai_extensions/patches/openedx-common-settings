@@ -6,9 +6,15 @@ AI_EXTENSIONS_MCP_CONFIGS = {
 }
 {%- endif %}
 
+{%- if AI_EXTENSIONS_LLM_CACHE_ENABLED is defined and AI_EXTENSIONS_LLM_CACHE_ENABLED %}
 AI_EXTENSIONS_LLM_CACHE = {
     "enabled": True,
     "type": "redis",
     "host": "{{ REDIS_HOST }}",
     "port": {{ REDIS_PORT }},
 }
+{%- else %}
+AI_EXTENSIONS_LLM_CACHE = {
+    "enabled": False,
+}
+{%- endif %}
