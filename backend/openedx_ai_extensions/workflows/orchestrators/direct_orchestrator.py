@@ -5,8 +5,6 @@ import json
 import logging
 from pathlib import Path
 
-from yattag import Doc, indent
-
 from openedx_ai_extensions.processors import (
     ContentLibraryProcessor,
     EducatorAssistantProcessor,
@@ -18,6 +16,7 @@ from openedx_ai_extensions.xapi.constants import EVENT_NAME_WORKFLOW_COMPLETED
 
 from .base_orchestrator import BaseOrchestrator
 from .session_based_orchestrator import SessionBasedOrchestrator
+from openedx_ai_extensions.processors.openedx.utils.json_to_olx import json_to_olx
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +114,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
         schema_path = (
             Path(__file__).resolve().parent.parent.parent
-            / "schemas"
+            / "response_schemas"
             / "educator_quiz_questions.json"
         )
 
@@ -136,7 +135,10 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         for problem in llm_result.get("response").get("problems", []):
             try:
                 olx_content = json_to_olx(problem)
-                items.append(olx_content)
+                items.append({
+                    "category": "problem",
+                    "data": olx_content
+                })
             except Exception as e:  # pylint: disable=broad-except
                 logger.exception(f"Error converting problem to OLX: {e}")
                 continue
@@ -175,70 +177,3 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
                 'model_used': llm_result.get('model_used')
             }
         }
-
-
-def json_to_olx(p):
-    """
-    Convert a problem dict (from LLM structured response) to an OLX-compatible dict.
-
-    Returns a dict with 'category' and 'data' keys expected by ContentLibraryProcessor.
-    """
-    doc, tag, text, line = Doc().ttl()
-    problem_type = p['problem_type']
-
-    with tag('problem', display_name=p['display_name']):
-
-        # TYPE 1: MULTIPLE CHOICE (single) / CHECKBOXES (multi) / DROPDOWN
-        if problem_type in ('multiplechoiceresponse', 'choiceresponse', 'optionresponse'):
-            inner_tag_map = {
-                'multiplechoiceresponse': 'choicegroup',
-                'choiceresponse': 'checkboxgroup',
-                'optionresponse': 'optioninput',
-            }
-            inner_tag = inner_tag_map[problem_type]
-            # optionresponse uses <option>/<optionhint>, others use <choice>/<choicehint>
-            item_tag = 'option' if problem_type == 'optionresponse' else 'choice'
-            hint_tag = 'optionhint' if problem_type == 'optionresponse' else 'choicehint'
-
-            with tag(problem_type):
-                line('div', p.get('question_html', ''))
-                with tag(inner_tag):
-                    for c in p.get('choices', []):
-                        with tag(item_tag, correct=str(c['is_correct']).lower()):
-                            text(c['text'])
-                            if c.get('feedback'):
-                                with tag(hint_tag):
-                                    line('div', c['feedback'])
-                with tag('solution'):
-                    with tag('div', klass='detailed-solution'):
-                        line('p', p.get('explanation', ''))
-
-        # TYPE 2: NUMERICAL RESPONSE
-        elif problem_type == 'numericalresponse':
-            line('div', p.get('question_html', ''))
-            tolerance = p.get('tolerance', '')
-            with tag('numericalresponse', answer=str(p.get('answer_value', ''))):
-                if tolerance and tolerance not in ('<UNKNOWN>', ''):
-                    doc.stag('responseparam', type='tolerance', default=tolerance)
-                doc.stag('formulaequationinput')
-                with tag('solution'):
-                    with tag('div', klass='detailed-solution'):
-                        line('p', p.get('explanation', ''))
-
-        # TYPE 3: TEXT / STRING RESPONSE
-        elif problem_type == 'stringresponse':
-            with tag('stringresponse', answer=str(p.get('answer_value', '')), type='ci'):
-                line('label', p.get('question_html', ''))
-                doc.stag('textline', size='20')
-                with tag('solution'):
-                    with tag('div', klass='detailed-solution'):
-                        line('p', p.get('explanation', ''))
-
-        # DEMAND HINTS — always outside the response type tag, inside <problem>
-        if p.get('demand_hints'):
-            with tag('demandhint'):
-                for hint in p['demand_hints']:
-                    with tag('hint'):
-                        line('div', hint)
-
-    return {'category': 'problem', 'data': indent(doc.getvalue())}
