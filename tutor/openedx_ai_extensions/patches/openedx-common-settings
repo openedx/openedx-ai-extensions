@@ -5,3 +5,10 @@ AI_EXTENSIONS_MCP_CONFIGS = {
   {%- endfor %}
 }
 {%- endif %}
+
+AI_EXTENSIONS_LLM_CACHE = {
+    "enabled": True,
+    "type": "redis",
+    "host": "{{ REDIS_HOST }}",
+    "port": {{ REDIS_PORT }},
+}
