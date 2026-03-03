@@ -68,7 +68,8 @@ def workflow_scope(workflow_profile, course_key, db):  # pylint: disable=unused-
         course_id=course_key,
         service_variant="lms",
         profile=workflow_profile,
-        enabled=True
+        enabled=True,
+        ui_slot_selector_id="test-slot",
     )
     return scope
 

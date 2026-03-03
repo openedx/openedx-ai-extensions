@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property
@@ -197,6 +198,31 @@ class AIWorkflowScope(models.Model):
         default=True, help_text="Indicates if this workflow configuration is enabled"
     )
 
+    ui_slot_selector_id = models.CharField(
+        max_length=255,
+        null=False,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text=(
+            "Identifier of the UI slot that renders this scope. "
+            "Must exactly match the uiSlotSelectorId prop sent by the frontend widget. "
+            "The scope only renders when a widget sends this exact value. "
+            "Choose from the available options configured in OPENEDX_AI_EXTENSIONS_UI_SLOT_IDS."
+        ),
+    )
+
+    specificity_index = models.IntegerField(
+        default=0,
+        editable=False,
+        help_text=(
+            "Auto-calculated resolution specificity (populated on save). "
+            "Weighted sum of non-null discriminator fields: "
+            "location_regex (+4) + course_id (+2) + ui_slot_selector_id (+1). "
+            "Higher value means more specific and wins in resolution order."
+        ),
+    )
+
     def __str__(self):
         return f"AIWorkflowScope {self.id} for course {self.course_id} at location {self.location_regex}"
 
@@ -222,71 +248,64 @@ class AIWorkflowScope(models.Model):
 
     @classmethod
     @functools.lru_cache(maxsize=128)
-    def get_profile(cls, course_id=None, location_id=None):
+    def get_profile(cls, course_id=None, location_id=None, ui_slot_selector_id=None):
         """
-        Get configuration for a specific action, course, and location and service variant.
+        Resolve the best-matching AIWorkflowScope for the given context.
 
-        First tries to find a config with a location_regex that matches the location_id.
-        If not found, falls back to a general config for the course (location_regex is null).
+        ``ui_slot_selector_id`` is **required** for a scope to be found. Each frontend
+        widget sends its own identifier and only receives the scope explicitly
+        configured for that identifier. If no ``ui_slot_selector_id`` is provided,
+        or no scope exists for the given value, ``None`` is returned and the widget
+        does not render.
+
+        Resolution strategy:
+
+        Phase 1 — DB filter: query all enabled scopes that match
+        ``ui_slot_selector_id`` exactly. ``course_id`` and ``location_regex``
+        still act as wildcards (NULL = match any). Results are ordered by
+        ``specificity_index`` descending so the most specific scope wins.
+
+        Phase 2 — Python regex loop: iterates over ordered candidates and
+        returns the first scope whose ``location_regex`` matches ``location_id``
+        (or is NULL). The first match wins — no tie-breaking needed.
 
         Results are cached using functools.lru_cache (max 128 entries).
-        Cache is automatically cleared when AIWorkflowScope or AIWorkflowProfile objects change.
+        Cache is cleared automatically when AIWorkflowScope or AIWorkflowProfile
+        objects are saved or deleted.
         """
+        if not ui_slot_selector_id:
+            # No slot identifier provided — nothing can match.
+            return None
+
         service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
 
-        # First, try to find a config with location_regex matching the location_id
-        if location_id:
+        # Phase 1 — DB filter
+        candidates = cls.objects.filter(
+            Q(course_id=course_id) | Q(course_id=CourseKeyField.Empty),
+            Q(ui_slot_selector_id=ui_slot_selector_id) | Q(ui_slot_selector_id=""),
+            enabled=True,
+            service_variant=service_variant,
+        ).order_by("-specificity_index")
 
-            # Get all configs for this course and service that have a location_regex
-            configs = cls.objects.filter(
-                enabled=True,
-                service_variant=service_variant,
-                location_regex__isnull=False,
-                course_id=course_id,
-            )
+        logger.info(f"--------------------------------------------------------------------{candidates}")
 
-            # Check each config's regex against the location_id
-            selected_config = None
-            for config in configs:
-                try:
-                    if re.search(config.location_regex, location_id):
-                        config.location_id = location_id  # Attach for reference
-                        if selected_config is None:
-                            selected_config = config
-                        else:
-                            raise ValueError(
-                                f"Multiple AIWorkflowScope configs match location_id '{location_id}': "
-                                f"'{selected_config.id}' and '{config.id}'"
-                            )
-                except re.error:
-                    continue
+        # Phase 2 — Python regex loop
+        for scope in candidates:
+            if scope.location_regex is None:
+                # NULL location_regex is a wildcard — matches any location
+                scope.location_id = location_id
+                return scope
+            if not location_id:
+                # Scope requires a location but none was provided — skip
+                continue
+            try:
+                if re.search(scope.location_regex, location_id):
+                    scope.location_id = location_id
+                    return scope
+            except re.error:
+                continue
 
-            if selected_config:
-                return selected_config
-
-        # Fallback: try to find a general config (no location_regex)
-        try:
-            response = cls.objects.get(
-                enabled=True,
-                service_variant=service_variant,
-                course_id=course_id,
-                location_regex__isnull=True
-            )
-            return response
-        except cls.DoesNotExist:
-            pass
-
-        # Fallback: try to find a global config (no course_id, no location_regex)
-        try:
-            response = cls.objects.get(
-                enabled=True,
-                service_variant=service_variant,
-                course_id=CourseKeyField.Empty,
-                location_regex__isnull=True
-            )
-            return response
-        except cls.DoesNotExist:
-            return None
+        return None
 
     def execute(self, user_input, action, user, running_context) -> dict[str, str | dict[str, str]] | Any:
         """
@@ -321,14 +340,28 @@ class AIWorkflowScope(models.Model):
             }
 
     def clean(self):
+        """Validate the scope before saving."""
         super().clean()
         if self.location_regex and not self.course_id:
             raise ValidationError({
                 "course_id": "Required when location_regex is set.",
             })
 
+    def _compute_specificity_index(self) -> int:
+        """Calculate specificity_index using CSS-like weighted scores.
+
+        location_regex (+4) > course_id (+2) > ui_slot_selector_id (+1).
+        NULL fields are treated as wildcards and contribute 0 to the score.
+        """
+        return (
+            (4 if self.location_regex else 0)
+            + (2 if self.course_id else 0)
+            + (1 if self.ui_slot_selector_id else 0)
+        )
+
     def save(self, *args, **kwargs):
-        """Override save to clear cache on changes."""
+        """Override save to compute specificity_index and clear cache on changes."""
+        self.specificity_index = self._compute_specificity_index()
         self.full_clean()
         super().save(*args, **kwargs)
 

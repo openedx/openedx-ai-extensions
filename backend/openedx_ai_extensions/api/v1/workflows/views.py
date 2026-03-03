@@ -69,6 +69,11 @@ def get_context_from_request(request):
         except InvalidKeyError as e:
             raise ValidationError(f"Invalid location_id format: {location_id_raw}") from e
 
+    # Pass ui_slot_selector_id as-is (plain string, no special validation needed)
+    ui_slot_selector_id_raw = context.get("uiSlotSelectorId") or context.get("ui_slot_selector_id")
+    if ui_slot_selector_id_raw:
+        validated_context["ui_slot_selector_id"] = str(ui_slot_selector_id_raw)
+
     return validated_context
 
 
@@ -127,7 +132,7 @@ class AIGenericWorkflowView(View):
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("🤖 WORKFLOW ERROR: %s", str(e))
+            logger.exception("🤖 WORKFLOW ERROR")
             return JsonResponse(
                 {
                     "error": str(e),
@@ -184,7 +189,7 @@ class AIWorkflowProfileView(APIView):
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("🤖 CONFIG PROFILE ERROR: %s", str(e))
+            logger.exception("🤖 CONFIG PROFILE ERROR")
             return Response(
                 {
                     "error": str(e),

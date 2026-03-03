@@ -39,10 +39,19 @@ export const fetchConfiguration = async (
 
   const url = `${configEndpoint}?${params.toString()}`;
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(url, {
-    signal,
-  });
 
+  let response;
+  try {
+    response = await client.get(url, { signal });
+  } catch (err: any) {
+    // 404 means no scope is configured for this widget — silently hide it
+    if (err?.response?.status === 404 || err?.customAttributes?.httpErrorStatus === 404) {
+      return null;
+    }
+    throw err;
+  }
+
+  const { data } = response;
   const componentConfig: Configuration = camelCaseObject(data);
 
   // Handle no_config status - return null to hide components
