@@ -25,7 +25,6 @@ import { getEntries, REGISTRY_NAMES, AISettingsTab } from '../../extensionRegist
 interface AIExtensionsSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  uiSlotSelectorId?: string | null;
 }
 
 const WORKFLOWS_TAB_ID = 'workflows';
@@ -33,7 +32,6 @@ const WORKFLOWS_TAB_ID = 'workflows';
 const AIExtensionsSettingsModal = ({
   isOpen,
   onClose,
-  uiSlotSelectorId = null,
 }: AIExtensionsSettingsModalProps) => {
   const intl = useIntl();
   const registeredTabs = getEntries(REGISTRY_NAMES.SETTINGS) as AISettingsTab[];
@@ -62,7 +60,7 @@ const AIExtensionsSettingsModal = ({
       >
         {visibleTabs.map(({ id, label, component: TabComponent }) => (
           <Tab key={id} eventKey={id} title={label}>
-            <TabComponent uiSlotSelectorId={uiSlotSelectorId} />
+            <TabComponent />
           </Tab>
         ))}
       </Tabs>

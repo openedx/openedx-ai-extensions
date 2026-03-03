@@ -273,7 +273,6 @@ class AIWorkflowScope(models.Model):
         Cache is cleared automatically when AIWorkflowScope or AIWorkflowProfile
         objects are saved or deleted.
         """
-        logger.info(f"Resolving AIWorkflowScope for course_id={course_id}, location_id={location_id}, ui_slot_selector_id={ui_slot_selector_id}")
         if not ui_slot_selector_id:
             # No slot identifier provided — nothing can match.
             return None
@@ -287,12 +286,16 @@ class AIWorkflowScope(models.Model):
             service_variant=service_variant,
         ).order_by("-specificity_index")
 
+        logger.info(f"--------------------------------------------------------------------{candidates}")
 
         for scope in candidates:
-            if scope.location_regex is None or not location_id:
-                # Wildcard regex OR no location provided — accept this scope
+            if scope.location_regex is None:
+                # NULL location_regex is a wildcard — matches any location
                 scope.location_id = location_id
                 return scope
+            if not location_id:
+                # Scope requires a location but none was provided — skip
+                continue
             try:
                 if re.search(scope.location_regex, location_id):
                     scope.location_id = location_id
