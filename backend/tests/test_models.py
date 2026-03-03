@@ -755,3 +755,59 @@ class TestAIWorkflowScopeResolution:
         # No ui_slot_selector_id given → get_profile returns None immediately
         resolved = AIWorkflowScope.get_profile(course_key, location_id)
         assert resolved is None
+
+    def test_no_location_id_falls_back_to_wildcard_scope(self, course_key):
+        """When the UI sends no location_id, scopes with location_regex are skipped
+        and a wildcard scope (location_regex=None) is returned.
+
+        The regex-bearing scope has higher specificity (+4) so it appears first in the
+        candidate loop. The guard ``if not location_id: continue`` must skip it rather
+        than calling re.search(pattern, None) which would raise TypeError (not caught
+        by ``except re.error``). The wildcard scope is then returned.
+        """
+        profile_specific = self._create_profile("location-specific")
+        profile_wildcard = self._create_profile("wildcard")
+
+        # Higher specificity (7) — has a regex, appears first in the loop
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_specific,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        # Lower specificity (3) — no regex, matches any location
+        AIWorkflowScope.objects.create(
+            location_regex=None,
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_wildcard,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, None, ui_slot_selector_id="slot-a")
+        assert resolved is not None
+        assert resolved.profile.slug == "wildcard"
+
+    def test_no_location_id_with_only_regex_scopes_returns_none(self, course_key):
+        """When no location_id is provided and every scope requires one, return None.
+
+        No wildcard scope exists as a fallback, so the loop exhausts all candidates
+        (each skipped by ``if not location_id: continue``) and returns None without
+        raising TypeError.
+        """
+        profile = self._create_profile("requires-location")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, None, ui_slot_selector_id="slot-a")
+        assert resolved is None

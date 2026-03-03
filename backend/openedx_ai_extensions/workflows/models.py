@@ -279,6 +279,7 @@ class AIWorkflowScope(models.Model):
 
         service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
 
+        # Phase 1 — DB filter
         candidates = cls.objects.filter(
             Q(course_id=course_id) | Q(course_id=CourseKeyField.Empty),
             Q(ui_slot_selector_id=ui_slot_selector_id) | Q(ui_slot_selector_id=""),
@@ -288,6 +289,7 @@ class AIWorkflowScope(models.Model):
 
         logger.info(f"--------------------------------------------------------------------{candidates}")
 
+        # Phase 2 — Python regex loop
         for scope in candidates:
             if scope.location_regex is None:
                 # NULL location_regex is a wildcard — matches any location
