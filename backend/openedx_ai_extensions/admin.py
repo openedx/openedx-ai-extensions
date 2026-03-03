@@ -472,9 +472,9 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
 
 class UiSlotDatalistWidget(forms.TextInput):
     """
-    Text input enhanced with an HTML5 ``<datalist>`` showing all
-    ``ui_slot_selector_id`` values already stored in the database.
+    Text input enhanced with an HTML5 ``<datalist>`` element.
 
+    Shows all ``ui_slot_selector_id`` values already stored in the database.
     The list is built at render time so it always reflects the current
     state of the DB — no settings, no code changes needed.  The operator
     can still type any free-form value; the datalist only provides
@@ -482,6 +482,7 @@ class UiSlotDatalistWidget(forms.TextInput):
     """
 
     def render(self, name, value, attrs=None, renderer=None):
+        """Render the text input with an attached ``<datalist>`` of existing slot selectors."""
         datalist_id = f"datalist-{name}"
         attrs = dict(attrs or {}, list=datalist_id)
 
