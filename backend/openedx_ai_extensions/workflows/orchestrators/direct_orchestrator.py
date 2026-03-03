@@ -132,7 +132,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
 
         items = []
-        for problem in llm_result.get("response").get("problems", []):
+        for problem in llm_result.get("response", {}).get("problems", []):
             try:
                 olx_content = json_to_olx(problem)
                 items.append(olx_content)

@@ -91,7 +91,12 @@ class EducatorAssistantProcessor(LitellmProcessor):
         if '{{EXTRA_INSTRUCTIONS}}' in prompt:
             prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions or "")
 
-        result = self._call_completion_api(prompt)
+        try:
+            result = self._call_completion_api(prompt)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error calling LiteLLM: {e}")
+            return {"error": f"AI processing failed: {str(e)}"}
+
         tokens_used = result.get("tokens_used", 0)
 
         response = json.loads(result['response'])
