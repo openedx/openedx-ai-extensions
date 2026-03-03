@@ -201,7 +201,7 @@ class AIWorkflowScope(models.Model):
     ui_slot_selector_id = models.CharField(
         max_length=255,
         null=False,
-        blank=False,
+        blank=True,
         default="",
         db_index=True,
         help_text=(
@@ -247,7 +247,7 @@ class AIWorkflowScope(models.Model):
         self._action = value
 
     @classmethod
-    @functools.lru_cache(maxsize=128)
+    # @functools.lru_cache(maxsize=128)
     def get_profile(cls, course_id=None, location_id=None, ui_slot_selector_id=None):
         """
         Resolve the best-matching AIWorkflowScope for the given context.
@@ -281,10 +281,12 @@ class AIWorkflowScope(models.Model):
 
         candidates = cls.objects.filter(
             Q(course_id=course_id) | Q(course_id=CourseKeyField.Empty),
-            ui_slot_selector_id=ui_slot_selector_id,
+            Q(ui_slot_selector_id=ui_slot_selector_id) | Q(ui_slot_selector_id=""),
             enabled=True,
             service_variant=service_variant,
         ).order_by("-specificity_index")
+
+        logger.info(f"--------------------------------------------------------------------{candidates}")
 
         for scope in candidates:
             if scope.location_regex is None:
@@ -584,13 +586,13 @@ class AIWorkflowSession(models.Model):
 
 
 # Signal handlers for cache invalidation
-@receiver(post_save, sender=AIWorkflowScope)
-@receiver(post_delete, sender=AIWorkflowScope)
-@receiver(post_save, sender=AIWorkflowProfile)
-@receiver(post_delete, sender=AIWorkflowProfile)
-def clear_workflow_cache(**kwargs):
-    """
-    Clear get_profile LRU cache when AIWorkflowScope or AIWorkflowProfile objects change.
-    This ensures the cache stays fresh when workflow configurations are modified.
-    """
-    AIWorkflowScope.get_profile.cache_clear()
+# @receiver(post_save, sender=AIWorkflowScope)
+# @receiver(post_delete, sender=AIWorkflowScope)
+# @receiver(post_save, sender=AIWorkflowProfile)
+# @receiver(post_delete, sender=AIWorkflowProfile)
+# def clear_workflow_cache(**kwargs):
+#     """
+#     Clear get_profile LRU cache when AIWorkflowScope or AIWorkflowProfile objects change.
+#     This ensures the cache stays fresh when workflow configurations are modified.
+#     """
+#     AIWorkflowScope.get_profile.cache_clear()
