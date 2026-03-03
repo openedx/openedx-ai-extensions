@@ -10,7 +10,12 @@ import { CoursePagesCard } from '../components';
 import { AIExtensionsSettingsModal } from './components';
 import messages from './messages';
 
-const AIExtensionsCard = () => {
+interface AIExtensionsCardProps {
+  id?: string | null;
+  [key: string]: any;
+}
+
+const AIExtensionsCard = ({ id = null }: AIExtensionsCardProps) => {
   const intl = useIntl();
   const [isModalOpen, openModal, closeModal] = useToggle(false);
 
@@ -26,6 +31,7 @@ const AIExtensionsCard = () => {
       <AIExtensionsSettingsModal
         isOpen={isModalOpen}
         onClose={closeModal}
+        uiSlotSelectorId={id}
       />
     </>
   );
