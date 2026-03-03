@@ -90,16 +90,6 @@ class AIGenericWorkflowView(View):
             context = get_context_from_request(request)
             workflow_profile = AIWorkflowScope.get_profile(**context)
 
-            if workflow_profile is None:
-                return JsonResponse(
-                    {
-                        "error": "No AI workflow configuration found for the given context.",
-                        "status": "no_config",
-                        "timestamp": datetime.now().isoformat(),
-                    },
-                    status=404,
-                )
-
             request_body = {}
             if request.body:
                 request_body = json.loads(request.body.decode("utf-8"))
@@ -122,7 +112,7 @@ class AIGenericWorkflowView(View):
             # Check result status and return appropriate HTTP status
             result_status = result.get("status", "success")
             if result_status == "error":
-                http_status = 500  # Internal Server Error (e.g. missing LLM credentials)
+                http_status = 500  # Internal Server Error for processing failures
             elif result_status in ["validation_error", "bad_request"]:
                 http_status = 400  # Bad Request for validation issues
             else:
@@ -139,17 +129,6 @@ class AIGenericWorkflowView(View):
                     "timestamp": datetime.now().isoformat(),
                 },
                 status=400,
-            )
-
-        except ValueError as e:
-            logger.warning("🤖 WORKFLOW SCOPE NOT FOUND: %s", str(e))
-            return JsonResponse(
-                {
-                    "error": str(e),
-                    "status": "no_config",
-                    "timestamp": datetime.now().isoformat(),
-                },
-                status=404,
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -207,28 +186,6 @@ class AIWorkflowProfileView(APIView):
                     "timestamp": datetime.now().isoformat(),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        except json.JSONDecodeError as e:
-            logger.warning("🤖 CONFIG PROFILE INVALID JSON: %s", str(e))
-            return Response(
-                {
-                    "error": str(e),
-                    "status": "error",
-                    "timestamp": datetime.now().isoformat(),
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        except ValueError as e:
-            logger.warning("🤖 CONFIG PROFILE SCOPE NOT FOUND: %s", str(e))
-            return Response(
-                {
-                    "error": str(e),
-                    "status": "no_config",
-                    "timestamp": datetime.now().isoformat(),
-                },
-                status=status.HTTP_404_NOT_FOUND,
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
