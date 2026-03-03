@@ -19,9 +19,11 @@ import messages from '../messages';
 interface AIEducatorLibraryAssistComponentProps {
   courseId: string;
   locationId: string;
+  uiSlotSelectorId?: string | null;
   setResponse: (response: string) => void;
   hasAsked: boolean;
   setHasAsked: (hasAsked: boolean) => void;
+  onAskAI?: (params?: any) => Promise<void>;
   libraries?: Array<{ id: string; title: string }>;
   titleText?: string;
   buttonText?: string;
@@ -40,9 +42,11 @@ interface AIEducatorLibraryAssistComponentProps {
 const AIEducatorLibraryAssistComponent = ({
   courseId,
   locationId,
+  uiSlotSelectorId = null,
   setResponse,
   hasAsked,
   setHasAsked,
+  onAskAI,
   libraries: librariesProp,
   titleText,
   buttonText,
@@ -135,6 +139,7 @@ const AIEducatorLibraryAssistComponent = ({
         const contextData = prepareContextData({
           courseId,
           locationId,
+          uiSlotSelectorId,
         });
 
         const data = await callWorkflowService({
@@ -164,7 +169,7 @@ const AIEducatorLibraryAssistComponent = ({
     };
 
     loadPreviousSession();
-  }, [preloadPreviousSession, hasAsked, courseId, locationId, setResponse, setHasAsked, debug]);
+  }, [preloadPreviousSession, hasAsked, courseId, locationId, uiSlotSelectorId, setResponse, setHasAsked, debug]);
 
   // Early return after all hooks have been called
   if (hasAsked && !isLoading) {
@@ -192,50 +197,52 @@ const AIEducatorLibraryAssistComponent = ({
     setError('');
 
     try {
-      // Prepare context data (same as AIRequestComponent)
-      const contextData = prepareContextData({
-        courseId,
-        locationId,
-      });
-
-      const data = await callWorkflowService({
-        context: contextData,
-        payload: {
+      if (onAskAI) {
+        // Delegate to ConfigurableAIAssistance which owns context (incl. uiSlotSelectorId)
+        await onAskAI({
           action: WORKFLOW_ACTIONS.RUN_ASYNC,
-          requestId: `ai-request-${Date.now()}`,
           userInput: {
             libraryId: selectedLibrary,
             numQuestions: numberOfQuestions,
             extraInstructions: additionalInstructions,
           },
-        },
-      });
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // Pass response to response component
-      // For async tasks, pass the full response object as JSON
-      // Response component will detect status: 'processing' and handle polling
-      if (data.status === 'processing' && data.taskId) {
-        // Include context data so response component can poll
-        setResponse(JSON.stringify({
-          ...data,
+        });
+      } else {
+        // Standalone fallback: call service directly
+        const contextData = prepareContextData({
           courseId,
           locationId,
-        }));
-      } else {
-        // Immediate response
-        const immediateResponse = data.response || data.message || data.content
-          || data.result || JSON.stringify(data, null, 2);
-        setResponse(immediateResponse);
+          uiSlotSelectorId,
+        });
+
+        const data = await callWorkflowService({
+          context: contextData,
+          payload: {
+            action: WORKFLOW_ACTIONS.RUN_ASYNC,
+            requestId: `ai-request-${Date.now()}`,
+            userInput: {
+              libraryId: selectedLibrary,
+              numQuestions: numberOfQuestions,
+              extraInstructions: additionalInstructions,
+            },
+          },
+        });
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        if (data.status === 'processing' && data.taskId) {
+          setResponse(JSON.stringify({
+            ...data, courseId, locationId, uiSlotSelectorId,
+          }));
+        } else {
+          setResponse(data.response || data.message || data.content || data.result || JSON.stringify(data, null, 2));
+        }
+        setHasAsked(true);
       }
 
-      setHasAsked(true);
       setShowForm(false);
-
-      // Reset form
       setSelectedLibrary('');
       setNumberOfQuestions(5);
       setAdditionalInstructions('');

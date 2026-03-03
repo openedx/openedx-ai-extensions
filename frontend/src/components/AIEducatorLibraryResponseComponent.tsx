@@ -120,6 +120,7 @@ const AIEducatorLibraryResponseComponent = ({
       const contextPayload = prepareContextData({
         courseId: taskData.courseId,
         locationId: taskData.locationId,
+        uiSlotSelectorId: taskData.uiSlotSelectorId,
       });
 
       const data = await callWorkflowService({

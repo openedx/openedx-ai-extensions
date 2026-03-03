@@ -213,8 +213,12 @@ const ConfigurableAIAssistance = ({
 
   /**
    * Handle AI assistant request
+   * Accepts optional params from child components to support custom actions and user input.
    */
-  const handleAskAI = useCallback(async () => {
+  const handleAskAI = useCallback(async (params: { userInput?: any; action?: string } = {}) => {
+    const { userInput = null, action = WORKFLOW_ACTIONS.RUN } = params;
+    const isAsync = action === WORKFLOW_ACTIONS.RUN_ASYNC;
+
     setIsLoading(true);
     setError('');
     setResponse('');
@@ -231,17 +235,33 @@ const ConfigurableAIAssistance = ({
       const data = await callWorkflowService({
         context: contextData,
         payload: {
-          action: WORKFLOW_ACTIONS.RUN,
+          action,
           requestId: `ai-request-${Date.now()}`,
+          ...(userInput ? { userInput } : {}),
         },
-        onStreamChunk: (chunk) => {
-          setIsLoading(false);
-          setHasAsked(true);
-          buffer += chunk;
-          setResponse(buffer);
-        },
+        // Streaming only makes sense for synchronous actions
+        ...(!isAsync && {
+          onStreamChunk: (chunk) => {
+            setIsLoading(false);
+            setHasAsked(true);
+            buffer += chunk;
+            setResponse(buffer);
+          },
+        }),
       });
-      // Handle response
+
+      if (isAsync) {
+        // Embed context so the response component can poll with the right scope
+        if (data.status === 'processing' && data.taskId) {
+          setResponse(JSON.stringify({ ...data, ...contextData }));
+        } else {
+          setResponse(data.response || data.message || data.content || data.result || JSON.stringify(data, null, 2));
+        }
+        setHasAsked(true);
+        return;
+      }
+
+      // Handle sync response
       if (data.response) {
         setResponse(data.response);
         setHasAsked(true);
@@ -266,6 +286,7 @@ const ConfigurableAIAssistance = ({
       logError('[ConfigurableAIAssistance] AI Assistant Error:', err);
       const userFriendlyError = formatErrorMessage(err);
       setError(userFriendlyError);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -376,7 +397,10 @@ const ConfigurableAIAssistance = ({
     }
 
     // Merge props with config
-    const requestProps = mergeProps(additionalProps, requestComponentConfig);
+    const requestProps = mergeProps(
+      { ...additionalProps, uiSlotSelectorId: additionalProps.uiSlotSelectorId || id },
+      requestComponentConfig,
+    );
     const responseProps = mergeProps({}, responseComponentConfig);
 
     return (
