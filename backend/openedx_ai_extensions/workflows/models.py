@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property
@@ -199,13 +200,15 @@ class AIWorkflowScope(models.Model):
 
     ui_slot_selector_id = models.CharField(
         max_length=255,
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
+        default="",
         db_index=True,
         help_text=(
             "Identifier of the UI slot that renders this scope. "
-            "Required when multiple scopes share the same location. "
-            "Must match the uiSlotSelectorId prop passed by the frontend widget."
+            "Must exactly match the uiSlotSelectorId prop sent by the frontend widget. "
+            "The scope only renders when a widget sends this exact value. "
+            "Choose from the available options configured in OPENEDX_AI_EXTENSIONS_UI_SLOT_IDS."
         ),
     )
 
@@ -213,10 +216,10 @@ class AIWorkflowScope(models.Model):
         default=0,
         editable=False,
         help_text=(
-            "Auto-calculated resolution specificity. "
-            "Computed as the sum of non-null discriminator fields: "
-            "course_id (1) + ui_slot_selector_id (1) + location_regex (1). "
-            "Higher value means more specific. Populated automatically on save."
+            "Auto-calculated resolution specificity (populated on save). "
+            "Weighted sum of non-null discriminator fields: "
+            "location_regex (+4) + course_id (+2) + ui_slot_selector_id (+1). "
+            "Higher value means more specific and wins in resolution order."
         ),
     )
 
@@ -247,197 +250,56 @@ class AIWorkflowScope(models.Model):
     @functools.lru_cache(maxsize=128)
     def get_profile(cls, course_id=None, location_id=None, ui_slot_selector_id=None):
         """
-        Get configuration for a specific action, course, location, ui_slot and service variant.
+        Resolve the best-matching AIWorkflowScope for the given context.
 
-        First tries to find a config with a location_regex that matches the location_id.
-        If not found, falls back to a general config for the course (location_regex is null).
+        ``ui_slot_selector_id`` is **required** for a scope to be found. Each frontend
+        widget sends its own identifier and only receives the scope explicitly
+        configured for that identifier. If no ``ui_slot_selector_id`` is provided,
+        or no scope exists for the given value, ``None`` is returned and the widget
+        does not render.
+
+        Resolution strategy:
+
+        Phase 1 — DB filter: query all enabled scopes that match
+        ``ui_slot_selector_id`` exactly. ``course_id`` and ``location_regex``
+        still act as wildcards (NULL = match any). Results are ordered by
+        ``specificity_index`` descending so the most specific scope wins.
+
+        Phase 2 — Python regex loop: iterates over ordered candidates and
+        returns the first scope whose ``location_regex`` matches ``location_id``
+        (or is NULL). The first match wins — no tie-breaking needed.
 
         Results are cached using functools.lru_cache (max 128 entries).
-        Cache is automatically cleared when AIWorkflowScope or AIWorkflowProfile objects change.
+        Cache is cleared automatically when AIWorkflowScope or AIWorkflowProfile
+        objects are saved or deleted.
         """
-        service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
-
-        if ui_slot_selector_id:
-            return cls._get_profile_for_ui_slot(
-                course_id=course_id,
-                location_id=location_id,
-                ui_slot_selector_id=ui_slot_selector_id,
-                service_variant=service_variant,
-            )
-
-        if location_id:
-            legacy_profile = cls._get_profile_legacy(
-                course_id=course_id,
-                location_id=location_id,
-                service_variant=service_variant,
-            )
-            if legacy_profile is not None:
-                return legacy_profile
-
-            slot_fallback = cls._get_profile_slot_fallback(
-                course_id=course_id,
-                location_id=location_id,
-                service_variant=service_variant,
-            )
-            if slot_fallback is not None:
-                return slot_fallback
-
-        # Fallback: general config for the course (no location_regex, no ui_slot_selector_id)
-        try:
-            response = cls.objects.get(
-                enabled=True,
-                service_variant=service_variant,
-                course_id=course_id,
-                location_regex__isnull=True,
-                ui_slot_selector_id__isnull=True,
-            )
-            return response
-        except cls.DoesNotExist:
-            pass
-
-        # Fallback: global config (no course_id, no location_regex, no ui_slot_selector_id)
-        try:
-            response = cls.objects.get(
-                enabled=True,
-                service_variant=service_variant,
-                course_id=CourseKeyField.Empty,
-                location_regex__isnull=True,
-                ui_slot_selector_id__isnull=True,
-            )
-            return response
-        except cls.DoesNotExist:
+        if not ui_slot_selector_id:
+            # No slot identifier provided — nothing can match.
             return None
 
-    @classmethod
-    def _matches_location(cls, scope, location_id) -> bool:
-        """Return True if the scope matches the provided location_id.
+        service_variant = getattr(settings, "SERVICE_VARIANT", "lms")
 
-        If scope has a location_regex, it must compile and match location_id.
-        Regex errors are treated as non-matches.
-        """
-        if scope.location_regex:
-            if not location_id:
-                return False
-            try:
-                return bool(re.search(scope.location_regex, location_id))
-            except re.error:
-                return False
-        return True
-
-    @classmethod
-    def _get_profile_for_ui_slot(cls, course_id, location_id, ui_slot_selector_id, service_variant):
-        """Resolve a scope for a given ui_slot_selector_id.
-
-        Prefers location-specific scopes (location_regex is set) over course-level
-        fallbacks (location_regex is NULL). Within each tier, sorts by specificity_index
-        descending. Raises ValueError if no scope matches or if two scopes tie.
-        """
         candidates = cls.objects.filter(
-            enabled=True,
-            service_variant=service_variant,
+            Q(course_id=course_id) | Q(course_id=CourseKeyField.Empty),
             ui_slot_selector_id=ui_slot_selector_id,
-            course_id=course_id,
-        )
+            enabled=True,
+            service_variant=service_variant,
+        ).order_by("-specificity_index")
 
-        # Separate location-specific from course-level (no location_regex) candidates
-        location_specific = []
-        course_level = []
         for scope in candidates:
-            if not cls._matches_location(scope, location_id):
+            if scope.location_regex is None:
+                # NULL location_regex is a wildcard — matches any location
+                scope.location_id = location_id
+                return scope
+            if not location_id:
+                # Scope requires a location but none was provided — skip
                 continue
-            scope.location_id = location_id
-            if scope.location_regex:
-                location_specific.append(scope)
-            else:
-                course_level.append(scope)
-
-        # Prefer location-specific scopes; fall back to course-level only if none match
-        matching = location_specific if location_specific else course_level
-
-        if not matching:
-            raise ValueError(
-                f"No AIWorkflowScope found for ui_slot_selector_id='{ui_slot_selector_id}', "
-                f"course_id='{course_id}', location_id='{location_id}'. "
-                "Make sure a scope with a matching ui_slot_selector_id exists and is enabled."
-            )
-
-        matching.sort(key=lambda s: s.specificity_index, reverse=True)
-        if len(matching) > 1 and matching[0].specificity_index == matching[1].specificity_index:
-            raise ValueError(
-                f"Multiple AIWorkflowScope entries tie for ui_slot_selector_id='{ui_slot_selector_id}' "
-                f"at location '{location_id}' with equal specificity_index {matching[0].specificity_index}. "
-                "Use distinct location_regex patterns to resolve the ambiguity."
-            )
-
-        return matching[0]
-
-    @classmethod
-    def _get_profile_legacy(cls, course_id, location_id, service_variant):
-        """Resolve a legacy scope (ui_slot_selector_id is NULL) for location_id.
-
-        Returns a single matching legacy scope, None if no legacy matches, and
-        raises ValueError if multiple legacy scopes match the same location.
-        """
-        configs = cls.objects.filter(
-            enabled=True,
-            service_variant=service_variant,
-            location_regex__isnull=False,
-            ui_slot_selector_id__isnull=True,
-            course_id=course_id,
-        )
-
-        selected_config = None
-        for config in configs:
             try:
-                if re.search(config.location_regex, location_id):
-                    config.location_id = location_id
-                    if selected_config is None:
-                        selected_config = config
-                    else:
-                        raise ValueError(
-                            f"Multiple AIWorkflowScope configs match location_id '{location_id}': "
-                            f"'{selected_config.id}' and '{config.id}'. "
-                            "Set a ui_slot_selector_id on each scope to support multiple scopes per location."
-                        )
+                if re.search(scope.location_regex, location_id):
+                    scope.location_id = location_id
+                    return scope
             except re.error:
                 continue
-
-        return selected_config
-
-    @classmethod
-    def _get_profile_slot_fallback(cls, course_id, location_id, service_variant):
-        """Graceful fallback when no selector-id was provided.
-
-        If exactly one selector-id scope matches the location, return it.
-        If multiple selector-id scopes match, raise ValueError to force
-        disambiguation via uiSlotSelectorId.
-        """
-        configs_with_slot = cls.objects.filter(
-            enabled=True,
-            service_variant=service_variant,
-            location_regex__isnull=False,
-            ui_slot_selector_id__isnull=False,
-            course_id=course_id,
-        )
-
-        slot_matches = []
-        for config in configs_with_slot:
-            try:
-                if re.search(config.location_regex, location_id):
-                    config.location_id = location_id
-                    slot_matches.append(config)
-            except re.error:
-                continue
-
-        if len(slot_matches) == 1:
-            return slot_matches[0]
-
-        if len(slot_matches) > 1:
-            raise ValueError(
-                f"Multiple AIWorkflowScope entries match location_id '{location_id}' "
-                "and no uiSlotSelectorId was provided to disambiguate. "
-                "Pass a uiSlotSelectorId from the frontend widget to select the correct scope."
-            )
 
         return None
 
@@ -482,8 +344,16 @@ class AIWorkflowScope(models.Model):
             })
 
     def _compute_specificity_index(self) -> int:
-        """Calculate specificity_index as count of non-null discriminator fields."""
-        return bool(self.course_id) + bool(self.ui_slot_selector_id) + bool(self.location_regex)
+        """Calculate specificity_index using CSS-like weighted scores.
+
+        location_regex (+4) > course_id (+2) > ui_slot_selector_id (+1).
+        NULL fields are treated as wildcards and contribute 0 to the score.
+        """
+        return (
+            (4 if self.location_regex else 0)
+            + (2 if self.course_id else 0)
+            + (1 if self.ui_slot_selector_id else 0)
+        )
 
     def save(self, *args, **kwargs):
         """Override save to compute specificity_index and clear cache on changes."""

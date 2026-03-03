@@ -92,7 +92,8 @@ def test_summary_profile_integration(
         course_id=course_key,
         service_variant="lms",
         profile=profile,
-        enabled=True
+        enabled=True,
+        ui_slot_selector_id="test-slot",
     )
 
     # Authenticate
@@ -102,7 +103,8 @@ def test_summary_profile_integration(
     config_url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
     context = json.dumps({
         "courseId": str(course_key),
-        "locationId": str(location_id)
+        "locationId": str(location_id),
+        "uiSlotSelectorId": "test-slot",
     })
 
     config_response = api_client.get(config_url, {"context": context})
@@ -189,7 +191,8 @@ def test_mocked_completion_profile_integration(
         course_id=course_key,
         service_variant="lms",
         profile=profile,
-        enabled=True
+        enabled=True,
+        ui_slot_selector_id="test-slot",
     )
 
     # Authenticate
@@ -199,7 +202,8 @@ def test_mocked_completion_profile_integration(
     config_url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
     context = json.dumps({
         "courseId": str(course_key),
-        "locationId": str(location_id)
+        "locationId": str(location_id),
+        "uiSlotSelectorId": "test-slot",
     })
 
     config_response = api_client.get(config_url, {"context": context})
@@ -259,7 +263,8 @@ def test_mocked_streaming_profile_integration(
         course_id=course_key,
         service_variant="lms",
         profile=profile,
-        enabled=True
+        enabled=True,
+        ui_slot_selector_id="test-slot",
     )
 
     # Authenticate
@@ -269,7 +274,8 @@ def test_mocked_streaming_profile_integration(
     config_url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
     context = json.dumps({
         "courseId": str(course_key),
-        "locationId": str(location_id)
+        "locationId": str(location_id),
+        "uiSlotSelectorId": "test-slot",
     })
 
     config_response = api_client.get(config_url, {"context": context})
@@ -331,7 +337,8 @@ def test_library_questions_assistant_profile_integration(
         course_id=course_key,
         service_variant="cms",  # This profile is for Studio (CMS)
         profile=profile,
-        enabled=True
+        enabled=True,
+        ui_slot_selector_id="test-slot",
     )
 
     # Authenticate
@@ -341,7 +348,8 @@ def test_library_questions_assistant_profile_integration(
     config_url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
     context = json.dumps({
         "courseId": str(course_key),
-        "locationId": str(location_id)
+        "locationId": str(location_id),
+        "uiSlotSelectorId": "test-slot",
     })
 
     with patch("openedx_ai_extensions.workflows.models.settings.SERVICE_VARIANT", "cms"):

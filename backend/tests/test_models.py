@@ -217,6 +217,7 @@ def workflow_scope(workflow_profile, course_key):  # pylint: disable=redefined-o
         service_variant="lms",
         profile=workflow_profile,
         enabled=True,
+        ui_slot_selector_id="test-slot",
     )
 
 
@@ -402,7 +403,7 @@ class TestAIWorkflowScopeResolution:
         profile_course_level = self._create_profile("multi-scope-course-level")
         profile_location_specific = self._create_profile("multi-scope-location-specific")
 
-        # Course-level scope: no location_regex → specificity_index = 2 (course_id + ui_slot_selector_id)
+        # Course-level scope: no location_regex → specificity_index = 3 (course_id=2 + ui_slot_selector_id=1)
         AIWorkflowScope.objects.create(
             location_regex=None,
             course_id=course_key,
@@ -411,7 +412,7 @@ class TestAIWorkflowScopeResolution:
             enabled=True,
             ui_slot_selector_id="slot-a",
         )
-        # Location-specific scope: has location_regex → specificity_index = 3
+        # Location-specific scope: has location_regex → specificity_index = 7 (4+2+1)
         scope_specific = AIWorkflowScope.objects.create(
             location_regex=r"unit-1$",
             course_id=course_key,
@@ -425,13 +426,19 @@ class TestAIWorkflowScopeResolution:
         assert resolved.id == scope_specific.id
         assert resolved.profile.slug == "multi-scope-location-specific"
 
-    def test_multi_scope_tie_specificity_raises(self, course_key):
+    def test_multi_scope_tie_specificity_returns_first_match(self, course_key):
+        """When two scopes have identical specificity and matching regex, the first DB result wins.
+
+        With the Q-filter + for loop approach, ambiguous cases no longer raise ValueError.
+        The first match in order_by('-specificity_index') is returned deterministically.
+        Operators should avoid this by using distinct location_regex or ui_slot_selector_id.
+        """
         location_id = f"block-v1:{course_key}+type@vertical+block@unit-1"
 
         profile1 = self._create_profile("multi-scope-tie-1")
         profile2 = self._create_profile("multi-scope-tie-2")
 
-        # Both scopes have the same location_regex → both get specificity_index=3 → tie
+        # Both scopes have the same fields → both get specificity_index=7 (4+2+1)
         AIWorkflowScope.objects.create(
             location_regex=r"unit-1$",
             course_id=course_key,
@@ -449,54 +456,98 @@ class TestAIWorkflowScopeResolution:
             ui_slot_selector_id="slot-a",
         )
 
-        with pytest.raises(ValueError, match=r"tie.*equal specificity_index"):
-            AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="slot-a")
+        resolved = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="slot-a")
+        # One of the two profiles is returned — the exact one is DB-order dependent
+        assert resolved is not None
+        assert resolved.profile.slug in ("multi-scope-tie-1", "multi-scope-tie-2")
 
-    def test_legacy_prefers_legacy_scope_when_present(self, course_key):
+    def test_no_selector_returns_none(self, course_key):
+        """Without ui_slot_selector_id get_profile always returns None.
+
+        ui_slot_selector_id is required for resolution. When the caller does not
+        provide a value (e.g. a widget that pre-dates the multi-scope feature),
+        no scope is returned regardless of how many scopes are configured.
+        """
         location_id = f"block-v1:{course_key}+type@vertical+block@unit-legacy"
+        profile = self._create_profile("legacy-profile")
 
-        profile_legacy = self._create_profile("legacy-profile")
-        profile_slot = self._create_profile("slot-profile")
-
-        legacy_scope = AIWorkflowScope.objects.create(
-            location_regex=r"unit-legacy$",
-            course_id=course_key,
-            service_variant="lms",
-            profile=profile_legacy,
-            enabled=True,
-            ui_slot_selector_id=None,
-        )
         AIWorkflowScope.objects.create(
             location_regex=r"unit-legacy$",
             course_id=course_key,
             service_variant="lms",
-            profile=profile_slot,
+            profile=profile,
             enabled=True,
-            ui_slot_selector_id="slot-a",
+            ui_slot_selector_id="some-slot",
         )
 
         resolved = AIWorkflowScope.get_profile(course_key, location_id)
-        assert resolved.id == legacy_scope.id
-        assert resolved.profile.slug == "legacy-profile"
+        assert resolved is None
 
-    def test_legacy_falls_back_to_single_slot_match(self, course_key):
+    def test_unconfigured_slot_returns_none(self, course_key):
+        """A widget whose ui_slot_selector_id has no matching scope returns None.
+
+        Only scopes explicitly configured for a given slot ID are returned.
+        There is no wildcard fallback — an unconfigured widget does not render.
+        """
         location_id = f"block-v1:{course_key}+type@vertical+block@unit-fallback"
+        profile = self._create_profile("some-profile")
 
-        profile_slot = self._create_profile("single-slot-fallback")
-
-        scope = AIWorkflowScope.objects.create(
+        AIWorkflowScope.objects.create(
             location_regex=r"unit-fallback$",
             course_id=course_key,
             service_variant="lms",
-            profile=profile_slot,
+            profile=profile,
             enabled=True,
             ui_slot_selector_id="slot-a",
         )
 
-        resolved = AIWorkflowScope.get_profile(course_key, location_id)
-        assert resolved.id == scope.id
+        # widget-x is not configured — must return None, not slot-a's scope
+        resolved = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-x")
+        assert resolved is None
 
-    def test_legacy_multiple_slot_matches_without_selector_raises(self, course_key):
+    def test_each_slot_receives_only_its_own_scope(self, course_key):
+        """Three widgets where only two have configured scopes.
+
+        This is the canonical regression test: widget-c has no scope and must NOT
+        receive either of the other two scopes. Exactly 2 of the 3 widgets render.
+        """
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-three-widgets"
+
+        profile_a = self._create_profile("profile-widget-a")
+        profile_b = self._create_profile("profile-widget-b")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-three-widgets$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_a,
+            enabled=True,
+            ui_slot_selector_id="widget-a",
+        )
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-three-widgets$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_b,
+            enabled=True,
+            ui_slot_selector_id="widget-b",
+        )
+
+        resolved_a = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-a")
+        AIWorkflowScope.get_profile.cache_clear()
+        resolved_b = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-b")
+        AIWorkflowScope.get_profile.cache_clear()
+        resolved_c = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-c")
+
+        assert resolved_a is not None and resolved_a.profile.slug == "profile-widget-a"
+        assert resolved_b is not None and resolved_b.profile.slug == "profile-widget-b"
+        assert resolved_c is None  # widget-c has no scope → must not render
+
+    def test_multiple_slot_matches_without_selector_returns_none(self, course_key):
+        """Two named scopes (slot-a, slot-b) are both invisible when no selector is given.
+
+        Without ui_slot_selector_id in the request, get_profile always returns None.
+        """
         location_id = f"block-v1:{course_key}+type@vertical+block@unit-ambiguous"
 
         profile1 = self._create_profile("ambiguous-slot-1")
@@ -519,8 +570,9 @@ class TestAIWorkflowScopeResolution:
             ui_slot_selector_id="slot-b",
         )
 
-        with pytest.raises(ValueError, match=r"no uiSlotSelectorId"):
-            AIWorkflowScope.get_profile(course_key, location_id)
+        # No ui_slot_selector_id given → get_profile returns None immediately
+        resolved = AIWorkflowScope.get_profile(course_key, location_id)
+        assert resolved is None
 
     # --- Non-string content from the API ---
 
