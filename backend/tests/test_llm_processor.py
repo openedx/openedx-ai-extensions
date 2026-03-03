@@ -2,7 +2,7 @@
 Tests for the LLMProcessor module.
 """
 # pylint: disable=redefined-outer-name,protected-access
-
+import unittest
 from unittest.mock import Mock, patch
 
 import pytest
@@ -1017,3 +1017,26 @@ class TestExtractOutputItems:
 
         result = LLMProcessor._extract_output_items(resp)
         assert not result
+
+
+# --- LLMProcessor __init__ kwargs pass-through test ---
+class TestLLMProcessorInit(unittest.TestCase):
+    """
+    Test that LLMProcessor.__init__ correctly passes kwargs to LitellmProcessor.__init__.
+    """
+    @patch('openedx_ai_extensions.processors.llm.llm_processor.LitellmProcessor.__init__', return_value=None)
+    def test_llmprocessor_init_passes_kwargs(self, mock_litellm_init):
+        """
+        Test that LLMProcessor.__init__ passes all kwargs to LitellmProcessor.__init__.
+        """
+        config = {'foo': 'bar'}
+        user_session = object()
+        extra_params = {
+            'temperature': 0.7,
+            'model': 'gpt-4',
+            'max_tokens': 150,
+            'api_key': 'test-key',
+            'response_format': {'type': 'json'}
+        }
+        processor = LLMProcessor(config, user_session, extra_params=extra_params)    # pylint: disable=unused-variable
+        mock_litellm_init.assert_called_once_with(config, user_session, extra_params)

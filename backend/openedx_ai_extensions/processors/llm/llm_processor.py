@@ -16,10 +16,27 @@ logger = logging.getLogger(__name__)
 
 
 class LLMProcessor(LitellmProcessor):
-    """Handles AI processing using LiteLLM with support for threaded conversations."""
+    """
+    Handles AI processing using LiteLLM with support for threaded conversations.
 
-    def __init__(self, config=None, user_session=None, **kwargs):
-        super().__init__(config, user_session, **kwargs)
+    This processor accepts an optional extra_params argument in its constructor,
+    which is passed directly to the LitellmProcessor base class. This allows you to
+    configure advanced LiteLLM parameters such as:
+
+        - model: str (e.g., 'openai/gpt-4')
+        - temperature: float (e.g., 0.7)
+        - max_tokens: int (e.g., 150)
+        - api_key: str
+        - response_format: dict
+        - and any other parameters supported by the underlying LiteLLM client
+    """
+
+    def __init__(self, config=None, user_session=None, extra_params=None):
+        """
+        Initialize LLMProcessor. extra_params is passed to LitellmProcessor for
+        advanced configuration.
+        """
+        super().__init__(config, user_session, extra_params)
         self.chat_history = None
         self.input_data = None
         self.context = None
