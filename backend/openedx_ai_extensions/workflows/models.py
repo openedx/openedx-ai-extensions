@@ -287,8 +287,6 @@ class AIWorkflowScope(models.Model):
             service_variant=service_variant,
         ).order_by("-specificity_index")
 
-        logger.info(f"--------------------------------------------------------------------{candidates}")
-
         # Phase 2 — Python regex loop
         for scope in candidates:
             if scope.location_regex is None:
