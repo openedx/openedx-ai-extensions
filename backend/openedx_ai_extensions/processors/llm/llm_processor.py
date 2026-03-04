@@ -145,28 +145,25 @@ class LLMProcessor(LitellmProcessor):
 
         return params
 
-    def _yield_threaded_stream(self, response):
+    def _yield_threaded_stream(self, response, params=None):
         """
-        Byte-encodes a streaming response for threaded conversations (Responses API).
+        Streaming generator for threaded conversations (Responses API).
+        Parses event types, yields text deltas, logs token usage, updates the
+        user session, and handles tool calls recursively.
         Parallel to _handle_streaming_completion for the Completion API.
         """
-        try:
-            for content in response:
-                if content:
-                    yield content.encode('utf-8') if isinstance(content, str) else content
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error during threaded AI streaming: {e}", exc_info=True)
-            yield f"\n[AI Error: {e}]".encode("utf-8")
+        yield from self._handle_streaming_tool_calls_responses(response, params or {})
 
     def _call_responses_wrapper(self, params, initialize=False):
         """
         Wrapper around LiteLLM responses() call.
         """
         try:
-            response = self._responses_with_tools(tool_calls=[], params=params)
-
             if params["stream"]:
-                return self._yield_threaded_stream(response)
+                raw_response = responses(**params)
+                return self._yield_threaded_stream(raw_response, params)
+
+            response = self._responses_with_tools(tool_calls=[], params=params)
 
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)

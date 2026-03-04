@@ -1063,9 +1063,11 @@ class TestLLMProcessorInit(unittest.TestCase):
         }
         processor = LLMProcessor(config, user_session, extra_params=extra_params)    # pylint: disable=unused-variable
         mock_litellm_init.assert_called_once_with(config, user_session, extra_params)
+
 # ============================================================================
 # Streaming Tool Call Tests
 # ============================================================================
+
 
 class MockToolStreamChunk:
     """
@@ -1177,6 +1179,7 @@ def test_streaming_tool_execution_recursion(
 # ============================================================================
 # Threaded Streaming & Tool Call Tests (Responses API)
 # ============================================================================
+
 
 class MockResponseUsage:
     """Helper to mock usage in Responses API."""
