@@ -16,10 +16,27 @@ logger = logging.getLogger(__name__)
 
 
 class LLMProcessor(LitellmProcessor):
-    """Handles AI processing using LiteLLM with support for threaded conversations."""
+    """
+    Handles AI processing using LiteLLM with support for threaded conversations.
 
-    def __init__(self, config=None, user_session=None):
-        super().__init__(config, user_session)
+    This processor accepts an optional extra_params argument in its constructor,
+    which is passed directly to the LitellmProcessor base class. This allows you to
+    configure advanced LiteLLM parameters such as:
+
+        - model: str (e.g., 'openai/gpt-4')
+        - temperature: float (e.g., 0.7)
+        - max_tokens: int (e.g., 150)
+        - api_key: str
+        - response_format: dict
+        - and any other parameters supported by the underlying LiteLLM client
+    """
+
+    def __init__(self, config=None, user_session=None, extra_params=None):
+        """
+        Initialize LLMProcessor. extra_params is passed to LitellmProcessor for
+        advanced configuration.
+        """
+        super().__init__(config, user_session, extra_params)
         self.chat_history = None
         self.input_data = None
         self.context = None
@@ -494,7 +511,16 @@ class LLMProcessor(LitellmProcessor):
         elif content is None:
             content = getattr(item, "text", "") if not isinstance(item, dict) else ""
 
-        return {"type": item_type, "role": role, "content": str(content)}
+        result = {"type": item_type, "role": role, "content": str(content)}
+
+        # Preserve structured fields for tool-result items so they can be rendered.
+        if item_type == "function_call_output":
+            output = item.get("output", "") if isinstance(item, dict) else getattr(item, "output", "")
+            call_id = item.get("call_id") if isinstance(item, dict) else getattr(item, "call_id", None)
+            result["content"] = str(output) if output else result["content"]
+            result["call_id"] = call_id
+
+        return result
 
     @staticmethod
     def _extract_output_items(resp):
@@ -505,10 +531,24 @@ class LLMProcessor(LitellmProcessor):
             if item_type == "message":
                 for block in getattr(item, "content", []):
                     if getattr(block, "type", None) == "output_text":
-                        items.append({"role": "assistant", "content": block.text})
+                        items.append({"type": "message", "role": "assistant", "content": block.text})
             elif item_type == "function_call":
+                name = getattr(item, "name", "?")
+                arguments = getattr(item, "arguments", "")
                 items.append({
+                    "type": "function_call",
                     "role": "tool_call",
-                    "content": f"{getattr(item, 'name', '?')}({getattr(item, 'arguments', '')})",
+                    "name": name,
+                    "arguments": arguments,
+                    "call_id": getattr(item, "call_id", None),
+                    "content": f"{name}({arguments})",
                 })
+            elif item_type == "reasoning":
+                summary = getattr(item, "summary", []) or []
+                summary_text = " ".join(
+                    s.get("text", "") if isinstance(s, dict) else getattr(s, "text", "")
+                    for s in summary
+                )
+                if summary_text:
+                    items.append({"type": "reasoning", "role": "reasoning", "content": summary_text})
         return items

@@ -15,6 +15,9 @@ import {
   callWorkflowService,
   formatErrorMessage,
 } from './services';
+import {
+  registerEntry, getComponent, getEntries, REGISTRY_NAMES, AISettingsTab,
+} from './extensionRegistry';
 
 // Import available components
 import {
@@ -29,21 +32,21 @@ import { WORKFLOW_ACTIONS, NO_RESPONSE_MSG } from './constants';
 
 import messages from './messages';
 
-/**
- * Component Registry
- * Maps component names from config to actual React components
- * This registry is extensible - plugins can add their own components
- */
-const COMPONENT_REGISTRY: Record<string, React.ComponentType<any>> = {
-  AIRequestComponent,
-  AIResponseComponent,
-  AISidebarResponse,
-  AIEducatorLibraryAssistComponent,
-  AIEducatorLibraryResponseComponent,
-};
+// Register built-in workflow components into the central registry.
+// Uses COMPONENTS registry which silently overwrites on re-registration (HMR-safe).
+[
+  ['AIRequestComponent', AIRequestComponent],
+  ['AIResponseComponent', AIResponseComponent],
+  ['AISidebarResponse', AISidebarResponse],
+  ['AIEducatorLibraryAssistComponent', AIEducatorLibraryAssistComponent],
+  ['AIEducatorLibraryResponseComponent', AIEducatorLibraryResponseComponent],
+].forEach(([id, component]) => registerEntry(
+  REGISTRY_NAMES.COMPONENTS,
+  { id: id as string, component: component as React.ComponentType<any> },
+));
 
 /**
- * Register a component in the COMPONENT_REGISTRY
+ * Register a single workflow component in the COMPONENTS registry
  * Allows plugins to dynamically add their own components
  *
  * @param name - The name to register the component under
@@ -60,28 +63,43 @@ export function registerComponent(
   name: string,
   component: React.ComponentType<any>,
 ): void {
-  COMPONENT_REGISTRY[name] = component;
+  registerEntry(REGISTRY_NAMES.COMPONENTS, { id: name, component });
 }
 
 /**
- * Register multiple components at once
+ * Register components or a settings tab, with an optional registry name.
  *
- * @param components - Object mapping component names to components
+ * @example Old-style batch (unchanged):
+ *   registerComponents({ AIRequestBadgesComponent, AIResponseBadgesComponent });
  *
- * @example
- * import { registerComponents } from '@openedx/openedx-ai-extensions-ui';
+ * @example Named registry — settings tab:
+ *   registerComponents('settings', { id: 'ai-badges', label: 'AI Badges', component: AIBadgesTab });
  *
- * registerComponents({
- *   AIRequestBadgesComponent,
- *   AIResponseBadgesComponent,
- * });
+ * @example Single-entry form without registry name (label silently ignored):
+ *   registerComponents({ id: 'my-component', label: 'ignored', component: MyComponent });
  */
+export function registerComponents(components: Record<string, React.ComponentType<any>>): void;
+export function registerComponents(registryName: string, entry: AISettingsTab): void;
+export function registerComponents(entry: { id: string; label?: string; component: React.ComponentType<any> }): void;
 export function registerComponents(
-  components: Record<string, React.ComponentType<any>>,
+  componentsOrRegistryOrEntry:
+  | Record<string, React.ComponentType<any>>
+  | string
+  | { id: string; label?: string; component: React.ComponentType<any> },
+  entry?: AISettingsTab,
 ): void {
-  Object.entries(components).forEach(([name, component]) => {
-    registerComponent(name, component);
-  });
+  if (typeof componentsOrRegistryOrEntry === 'string') {
+    if (!entry) { return; }
+    registerEntry(componentsOrRegistryOrEntry, entry);
+  } else if ('id' in componentsOrRegistryOrEntry && 'component' in componentsOrRegistryOrEntry) {
+    // Single-entry form without registry name: use id as key, ignore label
+    const { id, component } = componentsOrRegistryOrEntry as { id: string; component: React.ComponentType<any> };
+    registerComponent(id, component);
+  } else {
+    // Old-style: Record<string, ComponentType>
+    Object.entries(componentsOrRegistryOrEntry as Record<string, React.ComponentType<any>>)
+      .forEach(([name, component]) => registerComponent(name, component));
+  }
 }
 
 /**
@@ -95,12 +113,18 @@ interface ConfigurableAIAssistanceProps {
   fallbackConfig?: PluginConfiguration | null;
   onConfigLoad?: (config: PluginConfiguration) => void;
   onConfigError?: (error) => void;
+  id?: string | null;
+  courseId?: string | null;
+  locationId?: string | null;
+  uiSlotSelectorId?: string | null;
+  [key: string]: any;
 }
 
 const ConfigurableAIAssistance = ({
   fallbackConfig = null,
   onConfigLoad,
   onConfigError,
+  id = null,
   ...additionalProps
 }: ConfigurableAIAssistanceProps) => {
   const intl = useIntl();
@@ -114,6 +138,7 @@ const ConfigurableAIAssistance = ({
   const [response, setResponse] = useState('');
   const [error, setError] = useState('');
   const [hasAsked, setHasAsked] = useState(false);
+  const [openSidebarSignal, setOpenSidebarSignal] = useState(0);
 
   const configEndpoint = getDefaultEndpoint('profile');
   const requestIdRef = useRef(0);
@@ -129,6 +154,7 @@ const ConfigurableAIAssistance = ({
 
       const contextData = prepareContextData({
         ...additionalProps,
+        uiSlotSelectorId: additionalProps.uiSlotSelectorId || id,
       });
 
       try {
@@ -146,7 +172,7 @@ const ConfigurableAIAssistance = ({
             onConfigLoad(fetchedConfig);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         // Type guard for error
         const configErr = err instanceof Error ? err : new Error(String(err));
 
@@ -187,8 +213,12 @@ const ConfigurableAIAssistance = ({
 
   /**
    * Handle AI assistant request
+   * Accepts optional params from child components to support custom actions and user input.
    */
-  const handleAskAI = useCallback(async () => {
+  const handleAskAI = useCallback(async (params: { userInput?: any; action?: string } = {}) => {
+    const { userInput = null, action = WORKFLOW_ACTIONS.RUN } = params;
+    const isAsync = action === WORKFLOW_ACTIONS.RUN_ASYNC;
+
     setIsLoading(true);
     setError('');
     setResponse('');
@@ -197,6 +227,7 @@ const ConfigurableAIAssistance = ({
       // Prepare context data
       const contextData = prepareContextData({
         ...additionalProps,
+        uiSlotSelectorId: additionalProps.uiSlotSelectorId || id,
       });
 
       let buffer = '';
@@ -204,17 +235,33 @@ const ConfigurableAIAssistance = ({
       const data = await callWorkflowService({
         context: contextData,
         payload: {
-          action: WORKFLOW_ACTIONS.RUN,
+          action,
           requestId: `ai-request-${Date.now()}`,
+          ...(userInput ? { userInput } : {}),
         },
-        onStreamChunk: (chunk) => {
-          setIsLoading(false);
-          setHasAsked(true);
-          buffer += chunk;
-          setResponse(buffer);
-        },
+        // Streaming only makes sense for synchronous actions
+        ...(!isAsync && {
+          onStreamChunk: (chunk) => {
+            setIsLoading(false);
+            setHasAsked(true);
+            buffer += chunk;
+            setResponse(buffer);
+          },
+        }),
       });
-      // Handle response
+
+      if (isAsync) {
+        // Embed context so the response component can poll with the right scope
+        if (data.status === 'processing' && data.taskId) {
+          setResponse(JSON.stringify({ ...data, ...contextData }));
+        } else {
+          setResponse(data.response || data.message || data.content || data.result || JSON.stringify(data, null, 2));
+        }
+        setHasAsked(true);
+        return;
+      }
+
+      // Handle sync response
       if (data.response) {
         setResponse(data.response);
         setHasAsked(true);
@@ -239,10 +286,15 @@ const ConfigurableAIAssistance = ({
       logError('[ConfigurableAIAssistance] AI Assistant Error:', err);
       const userFriendlyError = formatErrorMessage(err);
       setError(userFriendlyError);
+      throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [additionalProps]);
+  }, [additionalProps, id]);
+
+  const handleOpenSidebar = useCallback(() => {
+    setOpenSidebarSignal((prev) => prev + 1);
+  }, []);
 
   /**
    * Reset component state for new request
@@ -312,15 +364,16 @@ const ConfigurableAIAssistance = ({
 
     // Get request component
     const { component: requestComponentName, config: requestComponentConfig = {} } = requestConfig;
-    const RequestComponent = COMPONENT_REGISTRY[requestComponentName];
+    const RequestComponent = getComponent(requestComponentName);
 
     if (!RequestComponent) {
+      const available = getEntries(REGISTRY_NAMES.COMPONENTS).map((e) => e.id).join(', ');
       return (
         <Alert variant="danger">
           <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.unknown.heading'])}</Alert.Heading>
           <p>{intl.formatMessage(messages['ai.extensions.config.unknown.request'], { componentName: requestComponentName })}</p>
           <p className="mb-0 text-muted small">
-            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: Object.keys(COMPONENT_REGISTRY).join(', ') })}
+            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: available })}
           </p>
         </Alert>
       );
@@ -328,22 +381,26 @@ const ConfigurableAIAssistance = ({
 
     // Get response component
     const { component: responseComponentName, config: responseComponentConfig = {} } = responseConfig;
-    const ResponseComponent = COMPONENT_REGISTRY[responseComponentName];
+    const ResponseComponent = getComponent(responseComponentName);
 
     if (!ResponseComponent) {
+      const available = getEntries(REGISTRY_NAMES.COMPONENTS).map((e) => e.id).join(', ');
       return (
         <Alert variant="danger">
           <Alert.Heading>{intl.formatMessage(messages['ai.extensions.config.unknown.heading'])}</Alert.Heading>
           <p>{intl.formatMessage(messages['ai.extensions.config.unknown.response'], { componentName: responseComponentName })}</p>
           <p className="mb-0 text-muted small">
-            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: Object.keys(COMPONENT_REGISTRY).join(', ') })}
+            {intl.formatMessage(messages['ai.extensions.config.available.components'], { components: available })}
           </p>
         </Alert>
       );
     }
 
     // Merge props with config
-    const requestProps = mergeProps(additionalProps, requestComponentConfig);
+    const requestProps = mergeProps(
+      { ...additionalProps, uiSlotSelectorId: additionalProps.uiSlotSelectorId || id },
+      requestComponentConfig,
+    );
     const responseProps = mergeProps({}, responseComponentConfig);
 
     return (
@@ -361,6 +418,7 @@ const ConfigurableAIAssistance = ({
           setResponse={setResponse}
           setHasAsked={setHasAsked}
           onAskAI={handleAskAI}
+          onOpenSidebar={handleOpenSidebar}
           disabled={false}
           {...requestProps}
         />
@@ -373,7 +431,8 @@ const ConfigurableAIAssistance = ({
           onAskAgain={handleAskAI}
           onClear={handleReset}
           onError={handleClearError}
-          contextData={additionalProps}
+          contextData={{ ...additionalProps, uiSlotSelectorId: additionalProps.uiSlotSelectorId || id }}
+          openSidebarSignal={openSidebarSignal}
           {...responseProps}
         />
       </div>

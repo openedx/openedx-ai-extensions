@@ -5,6 +5,8 @@ openedx_ai_extensions Django application initialization.
 from django.apps import AppConfig
 from edx_django_utils.plugins.constants import PluginSettings, PluginSignals, PluginURLs
 
+from openedx_ai_extensions import __version__
+
 
 class OpenedxAIExtensionsConfig(AppConfig):
     # pylint: disable=line-too-long
@@ -17,6 +19,7 @@ class OpenedxAIExtensionsConfig(AppConfig):
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "openedx_ai_extensions"
+    verbose_name = f"Open edX AI Extensions (v{__version__})"
 
     def ready(self):
         """

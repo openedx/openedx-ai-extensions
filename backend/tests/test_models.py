@@ -217,6 +217,7 @@ def workflow_scope(workflow_profile, course_key):  # pylint: disable=redefined-o
         service_variant="lms",
         profile=workflow_profile,
         enabled=True,
+        ui_slot_selector_id="test-slot",
     )
 
 
@@ -249,7 +250,7 @@ def session_no_ids(user, course_key, workflow_scope, workflow_profile):  # pylin
 
 
 @pytest.mark.django_db
-class TestAIWorkflowSessionThreads:
+class TestAIWorkflowSessionDebugThreads:
     """Tests for get_local_thread, get_remote_thread, get_combined_thread."""
 
     # pylint: disable=redefined-outer-name
@@ -375,3 +376,438 @@ class TestAIWorkflowSessionThreads:
         mock_remote.return_value = ["not-a-dict", None, 42]
         result = session_with_ids.get_combined_thread()
         assert result == []
+
+    # --- Non-string content from the API ---
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_local_content_as_list(self, mock_local, mock_remote, session_with_ids):
+        """Local message with list content (multimodal) does not crash when a remote thread is present."""
+        # The fix (content_str = ... if isinstance ...) lives in the local-thread
+        # indexing loop, which only runs when remote_thread is truthy.
+        mock_local.return_value = [
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "Hello from a list"}],
+                "timestamp": "2024-01-01T00:00:00",
+                "submission_id": "sub-1",
+            }
+        ]
+        mock_remote.return_value = [
+            {"id": "resp-1", "created_at": "2024-01-02T00:00:00", "model": "gpt-4", "input": [], "output": []}
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["source"] == "local"
+        assert result[0]["content"] == [{"type": "text", "text": "Hello from a list"}]
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_local_content_as_none(self, mock_local, mock_remote, session_with_ids):
+        """Local message with explicit None content does not crash."""
+        mock_local.return_value = [
+            {"role": "user", "content": None, "timestamp": "2024-01-01T00:00:00", "submission_id": "sub-1"}
+        ]
+        mock_remote.return_value = [
+            {"id": "resp-1", "created_at": "2024-01-02T00:00:00", "model": "gpt-4", "input": [], "output": []}
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["source"] == "local"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_remote_input_content_as_list(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
+        """Remote input item with list content (multimodal API response) does not crash."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [
+                    {
+                        "role": "user",
+                        "type": "message",
+                        "content": [{"type": "text", "text": "Hello"}],
+                    }
+                ],
+                "output": [],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["role"] == "user"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_remote_output_content_as_list(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
+        """Remote output item with list content (multimodal API response) does not crash."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [],
+                "output": [
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "Hello back"}],
+                    }
+                ],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["role"] == "assistant"
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread")
+    def test_combined_thread_dedup_with_list_content(self, mock_local, mock_remote, session_with_ids):
+        """Deduplication works when both local and remote carry the same list content."""
+        content_blocks = [{"type": "text", "text": "Hello"}]
+        mock_local.return_value = [
+            {
+                "role": "user",
+                "content": content_blocks,
+                "timestamp": "2024-01-01T00:00:00",
+                "submission_id": "sub-1",
+            }
+        ]
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [{"role": "user", "type": "message", "content": content_blocks}],
+                "output": [],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        assert result[0]["source"] == "both"
+        assert result[0]["submission_id"] == "sub-1"
+
+    # --- type field and tool-call field propagation ---
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_output_type_is_preserved(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
+        """Output items carry the real 'type' from the extracted item, not a hardcoded 'message'."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [],
+                "output": [
+                    {"type": "message", "role": "assistant", "content": "Hello!"},
+                    {
+                        "type": "function_call",
+                        "role": "tool_call",
+                        "name": "get_weather",
+                        "arguments": '{"location": "Paris"}',
+                        "call_id": "call_xyz",
+                        "content": "get_weather({\"location\": \"Paris\"})",
+                    },
+                    {"type": "reasoning", "role": "reasoning", "content": "Thinking about weather."},
+                ],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        types = {msg["type"] for msg in result}
+        assert "message" in types
+        assert "function_call" in types
+        assert "reasoning" in types
+
+    @patch.object(AIWorkflowSession, "get_remote_thread")
+    @patch.object(AIWorkflowSession, "get_local_thread", return_value=None)
+    def test_combined_thread_function_call_fields_propagated(  # pylint: disable=unused-argument
+        self, mock_local, mock_remote, session_with_ids,
+    ):
+        """Function call output items expose name, arguments, and call_id in the combined thread."""
+        mock_remote.return_value = [
+            {
+                "id": "resp-1",
+                "created_at": "2024-01-01T00:00:00",
+                "model": "gpt-4",
+                "input": [],
+                "output": [
+                    {
+                        "type": "function_call",
+                        "role": "tool_call",
+                        "name": "get_weather",
+                        "arguments": '{"location": "Paris"}',
+                        "call_id": "call_xyz789",
+                        "content": "get_weather({\"location\": \"Paris\"})",
+                    }
+                ],
+            }
+        ]
+        result = session_with_ids.get_combined_thread()
+        assert len(result) == 1
+        item = result[0]
+        assert item["type"] == "function_call"
+        assert item["name"] == "get_weather"
+        assert item["arguments"] == '{"location": "Paris"}'
+        assert item["call_id"] == "call_xyz789"
+        # content is still present as a human-readable fallback
+        assert "get_weather" in item["content"]
+
+
+# ==========================================================================
+# AIWorkflowScope Resolution (multi-scope per location)
+# ==========================================================================
+
+
+@pytest.mark.django_db
+class TestAIWorkflowScopeResolution:
+    """Tests for AIWorkflowScope.get_profile resolution logic."""
+
+    # pylint: disable=redefined-outer-name
+
+    @staticmethod
+    def _create_profile(slug: str) -> AIWorkflowProfile:
+        return AIWorkflowProfile.objects.create(
+            slug=slug,
+            base_filepath="base/default.json",
+            content_patch="{}",
+        )
+
+    def test_multi_scope_selects_most_specific(self, course_key):
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-1"
+
+        profile_course_level = self._create_profile("multi-scope-course-level")
+        profile_location_specific = self._create_profile("multi-scope-location-specific")
+
+        # Course-level scope: no location_regex → specificity_index = 3 (course_id=2 + ui_slot_selector_id=1)
+        AIWorkflowScope.objects.create(
+            location_regex=None,
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_course_level,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        # Location-specific scope: has location_regex → specificity_index = 7 (4+2+1)
+        scope_specific = AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_location_specific,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="slot-a")
+        assert resolved.id == scope_specific.id
+        assert resolved.profile.slug == "multi-scope-location-specific"
+
+    def test_multi_scope_tie_specificity_returns_first_match(self, course_key):
+        """When two scopes have identical specificity and matching regex, the first DB result wins.
+
+        With the Q-filter + for loop approach, ambiguous cases no longer raise ValueError.
+        The first match in order_by('-specificity_index') is returned deterministically.
+        Operators should avoid this by using distinct location_regex or ui_slot_selector_id.
+        """
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-1"
+
+        profile1 = self._create_profile("multi-scope-tie-1")
+        profile2 = self._create_profile("multi-scope-tie-2")
+
+        # Both scopes have the same fields → both get specificity_index=7 (4+2+1)
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile1,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile2,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="slot-a")
+        # One of the two profiles is returned — the exact one is DB-order dependent
+        assert resolved is not None
+        assert resolved.profile.slug in ("multi-scope-tie-1", "multi-scope-tie-2")
+
+    def test_no_selector_returns_none(self, course_key):
+        """Without ui_slot_selector_id get_profile always returns None.
+
+        ui_slot_selector_id is required for resolution. When the caller does not
+        provide a value (e.g. a widget that pre-dates the multi-scope feature),
+        no scope is returned regardless of how many scopes are configured.
+        """
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-legacy"
+        profile = self._create_profile("legacy-profile")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-legacy$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile,
+            enabled=True,
+            ui_slot_selector_id="some-slot",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, location_id)
+        assert resolved is None
+
+    def test_unconfigured_slot_returns_none(self, course_key):
+        """A widget whose ui_slot_selector_id has no matching scope returns None.
+
+        Only scopes explicitly configured for a given slot ID are returned.
+        There is no wildcard fallback — an unconfigured widget does not render.
+        """
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-fallback"
+        profile = self._create_profile("some-profile")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-fallback$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        # widget-x is not configured — must return None, not slot-a's scope
+        resolved = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-x")
+        assert resolved is None
+
+    def test_each_slot_receives_only_its_own_scope(self, course_key):
+        """Three widgets where only two have configured scopes.
+
+        This is the canonical regression test: widget-c has no scope and must NOT
+        receive either of the other two scopes. Exactly 2 of the 3 widgets render.
+        """
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-three-widgets"
+
+        profile_a = self._create_profile("profile-widget-a")
+        profile_b = self._create_profile("profile-widget-b")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-three-widgets$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_a,
+            enabled=True,
+            ui_slot_selector_id="widget-a",
+        )
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-three-widgets$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_b,
+            enabled=True,
+            ui_slot_selector_id="widget-b",
+        )
+
+        resolved_a = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-a")
+        AIWorkflowScope.get_profile.cache_clear()
+        resolved_b = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-b")
+        AIWorkflowScope.get_profile.cache_clear()
+        resolved_c = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-c")
+
+        assert resolved_a is not None and resolved_a.profile.slug == "profile-widget-a"
+        assert resolved_b is not None and resolved_b.profile.slug == "profile-widget-b"
+        assert resolved_c is None  # widget-c has no scope → must not render
+
+    def test_multiple_slot_matches_without_selector_returns_none(self, course_key):
+        """Two named scopes (slot-a, slot-b) are both invisible when no selector is given.
+
+        Without ui_slot_selector_id in the request, get_profile always returns None.
+        """
+        location_id = f"block-v1:{course_key}+type@vertical+block@unit-ambiguous"
+
+        profile1 = self._create_profile("ambiguous-slot-1")
+        profile2 = self._create_profile("ambiguous-slot-2")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-ambiguous$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile1,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-ambiguous$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile2,
+            enabled=True,
+            ui_slot_selector_id="slot-b",
+        )
+
+        # No ui_slot_selector_id given → get_profile returns None immediately
+        resolved = AIWorkflowScope.get_profile(course_key, location_id)
+        assert resolved is None
+
+    def test_no_location_id_falls_back_to_wildcard_scope(self, course_key):
+        """When the UI sends no location_id, scopes with location_regex are skipped
+        and a wildcard scope (location_regex=None) is returned.
+
+        The regex-bearing scope has higher specificity (+4) so it appears first in the
+        candidate loop. The guard ``if not location_id: continue`` must skip it rather
+        than calling re.search(pattern, None) which would raise TypeError (not caught
+        by ``except re.error``). The wildcard scope is then returned.
+        """
+        profile_specific = self._create_profile("location-specific")
+        profile_wildcard = self._create_profile("wildcard")
+
+        # Higher specificity (7) — has a regex, appears first in the loop
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_specific,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+        # Lower specificity (3) — no regex, matches any location
+        AIWorkflowScope.objects.create(
+            location_regex=None,
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile_wildcard,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, None, ui_slot_selector_id="slot-a")
+        assert resolved is not None
+        assert resolved.profile.slug == "wildcard"
+
+    def test_no_location_id_with_only_regex_scopes_returns_none(self, course_key):
+        """When no location_id is provided and every scope requires one, return None.
+
+        No wildcard scope exists as a fallback, so the loop exhausts all candidates
+        (each skipped by ``if not location_id: continue``) and returns None without
+        raising TypeError.
+        """
+        profile = self._create_profile("requires-location")
+
+        AIWorkflowScope.objects.create(
+            location_regex=r"unit-1$",
+            course_id=course_key,
+            service_variant="lms",
+            profile=profile,
+            enabled=True,
+            ui_slot_selector_id="slot-a",
+        )
+
+        resolved = AIWorkflowScope.get_profile(course_key, None, ui_slot_selector_id="slot-a")
+        assert resolved is None

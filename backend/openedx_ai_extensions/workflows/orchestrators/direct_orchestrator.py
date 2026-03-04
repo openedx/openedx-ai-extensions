@@ -1,7 +1,9 @@
 """
 Orchestrators for handling different AI workflow patterns in Open edX.
 """
+import json
 import logging
+from pathlib import Path
 
 from openedx_ai_extensions.processors import (
     ContentLibraryProcessor,
@@ -9,6 +11,7 @@ from openedx_ai_extensions.processors import (
     LLMProcessor,
     OpenEdXProcessor,
 )
+from openedx_ai_extensions.processors.openedx.utils.json_to_olx import json_to_olx
 from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.xapi.constants import EVENT_NAME_WORKFLOW_COMPLETED
 
@@ -109,16 +112,33 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         if 'error' in content_result:
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
 
-        # 2. Process with LLM processor
-        llm_processor = EducatorAssistantProcessor(
-            config=self.profile.processor_config,
-            user=self.user,
-            context=content_result
+        schema_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "response_schemas"
+            / "educator_quiz_questions.json"
         )
+
+        # 2. Process with LLM processor using structured output schema
+        with open(schema_path, 'r', encoding='utf-8') as f:
+            llm_processor = EducatorAssistantProcessor(
+                config=self.profile.processor_config,
+                user=self.user,
+                context=content_result,
+                extra_params={"response_format": json.load(f)}
+            )
         llm_result = llm_processor.process(input_data=input_data)
 
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
+
+        items = []
+        for problem in llm_result.get("response", {}).get("problems", []):
+            try:
+                olx_content = json_to_olx(problem)
+                items.append(olx_content)
+            except Exception as e:  # pylint: disable=broad-except
+                logger.exception(f"Error converting problem to OLX: {e}")
+                continue
 
         lib_key_str = input_data.get('library_id')
 
@@ -129,9 +149,9 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         )
 
         collection_key = library_processor.create_collection_and_add_items(
-            title=llm_result["response"].get("collection", "AI Generated Questions"),
+            title=llm_result.get("response", {}).get("collection_name", "AI Generated Questions"),
             description="AI-generated quiz questions",
-            items=llm_result["response"]["items"]
+            items=items
         )
 
         metadata = {

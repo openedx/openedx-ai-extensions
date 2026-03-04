@@ -1,0 +1,99 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "OpenEdxAssessmentGeneration",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "collection_name": {
+          "type": "string",
+          "description": "A descriptive name for the overall quiz or collection of questions based on the course context."
+        },
+        "problems": {
+          "type": "array",
+          "description": "The list of assessment questions to generate.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "display_name": {
+                "type": "string",
+                "description": "A short, descriptive title for the problem (e.g., 'Newton's First Law', 'Calculate Velocity')."
+              },
+              "question_html": {
+                "type": "string",
+                "description": "The main body of the question. Must be pedagogically sound. You can use standard HTML tags (like <b>, <i>, <br/>) and MathJax expressions (e.g., \\(ax^2 + bx + c = 0\\)) if needed."
+              },
+              "problem_type": {
+                "type": "string",
+                "enum": [
+                  "multiplechoiceresponse",
+                  "choiceresponse",
+                  "optionresponse",
+                  "numericalresponse",
+                  "stringresponse"
+                ],
+                "description": "The specific Open edX problem type. 'multiplechoiceresponse' = radio buttons (one correct), 'choiceresponse' = checkboxes (multiple correct), 'optionresponse' = dropdown, 'numericalresponse' = math/number input, 'stringresponse' = text input."
+              },
+              "choices": {
+                "type": "array",
+                "description": "The available options. REQUIRED for 'multiplechoiceresponse', 'choiceresponse', and 'optionresponse'. If the problem_type is 'numericalresponse' or 'stringresponse', you MUST return an empty array [].",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "description": "The text of the option."
+                    },
+                    "is_correct": {
+                      "type": "boolean",
+                      "description": "True if this option is correct, false otherwise."
+                    },
+                    "feedback": {
+                      "type": "string",
+                      "description": "Specific, actionable feedback shown to the learner when they select this exact option. Explain why it is right or wrong."
+                    }
+                  },
+                  "required": ["text", "is_correct", "feedback"],
+                  "additionalProperties": false
+                }
+              },
+              "answer_value": {
+                "type": "string",
+                "description": "The exact correct answer. REQUIRED ONLY for 'numericalresponse' (e.g., '25.3') and 'stringresponse' (e.g., 'Paris'). If the problem_type uses choices, you MUST return an empty string \"\"."
+              },
+              "tolerance": {
+                "type": "string",
+                "description": "Allowed margin of error. REQUIRED ONLY for 'numericalresponse' (e.g., '5', '10%', or '0.01'). For all other problem types, you MUST return an empty string \"\"."
+              },
+              "explanation": {
+                "type": "string",
+                "description": "A comprehensive explanation of the correct answer and underlying concept. This is revealed to the learner after they submit their response."
+              },
+              "demand_hints": {
+                "type": "array",
+                "description": "A list of sequential hints learners can request if they are stuck. Provide 2-3 progressive hints that guide them toward the answer without giving it away.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "display_name",
+              "question_html",
+              "problem_type",
+              "choices",
+              "answer_value",
+              "tolerance",
+              "explanation",
+              "demand_hints"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["collection_name", "problems"],
+      "additionalProperties": false
+    }
+  }
+}

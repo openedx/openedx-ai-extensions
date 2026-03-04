@@ -417,16 +417,4 @@
 - Output rules
 
   - Generate exactly [{{NUM_QUESTIONS}}] questions.
-  - Ensure the JSON contains no markdown, no escaping, and no additional comments.
-
-  - The output MUST be a VALID JSON and "data" MUST BE a VALID XML, Follow exactly same XML structure as given in Examples. No text outside the JSON. following output structure:
-            {{
-              'collection': 'Name of the collection based on the course context',
-              'items': [
-                {{
-                  "category": "problem",
-                  "data": "<problem ...<OLX markup here>...  </problem>"
-                }},
-                ...
-              ]
-            }}
+  - The response format is enforced by a structured schema — follow it strictly.

@@ -470,18 +470,115 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
         return TemplateResponse(request, "admin/debug_thread.html", context)
 
 
+class UiSlotDatalistWidget(forms.TextInput):
+    """
+    Text input enhanced with an HTML5 ``<datalist>`` element.
+
+    Shows all ``ui_slot_selector_id`` values already stored in the database.
+    The list is built at render time so it always reflects the current
+    state of the DB — no settings, no code changes needed.  The operator
+    can still type any free-form value; the datalist only provides
+    suggestions.
+    """
+
+    def render(self, name, value, attrs=None, renderer=None):
+        """Render the text input with an attached ``<datalist>`` of existing slot selectors."""
+        datalist_id = f"datalist-{name}"
+        attrs = dict(attrs or {}, list=datalist_id)
+
+        existing = (
+            AIWorkflowScope.objects
+            .exclude(ui_slot_selector_id="")
+            .values_list("ui_slot_selector_id", flat=True)
+            .distinct()
+            .order_by("ui_slot_selector_id")
+        )
+
+        options = "".join(f'<option value="{escape(v)}">' for v in existing)
+        datalist_html = f'<datalist id="{datalist_id}">{options}</datalist>'
+
+        input_html = super().render(name, value, attrs=attrs, renderer=renderer)
+        return mark_safe(input_html + datalist_html)  # nosec
+
+
+class AIWorkflowScopeAdminForm(forms.ModelForm):
+    """
+    Admin form for AIWorkflowScope.
+
+    ``ui_slot_selector_id`` is a free-text field with an HTML5 datalist
+    that auto-suggests every value already present in the database.
+    No Django settings are required — the suggestions grow automatically
+    as operators configure more scopes.
+    """
+
+    class Meta:
+        """Form metadata."""
+
+        model = AIWorkflowScope
+        fields = "__all__"
+        widgets = {
+            "ui_slot_selector_id": UiSlotDatalistWidget(attrs={"style": "width: 30em;"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        """Attach help text to the slot field."""
+        super().__init__(*args, **kwargs)
+        self.fields["ui_slot_selector_id"].help_text = (
+            "Enter the exact <code>uiSlotSelectorId</code> value sent by the frontend widget. "
+            "Existing values are suggested as you type — or enter a new one freely. "
+            "Only a widget that sends this exact value will receive the scope."
+        )
+
+
 @admin.register(AIWorkflowScope)
 class AIWorkflowConfigAdmin(admin.ModelAdmin):
     """
     Admin interface for managing AI Workflow Configurations.
     """
 
+    form = AIWorkflowScopeAdminForm
+
     list_display = (
         "course_id",
         "location_regex",
+        "ui_slot_selector_id",
+        "specificity_index",
         "service_variant",
         "profile",
         "enabled",
     )
-    search_fields = ("course_id", "location_regex", "profile__slug")
-    list_filter = ("service_variant", "enabled")
+    search_fields = ("course_id", "location_regex", "ui_slot_selector_id", "profile__slug")
+    list_filter = ("service_variant", "enabled", "ui_slot_selector_id")
+    fieldsets = (
+        (
+            "Scope Matching",
+            {
+                "fields": ("course_id", "location_regex", "service_variant"),
+                "description": (
+                    "Define which course/location this scope applies to. "
+                    "<code>location_regex</code> is a Python regex matched against the "
+                    "unit/block location ID."
+                ),
+            },
+        ),
+        (
+            "UI Slot",
+            {
+                "fields": ("ui_slot_selector_id",),
+                "description": (
+                    "Select which frontend widget renders this scope. "
+                    "Each widget sends its own <code>uiSlotSelectorId</code> to the backend; "
+                    "only the scope that matches exactly will be returned. "
+                    "This guarantees that exactly the configured slots render — no more, no fewer."
+                ),
+            },
+        ),
+        (
+            "Profile & Status",
+            {
+                "fields": ("profile", "enabled", "specificity_index"),
+            },
+        ),
+    )
+
+    readonly_fields = ("specificity_index",)

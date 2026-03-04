@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 class EducatorAssistantProcessor(LitellmProcessor):
     """Handles AI/LLM processing operations"""
 
-    def __init__(self, config=None, user=None, context=None, user_session=None):
-        super().__init__(config=config, user_session=user_session)
+    def __init__(self, user=None, context=None, **kwargs):
+        super().__init__(**kwargs)
         self.context = context
         self.user = user
 
@@ -91,24 +91,15 @@ class EducatorAssistantProcessor(LitellmProcessor):
         if '{{EXTRA_INSTRUCTIONS}}' in prompt:
             prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions or "")
 
-        result = self._call_completion_api(prompt)
+        try:
+            result = self._call_completion_api(prompt)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error calling LiteLLM: {e}")
+            return {"error": f"AI processing failed: {str(e)}"}
+
         tokens_used = result.get("tokens_used", 0)
 
-        # if response is not json serializable, try 3 times to fix it
-        response = []
-        for attempt in range(3):
-            try:
-                response = json.loads(result['response'])
-                break
-            except json.JSONDecodeError:
-                result = self._call_completion_api(prompt)
-                tokens_used += result.get("tokens_used", 0)
-                if attempt == 2:
-                    return {
-                        "error": "Failed to parse AI response as JSON after multiple attempts.",
-                        "tokens_used": tokens_used,
-                        "model_used": self.extra_params.get("model", "unknown"),
-                    }
+        response = json.loads(result['response'])
 
         return {
             "response": response,
