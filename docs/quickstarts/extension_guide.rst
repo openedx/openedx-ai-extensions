@@ -1,42 +1,43 @@
-.. _qs-extension:
+.. _qs-extension-guide:
 
-Extension Guide
-===============
+Extension Development Guide
+##############################
 
-This guide provides a quickstart for developers who want to extend the Open edX AI infrastructure by creating custom plugins. We use the **openedx-ai-badges** project as a reference implementation.
+This guide provides a quickstart for developers who want to extend the Open edX AI infrastructure by creating custom plugins. We use the `openedx-ai-badges`_ project as a reference implementation.
 
-.. note::
-
-   This guide assumes you are familiar with Open edX plugin development and have a local Tutor environment set up.
+What you will achieve
+***********************
+* Understand the core file structure required for an AI infrastructure plugin.
+* Implement a functional entry point following the `openedx-ai-badges`_ pattern.
 
 .. contents::
  :local:
  :depth: 1
 
-Overview
-********
-
-The AI framework is designed to be extensible. Instead of modifying the core, you can create a standalone plugin that registers new behaviors. A complete plugin typically extends three areas: backend, frontend, and tutor configuration.
+Prerequisites
+**************
+* Familiarity with Open edX plugin architecture.
+* A local Tutor environment properly configured.
 
 Project Structure
-*****************
+*******************
 
 A standard AI extension repository follows a modular layout designed to integrate with both the Open edX backend and the Micro-Frontend (MFE) architecture. While the reference implementation (``openedx-ai-badges``) includes all layers, the structure is adaptable to your specific needs:
 
-* **``backend/``**: The Django application containing custom **processors, orchestrators, and profiles**.
-* **``frontend/``**: React components, UI slots, and styles for MFE integration.
-* **``tutor/``**: The Tutor plugin files required for environment configuration and automated deployment.
+* **backend/**: The Django application containing custom processors, orchestrators, and profiles.
+* **frontend/**: React components, UI slots, and styles for MFE integration.
+* **tutor/**: The Tutor plugin files required for environment configuration and automated deployment.
 
 .. note::
    **Modular Flexibility**: You do not need to implement all three components. For example, if your feature only requires a new data transformation logic, you might only need the ``backend/`` directory. Similarly, a plugin might only provide a specialized UI for existing core logic. The framework allows you to mix and match components based on the specific requirements of your AI workflow.
 
 Backend Implementation
-**********************
+************************
 
 The backend logic of an AI plugin is primarily driven by the **Workflow Profile**. The framework uses these JSON blueprints to dynamically discover and load your custom logic.
 
 1. Define the Workflow Profile
-==============================
+================================
 
 The **Profile** is a JSON file that acts as the blueprint for your feature. It maps orchestrators, processors, and UI components into a single configuration.
 
@@ -65,7 +66,7 @@ Create your profile (e.g., ``workflows/profiles/badges_base.json``):
    }
 
 2. Register Profiles in Settings
-================================
+==================================
 
 For the framework to discover your JSON profiles, you must add your plugin's directory to the ``WORKFLOW_TEMPLATE_DIRS`` setting.
 
@@ -83,7 +84,7 @@ In your plugin's settings (e.g., ``settings/common.py``):
            settings.WORKFLOW_TEMPLATE_DIRS.append(badges_workflow_dir)
 
 3. Plugin Configuration (apps.py)
-================================
+==================================
 
 Ensure your plugin is correctly registered in Open edX so that the settings above are processed:
 
@@ -103,7 +104,7 @@ Ensure your plugin is correctly registered in Open edX so that the settings abov
        }
 
 4. Implement a Custom Orchestrator
-==================================
+=====================================
 
 The ``orchestrator_class`` in your Profile JSON uses a full Python path to locate and instantiate your logic. By inheriting from core classes like ``SessionBasedOrchestrator``, you can customize the workflow execution.
 
@@ -124,7 +125,7 @@ The ``orchestrator_class`` in your Profile JSON uses a full Python path to locat
             }
 
 5. Processor Configuration Mapping
-==================================
+=====================================
 
 For an Orchestrator to use one or more Processors, they must be declared in the ``processor_config`` section of the Profile JSON. This mapping connects the logic with specific AI providers and functions.
 
@@ -154,11 +155,11 @@ Within your Orchestrator logic, you can then retrieve and use these processors:
 .. note::
     For practical examples of how to implement and combine orchestrators and processors, refer to:
     
-    * `openedx-ai-extensions <https://github.com/openedx/openedx-ai-extensions>`_: For core base classes and standard implementations.
-    * `openedx-ai-badges <https://github.com/edunext/openedx-ai-badges>`_: For a complete reference of a custom, multi-step workflow.
+    * `openedx-ai-extensions`_: For core base classes and standard implementations.
+    * `openedx-ai-badges`_: For a complete reference of a custom, multi-step workflow.
 
 Frontend Implementation
-***********************
+*************************
 
 The frontend integration is governed by a central **Extension Registry**. There are two primary ways to implement your plugin's user interface, depending on whether you want the core framework to manage the execution flow or you prefer to handle it manually.
 
@@ -179,14 +180,14 @@ Use this pattern if you want to manage the UI and the service calls yourself, by
 * **Why the Profile is still required**: Even if you manage the UI manually, the **Backend** still requires a Profile to identify the correct ``orchestrator_class`` and ``processor_config`` when your component triggers the workflow API.
 
 6. Implementing UI Components
-=============================
+==============================
 
 Create your React components in the ``frontend/src/components`` directory. 
 
 **Example for Pattern A (Managed by Core):**
 Your component will receives params from the Profile JSON.
 
-.. code-block:: typescript
+.. code-block:: tsx
 
    // frontend/src/components/MyRequestComponent.tsx
 
@@ -204,9 +205,10 @@ Your component will receives params from the Profile JSON.
 **Example for Pattern B (Manually Managed):**
 Your component uses core services to build context and call the backend.
 
-.. code-block:: typescript
+.. code-block:: tsx
 
    // frontend/src/components/MyIndependentTabComponent.tsx
+
    import { services } from '@openedx/openedx-ai-extensions-ui';
 
    const MyIndependentTabComponent = ({ uiSlotSelectorId, courseId, locationId }) => {
@@ -220,22 +222,24 @@ Your component uses core services to build context and call the backend.
    };
 
 7. Component Registration
-=========================
+===========================
 
 The ``@openedx/openedx-ai-extensions-ui`` package maintains a registry that maps strings to React components. For **Pattern A**, the name registered here **must match** the name used in the Profile JSON.
 
 In your ``frontend/src/index.tsx`` (or your plugin's entry point):
 
-.. code-block:: typescript
+.. code-block:: tsx
 
    import { registerComponents } from '@openedx/openedx-ai-extensions-ui';
    import MyRequestComponent from './components/MyRequestComponent';
    import MyIndependentTabComponent from './components/MyIndependentTabComponent';
 
    // Register a single component by name (Pattern A)
+
    registerComponents('MyRequestComponent', MyRequestComponent);
 
    // Register a specialized entry (e.g., a new tab in AI Settings)
+
    registerComponents('settings', { 
        id: 'my-plugin-id', 
        label: 'My AI Plugin', 
@@ -248,7 +252,7 @@ In your ``frontend/src/index.tsx`` (or your plugin's entry point):
    If the backend returns a component name that is not found in the registry, ``ConfigurableAIAssistance`` will display a debug alert listing all currently registered components.
 
 Activation and Usage
-********************
+**********************
 
 After implementing the backend logic, defining the Profile JSON, and registering your frontend components:
 
@@ -257,11 +261,15 @@ After implementing the backend logic, defining the Profile JSON, and registering
 3. **Set Scope**: Create an **AI Workflow Scope** to map your profile to the LMS or Studio, as explained in the :ref:`qs-usage`.
 
 Next Steps
-**********
+***********
 
-* Review the `openedx-ai-badges <https://github.com/openedx/openedx-ai-badges>`_ repository for a full working example.
+* Review the `openedx-ai-badges`_ repository for a full working example.
 
 .. seealso::
 
    :ref:`qs-usage`
-   :ref:`qs-config`
+
+   :ref:`qs config`
+
+.. _openedx-ai-badges: https://github.com/edunext/openedx-ai-badges
+.. _openedx-ai-extensions:  https://github.com/openedx/openedx-ai-extensions
