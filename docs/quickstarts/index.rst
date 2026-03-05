@@ -7,3 +7,4 @@ Quick Starts
 
    configuration_guide
    usage_guide
+   extension_guide
