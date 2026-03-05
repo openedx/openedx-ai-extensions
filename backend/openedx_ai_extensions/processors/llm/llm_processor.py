@@ -115,6 +115,20 @@ class LLMProcessor(LitellmProcessor):
                 tool_calls.append(item)
         return tool_calls
 
+    @staticmethod
+    def _normalize_input_to_text(input_data) -> str:
+        """
+        Coerce input_data to a plain string suitable for use as message content.
+        Handles: str, dict with 'text' key, other dicts (JSON-serialised), None.
+        """
+        if isinstance(input_data, str):
+            return input_data
+        if isinstance(input_data, dict):
+            return input_data.get("text") or ""
+        if input_data is None:
+            return ""
+        return str(input_data)
+
     def _build_response_api_params(self, system_role=None):
         """
         Build completion parameters for LiteLLM responses API.
@@ -123,7 +137,9 @@ class LLMProcessor(LitellmProcessor):
         params["stream"] = self.stream
 
         if self.chat_history:
-            self.chat_history.append({"role": "user", "content": self.input_data})
+            user_text = self._normalize_input_to_text(self.input_data)
+            if user_text:
+                self.chat_history.append({"role": "user", "content": user_text})
             params["input"] = self.chat_history
         else:
             # Initialize new thread with system role and context
@@ -155,12 +171,34 @@ class LLMProcessor(LitellmProcessor):
         """
         yield from self._handle_streaming_tool_calls_responses(response, params or {})
 
+    # Params that belong only to the Responses API and are unknown to completion().
+    _RESPONSES_API_ONLY_PARAMS = frozenset({"input", "previous_response_id", "store", "truncation"})
+
+    def _responses_params_to_completion_params(self, params: dict) -> dict:
+        """
+        Convert Responses API params to Completion API params.
+        Renames 'input' → 'messages' and drops Responses-API-only keys.
+        """
+        completion_params = {k: v for k, v in params.items()
+                             if k not in self._RESPONSES_API_ONLY_PARAMS}
+        completion_params["messages"] = params.get("input", [])
+        return completion_params
+
     def _call_responses_wrapper(self, params, initialize=False):
         """
         Wrapper around LiteLLM responses() call.
         """
         try:
             if params["stream"]:
+                if self.provider != "openai":
+                    # LiteLLM's Responses API streaming translation never surfaces
+                    # tool-call events for non-native providers (the done-event
+                    # always has type "message"). Use the Completion API path so
+                    # _handle_streaming_tool_calls can detect and execute tools.
+                    completion_params = self._responses_params_to_completion_params(params)
+                    response = self._completion_with_tools([], completion_params)
+                    return self._handle_streaming_completion(response)
+
                 raw_response = responses(**params)
                 return self._yield_threaded_stream(raw_response, params)
 

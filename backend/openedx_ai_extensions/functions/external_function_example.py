@@ -35,4 +35,5 @@ logger = logging.getLogger(__name__)
 def roll_dice(n_dice=1, **kwargs):
     """Simulate rolling a specified number of six-sided dice."""
     roll = [random.randint(1, 6) for _ in range(n_dice)]
+    logger.info(f"Rolling dice using functions. Rolled {roll}")
     return roll
