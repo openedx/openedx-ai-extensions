@@ -759,3 +759,30 @@ def test_caching_disabled_when_cache_settings_invalid_type(_, __):  # pylint: di
         assert warning_calls[1][0][0] == (
             "Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching."
         )
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_caching_disabled_when_cache_setting_absent(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that when AI_EXTENSIONS_LLM_CACHE is not defined on settings at all,
+    cache=True in config still results in caching being disabled and a warning
+    logged. The getattr(settings, "AI_EXTENSIONS_LLM_CACHE", {}) fallback returns
+    {} so enabled is never True.
+    """
+    config = {
+        "LitellmProcessor": {
+            "cache": True,
+        }
+    }
+    with patch('openedx_ai_extensions.processors.llm.litellm_base_processor.logger') as mock_logger:
+        processor = LitellmProcessor(config=config, user_session=None)
+
+        assert processor.caching_enabled is False
+        mock_logger.warning.assert_called_once_with(
+            "Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching."
+        )
