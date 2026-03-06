@@ -2,6 +2,7 @@
 Tests for the LLMProcessor module.
 """
 # pylint: disable=redefined-outer-name,protected-access
+import types
 import unittest
 from unittest.mock import Mock, patch
 
@@ -1236,6 +1237,75 @@ def test_streaming_tool_execution_recursion(
         assert tool_msg["content"] == "tool_result_value"
         assert tool_msg["name"] == "mock_tool"
 
+
+# ============================================================================
+# _completion_with_tools Error Path Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_completion_with_tools_unknown_tool_is_skipped(
+    mock_completion, llm_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    When a tool call references a function not in AVAILABLE_TOOLS the call is
+    silently skipped (logged) and completion proceeds without a tool message.
+    """
+    mock_completion.return_value = Mock(
+        choices=[Mock(message=Mock(content="done", tool_calls=None))],
+        usage=Mock(total_tokens=5),
+    )
+    unknown_call = types.SimpleNamespace(
+        id="call_x",
+        function=types.SimpleNamespace(name="unknown_tool", arguments='{}'),
+    )
+    params = {
+        "stream": False,
+        "messages": [{"role": "system", "content": "sys"}],
+        "model": "openai/gpt-4",
+    }
+    # pylint: disable=protected-access
+    response = llm_processor._completion_with_tools([unknown_call], params)
+
+    # No tool message should have been appended
+    assert all(m.get("role") != "tool" for m in params["messages"])
+    mock_completion.assert_called_once()
+    assert response.choices[0].message.content == "done"
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_completion_with_tools_json_decode_error(
+    mock_completion, llm_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    When a tool call carries malformed JSON arguments, json.JSONDecodeError is
+    caught, an error string is passed as the tool result, and completion
+    continues normally.
+    """
+    mock_tool = Mock(return_value="ok")
+    mock_completion.return_value = Mock(
+        choices=[Mock(message=Mock(content="done", tool_calls=None))],
+        usage=Mock(total_tokens=5),
+    )
+    bad_json_call = types.SimpleNamespace(
+        id="call_bad",
+        function=types.SimpleNamespace(name="mock_tool", arguments="{INVALID JSON}"),
+    )
+    params = {
+        "stream": False,
+        "messages": [{"role": "system", "content": "sys"}],
+        "model": "openai/gpt-4",
+    }
+    with patch.dict(AVAILABLE_TOOLS, {"mock_tool": mock_tool}):
+        # pylint: disable=protected-access
+        llm_processor._completion_with_tools([bad_json_call], params)
+
+    tool_msg = next((m for m in params["messages"] if m.get("role") == "tool"), None)
+    assert tool_msg is not None
+    assert "Error" in tool_msg["content"]
+    mock_tool.assert_not_called()
 
 # ============================================================================
 # Threaded Streaming & Tool Call Tests (Responses API)
