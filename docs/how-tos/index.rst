@@ -7,3 +7,4 @@ How-tos
    customizing_prompts
    mcp_integration
    mcp_example_server
+   xblock_ai_service

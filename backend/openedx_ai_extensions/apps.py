@@ -9,13 +9,13 @@ from openedx_ai_extensions import __version__
 
 
 class OpenedxAIExtensionsConfig(AppConfig):
-    # pylint: disable=line-too-long
     """
     Configuration for the openedx_ai_extensions Django application.
 
-    See https://github.com/openedx/edx-django-utils/blob/master/edx_django_utils/plugins/docs/how_tos/how_to_create_a_plugin_app.rst#manual-setup
+    See
+    https://github.com/openedx/edx-django-utils/blob/master/edx_django_utils/plugins/docs/how_tos/how_to_create_a_plugin_app.rst#manual-setup
     for more details and examples.
-    """  # noqa:
+    """
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "openedx_ai_extensions"
@@ -33,6 +33,11 @@ class OpenedxAIExtensionsConfig(AppConfig):
         from openedx_ai_extensions import tasks  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
         from openedx_ai_extensions.xapi import \
             transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
+        # Register the "ai_extensions" XBlock service with every known Open edX
+        # XBlock runtime class.  We patch at the class level so every instance
+        # created after app startup automatically provides the service.
+        from openedx_ai_extensions.xblock_service.mixin import patch_runtime  # pylint: disable=import-outside-toplevel
+        patch_runtime()
 
     plugin_app = {
         "url_config": {
