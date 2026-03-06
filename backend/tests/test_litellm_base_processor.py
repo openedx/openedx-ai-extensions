@@ -740,3 +740,55 @@ def test_caching_disabled_when_cache_settings_disabled(_, __):
         mock_logger.warning.assert_called_once_with(
             "Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching."
         )
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_caching_disabled_when_not_requested_in_config(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that caching is disabled and no warning is emitted when cache is not
+    set in config, regardless of AI_EXTENSIONS_LLM_CACHE.
+    """
+    config = {
+        "LitellmProcessor": {}
+    }
+    with patch('openedx_ai_extensions.processors.llm.litellm_base_processor.logger') as mock_logger:
+        processor = LitellmProcessor(config=config, user_session=None)
+
+        assert processor.caching_enabled is False
+        mock_logger.warning.assert_not_called()
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@patch.object(settings, "AI_EXTENSIONS_LLM_CACHE", new_callable=lambda: "not-a-dict")
+@pytest.mark.django_db
+def test_caching_disabled_when_cache_settings_invalid_type(_, __):  # pylint: disable=unused-argument
+    """
+    Test that when AI_EXTENSIONS_LLM_CACHE is not a dict an error is logged,
+    caching is disabled, and the missing-setting warning is also emitted because
+    cache=True was requested in config.
+    """
+    config = {
+        "LitellmProcessor": {
+            "cache": True,
+        }
+    }
+    with patch('openedx_ai_extensions.processors.llm.litellm_base_processor.logger') as mock_logger:
+        processor = LitellmProcessor(config=config, user_session=None)
+
+        assert processor.caching_enabled is False
+        warning_calls = mock_logger.warning.call_args_list
+        # First warning: invalid type for AI_EXTENSIONS_LLM_CACHE
+        assert "AI_EXTENSIONS_LLM_CACHE setting must be a dict" in warning_calls[0][0][0]
+        # Second warning: cache requested but effectively disabled
+        assert warning_calls[1][0][0] == (
+            "Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching."
+        )
