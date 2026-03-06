@@ -4,7 +4,9 @@ Provider-specific quirks and adaptations for different LLM providers.
 
 
 # TODO: refactor this module to make it more extensible for future providers
-def adapt_to_provider(provider, params, has_user_input=True, user_session=None, input_data=None):
+def adapt_to_provider(
+        provider, params, *, has_user_input=True, user_session=None,
+        input_data=None, use_completion_api=False):
     """
     Apply provider-specific modifications to API call parameters.
 
@@ -18,6 +20,11 @@ def adapt_to_provider(provider, params, has_user_input=True, user_session=None, 
         has_user_input (bool): Whether the conversation includes user input
         user_session: Optional user session for threading support
         input_data: Optional input data for continuing conversations
+        use_completion_api (bool): When True, convert Responses API params
+            (``input``) to Completion API format (``messages``) and drop
+            Responses-API-only keys.  Used for non-OpenAI streaming where
+            LiteLLM's Responses API translation does not surface tool-call
+            events correctly.
 
     Returns:
         dict: Modified parameters with provider-specific adaptations applied
@@ -46,6 +53,13 @@ def adapt_to_provider(provider, params, has_user_input=True, user_session=None, 
                     params["input"].append({"role": "user", "content": user_prompt})
                 elif "messages" in params:
                     params["messages"].append({"role": "user", "content": user_prompt})
+
+    if use_completion_api and "input" in params:
+        # Convert Responses API shape → Completion API shape so that
+        # completion() and _completion_with_tools() can be called directly.
+        params["messages"] = params.pop("input")
+        for key in ("previous_response_id", "store", "truncation"):
+            params.pop(key, None)
 
     return params
 
