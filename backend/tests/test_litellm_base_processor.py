@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from openedx_ai_extensions.functions.decorators import TOOLS_SCHEMA
+from openedx_ai_extensions.models import PromptTemplate
 from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
 
 User = get_user_model()
@@ -737,7 +738,7 @@ def test_caching_disabled_when_not_requested_in_config(mock_settings):  # pylint
 })
 @patch.object(settings, "AI_EXTENSIONS_LLM_CACHE", new_callable=lambda: "not-a-dict")
 @pytest.mark.django_db
-def test_caching_disabled_when_cache_settings_invalid_type(_, __):  # pylint: disable=unused-argument
+def test_caching_disabled_when_cache_settings_invalid_type(_, __):
     """
     Test that when AI_EXTENSIONS_LLM_CACHE is not a dict an error is logged,
     caching is disabled, and the missing-setting warning is also emitted because
@@ -786,3 +787,159 @@ def test_caching_disabled_when_cache_setting_absent(mock_settings):  # pylint: d
         mock_logger.warning.assert_called_once_with(
             "Caching is disabled in settings. Please enable AI_EXTENSIONS_LLM_CACHE to use caching."
         )
+
+
+# ============================================================================
+# Prompt Loading Tests
+# ============================================================================
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_load_prompt_from_template(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that _load_prompt returns the prompt text from a PromptTemplate
+    when prompt_template is set in config and the template exists.
+    """
+    config = {
+        "LitellmProcessor": {
+            "prompt_template": "my-template-slug",
+        }
+    }
+    with patch.object(PromptTemplate, "load_prompt", return_value="You are a helpful assistant.") as mock_load:
+        processor = LitellmProcessor(config=config, user_session=None)
+
+        mock_load.assert_called_once_with("my-template-slug")
+        assert processor.custom_prompt == "You are a helpful assistant."
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_load_prompt_falls_back_to_inline_when_template_missing(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that _load_prompt falls back to the inline 'prompt' config value when
+    prompt_template is set but PromptTemplate.load_prompt returns None
+    (e.g. template slug not found in the DB).
+    """
+    config = {
+        "LitellmProcessor": {
+            "prompt_template": "nonexistent-slug",
+            "prompt": "Fallback inline prompt.",
+        }
+    }
+    with patch.object(PromptTemplate, "load_prompt", return_value=None):
+        processor = LitellmProcessor(config=config, user_session=None)
+
+        assert processor.custom_prompt == "Fallback inline prompt."
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_load_prompt_inline_only(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that _load_prompt uses the inline 'prompt' value when no prompt_template
+    is configured.
+    """
+    config = {
+        "LitellmProcessor": {
+            "prompt": "Direct inline prompt.",
+        }
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    assert processor.custom_prompt == "Direct inline prompt."
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_load_prompt_returns_none_when_not_configured(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that _load_prompt returns None when neither prompt_template nor prompt
+    is present in config.
+    """
+    config = {
+        "LitellmProcessor": {}
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    assert processor.custom_prompt is None
+
+
+# ============================================================================
+# Options Override Tests
+# ============================================================================
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+        "TEMPERATURE": 0.7,
+        "MAX_TOKENS": 1000,
+    }
+})
+@pytest.mark.django_db
+def test_options_override_provider_settings(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that values in the 'options' config dict take precedence over provider
+    settings from AI_EXTENSIONS, and that extra constructor extra_params take
+    precedence over both.
+    """
+    config = {
+        "LitellmProcessor": {
+            "options": {
+                "TEMPERATURE": 0.2,
+                "MAX_TOKENS": 500,
+            }
+        }
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    # options values override the provider defaults
+    assert processor.extra_params["temperature"] == 0.2
+    assert processor.extra_params["max_tokens"] == 500
+    # model is still inherited from the provider
+    assert processor.extra_params["model"] == "openai/gpt-4"
+
+
+# ============================================================================
+# Enabled Tools Wildcard Tests
+# ============================================================================
+
+
+@patch.object(settings, "AI_EXTENSIONS", new_callable=lambda: {
+    "default": {
+        "MODEL": "openai/gpt-4",
+    }
+})
+@pytest.mark.django_db
+def test_enabled_tools_all_wildcard_includes_every_tool(mock_settings):  # pylint: disable=unused-argument
+    """
+    Test that using '__all__' in enabled_tools enables every tool in TOOLS_SCHEMA.
+    """
+    config = {
+        "LitellmProcessor": {
+            "enabled_tools": ["__all__"],
+        }
+    }
+    processor = LitellmProcessor(config=config, user_session=None)
+
+    assert "tools" in processor.extra_params
+    assert len(processor.extra_params["tools"]) == len(TOOLS_SCHEMA)
+    for schema in TOOLS_SCHEMA.values():
+        assert schema in processor.extra_params["tools"]
