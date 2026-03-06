@@ -284,6 +284,67 @@ def test_chat_with_context_streaming(
 
 
 @pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_chat_with_context_streaming_non_openai_uses_completion(
+    mock_completion, mock_responses, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that chat_with_context for a non-OpenAI provider (e.g. Anthropic) calls
+    completion() instead of responses() when streaming=True.
+
+    LiteLLM's Responses API streaming translation does not surface tool-call
+    events for non-native providers, so adapt_to_provider converts the params
+    to Completion API format (input → messages) and _call_responses_wrapper
+    falls through to the completion path.
+
+    The result must be a generator of encoded bytes (same as summarize_content).
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "anthropic/claude-3-5-sonnet",
+            "API_KEY": "test-anthropic-key",
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "chat_with_context",
+            "stream": True,
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+    processor.stream = True
+    processor.extra_params.pop("tools", None)
+
+    chunks = [
+        MockChunk("Hi", is_stream=True),
+        MockChunk(" there", is_stream=True),
+    ]
+    mock_completion.return_value = iter(chunks)
+
+    generator = processor.process(
+        context="Course Context",
+        input_data="Hello Anthropic",
+        chat_history=[]
+    )
+    results = list(generator)
+
+    # completion() must have been used — responses() must NOT be called
+    mock_responses.assert_not_called()
+    mock_completion.assert_called_once()
+
+    # Params passed to completion() must use 'messages', not 'input'
+    call_kwargs = mock_completion.call_args[1]
+    assert "messages" in call_kwargs, "Expected Completion API format (messages key)"
+    assert "input" not in call_kwargs, "Responses API key 'input' must not be present"
+
+    # Output is encoded bytes (handled by _handle_streaming_completion)
+    assert results[0] == b"Hi"
+    assert results[1] == b" there"
+
+
+@pytest.mark.django_db
 @patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
 def test_summarize_content_streaming(
     mock_completion, llm_processor  # pylint: disable=redefined-outer-name
