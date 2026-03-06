@@ -4,6 +4,7 @@ Responses processor for threaded AI conversations using LiteLLM
 
 import json
 import logging
+import types
 from datetime import datetime, timezone
 
 from litellm import completion, get_responses, list_input_items, responses
@@ -11,6 +12,7 @@ from litellm import completion, get_responses, list_input_items, responses
 from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
 from openedx_ai_extensions.processors.llm.providers import adapt_to_provider, after_tool_call_adaptations
+from openedx_ai_extensions.utils import normalize_input_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +124,9 @@ class LLMProcessor(LitellmProcessor):
         params["stream"] = self.stream
 
         if self.chat_history:
-            self.chat_history.append({"role": "user", "content": self.input_data})
+            user_text = normalize_input_to_text(self.input_data)
+            if user_text:
+                self.chat_history.append({"role": "user", "content": user_text})
             params["input"] = self.chat_history
         else:
             # Initialize new thread with system role and context
@@ -140,48 +144,38 @@ class LLMProcessor(LitellmProcessor):
             params,
             has_user_input=has_user_input,
             user_session=self.user_session,
-            input_data=self.input_data
+            input_data=self.input_data,
+            use_completion_api=(self.provider != "openai" and self.stream),
         )
 
         return params
 
-    def _yield_threaded_stream(self, response):
+    def _yield_threaded_stream(self, response, params=None):
         """
-        Helper generator to handle streaming logic for threaded responses.
+        Streaming generator for threaded conversations (Responses API).
+        Parses event types, yields text deltas, logs token usage, updates the
+        user session, and handles tool calls recursively.
+        Parallel to _handle_streaming_completion for the Completion API.
         """
-        total_tokens = None
-        try:
-            for chunk in response:
-                if hasattr(chunk, "usage") and chunk.usage:
-                    total_tokens = chunk.usage.total_tokens
-
-                if getattr(chunk, "response", None):
-                    resp = getattr(chunk, "response", None)
-                    if resp is not None:
-                        response_id = getattr(resp, "id", None)
-                        self.user_session.remote_response_id = response_id
-                        self.user_session.save()
-                if hasattr(chunk, "delta"):
-                    yield chunk.delta
-
-            if total_tokens is not None:
-                logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
-            else:
-                logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Error during threaded AI streaming: {e}", exc_info=True)
-            yield f"\n[AI Error: {e}]"
+        yield from self._handle_streaming_tool_calls_responses(response, params or {})
 
     def _call_responses_wrapper(self, params, initialize=False):
         """
         Wrapper around LiteLLM responses() call.
         """
         try:
-            response = self._responses_with_tools(tool_calls=[], params=params)
-
             if params["stream"]:
-                return self._yield_threaded_stream(response)
+                if self.provider != "openai":
+                    # params was already converted to Completion API format by
+                    # adapt_to_provider (use_completion_api=True), so call
+                    # completion() directly so tool-call events are visible.
+                    response = self._completion_with_tools([], params)
+                    return self._handle_streaming_completion(response)
+
+                raw_response = responses(**params)
+                return self._yield_threaded_stream(raw_response, params)
+
+            response = self._responses_with_tools(tool_calls=[], params=params)
 
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)
@@ -263,12 +257,24 @@ class LLMProcessor(LitellmProcessor):
         """Handle tool calls recursively until no more tool calls are present."""
         for tool_call in tool_calls:
             function_name = tool_call.function.name
-            function_to_call = AVAILABLE_TOOLS[function_name]
-            function_args = json.loads(tool_call.function.arguments)
 
-            function_response = function_to_call(
-                **function_args,
-            )
+            # Ensure tool exists
+            if function_name not in AVAILABLE_TOOLS:
+                logger.error(f"Tool '{function_name}' requested by LLM but not available locally.")
+                continue
+
+            function_to_call = AVAILABLE_TOOLS[function_name]
+
+            try:
+                function_args = json.loads(tool_call.function.arguments)
+                function_response = function_to_call(**function_args)
+            except json.JSONDecodeError:
+                function_response = "Error: Invalid JSON arguments provided."
+                logger.error(f"Failed to parse JSON arguments for {function_name}")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                function_response = f"Error executing tool: {str(e)}"
+                logger.error(f"Error executing tool {function_name}: {e}")
+
             params["messages"].append(
                 {
                     "tool_call_id": tool_call.id,
@@ -281,10 +287,9 @@ class LLMProcessor(LitellmProcessor):
         # Call completion again with updated messages
         response = completion(**params)
 
-        # For streaming, return the generator immediately
-        # Tool calls are not supported in streaming mode
+        # For streaming, we need to handle the stream to detect tool calls
         if params.get("stream"):
-            return response
+            return self._handle_streaming_tool_calls(response, params)
 
         # For non-streaming, check for tool calls and handle recursively
         new_tool_calls = response.choices[0].message.tool_calls
@@ -294,27 +299,186 @@ class LLMProcessor(LitellmProcessor):
 
         return response
 
+    # -------------------------------------------------------------------------
+    # Shared tool-execution helpers
+    # -------------------------------------------------------------------------
+
+    def _execute_tool(self, function_name: str, arguments_str: str) -> str:
+        """
+        Parse *arguments_str* as JSON, look up *function_name* in AVAILABLE_TOOLS,
+        call it, and return the result as a string.
+        Returns a descriptive error string on any failure so the caller can
+        forward it to the LLM without raising.
+        """
+        if function_name not in AVAILABLE_TOOLS:
+            logger.error("Tool '%s' not found in AVAILABLE_TOOLS.", function_name)
+            return "Error: Tool not found."
+        try:
+            function_args = json.loads(arguments_str)
+        except json.JSONDecodeError:
+            logger.error("Failed to parse JSON arguments for '%s'.", function_name)
+            return "Error: Invalid JSON arguments provided."
+        try:
+            result = AVAILABLE_TOOLS[function_name](**function_args)
+            return str(result)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            return f"Error executing tool: {e}"
+
+    # -------------------------------------------------------------------------
+    # Completion API streaming helpers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _accumulate_tool_call_chunk(buffer: dict, tc_chunk) -> None:
+        """Merge a single streaming tool-call delta into the accumulation buffer."""
+        idx = tc_chunk.index
+        if idx not in buffer:
+            buffer[idx] = {"id": "", "type": "function", "function": {"name": "", "arguments": ""}}
+        if tc_chunk.id:
+            buffer[idx]["id"] += tc_chunk.id
+        if tc_chunk.function:
+            buffer[idx]["function"]["name"] += tc_chunk.function.name or ""
+            buffer[idx]["function"]["arguments"] += tc_chunk.function.arguments or ""
+
+    @staticmethod
+    def _reconstruct_tool_calls(buffer: dict):
+        """
+        Convert the chunk accumulation buffer into:
+        - a list of SimpleNamespace objects accepted by _completion_with_tools
+        - a list of dicts for the assistant history message
+        """
+        tool_call_objects = []
+        assistant_tool_calls = []
+        for idx in sorted(buffer):
+            data = buffer[idx]
+            fn = data["function"]
+            tool_call_objects.append(
+                types.SimpleNamespace(
+                    id=data["id"],
+                    type="function",
+                    function=types.SimpleNamespace(name=fn["name"], arguments=fn["arguments"]),
+                )
+            )
+            assistant_tool_calls.append({
+                "id": data["id"],
+                "type": "function",
+                "function": {"name": fn["name"], "arguments": fn["arguments"]},
+            })
+        return tool_call_objects, assistant_tool_calls
+
+    def _handle_streaming_tool_calls(self, response, params):
+        """
+        Generator for Completion API streaming responses that may contain tool calls.
+        Yields content chunks immediately; accumulates tool-call deltas and replays
+        them after the stream ends via _completion_with_tools.
+        """
+        tool_calls_buffer = {}
+
+        for chunk in response:
+            delta = chunk.choices[0].delta
+            if delta.content:
+                yield chunk
+            for tc_chunk in (delta.tool_calls or []):
+                self._accumulate_tool_call_chunk(tool_calls_buffer, tc_chunk)
+
+        if not tool_calls_buffer:
+            return
+
+        tool_call_objects, assistant_tool_calls = self._reconstruct_tool_calls(tool_calls_buffer)
+        params["messages"].append({
+            "role": "assistant",
+            "content": None,
+            "tool_calls": assistant_tool_calls,
+        })
+        yield from self._completion_with_tools(tool_call_objects, params)
+
+    # -------------------------------------------------------------------------
+    # Responses API streaming helpers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _get_chunk_token_usage(chunk) -> "int | None":
+        """Extract total token count from a Responses API streaming chunk, if present."""
+        chunk_response = getattr(chunk, "response", None)
+        if chunk_response and getattr(chunk_response, "usage", None):
+            return chunk_response.usage.total_tokens
+        if getattr(chunk, "usage", None):
+            return chunk.usage.total_tokens
+        return None
+
+    def _persist_response_id(self, chunk) -> None:
+        """Save the response ID carried by *chunk* to the user session, if present."""
+        if not self.user_session:
+            return
+        chunk_response = getattr(chunk, "response", None)
+        response_id = chunk_response and getattr(chunk_response, "id", None)
+        if response_id:
+            self.user_session.remote_response_id = response_id
+            self.user_session.save()
+
+    def _handle_tool_call_item(self, item, params) -> None:
+        """
+        Execute a completed Responses API tool call and append both the call
+        intent and its output to *params['input']* so the LLM can continue.
+        """
+        tool_output = self._execute_tool(item.name, item.arguments)
+        params["input"].append({
+            "type": "function_call",
+            "call_id": item.call_id,
+            "name": item.name,
+            "arguments": item.arguments,
+        })
+        params["input"].append({
+            "type": "function_call_output",
+            "call_id": item.call_id,
+            "output": tool_output,
+        })
+
+    def _handle_streaming_tool_calls_responses(self, response, params):
+        """
+        Generator for Responses API streaming responses.
+        Yields text deltas, persists the thread ID, logs token usage, and handles
+        completed tool calls by executing them and recursing via _responses_with_tools.
+        Parallel to _handle_streaming_tool_calls for the Completion API.
+        """
+        total_tokens = None
+        try:
+            for chunk in response:
+                total_tokens = self._get_chunk_token_usage(chunk) or total_tokens
+                self._persist_response_id(chunk)
+
+                if hasattr(chunk, "delta") and chunk.delta and chunk.delta != "{}":
+                    yield chunk.delta
+
+                if getattr(chunk, "type", None) == "response.output_item.done":
+                    item = chunk.item
+                    if getattr(item, "type", None) == "function_call":
+                        self._handle_tool_call_item(item, params)
+                        yield from self._responses_with_tools([], params)
+                        return
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error during streaming tool calls: %s", e, exc_info=True)
+            yield f"\n[AI Error: {e}]"
+            return
+
+        if total_tokens is not None:
+            logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
+
     def _responses_with_tools(self, tool_calls, params):
         """Handle tool calls recursively until no more tool calls are present."""
         for tool_call in tool_calls:
-            function_name = tool_call.name
-            function_to_call = AVAILABLE_TOOLS[function_name]
-            function_args = json.loads(tool_call.arguments)
-
-            function_response = function_to_call(
-                **function_args,
-            )
             params["input"].append({
                 "type": "function_call_output",
                 "call_id": tool_call.call_id,
-                "output": str(function_response)
+                "output": self._execute_tool(tool_call.name, tool_call.arguments),
             })
 
-        # Call completion again with updated messages
+        # Call responses API with updated input
         response = responses(**params)
 
         if params.get("stream"):
-            return response
+            return self._handle_streaming_tool_calls_responses(response, params)
 
         new_tool_calls = self._extract_response_tool_calls(response=response)
         if new_tool_calls:
