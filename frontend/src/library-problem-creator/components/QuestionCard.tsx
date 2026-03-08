@@ -1,20 +1,13 @@
 import React, { useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Button, Card, Badge, Form, Spinner, Stack,
+  Button, Card, Form, Spinner, Stack,
 } from '@openedx/paragon';
 import QuestionEditor from './QuestionEditor';
+import ProblemTypeBadge from './ProblemTypeBadge';
 import messages from '../messages';
-import { useLibraryCreatorContext } from '../context/LibraryCreatorContext';
-import { Choice } from '../hooks/useLibraryCreator';
-
-const PROBLEM_TYPE_LABELS: Record<string, string> = {
-  multiplechoiceresponse: 'Single Choice',
-  choiceresponse: 'Multiple Choice',
-  optionresponse: 'Dropdown',
-  numericalresponse: 'Numeric',
-  stringresponse: 'Text',
-};
+import { useLibraryProblemCreatorContext } from '../context/LibraryProblemCreatorContext';
+import { Choice } from '../hooks/useLibraryProblemCreator';
 
 /** Choice list — shared by MCQ, checkbox, and dropdown */
 const ChoiceList = ({ choices }: { choices: Choice[] }) => {
@@ -65,7 +58,7 @@ const QuestionCard = ({ index }: { index: number }) => {
     discardQuestion,
     restoreQuestion,
     setEditingIndex,
-  } = useLibraryCreatorContext();
+  } = useLibraryProblemCreatorContext();
 
   const intl = useIntl();
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
@@ -78,7 +71,6 @@ const QuestionCard = ({ index }: { index: number }) => {
   const isRegenerating = regeneratingIndices.has(index);
   const isEditing = editingIndex === index;
 
-  const typeLabel = PROBLEM_TYPE_LABELS[question.problemType] || question.problemType;
   const isChoiceBased = ['multiplechoiceresponse', 'choiceresponse', 'optionresponse'].includes(question.problemType);
   const isNumeric = question.problemType === 'numericalresponse';
   const isText = question.problemType === 'stringresponse';
@@ -115,9 +107,7 @@ const QuestionCard = ({ index }: { index: number }) => {
           <span className="font-weight-bold small flex-1">
             {index + 1}. {question.displayName}
           </span>
-          <Badge pill variant="info" className="ml-2 small">
-            {typeLabel}
-          </Badge>
+          <ProblemTypeBadge problemType={question.problemType} className="ml-2" />
         </div>
       </Card.Section>
 

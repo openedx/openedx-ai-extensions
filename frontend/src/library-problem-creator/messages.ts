@@ -26,6 +26,11 @@ const messages = defineMessages({
     defaultMessage: 'Start Over',
     description: 'Reset to idle and clear session',
   },
+  'ai.library.creator.review.button': {
+    id: 'ai.library.creator.review.button',
+    defaultMessage: 'Review Questions ({count})',
+    description: 'Button to open the review modal when questions are ready',
+  },
   'ai.library.creator.questions.label': {
     id: 'ai.library.creator.questions.label',
     defaultMessage: 'Number of Questions',
@@ -101,10 +106,84 @@ const messages = defineMessages({
     defaultMessage: 'Failed to load libraries.',
     description: 'Error loading libraries',
   },
+  'ai.library.creator.save.step.title': {
+    id: 'ai.library.creator.save.step.title',
+    defaultMessage: 'Save problems to library',
+    description: 'Heading for the save step in the modal',
+  },
+  'ai.library.creator.save.step.description': {
+    id: 'ai.library.creator.save.step.description',
+    defaultMessage: 'The problems listed below will be added to the selected library under the given collection name. Discarded problems are excluded.',
+    description: 'Description paragraph in the save step explaining what will happen',
+  },
+  'ai.library.creator.save.step.problems.heading': {
+    id: 'ai.library.creator.save.step.problems.heading',
+    defaultMessage: '{count, plural, one {# problem ready to save} other {# problems ready to save}}',
+    description: 'Heading showing how many problems will be saved',
+  },
   'ai.library.creator.save.button': {
     id: 'ai.library.creator.save.button',
     defaultMessage: 'Save to Library',
     description: 'Save button to commit questions to library',
+  },
+  // Modal chrome
+  'ai.library.creator.modal.title': {
+    id: 'ai.library.creator.modal.title',
+    defaultMessage: 'AI Problem Creator',
+    description: 'Title shown in the fullscreen modal header',
+  },
+  'ai.library.creator.modal.next': {
+    id: 'ai.library.creator.modal.next',
+    defaultMessage: 'Next',
+    description: 'Next step button in the modal stepper',
+  },
+  'ai.library.creator.modal.previous': {
+    id: 'ai.library.creator.modal.previous',
+    defaultMessage: 'Previous',
+    description: 'Previous step button in the modal stepper',
+  },
+  // Review step
+  'ai.library.creator.review.step.stepper.title': {
+    id: 'ai.library.creator.review.step.stepper.title',
+    defaultMessage: 'Review the AI-generated problems',
+    description: 'Title shown in the stepper header for the review step',
+  },
+  'ai.library.creator.review.step.heading': {
+    id: 'ai.library.creator.review.step.heading',
+    defaultMessage: 'Review the AI-generated problems',
+    description: 'Main heading inside the review step',
+  },
+  'ai.library.creator.review.step.description': {
+    id: 'ai.library.creator.review.step.description',
+    defaultMessage: 'Edit the generated problems manually or add feedback for the AI to apply your changes.',
+    description: 'Description paragraph inside the review step',
+  },
+  // Save step stepper title (reuses save.step.title for the h2)
+  'ai.library.creator.save.step.stepper.title': {
+    id: 'ai.library.creator.save.step.stepper.title',
+    defaultMessage: 'Save to library',
+    description: 'Title shown in the stepper header for the save step',
+  },
+  // Hook error messages (shown to the user in the UI)
+  'ai.library.creator.error.unexpected.format': {
+    id: 'ai.library.creator.error.unexpected.format',
+    defaultMessage: 'Unexpected response format from generation task. Please try again.',
+    description: 'Error shown when the generation task returns an unrecognised format',
+  },
+  'ai.library.creator.error.timeout': {
+    id: 'ai.library.creator.error.timeout',
+    defaultMessage: 'Generation timed out. Please try again.',
+    description: 'Error shown when the generation task polling exceeds the maximum duration',
+  },
+  'ai.library.creator.error.unexpected.response': {
+    id: 'ai.library.creator.error.unexpected.response',
+    defaultMessage: 'Unexpected response. Please try again.',
+    description: 'Generic unexpected response error during generation',
+  },
+  'ai.library.creator.error.unexpected.save': {
+    id: 'ai.library.creator.error.unexpected.save',
+    defaultMessage: 'Unexpected error while saving. Please try again.',
+    description: 'Error shown when the save response has an unrecognised format',
   },
   'ai.library.creator.saving': {
     id: 'ai.library.creator.saving',

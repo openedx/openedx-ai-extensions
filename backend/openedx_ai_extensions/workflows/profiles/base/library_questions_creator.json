@@ -17,16 +17,16 @@ Works only in studio UI and over the CMS service_variant.
   "actuator_config": {
     "UIComponents": {
       "request": {
-        "component": "LibraryComponentCreator",
+        "component": "LibraryProblemCreator",
         "config": {
-          "titleText": "AI Question Creator",
+          "titleText": "AI Problem Creator",
           "preloadPreviousSession": true
         }
       },
       "response": {
-        "component": "LibraryComponentCreatorResponse",
+        "component": "LibraryProblemCreatorResponse",
         "config": {
-          "titleText": "AI Question Creator",
+          "titleText": "AI Problem Creator",
           "customMessage": "Questions saved to your Content Library.",
           "hyperlinkText": "View collection >"
         }

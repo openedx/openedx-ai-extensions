@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from 'react';
-import { UseLibraryCreatorReturn } from '../hooks/useLibraryCreator';
+import { UseLibraryCreatorReturn } from '../hooks/useLibraryProblemCreator';
 
-interface LibraryCreatorContextValue extends UseLibraryCreatorReturn {
+interface LibraryProblemCreatorContextValue extends UseLibraryCreatorReturn {
   // Library picker state
   libraries: Array<{ id: string; title: string }>;
   selectedLibrary: string;
@@ -9,7 +9,7 @@ interface LibraryCreatorContextValue extends UseLibraryCreatorReturn {
   isLoadingLibraries: boolean;
   setSelectedLibrary: (lib: string) => void;
   setLibraryError: (err: string) => void;
-  // Derived / handlers owned by LibraryComponentCreator
+  // Derived / handlers owned by LibraryProblemCreator
   activeCount: number;
   handleSave: () => void;
   handleStartOver: () => void;
@@ -21,24 +21,24 @@ interface LibraryCreatorContextValue extends UseLibraryCreatorReturn {
   CodeEditor?: React.ComponentType<any> | null;
 }
 
-const LibraryCreatorContext = createContext<LibraryCreatorContextValue | null>(null);
+const LibraryProblemCreatorContext = createContext<LibraryProblemCreatorContextValue | null>(null);
 
-export const LibraryCreatorProvider = ({
+export const LibraryProblemCreatorProvider = ({
   children,
   value,
 }: {
   children: React.ReactNode;
-  value: LibraryCreatorContextValue;
+  value: LibraryProblemCreatorContextValue;
 }) => (
-  <LibraryCreatorContext.Provider value={value}>
+  <LibraryProblemCreatorContext.Provider value={value}>
     {children}
-  </LibraryCreatorContext.Provider>
+  </LibraryProblemCreatorContext.Provider>
 );
 
-export const useLibraryCreatorContext = (): LibraryCreatorContextValue => {
-  const ctx = useContext(LibraryCreatorContext);
+export const useLibraryProblemCreatorContext = (): LibraryProblemCreatorContextValue => {
+  const ctx = useContext(LibraryProblemCreatorContext);
   if (!ctx) {
-    throw new Error('useLibraryCreatorContext must be used inside LibraryCreatorProvider');
+    throw new Error('useLibraryProblemCreatorContext must be used inside LibraryProblemCreatorProvider');
   }
   return ctx;
 };

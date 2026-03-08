@@ -1,16 +1,18 @@
 import {
   useState, useEffect, useRef, useCallback, useMemo,
 } from 'react';
+import { useIntl } from '@edx/frontend-platform/i18n';
 import { logError, logInfo } from '@edx/frontend-platform/logging';
 import { callWorkflowService, prepareContextData } from '../../services';
 import { WORKFLOW_ACTIONS } from '../../constants';
+import messages from '../messages';
 
 // Polling config (shared with AIEducatorLibraryResponseComponent)
 const POLLING_INTERVALS = { INITIAL: 10000, EXTENDED: 30000 };
 const POLLING_TIMEOUTS = { SWITCH_TO_EXTENDED: 2, MAX_DURATION: 5 };
 const MS_TO_MINUTES = 60000;
 
-export type CreatorStep = 'idle' | 'generating' | 'review' | 'saving' | 'error';
+export type CreatorStep = 'idle' | 'generating' | 'review' | 'preloaded' | 'saving' | 'error';
 
 export interface Choice {
   text: string;
@@ -67,7 +69,7 @@ export interface UseLibraryCreatorReturn {
   startOver: () => Promise<void>;
 }
 
-export function useLibraryCreator({
+export function useLibraryProblemCreator({
   courseId,
   locationId,
   uiSlotSelectorId,
@@ -75,6 +77,7 @@ export function useLibraryCreator({
   setHasAsked,
   preloadPreviousSession = false,
 }: UseLibraryCreatorParams): UseLibraryCreatorReturn {
+  const intl = useIntl();
   const [step, setStep] = useState<CreatorStep>('idle');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionHistories, setQuestionHistories] = useState<Record<number, Question[]>>({});
@@ -102,7 +105,7 @@ export function useLibraryCreator({
     }
   }, []);
 
-  const handleQuestionsResponse = useCallback((response: any) => {
+  const handleQuestionsResponse = useCallback((response: any, preloaded = false) => {
     const name: string = response.collectionName || '';
     // question_slots → [{versions: [...], selected: N}]
     const slots: Array<{ versions: Question[]; selected: number }> = response.questionSlots || [];
@@ -119,7 +122,9 @@ export function useLibraryCreator({
     setEditingIndex(null);
     setQuestionHistories(initHistories);
     setSelectedVersionIndices(initIndices);
-    setStep('review');
+    // 'preloaded' = questions from a previous session; modal does NOT auto-open.
+    // 'review'    = freshly generated; modal auto-opens via useEffect in the component.
+    setStep(preloaded ? 'preloaded' : 'review');
   }, []);
 
   const pollTaskStatus = useCallback(async (taskId: string) => {
@@ -140,16 +145,16 @@ export function useLibraryCreator({
         if (responseData && typeof responseData === 'object' && responseData.questionSlots) {
           handleQuestionsResponse(responseData);
         } else {
-          setErrorMessage('Unexpected response format from generation task.');
+          setErrorMessage(intl.formatMessage(messages['ai.library.creator.error.unexpected.format']));
           setStep('error');
         }
       } else if (data.status === 'error' || data.status === 'timeout' || data.error) {
         stopPolling();
-        setErrorMessage(data.error || data.message || 'Generation failed.');
+        setErrorMessage(data.error || data.message || intl.formatMessage(messages['ai.library.creator.error.generate']));
         setStep('error');
       }
     } catch (err) {
-      logError('useLibraryCreator: poll error:', err);
+      logError('useLibraryProblemCreator: poll error:', err);
       // Don't stop on a single poll error
     }
   }, [contextData, courseId, handleQuestionsResponse, stopPolling]);
@@ -166,7 +171,7 @@ export function useLibraryCreator({
 
       if (elapsedMinutes >= POLLING_TIMEOUTS.MAX_DURATION) {
         stopPolling();
-        setErrorMessage('Generation timed out. Please try again.');
+        setErrorMessage(intl.formatMessage(messages['ai.library.creator.error.timeout']));
         setStep('error');
         return;
       }
@@ -203,11 +208,11 @@ export function useLibraryCreator({
           setResponse(data.response);
           setHasAsked(true);
         } else if (typeof data.response === 'object' && data.response.questionSlots) {
-          // Questions waiting for review
-          handleQuestionsResponse(data.response);
+          // Questions waiting for review — don't auto-open modal for preloaded sessions
+          handleQuestionsResponse(data.response, true);
         }
       } catch (err) {
-        logInfo('useLibraryCreator: no previous session', err);
+        logInfo('useLibraryProblemCreator: no previous session', err);
       }
     };
 
@@ -240,12 +245,12 @@ export function useLibraryCreator({
       } else if (data.error) {
         throw new Error(data.error);
       } else {
-        setErrorMessage('Unexpected response. Please try again.');
+        setErrorMessage(intl.formatMessage(messages['ai.library.creator.error.unexpected.response']));
         setStep('error');
       }
     } catch (err) {
-      logError('useLibraryCreator: generate error:', err);
-      setErrorMessage((err as Error).message || 'Failed to generate questions.');
+      logError('useLibraryProblemCreator: generate error:', err);
+      setErrorMessage((err as Error).message || intl.formatMessage(messages['ai.library.creator.error.generate']));
       setStep('error');
     }
   }, [contextData, startPolling, handleQuestionsResponse]);
@@ -286,10 +291,10 @@ export function useLibraryCreator({
           return next;
         });
       } else if (data.error) {
-        logError('useLibraryCreator: regenerate error:', data.error);
+        logError('useLibraryProblemCreator: regenerate error:', data.error);
       }
     } catch (err) {
-      logError('useLibraryCreator: regenerate error:', err);
+      logError('useLibraryProblemCreator: regenerate error:', err);
     } finally {
       setRegeneratingIndices((prev) => {
         const next = new Set(prev);
@@ -360,11 +365,11 @@ export function useLibraryCreator({
       } else if (data.error) {
         throw new Error(data.error);
       } else {
-        throw new Error('Unexpected save response.');
+        throw new Error(intl.formatMessage(messages['ai.library.creator.error.unexpected.save']));
       }
     } catch (err) {
-      logError('useLibraryCreator: save error:', err);
-      setErrorMessage((err as Error).message || 'Failed to save questions.');
+      logError('useLibraryProblemCreator: save error:', err);
+      setErrorMessage((err as Error).message || intl.formatMessage(messages['ai.library.creator.error.save']));
       setStep('review');
     }
   }, [contextData, questions, discardedIndices, collectionName, setResponse, setHasAsked]);
@@ -380,7 +385,7 @@ export function useLibraryCreator({
         },
       });
     } catch (err) {
-      logInfo('useLibraryCreator: clear session error (non-fatal):', err);
+      logInfo('useLibraryProblemCreator: clear session error (non-fatal):', err);
     }
     setStep('idle');
     setQuestions([]);
@@ -416,4 +421,4 @@ export function useLibraryCreator({
   };
 }
 
-export default useLibraryCreator;
+export default useLibraryProblemCreator;

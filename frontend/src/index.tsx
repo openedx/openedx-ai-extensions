@@ -9,9 +9,9 @@ import { AIExtensionsCard, AIExtensionsSettingsModal } from './ai-extensions-set
 import { REGISTRY_NAMES, getEntries } from './extensionRegistry';
 import type { RegistryEntry } from './extensionRegistry';
 import {
-  LibraryComponentCreator,
-  LibraryComponentCreatorResponse,
-} from './library-component-creator';
+  LibraryProblemCreator,
+  LibraryProblemCreatorResponse,
+} from './library-problem-creator';
 
 export * as services from './services';
 
@@ -35,8 +35,8 @@ export {
   ConfigurableAIAssistance,
   RedLine,
   AIEducatorLibraryAssistComponent,
-  LibraryComponentCreator,
-  LibraryComponentCreatorResponse,
+  LibraryProblemCreator,
+  LibraryProblemCreatorResponse,
   registerComponent,
   registerComponents,
   REGISTRY_NAMES,

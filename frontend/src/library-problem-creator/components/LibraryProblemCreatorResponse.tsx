@@ -9,7 +9,7 @@ import { WORKFLOW_ACTIONS } from '../../constants';
 import { PluginContext } from '../../types';
 import messages from '../messages';
 
-interface LibraryComponentCreatorResponseProps {
+interface LibraryProblemCreatorResponseProps {
   response?: string;
   error?: string;
   isLoading?: boolean;
@@ -20,7 +20,7 @@ interface LibraryComponentCreatorResponseProps {
   contextData?: PluginContext;
 }
 
-const LibraryComponentCreatorResponse = ({
+const LibraryProblemCreatorResponse = ({
   response,
   error,
   isLoading = false,
@@ -29,7 +29,7 @@ const LibraryComponentCreatorResponse = ({
   titleText,
   hyperlinkText,
   contextData = {},
-}: LibraryComponentCreatorResponseProps) => {
+}: LibraryProblemCreatorResponseProps) => {
   const intl = useIntl();
 
   const displayTitle = titleText || intl.formatMessage(messages['ai.library.creator.response.title']);
@@ -46,7 +46,7 @@ const LibraryComponentCreatorResponse = ({
         },
       });
     } catch (err) {
-      logError('LibraryComponentCreatorResponse: clear session error:', err);
+      logError('LibraryProblemCreatorResponse: clear session error:', err);
     }
     if (onClear) { onClear(); }
   }, [contextData, onClear]);
@@ -91,4 +91,4 @@ const LibraryComponentCreatorResponse = ({
   );
 };
 
-export default LibraryComponentCreatorResponse;
+export default LibraryProblemCreatorResponse;

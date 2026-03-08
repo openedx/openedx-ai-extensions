@@ -28,9 +28,9 @@ import {
   AIEducatorLibraryResponseComponent,
 } from './components';
 import {
-  LibraryComponentCreator,
-  LibraryComponentCreatorResponse,
-} from './library-component-creator';
+  LibraryProblemCreator,
+  LibraryProblemCreatorResponse,
+} from './library-problem-creator';
 import { PluginConfiguration } from './types';
 import { WORKFLOW_ACTIONS } from './constants';
 
@@ -44,8 +44,8 @@ import messages from './messages';
   ['AISidebarResponse', AISidebarResponse],
   ['AIEducatorLibraryAssistComponent', AIEducatorLibraryAssistComponent],
   ['AIEducatorLibraryResponseComponent', AIEducatorLibraryResponseComponent],
-  ['LibraryComponentCreator', LibraryComponentCreator],
-  ['LibraryComponentCreatorResponse', LibraryComponentCreatorResponse],
+  ['LibraryProblemCreator', LibraryProblemCreator],
+  ['LibraryProblemCreatorResponse', LibraryProblemCreatorResponse],
 ].forEach(([id, component]) => registerEntry(
   REGISTRY_NAMES.COMPONENTS,
   { id: id as string, component: component as React.ComponentType<any> },

@@ -5,7 +5,7 @@
  * Parsing is done with text/html for robustness (handles HTML content inside
  * the OLX that might not be well-formed XML).
  */
-import { Choice, Question } from '../hooks/useLibraryCreator';
+import { Choice, Question } from '../hooks/useLibraryProblemCreator';
 
 const TAG_TO_TYPE: Record<string, string> = {
   multiplechoiceresponse: 'multiplechoiceresponse',

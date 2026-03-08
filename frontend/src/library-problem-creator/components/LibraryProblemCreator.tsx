@@ -8,12 +8,12 @@ import {
   useToggle,
 } from '@openedx/paragon';
 import { AutoAwesome } from '@openedx/paragon/icons';
-import { useLibraryCreator } from '../hooks/useLibraryCreator';
-import { LibraryCreatorProvider } from '../context/LibraryCreatorContext';
+import { useLibraryProblemCreator } from '../hooks/useLibraryProblemCreator';
+import { LibraryProblemCreatorProvider } from '../context/LibraryProblemCreatorContext';
 import messages from '../messages';
 import EditModal from './EditModal';
 
-interface LibraryComponentCreatorProps {
+interface LibraryProblemCreatorProps {
   courseId: string;
   locationId: string;
   uiSlotSelectorId?: string | null;
@@ -22,12 +22,11 @@ interface LibraryComponentCreatorProps {
   setHasAsked: (hasAsked: boolean) => void;
   titleText?: string;
   preloadPreviousSession?: boolean;
-  /** Optional code-editor component (e.g. Monaco, CodeMirror) used for OLX editing */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Frontend-app-authoring Editor if pass
   CodeEditor?: React.ComponentType<any> | null;
 }
 
-const LibraryComponentCreator = ({
+const LibraryProblemCreator = ({
   courseId,
   locationId,
   uiSlotSelectorId = null,
@@ -37,12 +36,12 @@ const LibraryComponentCreator = ({
   setHasAsked,
   titleText,
   preloadPreviousSession = false,
-}: LibraryComponentCreatorProps) => {
+}: LibraryProblemCreatorProps) => {
   const intl = useIntl();
 
   const displayTitle = titleText || intl.formatMessage(messages['ai.library.creator.title']);
 
-  const questionsCreated = useLibraryCreator({
+  const questionsCreated = useLibraryProblemCreator({
     courseId,
     locationId,
     uiSlotSelectorId,
@@ -87,14 +86,14 @@ const LibraryComponentCreator = ({
       setLibraries(fetched);
       setLibrariesFetched(true);
     } catch (err) {
-      logError('LibraryComponentCreator: failed to fetch libraries:', err);
+      logError('LibraryProblemCreator: failed to fetch libraries:', err);
       setLibraryError(intl.formatMessage(messages['ai.library.creator.library.error']));
     } finally {
       setIsLoadingLibraries(false);
     }
   };
 
-  // Open modal and fetch libraries when entering review step
+  // Auto-open modal only for freshly generated questions (not preloaded sessions)
   useEffect(() => {
     if (step === 'review') {
       open();
@@ -102,6 +101,12 @@ const LibraryComponentCreator = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // Called when the user manually opens the modal from the "Review Questions" button
+  const handleOpenModal = () => {
+    open();
+    fetchLibraries();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,8 +175,8 @@ const LibraryComponentCreator = ({
   if (hasAsked) { return null; }
 
   return (
-    <LibraryCreatorProvider value={contextValue}>
-      <Card className="library-component-creator mt-3 mb-3">
+    <LibraryProblemCreatorProvider value={contextValue}>
+      <Card className="library-problem-creator mt-3 mb-3">
         <Card.Section>
           <h3 className="d-block mb-1">{displayTitle}</h3>
           <small className="d-block mb-2 x-small">
@@ -259,6 +264,8 @@ const LibraryComponentCreator = ({
               </span>
             </div>
           )}
+
+          {/* Saving step */}
           {step === 'saving' && (
             <div className="text-center py-3">
               <Spinner animation="border" size="sm" className="mr-2" />
@@ -267,7 +274,32 @@ const LibraryComponentCreator = ({
               </span>
             </div>
           )}
-          <EditModal />
+
+          {/* Questions ready but modal closed — show "Review Questions" button */}
+          {(step === 'preloaded' || (step === 'review' && !isOpen)) && (
+            <Stack gap={2}>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-100"
+                onClick={handleOpenModal}
+              >
+                {intl.formatMessage(messages['ai.library.creator.review.button'], { count: activeCount })}
+              </Button>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="w-100"
+                onClick={handleStartOver}
+              >
+                {intl.formatMessage(messages['ai.library.creator.start.over'])}
+              </Button>
+            </Stack>
+          )}
+
+          {/* EditModal is always mounted when we have questions; isOpen controls visibility */}
+          {(step === 'review' || step === 'preloaded' || step === 'saving') && <EditModal />}
+
           {/* Error step */}
           {step === 'error' && (
             <>
@@ -284,8 +316,8 @@ const LibraryComponentCreator = ({
           )}
         </Card.Section>
       </Card>
-    </LibraryCreatorProvider>
+    </LibraryProblemCreatorProvider>
   );
 };
 
-export default LibraryComponentCreator;
+export default LibraryProblemCreator;

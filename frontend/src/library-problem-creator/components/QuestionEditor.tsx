@@ -3,9 +3,9 @@ import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Alert, Button, Stack, Tab, Tabs,
 } from '@openedx/paragon';
-import { Question } from '../hooks/useLibraryCreator';
+import { Question } from '../hooks/useLibraryProblemCreator';
 import { olxToQuestion } from '../utils/olxToQuestion';
-import { useLibraryCreatorContext } from '../context/LibraryCreatorContext';
+import { useLibraryProblemCreatorContext } from '../context/LibraryProblemCreatorContext';
 import messages from '../messages';
 
 type EditorMode = 'olx' | 'json';
@@ -25,7 +25,7 @@ function questionToJson(q: Question): string {
 
 const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => {
   const intl = useIntl();
-  const { CodeEditor } = useLibraryCreatorContext();
+  const { CodeEditor } = useLibraryProblemCreatorContext();
   const [mode, setMode] = useState<EditorMode>('olx');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleTabSelect = (key: any) => { if (key) { setMode(key as EditorMode); } };
