@@ -4,7 +4,7 @@
 [project]
 name = "openedx-ai-extensions"
 license = {text = "AGPL-3.0-only"}
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [
     {name = "The Open edX Community"},
     {email = "oscm@axim.org"}
@@ -20,7 +20,6 @@ classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
