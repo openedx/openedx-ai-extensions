@@ -89,7 +89,15 @@ class EducatorAssistantProcessor(LitellmProcessor):
         if '{{CONTEXT}}' in prompt:
             prompt = prompt.replace("{{CONTEXT}}", str(self.context))
         if '{{EXTRA_INSTRUCTIONS}}' in prompt:
-            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions or "")
+            if extra_instructions and extra_instructions.strip():
+                formatted_extra = (
+                    "You MUST follow these specific instructions from the course author "
+                    "when generating the questions. They take priority over default behaviour:\n\n"
+                    f"{extra_instructions.strip()}"
+                )
+            else:
+                formatted_extra = "(none)"
+            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", formatted_extra)
 
         try:
             result = self._call_completion_api(prompt)
@@ -98,9 +106,44 @@ class EducatorAssistantProcessor(LitellmProcessor):
             return {"error": f"AI processing failed: {str(e)}"}
 
         tokens_used = result.get("tokens_used", 0)
-
         response = json.loads(result['response'])
 
+        return {
+            "response": response,
+            "tokens_used": tokens_used,
+            "model_used": self.extra_params.get("model", "unknown"),
+            "status": "success",
+        }
+
+    def refine_quiz_question(self, existing_question, extra_instructions=''):
+        """Refine an existing quiz question instead of generating a new one."""
+        prompt_file_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "prompts"
+            / "default_refine_quiz_question.txt"
+        )
+        try:
+            with open(prompt_file_path, "r") as f:
+                prompt = f.read()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error loading refinement prompt template: {e}")
+            return {"error": "Failed to load refinement prompt template."}
+
+        if '{{EXISTING_QUESTION}}' in prompt:
+            prompt = prompt.replace("{{EXISTING_QUESTION}}", str(existing_question))
+        if '{{CONTEXT}}' in prompt:
+            prompt = prompt.replace("{{CONTEXT}}", str(self.context))
+        if '{{EXTRA_INSTRUCTIONS}}' in prompt:
+            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions.strip() or "(none)")
+
+        try:
+            result = self._call_completion_api(prompt)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error calling LiteLLM during refinement: {e}")
+            return {"error": f"AI processing failed: {str(e)}"}
+
+        tokens_used = result.get("tokens_used", 0)
+        response = json.loads(result['response'])
         return {
             "response": response,
             "tokens_used": tokens_used,

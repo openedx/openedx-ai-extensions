@@ -27,6 +27,10 @@ import {
   AIEducatorLibraryAssistComponent,
   AIEducatorLibraryResponseComponent,
 } from './components';
+import {
+  LibraryComponentCreator,
+  LibraryComponentCreatorResponse,
+} from './library-component-creator';
 import { PluginConfiguration } from './types';
 import { WORKFLOW_ACTIONS } from './constants';
 
@@ -40,6 +44,8 @@ import messages from './messages';
   ['AISidebarResponse', AISidebarResponse],
   ['AIEducatorLibraryAssistComponent', AIEducatorLibraryAssistComponent],
   ['AIEducatorLibraryResponseComponent', AIEducatorLibraryResponseComponent],
+  ['LibraryComponentCreator', LibraryComponentCreator],
+  ['LibraryComponentCreatorResponse', LibraryComponentCreatorResponse],
 ].forEach(([id, component]) => registerEntry(
   REGISTRY_NAMES.COMPONENTS,
   { id: id as string, component: component as React.ComponentType<any> },

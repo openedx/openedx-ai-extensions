@@ -74,6 +74,10 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
         result = orchestrator_method(**params)
 
         # 6. Update session metadata with result
+        # Re-fetch from DB to pick up any metadata changes the orchestrator method
+        # saved during execution (e.g. question_slots, collection_name), so we
+        # don't overwrite them with the stale in-memory copy.
+        session.refresh_from_db(fields=['metadata'])
         session.metadata['task_result'] = result
         session.metadata['task_status'] = 'completed'
         session.save(update_fields=['metadata'])

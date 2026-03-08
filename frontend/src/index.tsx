@@ -8,6 +8,10 @@ import { AIEducatorLibraryAssistComponent } from './components';
 import { AIExtensionsCard, AIExtensionsSettingsModal } from './ai-extensions-settings';
 import { REGISTRY_NAMES, getEntries } from './extensionRegistry';
 import type { RegistryEntry } from './extensionRegistry';
+import {
+  LibraryComponentCreator,
+  LibraryComponentCreatorResponse,
+} from './library-component-creator';
 
 export * as services from './services';
 
@@ -31,6 +35,8 @@ export {
   ConfigurableAIAssistance,
   RedLine,
   AIEducatorLibraryAssistComponent,
+  LibraryComponentCreator,
+  LibraryComponentCreatorResponse,
   registerComponent,
   registerComponents,
   REGISTRY_NAMES,

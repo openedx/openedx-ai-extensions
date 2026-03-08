@@ -96,6 +96,14 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
     - Iterative mode (no library_id): generate → store in session → review → save separately.
     """
 
+    def _attach_olx(self, problem):
+        """Return a copy of problem with an 'olx' key containing its OLX string."""
+        try:
+            return {**problem, 'olx': json_to_olx(problem)}
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning(f"Could not generate OLX for problem: {e}")
+            return problem
+
     @property
     def _schema_path(self):
         return (
@@ -134,10 +142,10 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         metadata = self.session.metadata or {}
         if "collection_url" in metadata:
             return {"response": metadata["collection_url"]}
-        if "questions" in metadata:
+        if "question_slots" in metadata:
             return {
                 "response": {
-                    "questions": metadata["questions"],
+                    "question_slots": metadata["question_slots"],
                     "collection_name": metadata.get("collection_name", ""),
                 }
             }
@@ -199,27 +207,35 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
             }
 
         # Iterative path: store questions for review
-        problems = llm_result.get("response", {}).get("problems", [])
-        collection_name = llm_result.get("response", {}).get("collection_name", "AI Generated Questions")
+        response_payload = llm_result.get("response", {}) or {}
+        problems = response_payload.get("problems", []) or []
+        collection_name = response_payload.get("collection_name", "AI Generated Questions")
+
+        # Each slot owns its version history; start with one version (the original)
+        question_slots = [
+            {"versions": [self._attach_olx(p)], "selected": 0}
+            for p in problems
+        ]
+
         metadata = self.session.metadata or {}
-        metadata['questions'] = problems
+        metadata['question_slots'] = question_slots
         metadata['collection_name'] = collection_name
         self.session.metadata = metadata
         self.session.save(update_fields=["metadata"])
         return {
             'status': 'completed',
             'response': {
-                'questions': problems,
+                'question_slots': question_slots,
                 'collection_name': collection_name,
             }
         }
 
     def regenerate_question(self, input_data):
         """
-        Refine and replace a single question at the given index.
+        Refine an existing question at the given slot index.
 
-        Passes the existing question as context so the LLM improves it rather than
-        generating an entirely new one. Optional extra_instructions guide the refinement.
+        Uses a dedicated refinement prompt so the LLM improves the provided
+        question rather than generating an unrelated new one.
         """
         question_index = input_data.get('question_index')
         extra_instructions = input_data.get('extra_instructions', '')
@@ -229,52 +245,50 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
             return {'error': content_result['error'], 'status': 'OpenEdXProcessor error'}
 
         metadata = self.session.metadata or {}
-        existing_questions = metadata.get('questions', [])
+        question_slots = metadata.get('question_slots', [])
 
-        # Build refinement context from the existing question so the LLM improves
-        # it rather than generating a brand-new, unrelated question.
-        existing_question = (
-            existing_questions[question_index]
-            if 0 <= (question_index or -1) < len(existing_questions)
-            else {}
+        if question_index is None or not (0 <= question_index < len(question_slots)):
+            return {'error': 'Invalid question index', 'status': 'error'}
+
+        slot = question_slots[question_index]
+        existing_question = slot['versions'][slot['selected']]
+
+        # Use the dedicated refinement prompt and processor
+        with open(self._schema_path, 'r', encoding='utf-8') as f:
+            llm_processor = EducatorAssistantProcessor(
+                config=self.profile.processor_config,
+                user=self.user,
+                context=content_result,
+                extra_params={"response_format": json.load(f)}
+            )
+
+        llm_result = llm_processor.refine_quiz_question(
+            existing_question=existing_question,
+            extra_instructions=extra_instructions,
         )
-        refinement_parts = [
-            "Refine and improve the following existing question. "
-            "Keep the same general topic but improve clarity, distractors, "
-            "or pedagogical value as needed.",
-            f"\nExisting question to refine:",
-            f"  Title: {existing_question.get('display_name', '')}",
-            f"  Question text: {existing_question.get('question_html', '')}",
-            f"  Problem type: {existing_question.get('problem_type', '')}",
-            f" {existing_question}"
-        ]
-        if extra_instructions:
-            refinement_parts.append(f"\nAdditional refinement instructions: {extra_instructions}")
-
-        regen_input = {
-            'num_questions': 1,
-            'extra_instructions': "\n".join(refinement_parts),
-        }
-        llm_result = self._run_llm_processor(content_result, regen_input)
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
 
-        problems = llm_result.get("response", {}).get("problems", [])
+        problems = (llm_result.get("response") or {}).get("problems") or []
         if not problems:
             return {'error': 'No question generated', 'status': 'error'}
 
-        new_question = problems[0]
-        if 0 <= (question_index or -1) < len(existing_questions):
-            existing_questions[question_index] = new_question
-        else:
-            existing_questions.append(new_question)
+        new_question = self._attach_olx(problems[0])
 
-        metadata['questions'] = existing_questions
+        # Append the new version to this slot and select it
+        slot['versions'].append(new_question)
+        slot['selected'] = len(slot['versions']) - 1
+
+        metadata['question_slots'] = question_slots
         self.session.metadata = metadata
         self.session.save(update_fields=["metadata"])
         return {
             'status': 'completed',
-            'response': new_question,
+            'response': {
+                'question': new_question,
+                'history': slot['versions'],
+                'selected': slot['selected'],
+            },
         }
 
     def save(self, input_data):
@@ -287,7 +301,11 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         questions = input_data.get('questions', [])
 
         metadata = self.session.metadata or {}
-        collection_name = metadata.get('collection_name', 'AI Generated Questions')
+        collection_name = (
+            input_data.get('collection_name')
+            or metadata.get('collection_name')
+            or 'AI Generated Questions'
+        )
 
         items = []
         for problem in questions:
