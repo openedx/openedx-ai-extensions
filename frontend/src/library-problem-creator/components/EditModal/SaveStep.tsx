@@ -1,5 +1,7 @@
 import { useIntl } from '@edx/frontend-platform/i18n';
-import { Alert, Card, Collapse, Collapsible, Container, Form, Stack } from '@openedx/paragon';
+import {
+  Alert, Card, Collapsible, Form, Stack,
+} from '@openedx/paragon';
 import ProblemTypeBadge from './ProblemTypeBadge';
 import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
 import messages from '../../messages';
@@ -82,13 +84,14 @@ const SaveStep = () => {
           defaultOpen
           title={intl.formatMessage(messages['ai.library.creator.save.step.problems.heading'], {
             count: activeQuestions.length,
-          })}>
+          })}
+        >
 
           <Stack gap={1} className="mb-2">
             {activeQuestions.map((question, i) => (
               <div
                 key={question.displayName}
-                className={`d-flex align-items-center justify-content-between px-2 py-1 ${(i > activeQuestions.length -1) ?'border-bottom' :''}`}
+                className={`d-flex align-items-center justify-content-between px-2 py-1 ${(i > activeQuestions.length - 1) ? 'border-bottom' : ''}`}
               >
                 <span className="small">{question.displayName}</span>
                 <ProblemTypeBadge problemType={question.problemType} />

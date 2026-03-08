@@ -25,14 +25,13 @@ const RegenerateForm = ({ index, onSubmit, onCancel }: RegenerateFormProps) => {
 
   return (
     <div>
-      <Form.Group controlId={`regen-instructions-${index}`} className="mb-1">
+      <Form.Group controlId={`regen-instructions-${index}`} className="my-3">
         <Form.Label>
           {intl.formatMessage(messages['ai.library.creator.card.regenerate.instructions.label'])}
         </Form.Label>
         <Form.Control
           as="textarea"
-          rows={2}
-          size="sm"
+          rows={4}
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           placeholder={intl.formatMessage(messages['ai.library.creator.card.regenerate.instructions.placeholder'])}

@@ -7,4 +7,3 @@ export type { LibraryProblemCreatorProviderProps } from './context/LibraryProble
 export type {
   CreatorStep, Question, Choice, Olx,
 } from './types';
-export { PROBLEM_TYPE_LABELS, getProblemTypeLabel } from './utils/problemTypes';

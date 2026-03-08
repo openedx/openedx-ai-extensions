@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Button, Card, Spinner, Stack,
+  Badge,
+  Button, Card, Icon, Stack,
 } from '@openedx/paragon';
 import QuestionEditor from './QuestionEditor';
 import ProblemTypeBadge from './ProblemTypeBadge';
@@ -13,19 +14,15 @@ import { Choice } from '../../types';
 
 /** Choice list — shared by MCQ, checkbox, and dropdown */
 const ChoiceList = ({ choices }: { choices: Choice[] }) => (
-  <ul className="list-unstyled small mb-0">
+  <ul className="small mb-0">
     {choices.map((choice, i) => (
-      // eslint-disable-next-line react/no-array-index-key
-      <li key={i} className={`d-flex align-items-start mb-1 ${choice.isCorrect ? 'text-success' : 'text-muted'}`}>
-        <span className="mr-2" style={{ minWidth: '1rem' }}>
-          {choice.isCorrect ? '✓' : '○'}
-        </span>
+      <li key={`${choice.text}-${i}`} className={`d-flex align-items-start mb-1`}>
         <span>
           {choice.text}
           {choice.feedback && (
-            <span className="ml-2 font-italic text-info" style={{ fontSize: '0.75rem' }}>
-              ({choice.feedback})
-            </span>
+            <p className="ml-2 font-italic x-small">
+              {choice.feedback}
+            </p>
           )}
         </span>
       </li>
@@ -36,7 +33,7 @@ const ChoiceList = ({ choices }: { choices: Choice[] }) => (
 /** Labelled field row */
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="mb-2">
-    <span className="small font-weight-bold text-muted text-uppercase" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+    <span className="small font-weight-bold">
       {label}
     </span>
     <div className="small mt-1">{children}</div>
@@ -80,37 +77,35 @@ const QuestionCard = ({ index }: { index: number }) => {
 
   return (
     <Card
-      className={`question-card mb-2 ${isDiscarded ? '' : ''}`}
+      isLoading={isRegenerating}
+      className={`position-relative mb-2 ${isDiscarded ? 'text-muted' : ''}`}
     >
-      {/* Regenerating overlay */}
-      {isRegenerating && (
-        <div>
-          <Spinner animation="border" size="sm" role="status" />
-          <span className="ml-2 small">
-            {intl.formatMessage(messages['ai.library.creator.card.regenerating'])}
-          </span>
-        </div>
-      )}
-
       {/* ── Header ── */}
       <Card.Section>
         <div className="d-flex align-items-center justify-content-between">
           <span className="font-weight-bold flex-1">
             {index + 1}. {question.displayName}
           </span>
-          <ProblemTypeBadge problemType={question.problemType} className="ml-2" />
+          {isDiscarded ?
+            <Badge variant="danger" pill>
+              {intl.formatMessage(messages['ai.library.creator.card.discarded.label'])}
+            </Badge>
+            :
+            < ProblemTypeBadge problemType={question.problemType} className="ml-2" />
+          }
         </div>
       </Card.Section>
 
       <Card.Divider />
 
       {/* ── Question body ── */}
-      <Card.Section>
+      <Card.Section
+        skeletonHeight={200}
+      >
 
         {/* Question text */}
         <Field label={intl.formatMessage(messages['ai.library.creator.card.field.question'])}>
-          {/* eslint-disable-next-line react/no-danger */}
-          <div dangerouslySetInnerHTML={{ __html: question.questionHtml }} />
+          <div>{question.questionHtml}</div>
         </Field>
 
         {/* Choice-based answers */}
@@ -146,17 +141,16 @@ const QuestionCard = ({ index }: { index: number }) => {
         {/* Explanation */}
         {question.explanation && (
           <Field label={intl.formatMessage(messages['ai.library.creator.card.field.explanation'])}>
-            <span className="text-muted">{question.explanation}</span>
+            <span>{question.explanation}</span>
           </Field>
         )}
 
         {/* Demand hints */}
         {question.demandHints && question.demandHints.length > 0 && (
           <Field label={intl.formatMessage(messages['ai.library.creator.card.field.hints'])}>
-            <ol className="pl-3 mb-0 small text-muted">
-              {question.demandHints.map((hint, i) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <li key={i}>{hint}</li>
+            <ol className="pl-3 mb-0 small">
+              {question.demandHints.map((hint) => (
+                <li key={hint}>{hint}</li>
               ))}
             </ol>
           </Field>
@@ -169,11 +163,10 @@ const QuestionCard = ({ index }: { index: number }) => {
           onPrevious={() => selectVersion(index, selectedVersionIndex - 1)}
           onNext={() => selectVersion(index, selectedVersionIndex + 1)}
         />
-
         {/* Action buttons */}
         {!isDiscarded ? (
           <>
-            <Stack direction="horizontal" gap={1} className="mt-2">
+            <Stack direction="horizontal" gap={1} className="mt-5">
               <Button
                 variant="outline-primary"
                 size="sm"
@@ -200,25 +193,9 @@ const QuestionCard = ({ index }: { index: number }) => {
               </Button>
             </Stack>
 
-            {/* Inline regenerate form */}
-            {showRegenerateForm && (
-              <>
-              <Card.Divider />
-              <Card.Section>
-              <RegenerateForm
-                index={index}
-                onSubmit={handleRegenerateSubmit}
-                onCancel={() => setShowRegenerateForm(false)}
-              />
-              </Card.Section>
-              </>
-            )}
           </>
         ) : (
           <div className="mt-2">
-            <span className="badge badge-secondary mr-2">
-              {intl.formatMessage(messages['ai.library.creator.card.discarded.label'])}
-            </span>
             <Button
               variant="outline-secondary"
               size="sm"
@@ -228,7 +205,18 @@ const QuestionCard = ({ index }: { index: number }) => {
             </Button>
           </div>
         )}
+      </Card.Section>
 
+      <Card.Section>
+        <Card.Divider />
+        {/* Inline regenerate form */}
+        {showRegenerateForm && (
+          <RegenerateForm
+            index={index}
+            onSubmit={handleRegenerateSubmit}
+            onCancel={() => setShowRegenerateForm(false)}
+          />
+        )}
         {/* Inline editor */}
         {isEditing && !isDiscarded && (
           <QuestionEditor
@@ -238,6 +226,7 @@ const QuestionCard = ({ index }: { index: number }) => {
           />
         )}
       </Card.Section>
+
     </Card>
   );
 };

@@ -17,7 +17,7 @@ const loadingMessages = {
   saving: 'ai.library.creator.saving',
 };
 
-const renderLoading = (step) => {
+const Loading = (step) => {
   const intl = useIntl();
   return (
     <div className="text-center py-3">
@@ -26,7 +26,7 @@ const renderLoading = (step) => {
         {intl.formatMessage(messages[loadingMessages[step]])}
       </span>
     </div>
-  )
+  );
 };
 
 const modalSteps = new Set(['review', 'preloaded', 'saving']);
@@ -59,10 +59,10 @@ const LibraryProblemCreatorInner = ({
 
   // Auto-open modal only for freshly generated questions (not preloaded sessions)
   useEffect(() => {
-    if (step !== 'review') return;
+    if (step !== 'review') { return; }
     open();
     fetchLibraries();
-  }, [step]);
+  }, [step, open, fetchLibraries]);
 
   // Form state (local to this UI — not shared with sub-components)
   const [showForm, setShowForm] = useState(false);
@@ -171,7 +171,7 @@ const LibraryProblemCreatorInner = ({
         )}
 
         {/* Generating step */}
-        {loadingMessages[step] && renderLoading(step)}
+        {loadingMessages[step] && <Loading step={step} />}
 
         {/* Questions ready but modal closed — show "Review Questions" button */}
         {showReviewButton && (

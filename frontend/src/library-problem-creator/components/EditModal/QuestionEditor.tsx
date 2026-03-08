@@ -2,11 +2,11 @@ import { useRef, useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import { logInfo } from '@edx/frontend-platform/logging';
 import {
-  Alert, Button, Stack, Tab, Tabs,
+  Alert, Button, Form, Stack, Tab, Tabs,
 } from '@openedx/paragon';
 import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
 import { Question } from '../../types';
-import { olxToQuestion } from '..//../utils/olxToQuestion';
+import { olxToQuestion } from '../../utils/olxToQuestion';
 import messages from '../../messages';
 
 type EditorMode = 'olx' | 'json';
@@ -27,13 +27,11 @@ function questionToJson(q: Question): string {
 const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => {
   const intl = useIntl();
   const { CodeEditor } = useLibraryProblemCreatorContext();
-  const [mode, setMode] = useState<EditorMode>('olx');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleTabSelect = (key: any) => { if (key) { setMode(key as EditorMode); } };
+  const [mode, setMode] = useState<EditorMode>('json');
+  const handleTabSelect = (key:string) => { if (key) { setMode(key as EditorMode); } };
 
   // Ref used to read the current value from the uncontrolled CodeMirror editor
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editorRef = useRef<any>(undefined);
+  const editorRef = useRef<string>(undefined);
 
   // Fallback textarea state (used only when CodeEditor is not provided)
   const [olxText, setOlxText] = useState(question.olx?.data ?? '');
@@ -67,13 +65,37 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
   };
 
   return (
-    <div className="question-editor border-top pt-3 mt-2">
+    <div className="question-editor pt-3 mt-2">
       <Tabs
         variant="tabs"
         activeKey={mode}
         onSelect={handleTabSelect}
         id="question-editor-tabs"
       >
+        <Tab
+          eventKey="json"
+          title={intl.formatMessage(messages['ai.library.creator.editor.tab.json'])}
+        >
+          <div className="pt-3">
+            <p className="small text-muted mb-2">
+              {intl.formatMessage(messages['ai.library.creator.editor.tab.json.hint'])}
+            </p>
+            {jsonError && (
+              <Alert variant="danger" dismissible onClose={() => setJsonError('')} className="mb-2">
+                {jsonError}
+              </Alert>
+            )}
+            <Form.Group>
+              <Form.Control
+                as="textarea"
+                value={jsonText}
+                onChange={(e) => { setJsonText(e.target.value); setJsonError(''); }}
+                spellCheck={false}
+                rows={50}
+              />
+            </Form.Group>
+          </div>
+        </Tab>
         <Tab
           eventKey="olx"
           title={intl.formatMessage(messages['ai.library.creator.editor.tab.olx'])}
@@ -88,42 +110,23 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
               </Alert>
             )}
             {CodeEditor ? (
-              <CodeEditor
-                innerRef={editorRef}
-                value={question.olx?.data ?? ''}
-              />
+              <div className='border'>
+                <CodeEditor
+                  innerRef={editorRef}
+                  value={question.olx?.data ?? ''}
+                />
+              </div>
             ) : (
-              <textarea
-                className="form-control form-control-sm"
-                style={{ fontFamily: 'monospace', fontSize: '0.8rem', minHeight: '260px' }}
-                value={olxText}
-                onChange={(e) => setOlxText(e.target.value)}
-                spellCheck={false}
-              />
+              <Form.Group>
+                <Form.Control
+                  as="textarea"
+                  value={olxText}
+                  onChange={(e) => setOlxText(e.target.value)}
+                  spellCheck={false}
+                  rows={50}
+                />
+              </Form.Group>
             )}
-          </div>
-        </Tab>
-
-        <Tab
-          eventKey="json"
-          title={intl.formatMessage(messages['ai.library.creator.editor.tab.json'])}
-        >
-          <div className="pt-3">
-            <p className="small text-muted mb-2">
-              {intl.formatMessage(messages['ai.library.creator.editor.tab.json.hint'])}
-            </p>
-            {jsonError && (
-              <Alert variant="danger" dismissible onClose={() => setJsonError('')} className="mb-2">
-                {jsonError}
-              </Alert>
-            )}
-            <textarea
-              className="form-control form-control-sm"
-              style={{ fontFamily: 'monospace', fontSize: '0.8rem', minHeight: '260px' }}
-              value={jsonText}
-              onChange={(e) => { setJsonText(e.target.value); setJsonError(''); }}
-              spellCheck={false}
-            />
           </div>
         </Tab>
       </Tabs>

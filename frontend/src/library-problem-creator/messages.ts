@@ -373,6 +373,31 @@ const messages = defineMessages({
     defaultMessage: 'Start Over',
     description: 'Clear/reset button in response component',
   },
+  'ai.library.creator.problemtype.multiplechoiceresponse': {
+    id: 'ai.library.creator.problemtype.multiplechoiceresponse',
+    defaultMessage: 'Single Choice',
+    description: 'Label for Multiple Choice Response problem type',
+  },
+  'ai.library.creator.problemtype.choiceresponse': {
+    id: 'ai.library.creator.problemtype.choiceresponse',
+    defaultMessage: 'Multiple Choice',
+    description: 'Label for Choice Response problem type',
+  },
+  'ai.library.creator.problemtype.optionresponse': {
+    id: 'ai.library.creator.problemtype.optionresponse',
+    defaultMessage: 'Dropdown',
+    description: 'Label for Option Response problem type',
+  },
+  'ai.library.creator.problemtype.numericalresponse': {
+    id: 'ai.library.creator.problemtype.numericalresponse',
+    defaultMessage: 'Numeric',
+    description: 'Label for Numerical Response problem type',
+  },
+  'ai.library.creator.problemtype.stringresponse': {
+    id: 'ai.library.creator.problemtype.stringresponse',
+    defaultMessage: 'Text',
+    description: 'Label for String Response problem type',
+  },
 });
 
 export default messages;
