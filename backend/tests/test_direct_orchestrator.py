@@ -69,7 +69,7 @@ def educator_orchestrator(workflow_scope, user, course_key):  # pylint: disable=
 
 
 # ===========================================================================
-# EducatorAssistantOrchestrator.get_current_session_response  (lines 98-101)
+# EducatorAssistantOrchestrator.get_current_session_response
 # ===========================================================================
 
 
@@ -86,6 +86,27 @@ def test_get_current_session_response_with_collection_url(
     }
     result = educator_orchestrator.get_current_session_response(None)
     assert result == {"response": "authoring/library/lib:test:lib/collection/key-123"}
+
+
+@pytest.mark.django_db
+def test_get_current_session_response_with_questions(
+    educator_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When session has questions but no collection_url, return the questions dict for review.
+    """
+    questions = [{"display_name": "Q1", "problem_type": "multiplechoiceresponse"}]
+    educator_orchestrator.session.metadata = {
+        "questions": questions,
+        "collection_name": "My Quiz",
+    }
+    result = educator_orchestrator.get_current_session_response(None)
+    assert result == {
+        "response": {
+            "questions": questions,
+            "collection_name": "My Quiz",
+        }
+    }
 
 
 @pytest.mark.django_db
@@ -226,14 +247,15 @@ def test_educator_orchestrator_run_json_to_olx_exception_is_swallowed(
 @patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.OpenEdXProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.EducatorAssistantProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.ContentLibraryProcessor")
-def test_educator_orchestrator_run_success(
+def test_educator_orchestrator_run_success_with_library_id(
     mock_library_class,
     mock_llm_class,
     mock_openedx_class,
     educator_orchestrator,  # pylint: disable=redefined-outer-name
 ):
     """
-    Full success path: session metadata is updated and a completed status is returned.
+    Full success path with library_id: session metadata is updated and a completed status
+    is returned. ContentLibraryProcessor is called immediately.
     """
     mock_openedx = Mock()
     mock_openedx.process.return_value = {"content": "course content"}
@@ -272,6 +294,216 @@ def test_educator_orchestrator_run_success(
     assert "lib:test:lib" in result["response"]
     assert "collection-xyz" in result["response"]
     assert educator_orchestrator.session.metadata["collection_id"] == "collection-xyz"
+    mock_library.create_collection_and_add_items.assert_called_once()
+
+
+# ===========================================================================
+# EducatorAssistantOrchestrator.run — iterative path (no library_id)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.EducatorAssistantProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.ContentLibraryProcessor")
+def test_educator_orchestrator_run_no_library_id_stores_questions(
+    mock_library_class,
+    mock_llm_class,
+    mock_openedx_class,
+    educator_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When no library_id is provided, run() stores questions in session metadata and
+    does NOT call ContentLibraryProcessor.
+    """
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"content": "course content"}
+    mock_openedx_class.return_value = mock_openedx
+
+    problems = [
+        {
+            "display_name": "Q1",
+            "question_html": "Question text",
+            "problem_type": "multiplechoiceresponse",
+            "choices": [{"text": "A", "is_correct": True, "feedback": ""}],
+            "answer_value": "",
+            "tolerance": "",
+            "explanation": "A is correct.",
+            "demand_hints": [],
+        }
+    ]
+    mock_llm = Mock()
+    mock_llm.process.return_value = {
+        "response": {
+            "collection_name": "Iterative Quiz",
+            "problems": problems,
+        },
+        "tokens_used": 100,
+        "model_used": "openai/gpt-4",
+    }
+    mock_llm_class.return_value = mock_llm
+
+    result = educator_orchestrator.run({"num_questions": 1})
+
+    assert result["status"] == "completed"
+    assert "questions" in result["response"]
+    assert result["response"]["collection_name"] == "Iterative Quiz"
+    assert result["response"]["questions"] == problems
+    # Session metadata has questions
+    assert educator_orchestrator.session.metadata["questions"] == problems
+    assert educator_orchestrator.session.metadata["collection_name"] == "Iterative Quiz"
+    # ContentLibraryProcessor was NOT called
+    mock_library_class.assert_not_called()
+
+
+# ===========================================================================
+# EducatorAssistantOrchestrator.regenerate_question
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.EducatorAssistantProcessor")
+def test_regenerate_question_replaces_correct_index(
+    mock_llm_class,
+    mock_openedx_class,
+    educator_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    regenerate_question() replaces the question at the specified index in session metadata.
+    """
+    original_questions = [
+        {"display_name": "Q1", "problem_type": "multiplechoiceresponse"},
+        {"display_name": "Q2", "problem_type": "stringresponse"},
+    ]
+    educator_orchestrator.session.metadata = {
+        "questions": original_questions,
+        "collection_name": "Test Quiz",
+    }
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"content": "course content"}
+    mock_openedx_class.return_value = mock_openedx
+
+    new_question = {"display_name": "Q1-new", "problem_type": "multiplechoiceresponse"}
+    mock_llm = Mock()
+    mock_llm.process.return_value = {
+        "response": {"problems": [new_question]},
+        "tokens_used": 50,
+    }
+    mock_llm_class.return_value = mock_llm
+
+    result = educator_orchestrator.regenerate_question({"question_index": 0})
+
+    assert result["status"] == "completed"
+    assert result["response"] == new_question
+    updated = educator_orchestrator.session.metadata["questions"]
+    assert updated[0] == new_question
+    assert updated[1] == original_questions[1]
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.EducatorAssistantProcessor")
+def test_regenerate_question_openedx_error(
+    mock_llm_class,
+    mock_openedx_class,
+    educator_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """regenerate_question() propagates OpenEdXProcessor errors."""
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"error": "content fetch failed"}
+    mock_openedx_class.return_value = mock_openedx
+
+    result = educator_orchestrator.regenerate_question({"question_index": 0})
+
+    assert "error" in result
+    assert result["status"] == "OpenEdXProcessor error"
+    mock_llm_class.assert_not_called()
+
+
+# ===========================================================================
+# EducatorAssistantOrchestrator.save
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.ContentLibraryProcessor")
+def test_save_converts_questions_and_calls_library(
+    mock_library_class,
+    educator_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    save() converts questions to OLX, calls ContentLibraryProcessor, stores
+    collection_url in metadata, and returns it.
+    """
+    educator_orchestrator.session.metadata = {"collection_name": "Review Quiz"}
+
+    questions = [
+        {
+            "display_name": "Q1",
+            "question_html": "Pick one",
+            "problem_type": "multiplechoiceresponse",
+            "choices": [{"text": "A", "is_correct": True, "feedback": ""}],
+            "answer_value": "",
+            "tolerance": "",
+            "explanation": "A is correct.",
+            "demand_hints": [],
+        }
+    ]
+
+    mock_library = Mock()
+    mock_library.create_collection_and_add_items.return_value = "new-collection-key"
+    mock_library_class.return_value = mock_library
+
+    with patch.object(educator_orchestrator, "_emit_workflow_event"):
+        result = educator_orchestrator.save({
+            "library_id": "lib:test:lib",
+            "questions": questions,
+        })
+
+    assert result["status"] == "completed"
+    assert "lib:test:lib" in result["response"]
+    assert "new-collection-key" in result["response"]
+    mock_library.create_collection_and_add_items.assert_called_once_with(
+        title="Review Quiz",
+        description="AI-generated quiz questions",
+        items=mock_library.create_collection_and_add_items.call_args.kwargs["items"],
+    )
+    assert educator_orchestrator.session.metadata["collection_url"] == result["response"]
+    assert educator_orchestrator.session.metadata["collection_id"] == "new-collection-key"
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.ContentLibraryProcessor")
+def test_save_skips_bad_questions(
+    mock_library_class,
+    educator_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    save() swallows json_to_olx conversion errors and continues with valid items.
+    """
+    educator_orchestrator.session.metadata = {"collection_name": "Quiz"}
+
+    mock_library = Mock()
+    mock_library.create_collection_and_add_items.return_value = "ck"
+    mock_library_class.return_value = mock_library
+
+    with patch(
+        "openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.json_to_olx",
+        side_effect=ValueError("bad"),
+    ), patch.object(educator_orchestrator, "_emit_workflow_event"):
+        result = educator_orchestrator.save({
+            "library_id": "lib:test:lib",
+            "questions": [{"problem_type": "unknown"}],
+        })
+
+    assert result["status"] == "completed"
+    mock_library.create_collection_and_add_items.assert_called_once_with(
+        title="Quiz",
+        description="AI-generated quiz questions",
+        items=[],
+    )
 
 
 # ===========================================================================
