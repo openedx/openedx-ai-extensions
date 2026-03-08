@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from '@openedx/paragon';
-import { getProblemTypeLabel } from '../utils/problemTypes';
+import { getProblemTypeLabel } from '../../utils/problemTypes';
 
 interface ProblemTypeBadgeProps {
   problemType: string;

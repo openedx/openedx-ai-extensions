@@ -4,9 +4,9 @@ import { logError } from '@edx/frontend-platform/logging';
 import {
   Alert, Button, Card,
 } from '@openedx/paragon';
-import { prepareContextData, callWorkflowService } from '../../services';
-import { WORKFLOW_ACTIONS } from '../../constants';
+import { prepareContextData } from '../../services';
 import { PluginContext } from '../../types';
+import { clearSession } from '../data/workflowActions';
 import messages from '../messages';
 
 interface LibraryProblemCreatorResponseProps {
@@ -38,13 +38,7 @@ const LibraryProblemCreatorResponse = ({
 
   const handleClearAndClose = useCallback(async () => {
     try {
-      await callWorkflowService({
-        context: prepareContextData(contextData),
-        payload: {
-          action: WORKFLOW_ACTIONS.CLEAR_SESSION,
-          requestId: `ai-request-${Date.now()}`,
-        },
-      });
+      await clearSession({ context: prepareContextData(contextData) });
     } catch (err) {
       logError('LibraryProblemCreatorResponse: clear session error:', err);
     }

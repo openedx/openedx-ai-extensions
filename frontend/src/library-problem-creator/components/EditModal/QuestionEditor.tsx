@@ -1,12 +1,13 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import { logInfo } from '@edx/frontend-platform/logging';
 import {
   Alert, Button, Stack, Tab, Tabs,
 } from '@openedx/paragon';
-import { Question } from '../hooks/useLibraryProblemCreator';
-import { olxToQuestion } from '../utils/olxToQuestion';
-import { useLibraryProblemCreatorContext } from '../context/LibraryProblemCreatorContext';
-import messages from '../messages';
+import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
+import { Question } from '../../types';
+import { olxToQuestion } from '..//../utils/olxToQuestion';
+import messages from '../../messages';
 
 type EditorMode = 'olx' | 'json';
 
@@ -38,6 +39,7 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
   const [olxText, setOlxText] = useState(question.olx?.data ?? '');
   const [jsonText, setJsonText] = useState(() => questionToJson(question));
   const [jsonError, setJsonError] = useState('');
+  const [olxWarning, setOlxWarning] = useState('');
 
   const handleApply = () => {
     if (mode === 'olx') {
@@ -45,7 +47,13 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
       const currentOlx = CodeEditor
         ? (editorRef.current?.state.doc.toString() ?? question.olx?.data ?? '')
         : olxText;
-      const parsed = olxToQuestion(currentOlx, question);
+      const { question: parsed, parseError } = olxToQuestion(currentOlx, question);
+      if (parseError) {
+        setOlxWarning(parseError);
+        logInfo('QuestionEditor: OLX parse warning:', parseError);
+      } else {
+        setOlxWarning('');
+      }
       onSave({ ...parsed, olx: { category: 'problem', ...question.olx, data: currentOlx } });
     } else {
       try {
@@ -74,10 +82,15 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
             <p className="small text-muted mb-2">
               {intl.formatMessage(messages['ai.library.creator.editor.tab.olx.hint'])}
             </p>
+            {olxWarning && (
+              <Alert variant="warning" dismissible onClose={() => setOlxWarning('')} className="mb-2">
+                {olxWarning}
+              </Alert>
+            )}
             {CodeEditor ? (
-              <CodeEditor 
-              innerRef={editorRef}
-              value={question.olx?.data ?? ''}
+              <CodeEditor
+                innerRef={editorRef}
+                value={question.olx?.data ?? ''}
               />
             ) : (
               <textarea

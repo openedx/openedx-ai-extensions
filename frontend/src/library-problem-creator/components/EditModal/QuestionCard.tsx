@@ -1,38 +1,37 @@
 import React, { useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Button, Card, Form, Spinner, Stack,
+  Button, Card, Spinner, Stack,
 } from '@openedx/paragon';
 import QuestionEditor from './QuestionEditor';
 import ProblemTypeBadge from './ProblemTypeBadge';
-import messages from '../messages';
-import { useLibraryProblemCreatorContext } from '../context/LibraryProblemCreatorContext';
-import { Choice } from '../hooks/useLibraryProblemCreator';
+import RegenerateForm from './RegenerateForm';
+import VersionNavigator from './VersionNavigator';
+import messages from '../../messages';
+import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
+import { Choice } from '../../types';
 
 /** Choice list — shared by MCQ, checkbox, and dropdown */
-const ChoiceList = ({ choices }: { choices: Choice[] }) => {
-  const intl = useIntl();
-  return (
-    <ul className="list-unstyled small mb-0">
-      {choices.map((choice, i) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <li key={i} className={`d-flex align-items-start mb-1 ${choice.isCorrect ? 'text-success' : 'text-muted'}`}>
-          <span className="mr-2" style={{ minWidth: '1rem' }}>
-            {choice.isCorrect ? '✓' : '○'}
-          </span>
-          <span>
-            {choice.text}
-            {choice.feedback && (
-              <span className="ml-2 font-italic text-info" style={{ fontSize: '0.75rem' }}>
-                ({choice.feedback})
-              </span>
-            )}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-};
+const ChoiceList = ({ choices }: { choices: Choice[] }) => (
+  <ul className="list-unstyled small mb-0">
+    {choices.map((choice, i) => (
+      // eslint-disable-next-line react/no-array-index-key
+      <li key={i} className={`d-flex align-items-start mb-1 ${choice.isCorrect ? 'text-success' : 'text-muted'}`}>
+        <span className="mr-2" style={{ minWidth: '1rem' }}>
+          {choice.isCorrect ? '✓' : '○'}
+        </span>
+        <span>
+          {choice.text}
+          {choice.feedback && (
+            <span className="ml-2 font-italic text-info" style={{ fontSize: '0.75rem' }}>
+              ({choice.feedback})
+            </span>
+          )}
+        </span>
+      </li>
+    ))}
+  </ul>
+);
 
 /** Labelled field row */
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -62,7 +61,6 @@ const QuestionCard = ({ index }: { index: number }) => {
 
   const intl = useIntl();
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
-  const [regenerateInstructions, setRegenerateInstructions] = useState('');
 
   const question = questions[index];
   const history = questionHistories[index] || [question];
@@ -75,25 +73,18 @@ const QuestionCard = ({ index }: { index: number }) => {
   const isNumeric = question.problemType === 'numericalresponse';
   const isText = question.problemType === 'stringresponse';
 
+  const handleRegenerateSubmit = (idx: number, instructions?: string) => {
+    setShowRegenerateForm(false);
+    regenerateQuestion(idx, instructions);
+  };
+
   return (
     <Card
-      className={`question-card mb-2 ${isDiscarded ? 'question-card--discarded' : ''}`}
-      style={{ position: 'relative', opacity: isDiscarded ? 0.5 : 1 }}
+      className={`question-card mb-2 ${isDiscarded ? '' : ''}`}
     >
       {/* Regenerating overlay */}
       {isRegenerating && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'rgba(255,255,255,0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2,
-            borderRadius: 'inherit',
-          }}
-        >
+        <div>
           <Spinner animation="border" size="sm" role="status" />
           <span className="ml-2 small">
             {intl.formatMessage(messages['ai.library.creator.card.regenerating'])}
@@ -104,7 +95,7 @@ const QuestionCard = ({ index }: { index: number }) => {
       {/* ── Header ── */}
       <Card.Section>
         <div className="d-flex align-items-center justify-content-between">
-          <span className="font-weight-bold small flex-1">
+          <span className="font-weight-bold flex-1">
             {index + 1}. {question.displayName}
           </span>
           <ProblemTypeBadge problemType={question.problemType} className="ml-2" />
@@ -172,36 +163,12 @@ const QuestionCard = ({ index }: { index: number }) => {
         )}
 
         {/* Version history navigator */}
-        {history.length > 1 && (
-          <div className="d-flex align-items-center mt-2" style={{ gap: '0.25rem' }}>
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0"
-              aria-label={intl.formatMessage(messages['ai.library.creator.card.version.previous'])}
-              disabled={selectedVersionIndex === 0}
-              onClick={() => selectVersion(index, selectedVersionIndex - 1)}
-            >
-              ‹
-            </Button>
-            <span className="small text-muted">
-              {intl.formatMessage(messages['ai.library.creator.card.version.counter'], {
-                current: selectedVersionIndex + 1,
-                total: history.length,
-              })}
-            </span>
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0"
-              aria-label={intl.formatMessage(messages['ai.library.creator.card.version.next'])}
-              disabled={selectedVersionIndex === history.length - 1}
-              onClick={() => selectVersion(index, selectedVersionIndex + 1)}
-            >
-              ›
-            </Button>
-          </div>
-        )}
+        <VersionNavigator
+          selectedVersionIndex={selectedVersionIndex}
+          totalVersions={history.length}
+          onPrevious={() => selectVersion(index, selectedVersionIndex - 1)}
+          onNext={() => selectVersion(index, selectedVersionIndex + 1)}
+        />
 
         {/* Action buttons */}
         {!isDiscarded ? (
@@ -235,41 +202,16 @@ const QuestionCard = ({ index }: { index: number }) => {
 
             {/* Inline regenerate form */}
             {showRegenerateForm && (
-              <div className="regenerate-form border-top mt-2 pt-2">
-                <Form.Group controlId={`regen-instructions-${index}`} className="mb-1">
-                  <Form.Label className="small">
-                    {intl.formatMessage(messages['ai.library.creator.card.regenerate.instructions.label'])}
-                  </Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    size="sm"
-                    value={regenerateInstructions}
-                    onChange={(e) => setRegenerateInstructions(e.target.value)}
-                    placeholder={intl.formatMessage(messages['ai.library.creator.card.regenerate.instructions.placeholder'])}
-                  />
-                </Form.Group>
-                <Stack direction="horizontal" gap={1}>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => {
-                      setShowRegenerateForm(false);
-                      regenerateQuestion(index, regenerateInstructions || undefined);
-                      setRegenerateInstructions('');
-                    }}
-                  >
-                    {intl.formatMessage(messages['ai.library.creator.card.regenerate.confirm'])}
-                  </Button>
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    onClick={() => { setShowRegenerateForm(false); setRegenerateInstructions(''); }}
-                  >
-                    {intl.formatMessage(messages['ai.library.creator.cancel'])}
-                  </Button>
-                </Stack>
-              </div>
+              <>
+              <Card.Divider />
+              <Card.Section>
+              <RegenerateForm
+                index={index}
+                onSubmit={handleRegenerateSubmit}
+                onCancel={() => setShowRegenerateForm(false)}
+              />
+              </Card.Section>
+              </>
             )}
           </>
         ) : (

@@ -355,17 +355,17 @@ const messages = defineMessages({
   },
   'ai.library.creator.response.message': {
     id: 'ai.library.creator.response.message',
-    defaultMessage: 'Questions saved to your Content Library.',
+    defaultMessage: 'Questions saved to the Library.',
     description: 'Success message in response component',
   },
   'ai.library.creator.response.hyperlink': {
     id: 'ai.library.creator.response.hyperlink',
-    defaultMessage: 'View collection >',
+    defaultMessage: 'View collection',
     description: 'Hyperlink text for collection URL',
   },
   'ai.library.creator.response.success.detail': {
     id: 'ai.library.creator.response.success.detail',
-    defaultMessage: 'The questions have been added to your Content Library in an unpublished state for review.',
+    defaultMessage: 'The questions have been added to your Content Library in an unpublished state.',
     description: 'Detailed success message',
   },
   'ai.library.creator.response.clear': {

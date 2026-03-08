@@ -5,7 +5,7 @@
  * Parsing is done with text/html for robustness (handles HTML content inside
  * the OLX that might not be well-formed XML).
  */
-import { Choice, Question } from '../hooks/useLibraryProblemCreator';
+import { Choice, Question } from '../types';
 
 const TAG_TO_TYPE: Record<string, string> = {
   multiplechoiceresponse: 'multiplechoiceresponse',
@@ -14,6 +14,11 @@ const TAG_TO_TYPE: Record<string, string> = {
   numericalresponse: 'numericalresponse',
   stringresponse: 'stringresponse',
 };
+
+export interface OlxParseResult {
+  question: Question;
+  parseError?: string;
+}
 
 /** Return the first direct-child element whose tag matches */
 function directChild(el: Element, tag: string): Element | null {
@@ -53,11 +58,12 @@ function parseOptionElements(responseEl: Element): Choice[] {
 
 /**
  * Convert an OLX string to a Question object.
- * Returns the fallback Question unchanged if parsing fails.
+ * Returns the parsed question and an optional parseError string
+ * if parsing failed (in which case question is the fallback).
  */
-export function olxToQuestion(olxString: string, fallback: Question): Question {
+export function olxToQuestion(olxString: string, fallback: Question): OlxParseResult {
   if (!olxString.trim()) {
-    return fallback;
+    return { question: fallback, parseError: 'OLX string is empty' };
   }
 
   try {
@@ -68,7 +74,7 @@ export function olxToQuestion(olxString: string, fallback: Question): Question {
 
     const problem = doc.querySelector('problem');
     if (!problem) {
-      return fallback;
+      return { question: fallback, parseError: 'No <problem> element found in OLX' };
     }
 
     const displayName = problem.getAttribute('display_name') || fallback.displayName;
@@ -77,15 +83,18 @@ export function olxToQuestion(olxString: string, fallback: Question): Question {
     const topDiv = directChild(problem, 'div');
     let questionHtml = topDiv?.innerHTML?.trim() || fallback.questionHtml;
 
-    let problemType = fallback.problemType;
+    let { problemType } = fallback;
     let choices: Choice[] = fallback.choices ?? [];
-    let answerValue: string | undefined = fallback.answerValue;
-    let tolerance: string | undefined = fallback.tolerance;
+    let { answerValue } = fallback;
+    let { tolerance } = fallback;
 
-    for (const [tag, type] of Object.entries(TAG_TO_TYPE)) {
-      const responseEl = problem.querySelector(tag);
-      if (!responseEl) { continue; }
+    const matchedEntry = Object.entries(TAG_TO_TYPE).find(
+      ([tag]) => problem.querySelector(tag) !== null,
+    );
 
+    if (matchedEntry) {
+      const [tag, type] = matchedEntry;
+      const responseEl = problem.querySelector(tag)!;
       problemType = type;
 
       if (type === 'multiplechoiceresponse' || type === 'choiceresponse') {
@@ -104,11 +113,10 @@ export function olxToQuestion(olxString: string, fallback: Question): Question {
           questionHtml = labelEl.innerHTML?.trim() || questionHtml;
         }
       }
-      break;
     }
 
     // Explanation: second <p> inside .detailed-solution
-    let explanation: string | undefined = fallback.explanation;
+    let { explanation } = fallback;
     const solutionPs = problem.querySelectorAll('solution .detailed-solution p');
     if (solutionPs.length >= 2) {
       explanation = solutionPs[1]?.textContent?.trim() || explanation;
@@ -121,17 +129,19 @@ export function olxToQuestion(olxString: string, fallback: Question): Question {
       .filter(Boolean);
 
     return {
-      ...fallback,
-      displayName,
-      questionHtml,
-      problemType,
-      choices,
-      answerValue,
-      tolerance,
-      explanation,
-      demandHints: demandHints.length > 0 ? demandHints : fallback.demandHints,
+      question: {
+        ...fallback,
+        displayName,
+        questionHtml,
+        problemType,
+        choices,
+        answerValue,
+        tolerance,
+        explanation,
+        demandHints: demandHints.length > 0 ? demandHints : fallback.demandHints,
+      },
     };
-  } catch {
-    return fallback;
+  } catch (err) {
+    return { question: fallback, parseError: `OLX parse error: ${(err as Error).message}` };
   }
 }
