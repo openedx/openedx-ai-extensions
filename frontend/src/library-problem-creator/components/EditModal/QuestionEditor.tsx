@@ -6,7 +6,7 @@ import {
 } from '@openedx/paragon';
 import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
 import { Question } from '../../types';
-import { olxToQuestion } from '../../utils/olxToQuestion';
+import { olxToQuestion, questionToJson, questionToOlx } from './utils';
 import messages from '../../messages';
 
 type EditorMode = 'olx' | 'json';
@@ -15,13 +15,6 @@ interface QuestionEditorProps {
   question: Question;
   onSave: (updated: Question) => void;
   onCancel: () => void;
-}
-
-/** Serialize question for the JSON editor, omitting the derived olx field */
-function questionToJson(q: Question): string {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { olx, ...rest } = q;
-  return JSON.stringify(rest, null, 2);
 }
 
 const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => {
@@ -42,8 +35,9 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
   const handleApply = () => {
     if (mode === 'olx') {
       // CodeMirror 6 exposes current content via editorRef.current.state.doc.toString()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const currentOlx = CodeEditor
-        ? (editorRef.current?.state.doc.toString() ?? question.olx?.data ?? '')
+        ? ((editorRef.current as any)?.state?.doc?.toString() ?? question.olx?.data ?? '')
         : olxText;
       const { question: parsed, parseError } = olxToQuestion(currentOlx, question);
       if (parseError) {
@@ -57,7 +51,15 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
       try {
         const parsed = JSON.parse(jsonText);
         setJsonError('');
-        onSave({ ...question, ...parsed });
+        // Sync OLX with JSON changes
+        const updatedQuestion = { ...question, ...parsed };
+        const updatedOlx = question.olx?.data
+          ? questionToOlx(updatedQuestion, question.olx.data)
+          : undefined;
+        onSave({
+          ...updatedQuestion,
+          ...(updatedOlx ? { olx: { category: 'problem', ...question.olx, data: updatedOlx } } : {}),
+        });
       } catch {
         setJsonError(intl.formatMessage(messages['ai.library.creator.editor.json.error']));
       }
@@ -110,7 +112,7 @@ const QuestionEditor = ({ question, onSave, onCancel }: QuestionEditorProps) => 
               </Alert>
             )}
             {CodeEditor ? (
-              <div className='border'>
+              <div className="border">
                 <CodeEditor
                   innerRef={editorRef}
                   value={question.olx?.data ?? ''}

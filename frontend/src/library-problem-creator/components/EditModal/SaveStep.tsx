@@ -91,9 +91,9 @@ const SaveStep = () => {
             {activeQuestions.map((question, i) => (
               <div
                 key={question.displayName}
-                className={`d-flex align-items-center justify-content-between px-2 py-1 ${(i > activeQuestions.length - 1) ? 'border-bottom' : ''}`}
+                className={`d-flex align-items-center justify-content-between px-2 py-2 ${(i < questions.length - 1) ? 'border-bottom' : ''}`}
               >
-                <span className="small">{question.displayName}</span>
+                <span className="small">{question.questionHtml}</span>
                 <ProblemTypeBadge problemType={question.problemType} />
               </div>
             ))}

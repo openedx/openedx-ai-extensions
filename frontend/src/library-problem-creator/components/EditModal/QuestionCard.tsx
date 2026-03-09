@@ -1,35 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Badge,
-  Button, Card, Icon, Stack,
+  Badge, Button, Card, Stack,
 } from '@openedx/paragon';
 import QuestionEditor from './QuestionEditor';
 import ProblemTypeBadge from './ProblemTypeBadge';
 import RegenerateForm from './RegenerateForm';
 import VersionNavigator from './VersionNavigator';
+import AnswerOptionsDisplay from './AnswerOptionsDisplay';
 import messages from '../../messages';
 import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
-import { Choice } from '../../types';
-
-/** Choice list — shared by MCQ, checkbox, and dropdown */
-const ChoiceList = ({ choices }: { choices: Choice[] }) => (
-  <ul className="small mb-0">
-    {choices.map((choice, i) => (
-      <li key={`${choice.text}-${i}`} className={`d-flex align-items-start mb-1`}>
-        <span>
-          {choice.text}
-          {choice.feedback && (
-            <p className="ml-2 font-italic x-small">
-              {choice.feedback}
-            </p>
-          )}
-        </span>
-      </li>
-    ))}
-  </ul>
-);
-
 /** Labelled field row */
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="mb-2">
@@ -58,6 +38,8 @@ const QuestionCard = ({ index }: { index: number }) => {
 
   const intl = useIntl();
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
+  const [focusCard, setFocusCard] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const question = questions[index];
   const history = questionHistories[index] || [question];
@@ -66,9 +48,29 @@ const QuestionCard = ({ index }: { index: number }) => {
   const isRegenerating = regeneratingIndices.has(index);
   const isEditing = editingIndex === index;
 
-  const isChoiceBased = ['multiplechoiceresponse', 'choiceresponse', 'optionresponse'].includes(question.problemType);
-  const isNumeric = question.problemType === 'numericalresponse';
-  const isText = question.problemType === 'stringresponse';
+  // Scroll into view when edit is saved
+  useEffect(() => {
+    if (!isEditing && focusCard && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFocusCard(false);
+    }
+  }, [isEditing, focusCard]);
+
+  // Scroll into view when regeneration starts
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    if (isRegenerating && cardRef.current) {
+      // Small delay to ensure DOM has updated with loading state
+      timer = setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+    }
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [isRegenerating]);
 
   const handleRegenerateSubmit = (idx: number, instructions?: string) => {
     setShowRegenerateForm(false);
@@ -76,96 +78,69 @@ const QuestionCard = ({ index }: { index: number }) => {
   };
 
   return (
-    <Card
-      isLoading={isRegenerating}
-      className={`position-relative mb-2 ${isDiscarded ? 'text-muted' : ''}`}
-    >
-      {/* ── Header ── */}
-      <Card.Section>
-        <div className="d-flex align-items-center justify-content-between">
-          <span className="font-weight-bold flex-1">
-            {index + 1}. {question.displayName}
-          </span>
-          {isDiscarded ?
-            <Badge variant="danger" pill>
-              {intl.formatMessage(messages['ai.library.creator.card.discarded.label'])}
-            </Badge>
-            :
-            < ProblemTypeBadge problemType={question.problemType} className="ml-2" />
-          }
-        </div>
-      </Card.Section>
-
-      <Card.Divider />
-
-      {/* ── Question body ── */}
-      <Card.Section
-        skeletonHeight={200}
+    <div ref={cardRef}>
+      <Card
+        isLoading={isRegenerating}
+        className={`position-relative mb-2 ${isDiscarded ? 'text-muted' : ''}`}
       >
-
-        {/* Question text */}
-        <Field label={intl.formatMessage(messages['ai.library.creator.card.field.question'])}>
-          <div>{question.questionHtml}</div>
-        </Field>
-
-        {/* Choice-based answers */}
-        {isChoiceBased && question.choices && question.choices.length > 0 && (
-          <Field label={intl.formatMessage(messages['ai.library.creator.card.field.choices'])}>
-            <ChoiceList choices={question.choices} />
-          </Field>
-        )}
-
-        {/* Numeric answer + tolerance */}
-        {isNumeric && (
-          <div className="d-flex" style={{ gap: '1.5rem' }}>
-            {question.answerValue && (
-              <Field label={intl.formatMessage(messages['ai.library.creator.card.field.answer'])}>
-                <code>{question.answerValue}</code>
-              </Field>
-            )}
-            {question.tolerance && question.tolerance !== '<UNKNOWN>' && (
-              <Field label={intl.formatMessage(messages['ai.library.creator.card.field.tolerance'])}>
-                <code>±{question.tolerance}</code>
-              </Field>
-            )}
+        {/* ── Header ── */}
+        <Card.Section>
+          <div className="d-flex align-items-center justify-content-between">
+            <span className="font-weight-bold flex-1">
+              {index + 1}. {question.displayName}
+            </span>
+            {isDiscarded
+              ? (
+                <Badge variant="danger" pill>
+                  {intl.formatMessage(messages['ai.library.creator.card.discarded.label'])}
+                </Badge>
+              )
+              : <ProblemTypeBadge problemType={question.problemType} className="ml-2" />}
           </div>
-        )}
+        </Card.Section>
 
-        {/* Text / string answer */}
-        {isText && question.answerValue && (
-          <Field label={intl.formatMessage(messages['ai.library.creator.card.field.answer'])}>
-            <code>{question.answerValue}</code>
+        <Card.Divider />
+
+        {/* ── Question body ── */}
+        <Card.Section
+          skeletonHeight={200}
+        >
+
+          {/* Question text */}
+          <Field label={intl.formatMessage(messages['ai.library.creator.card.field.question'])}>
+            <div>{question.questionHtml}</div>
           </Field>
-        )}
 
-        {/* Explanation */}
-        {question.explanation && (
-          <Field label={intl.formatMessage(messages['ai.library.creator.card.field.explanation'])}>
-            <span>{question.explanation}</span>
-          </Field>
-        )}
+          {/* Answer options — displayed as form components */}
+          <AnswerOptionsDisplay question={question} />
 
-        {/* Demand hints */}
-        {question.demandHints && question.demandHints.length > 0 && (
-          <Field label={intl.formatMessage(messages['ai.library.creator.card.field.hints'])}>
-            <ol className="pl-3 mb-0 small">
-              {question.demandHints.map((hint) => (
-                <li key={hint}>{hint}</li>
-              ))}
-            </ol>
-          </Field>
-        )}
+          {/* Explanation */}
+          {question.explanation && (
+            <Field label={intl.formatMessage(messages['ai.library.creator.card.field.explanation'])}>
+              <span>{question.explanation}</span>
+            </Field>
+          )}
 
-        {/* Version history navigator */}
-        <VersionNavigator
-          selectedVersionIndex={selectedVersionIndex}
-          totalVersions={history.length}
-          onPrevious={() => selectVersion(index, selectedVersionIndex - 1)}
-          onNext={() => selectVersion(index, selectedVersionIndex + 1)}
-        />
-        {/* Action buttons */}
-        {!isDiscarded ? (
-          <>
+          {/* Demand hints */}
+          {question.demandHints && question.demandHints.length > 0 && (
+            <Field label={intl.formatMessage(messages['ai.library.creator.card.field.hints'])}>
+              <ol className="pl-3 mb-0 small">
+                {question.demandHints.map((hint) => (
+                  <li key={hint}>{hint}</li>
+                ))}
+              </ol>
+            </Field>
+          )}
+
+          {/* Version history navigator */}
+          <VersionNavigator
+            selectedVersionIndex={selectedVersionIndex}
+            totalVersions={history.length}
+            onPrevious={() => selectVersion(index, selectedVersionIndex - 1)}
+            onNext={() => selectVersion(index, selectedVersionIndex + 1)}
+          />
+          {/* Action buttons */}
+          {!isDiscarded ? (
             <Stack direction="horizontal" gap={1} className="mt-5">
               <Button
                 variant="outline-primary"
@@ -192,42 +167,53 @@ const QuestionCard = ({ index }: { index: number }) => {
                 {intl.formatMessage(messages['ai.library.creator.card.discard'])}
               </Button>
             </Stack>
+          ) : (
+            <div className="mt-5">
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => restoreQuestion(index)}
+              >
+                {intl.formatMessage(messages['ai.library.creator.card.restore'])}
+              </Button>
+            </div>
+          )}
+        </Card.Section>
 
-          </>
-        ) : (
-          <div className="mt-2">
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              onClick={() => restoreQuestion(index)}
-            >
-              {intl.formatMessage(messages['ai.library.creator.card.restore'])}
-            </Button>
-          </div>
-        )}
-      </Card.Section>
+        <Card.Section>
+          {/* Inline regenerate form */}
+          {showRegenerateForm && (
+            <>
+              <Card.Divider />
+              <RegenerateForm
+                index={index}
+                onSubmit={handleRegenerateSubmit}
+                onCancel={() => setShowRegenerateForm(false)}
+              />
+            </>
+          )}
+          {/* Inline editor */}
+          {isEditing && !isDiscarded && (
+            <>
+              <Card.Divider />
+              <QuestionEditor
+                question={question}
+                onSave={(updated) => {
+                  updateQuestion(index, updated);
+                  setEditingIndex(null);
+                  setFocusCard(true);
+                }}
+                onCancel={() => {
+                  setEditingIndex(null);
+                  setFocusCard(true);
+                }}
+              />
+            </>
+          )}
+        </Card.Section>
 
-      <Card.Section>
-        <Card.Divider />
-        {/* Inline regenerate form */}
-        {showRegenerateForm && (
-          <RegenerateForm
-            index={index}
-            onSubmit={handleRegenerateSubmit}
-            onCancel={() => setShowRegenerateForm(false)}
-          />
-        )}
-        {/* Inline editor */}
-        {isEditing && !isDiscarded && (
-          <QuestionEditor
-            question={question}
-            onSave={(updated) => { updateQuestion(index, updated); setEditingIndex(null); }}
-            onCancel={() => setEditingIndex(null)}
-          />
-        )}
-      </Card.Section>
-
-    </Card>
+      </Card>
+    </div>
   );
 };
 
