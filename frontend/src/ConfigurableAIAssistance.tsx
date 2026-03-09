@@ -32,7 +32,7 @@ import {
   LibraryProblemCreatorResponse,
 } from './library-problem-creator';
 import { PluginConfiguration } from './types';
-import { WORKFLOW_ACTIONS } from './constants';
+import { WORKFLOW_ACTIONS, WorkflowActionType } from './constants';
 
 import messages from './messages';
 
@@ -221,7 +221,7 @@ const ConfigurableAIAssistance = ({
    * Handle AI assistant request
    * Accepts optional params from child components to support custom actions and user input.
    */
-  const handleAskAI = useCallback(async (params: { userInput?: any; action?: string } = {}) => {
+  const handleAskAI = useCallback(async (params: { userInput?: any; action?: WorkflowActionType } = {}) => {
     const { userInput = null, action = WORKFLOW_ACTIONS.RUN } = params;
     const isAsync = action === WORKFLOW_ACTIONS.RUN_ASYNC;
 
