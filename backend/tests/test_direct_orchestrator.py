@@ -93,17 +93,19 @@ def test_get_current_session_response_with_questions(
     educator_orchestrator,  # pylint: disable=redefined-outer-name
 ):
     """
-    When session has questions but no collection_url, return the questions dict for review.
+    When session has question_slots but no collection_url, return them for review.
     """
-    questions = [{"display_name": "Q1", "problem_type": "multiplechoiceresponse"}]
+    question_slots = [
+        {"versions": [{"display_name": "Q1", "problem_type": "multiplechoiceresponse"}], "selected": 0}
+    ]
     educator_orchestrator.session.metadata = {
-        "questions": questions,
+        "question_slots": question_slots,
         "collection_name": "My Quiz",
     }
     result = educator_orchestrator.get_current_session_response(None)
     assert result == {
         "response": {
-            "questions": questions,
+            "question_slots": question_slots,
             "collection_name": "My Quiz",
         }
     }
@@ -346,11 +348,19 @@ def test_educator_orchestrator_run_no_library_id_stores_questions(
     result = educator_orchestrator.run({"num_questions": 1})
 
     assert result["status"] == "completed"
-    assert "questions" in result["response"]
+    assert "question_slots" in result["response"]
     assert result["response"]["collection_name"] == "Iterative Quiz"
-    assert result["response"]["questions"] == problems
-    # Session metadata has questions
-    assert educator_orchestrator.session.metadata["questions"] == problems
+    # Each problem is wrapped in a slot with versions list and selected index
+    slots = result["response"]["question_slots"]
+    assert len(slots) == len(problems)
+    for slot, problem in zip(slots, problems):
+        assert slot["selected"] == 0
+        assert len(slot["versions"]) == 1
+        # The version contains the original problem fields (plus possibly 'olx')
+        for key, value in problem.items():
+            assert slot["versions"][0][key] == value
+    # Session metadata uses question_slots
+    assert "question_slots" in educator_orchestrator.session.metadata
     assert educator_orchestrator.session.metadata["collection_name"] == "Iterative Quiz"
     # ContentLibraryProcessor was NOT called
     mock_library_class.assert_not_called()
@@ -377,7 +387,10 @@ def test_regenerate_question_replaces_correct_index(
         {"display_name": "Q2", "problem_type": "stringresponse"},
     ]
     educator_orchestrator.session.metadata = {
-        "questions": original_questions,
+        "question_slots": [
+            {"versions": [original_questions[0]], "selected": 0},
+            {"versions": [original_questions[1]], "selected": 0},
+        ],
         "collection_name": "Test Quiz",
     }
 
@@ -387,7 +400,7 @@ def test_regenerate_question_replaces_correct_index(
 
     new_question = {"display_name": "Q1-new", "problem_type": "multiplechoiceresponse"}
     mock_llm = Mock()
-    mock_llm.process.return_value = {
+    mock_llm.refine_quiz_question.return_value = {
         "response": {"problems": [new_question]},
         "tokens_used": 50,
     }
@@ -396,10 +409,15 @@ def test_regenerate_question_replaces_correct_index(
     result = educator_orchestrator.regenerate_question({"question_index": 0})
 
     assert result["status"] == "completed"
-    assert result["response"] == new_question
-    updated = educator_orchestrator.session.metadata["questions"]
-    assert updated[0] == new_question
-    assert updated[1] == original_questions[1]
+    # Response includes the new question, full version history, and selected index
+    assert result["response"]["question"]["display_name"] == "Q1-new"
+    assert result["response"]["selected"] == 1
+    assert len(result["response"]["history"]) == 2
+    # Session metadata is updated with versioned slots
+    updated_slots = educator_orchestrator.session.metadata["question_slots"]
+    assert updated_slots[0]["selected"] == 1
+    assert len(updated_slots[0]["versions"]) == 2
+    assert updated_slots[1]["versions"][0] == original_questions[1]
 
 
 @pytest.mark.django_db

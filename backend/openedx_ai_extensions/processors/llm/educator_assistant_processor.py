@@ -69,8 +69,6 @@ class EducatorAssistantProcessor(LitellmProcessor):
 
     def generate_quiz_questions(self, input_data):
         """Generate quiz questions based on the content provided"""
-        requested_questions = input_data.get('num_questions')
-        extra_instructions = input_data.get('extra_instructions')
 
         prompt_file_path = (
             Path(__file__).resolve().parent.parent.parent
@@ -84,20 +82,11 @@ class EducatorAssistantProcessor(LitellmProcessor):
             logger.exception(f"Error loading prompt template: {e}")
             return {"error": "Failed to load prompt template."}
 
-        if '{{NUM_QUESTIONS}}' in prompt:
-            prompt = prompt.replace("{{NUM_QUESTIONS}}", str(requested_questions))
-        if '{{CONTEXT}}' in prompt:
-            prompt = prompt.replace("{{CONTEXT}}", str(self.context))
-        if '{{EXTRA_INSTRUCTIONS}}' in prompt:
-            if extra_instructions and extra_instructions.strip():
-                formatted_extra = (
-                    "You MUST follow these specific instructions from the course author "
-                    "when generating the questions. They take priority over default behaviour:\n\n"
-                    f"{extra_instructions.strip()}"
-                )
-            else:
-                formatted_extra = "(none)"
-            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", formatted_extra)
+        input_data['context'] = self.context
+        for key, value in input_data.items():
+            placeholder = f"{{{{{key.upper()}}}}}"
+            prompt = prompt.replace(placeholder, str(value))
+        logger.info(f"Generation prompt after placeholder replacement: {prompt}")
 
         try:
             result = self._call_completion_api(prompt)
@@ -115,7 +104,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
             "status": "success",
         }
 
-    def refine_quiz_question(self, existing_question, extra_instructions=''):
+    def refine_quiz_question(self, input_data):
         """Refine an existing quiz question instead of generating a new one."""
         prompt_file_path = (
             Path(__file__).resolve().parent.parent.parent
@@ -129,12 +118,11 @@ class EducatorAssistantProcessor(LitellmProcessor):
             logger.exception(f"Error loading refinement prompt template: {e}")
             return {"error": "Failed to load refinement prompt template."}
 
-        if '{{EXISTING_QUESTION}}' in prompt:
-            prompt = prompt.replace("{{EXISTING_QUESTION}}", str(existing_question))
-        if '{{CONTEXT}}' in prompt:
-            prompt = prompt.replace("{{CONTEXT}}", str(self.context))
-        if '{{EXTRA_INSTRUCTIONS}}' in prompt:
-            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions.strip() or "(none)")
+        input_data['context'] = self.context
+        for key, value in input_data.items():
+            placeholder = f"{{{{{key.upper()}}}}}"
+            prompt = prompt.replace(placeholder, str(value))
+        logger.info(f"Refinement prompt after placeholder replacement: {prompt}")
 
         try:
             result = self._call_completion_api(prompt)

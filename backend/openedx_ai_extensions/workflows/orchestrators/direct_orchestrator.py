@@ -113,6 +113,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         )
 
     def _run_openedx_processor(self):
+        """Run the OpenEdX processor to fetch course content."""
         openedx_processor = OpenEdXProcessor(
             processor_config=self.profile.processor_config,
             location_id=self.location_id,
@@ -122,6 +123,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         return openedx_processor.process()
 
     def _run_llm_processor(self, content_result, input_data):
+        """Run the LLM processor to generate quiz questions."""
         with open(self._schema_path, 'r', encoding='utf-8') as f:
             llm_processor = EducatorAssistantProcessor(
                 config=self.profile.processor_config,
@@ -168,6 +170,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
 
         lib_key_str = input_data.get('library_id')
 
+        # TODO: Remove the direct-commit path once iterative review is fully supported in the UI
         if lib_key_str:
             # Legacy direct-commit path
             items = []
@@ -238,7 +241,6 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         question rather than generating an unrelated new one.
         """
         question_index = input_data.get('question_index')
-        extra_instructions = input_data.get('extra_instructions', '')
 
         content_result = self._run_openedx_processor()
         if 'error' in content_result:
@@ -247,11 +249,11 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         metadata = self.session.metadata or {}
         question_slots = metadata.get('question_slots', [])
 
-        if question_index is None or not (0 <= question_index < len(question_slots)):
+        if question_index is None or not 0 <= question_index < len(question_slots):
             return {'error': 'Invalid question index', 'status': 'error'}
 
         slot = question_slots[question_index]
-        existing_question = slot['versions'][slot['selected']]
+        input_data['existing_question'] = slot['versions'][slot['selected']]
 
         # Use the dedicated refinement prompt and processor
         with open(self._schema_path, 'r', encoding='utf-8') as f:
@@ -262,10 +264,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
                 extra_params={"response_format": json.load(f)}
             )
 
-        llm_result = llm_processor.refine_quiz_question(
-            existing_question=existing_question,
-            extra_instructions=extra_instructions,
-        )
+        llm_result = llm_processor.refine_quiz_question(input_data=input_data)
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
 

@@ -477,8 +477,8 @@ def test_library_questions_creator_profile_integration(
 
     assert config_response.status_code == 200
     config_data = config_response.json()
-    assert config_data["ui_components"]["request"]["component"] == "LibraryComponentCreator"
-    assert config_data["ui_components"]["response"]["component"] == "LibraryComponentCreatorResponse"
+    assert config_data["ui_components"]["request"]["component"] == "LibraryProblemCreator"
+    assert config_data["ui_components"]["response"]["component"] == "LibraryProblemCreatorResponse"
 
     workflows_url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
     query_string = urlencode({"context": context})
@@ -545,7 +545,7 @@ def test_library_questions_creator_profile_integration(
         assert phase1_response.status_code == 200
         phase1_data = phase1_response.json()
         assert phase1_data["status"] == "completed"
-        assert "questions" in phase1_data["response"]
+        assert "question_slots" in phase1_data["response"]
         assert phase1_data["response"]["collection_name"] == "Django Quiz"
         # Library must NOT have been called in phase 1
         mock_library.assert_not_called()
