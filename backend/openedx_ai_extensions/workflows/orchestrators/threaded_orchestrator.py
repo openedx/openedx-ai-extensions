@@ -6,7 +6,7 @@ import json
 import logging
 
 from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
-from openedx_ai_extensions.utils import is_generator
+from openedx_ai_extensions.utils import is_generator, normalize_input_to_text
 from openedx_ai_extensions.xapi.constants import EVENT_NAME_WORKFLOW_INITIALIZED, EVENT_NAME_WORKFLOW_INTERACTED
 
 from .session_based_orchestrator import SessionBasedOrchestrator
@@ -82,11 +82,11 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             # 2. Save History (Post-Stream Phase)
             # This executes after the view has consumed the last chunk
             final_response = "".join(full_response_text)
+            user_text = normalize_input_to_text(input_data)
 
-            messages = [
-                {"role": "user", "content": input_data},
-                {"role": "assistant", "content": final_response},
-            ]
+            messages = [{"role": "assistant", "content": final_response}]
+            if user_text:
+                messages.insert(0, {"role": "user", "content": user_text})
 
             # Re-inject system messages if this was a new thread (and not OpenAI)
             if llm_processor.get_provider() != "openai" and initial_system_msgs:
@@ -168,8 +168,9 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         messages = [
             {"role": "assistant", "content": llm_result.get("response", "")},
         ]
-        if input_data:
-            messages.insert(0, {"role": "user", "content": input_data})
+        user_text = normalize_input_to_text(input_data)
+        if user_text:
+            messages.insert(0, {"role": "user", "content": user_text})
 
         if llm_processor.get_provider() != "openai":
             system_messages = llm_result.get("system_messages", {})

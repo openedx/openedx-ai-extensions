@@ -267,10 +267,19 @@ class SubmissionProcessor:
         """
         if self.user_session.local_submission_id:
             messages, _ = self._process_messages(use_max_context=False)
+            cleaned = []
             for msg in messages:
                 if isinstance(msg, dict):
                     msg.pop("timestamp", None)
-            return messages
+                    # Only validate content for role-based messages (user/assistant/system).
+                    # Function call/output items use other fields (type, call_id, etc.) and
+                    # legitimately have no content field — never filter those out.
+                    if "role" in msg:
+                        content = msg.get("content")
+                        if not isinstance(content, str) or not content:
+                            continue
+                cleaned.append(msg)
+            return cleaned
         else:
             return None
 

@@ -2,6 +2,7 @@
 Tests for the LLMProcessor module.
 """
 # pylint: disable=redefined-outer-name,protected-access
+import types
 import unittest
 from unittest.mock import Mock, patch
 
@@ -10,6 +11,7 @@ from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
+from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor
 from openedx_ai_extensions.workflows.models import AIWorkflowProfile, AIWorkflowScope, AIWorkflowSession
 
@@ -91,8 +93,9 @@ def llm_processor(user_session, settings):  # pylint: disable=redefined-outer-na
 
 class MockDelta:
     """Mock for the delta object in a streaming chunk."""
-    def __init__(self, content):
+    def __init__(self, content, tool_calls=None):
         self.content = content
+        self.tool_calls = tool_calls
 
 
 class MockChoice:
@@ -130,6 +133,26 @@ class MockChunk:
                     ]
                 )
             ]
+
+
+class MockUsage:
+    """Mock for usage statistics."""
+    def __init__(self, total_tokens=10):
+        self.total_tokens = total_tokens
+
+
+class MockStreamChunk:
+    """Mock for a streaming chunk."""
+    def __init__(self, content, is_delta=True):
+        self.usage = MockUsage(total_tokens=5)
+        self.delta = None
+        self.choices = []
+
+        if is_delta:
+            mock_delta = MockDelta(content)
+            self.choices = [MockChoice(delta=mock_delta)]
+            self.delta = mock_delta
+            self.response = Mock(id="stream-id-123")
 
 
 # ============================================================================
@@ -259,6 +282,67 @@ def test_chat_with_context_streaming(
     assert len(results) == 2
     assert results[0].content == "He"
     assert results[1].content == "llo"
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_chat_with_context_streaming_non_openai_uses_completion(
+    mock_completion, mock_responses, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that chat_with_context for a non-OpenAI provider (e.g. Anthropic) calls
+    completion() instead of responses() when streaming=True.
+
+    LiteLLM's Responses API streaming translation does not surface tool-call
+    events for non-native providers, so adapt_to_provider automatically converts
+    the params to Completion API format (input → messages) and
+    _call_responses_wrapper detects the 'messages' key to take the completion path.
+
+    The result must be a generator of encoded bytes (same as summarize_content).
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "anthropic/claude-3-5-sonnet",
+            "API_KEY": "test-anthropic-key",
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "chat_with_context",
+            "stream": True,
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+    processor.stream = True
+    processor.extra_params.pop("tools", None)
+
+    chunks = [
+        MockChunk("Hi", is_stream=True),
+        MockChunk(" there", is_stream=True),
+    ]
+    mock_completion.return_value = iter(chunks)
+
+    generator = processor.process(
+        context="Course Context",
+        input_data="Hello Anthropic",
+        chat_history=[]
+    )
+    results = list(generator)
+
+    # completion() must have been used — responses() must NOT be called
+    mock_responses.assert_not_called()
+    mock_completion.assert_called_once()
+
+    # Params passed to completion() must use 'messages', not 'input'
+    call_kwargs = mock_completion.call_args[1]
+    assert "messages" in call_kwargs, "Expected Completion API format (messages key)"
+    assert "input" not in call_kwargs, "Responses API key 'input' must not be present"
+
+    # Output is encoded bytes (handled by _handle_streaming_completion)
+    assert results[0] == b"Hi"
+    assert results[1] == b" there"
 
 
 @pytest.mark.django_db
@@ -1041,3 +1125,295 @@ class TestLLMProcessorInit(unittest.TestCase):
         }
         processor = LLMProcessor(config, user_session, extra_params=extra_params)    # pylint: disable=unused-variable
         mock_litellm_init.assert_called_once_with(config, user_session, extra_params)
+
+# ============================================================================
+# Streaming Tool Call Tests
+# ============================================================================
+
+
+class MockToolStreamChunk:
+    """
+    Helper for simulating tool call chunks in a stream.
+    Structure follows: chunk.choices[0].delta.tool_calls[...]
+    """
+
+    def __init__(self, index, tool_id=None, name=None, arguments=None):
+        self.usage = MockUsage(total_tokens=5)
+
+        # 1. Create the function mock
+        func_mock = Mock()
+        func_mock.name = name
+        func_mock.arguments = arguments
+
+        # 2. Create the tool_call mock
+        tool_call_mock = Mock()
+        tool_call_mock.index = index
+        tool_call_mock.id = tool_id
+        tool_call_mock.function = func_mock
+
+        # Construct the delta
+        delta = MockDelta(content=None, tool_calls=[tool_call_mock])
+
+        # Construct the choice
+        self.choices = [MockChoice(delta=delta)]
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.adapt_to_provider")
+def test_streaming_tool_execution_recursion(
+    mock_adapt, mock_completion, llm_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that streaming correctly handles tool calls:
+    1. Buffers tool call chunks.
+    2. Executes the tool.
+    3. Recursively calls completion with tool output.
+    4. Yields the final content chunks.
+    """
+    # 1. Setup
+    mock_adapt.side_effect = lambda provider, params, **kwargs: params
+
+    # Configure processor for streaming + custom function calling
+    llm_processor.config["function"] = "summarize_content"  # Uses _call_completion_wrapper
+    llm_processor.config["stream"] = True
+    llm_processor.stream = True
+    llm_processor.extra_params["tools"] = ["mock_tool"]  # Needs to pass check in init if strict, but mainly for logic
+
+    # 2. Define a Mock Tool
+    mock_tool_func = Mock(return_value="tool_result_value")
+
+    # Patch the global AVAILABLE_TOOLS to include our mock
+    with patch.dict(AVAILABLE_TOOLS, {"mock_tool": mock_tool_func}):
+        # 3. Define Stream Sequences
+
+        # Sequence 1: The Model decides to call "mock_tool" with args {"arg": "val"}
+        # Split into multiple chunks to test buffering logic
+        tool_chunks = [
+            # Chunk 1: ID and Name
+            MockToolStreamChunk(index=0, tool_id="call_123", name="mock_tool"),
+            # Chunk 2: Start of args
+            MockToolStreamChunk(index=0, arguments='{"arg":'),
+            # Chunk 3: End of args
+            MockToolStreamChunk(index=0, arguments=' "val"}'),
+        ]
+
+        # Sequence 2: The Model sees the tool result and generates final text
+        content_chunks = [
+            MockStreamChunk("Result "),
+            MockStreamChunk("is "),
+            MockStreamChunk("tool_result_value"),
+        ]
+
+        # Configure completion to return the first sequence, then the second
+        mock_completion.side_effect = [iter(tool_chunks), iter(content_chunks)]
+
+        # 4. Execute
+        generator = llm_processor.process(context="Ctx")
+        results = list(generator)
+
+        # 5. Assertions
+
+        # Check final output (byte encoded by _handle_streaming_completion)
+        assert b"Result " in results
+        assert b"is " in results
+        assert b"tool_result_value" in results
+
+        # Check Tool Execution
+        mock_tool_func.assert_called_once_with(arg="val")
+
+        # Check Recursion (completion called twice)
+        assert mock_completion.call_count == 2
+
+        # Verify second call included the tool output
+        second_call_kwargs = mock_completion.call_args_list[1][1]
+        messages = second_call_kwargs["messages"]
+
+        # Should have: System, (Context/User), Assistant(ToolCall), Tool(Result)
+        # Finding the tool message
+        tool_msg = next((m for m in messages if m.get("role") == "tool"), None)
+        assert tool_msg is not None
+        assert tool_msg["tool_call_id"] == "call_123"
+        assert tool_msg["content"] == "tool_result_value"
+        assert tool_msg["name"] == "mock_tool"
+
+
+# ============================================================================
+# _completion_with_tools Error Path Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_completion_with_tools_unknown_tool_is_skipped(
+    mock_completion, llm_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    When a tool call references a function not in AVAILABLE_TOOLS the call is
+    silently skipped (logged) and completion proceeds without a tool message.
+    """
+    mock_completion.return_value = Mock(
+        choices=[Mock(message=Mock(content="done", tool_calls=None))],
+        usage=Mock(total_tokens=5),
+    )
+    unknown_call = types.SimpleNamespace(
+        id="call_x",
+        function=types.SimpleNamespace(name="unknown_tool", arguments='{}'),
+    )
+    params = {
+        "stream": False,
+        "messages": [{"role": "system", "content": "sys"}],
+        "model": "openai/gpt-4",
+    }
+    # pylint: disable=protected-access
+    response = llm_processor._completion_with_tools([unknown_call], params)
+
+    # No tool message should have been appended
+    assert all(m.get("role") != "tool" for m in params["messages"])
+    mock_completion.assert_called_once()
+    assert response.choices[0].message.content == "done"
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_completion_with_tools_json_decode_error(
+    mock_completion, llm_processor  # pylint: disable=redefined-outer-name
+):
+    """
+    When a tool call carries malformed JSON arguments, json.JSONDecodeError is
+    caught, an error string is passed as the tool result, and completion
+    continues normally.
+    """
+    mock_tool = Mock(return_value="ok")
+    mock_completion.return_value = Mock(
+        choices=[Mock(message=Mock(content="done", tool_calls=None))],
+        usage=Mock(total_tokens=5),
+    )
+    bad_json_call = types.SimpleNamespace(
+        id="call_bad",
+        function=types.SimpleNamespace(name="mock_tool", arguments="{INVALID JSON}"),
+    )
+    params = {
+        "stream": False,
+        "messages": [{"role": "system", "content": "sys"}],
+        "model": "openai/gpt-4",
+    }
+    with patch.dict(AVAILABLE_TOOLS, {"mock_tool": mock_tool}):
+        # pylint: disable=protected-access
+        llm_processor._completion_with_tools([bad_json_call], params)
+
+    tool_msg = next((m for m in params["messages"] if m.get("role") == "tool"), None)
+    assert tool_msg is not None
+    assert "Error" in tool_msg["content"]
+    mock_tool.assert_not_called()
+
+# ============================================================================
+# Threaded Streaming & Tool Call Tests (Responses API)
+# ============================================================================
+
+
+class MockResponseUsage:
+    """Helper to mock usage in Responses API."""
+
+    def __init__(self, total):
+        self.total_tokens = total
+
+
+class MockResponsesChunk:
+    """Helper to mock chunks specifically for the Responses API stream."""
+
+    def __init__(self, chunk_type, **kwargs):
+        self.type = chunk_type
+        self.delta = kwargs.get("delta")
+        self.item = kwargs.get("item")
+        self.response = None
+        usage_total = kwargs.get("usage_total")
+        response_id = kwargs.get("response_id")
+        if usage_total or response_id:
+            self.response = Mock(
+                usage=MockResponseUsage(usage_total) if usage_total else None,
+                id=response_id
+            )
+        if usage_total:
+            self.usage = MockResponseUsage(usage_total)
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.logger")
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
+def test_yield_threaded_stream_text_and_tokens(
+    mock_responses, mock_logger, llm_processor, user_session  # pylint: disable=W0621,W0613
+):
+    """
+    Test verifies text yielding and ensures token usage is LOGGED properly.
+    """
+    chunks = [
+        MockResponsesChunk("response.created", response_id="resp_123"),
+        MockResponsesChunk("response.delta", delta="Hello"),
+        MockResponsesChunk("response.delta", delta="{}"),
+        MockResponsesChunk("response.delta", delta=" world"),
+        MockResponsesChunk("response.completed", usage_total=42)
+    ]
+    # pylint: disable=protected-access
+    generator = llm_processor._yield_threaded_stream(iter(chunks))
+    results = list(generator)
+
+    assert "Hello" in results
+    assert " world" in results
+    assert "{}" not in results
+
+    user_session.refresh_from_db()
+    assert user_session.remote_response_id == "resp_123"
+
+    found_token_log = any(
+        "Tokens used: 42" in str(args)
+        for args, _ in mock_logger.info.call_args_list
+    )
+    assert found_token_log, "Total tokens (42) were not logged as expected."
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
+def test_yield_threaded_stream_recursive_tool_call(
+    mock_responses, llm_processor   # pylint: disable=W0621
+):
+    """
+    Test recursive tool execution in threaded stream.
+    """
+    mock_dice_roll = Mock(return_value="[6]")
+
+    with patch.dict("openedx_ai_extensions.functions.decorators.AVAILABLE_TOOLS",
+                    {"roll_dice": mock_dice_roll}):
+        item_mock = Mock(
+            type="function_call",
+            call_id="call_abc",
+            arguments='{"n_dice": 1}'
+        )
+        item_mock.name = "roll_dice"
+
+        stream_a = [
+            MockResponsesChunk("response.output_item.done", item=item_mock)
+        ]
+
+        stream_b = [
+            MockResponsesChunk("response.delta", delta="You rolled a 6")
+        ]
+
+        mock_responses.return_value = iter(stream_b)
+
+        params = {"input": [{"role": "user", "content": "Roll dice"}], "stream": True}
+        # pylint: disable=protected-access
+        generator = llm_processor._yield_threaded_stream(iter(stream_a), params=params)
+        results = list(generator)
+
+        assert "Error: Tool not found." not in str(results)
+
+        assert "You rolled a 6" in results
+
+        mock_dice_roll.assert_called_once_with(n_dice=1)
+
+        history = params["input"]
+        assert history[1]["type"] == "function_call"
+        assert history[1]["name"] == "roll_dice"
+
+        mock_responses.assert_called_once()
