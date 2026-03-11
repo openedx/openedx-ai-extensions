@@ -69,8 +69,6 @@ class EducatorAssistantProcessor(LitellmProcessor):
 
     def generate_quiz_questions(self, input_data):
         """Generate quiz questions based on the content provided"""
-        requested_questions = input_data.get('num_questions')
-        extra_instructions = input_data.get('extra_instructions')
 
         prompt_file_path = (
             Path(__file__).resolve().parent.parent.parent
@@ -84,12 +82,11 @@ class EducatorAssistantProcessor(LitellmProcessor):
             logger.exception(f"Error loading prompt template: {e}")
             return {"error": "Failed to load prompt template."}
 
-        if '{{NUM_QUESTIONS}}' in prompt:
-            prompt = prompt.replace("{{NUM_QUESTIONS}}", str(requested_questions))
-        if '{{CONTEXT}}' in prompt:
-            prompt = prompt.replace("{{CONTEXT}}", str(self.context))
-        if '{{EXTRA_INSTRUCTIONS}}' in prompt:
-            prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions or "")
+        input_data['context'] = self.context
+        for key, value in input_data.items():
+            placeholder = f"{{{{{key.upper()}}}}}"
+            prompt = prompt.replace(placeholder, str(value))
+        logger.info(f"Generation prompt after placeholder replacement: {prompt}")
 
         try:
             result = self._call_completion_api(prompt)
@@ -98,9 +95,43 @@ class EducatorAssistantProcessor(LitellmProcessor):
             return {"error": f"AI processing failed: {str(e)}"}
 
         tokens_used = result.get("tokens_used", 0)
-
         response = json.loads(result['response'])
 
+        return {
+            "response": response,
+            "tokens_used": tokens_used,
+            "model_used": self.extra_params.get("model", "unknown"),
+            "status": "success",
+        }
+
+    def refine_quiz_question(self, input_data):
+        """Refine an existing quiz question instead of generating a new one."""
+        prompt_file_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "prompts"
+            / "default_refine_quiz_question.txt"
+        )
+        try:
+            with open(prompt_file_path, "r") as f:
+                prompt = f.read()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error loading refinement prompt template: {e}")
+            return {"error": "Failed to load refinement prompt template."}
+
+        input_data['context'] = self.context
+        for key, value in input_data.items():
+            placeholder = f"{{{{{key.upper()}}}}}"
+            prompt = prompt.replace(placeholder, str(value))
+        logger.info(f"Refinement prompt after placeholder replacement: {prompt}")
+
+        try:
+            result = self._call_completion_api(prompt)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error calling LiteLLM during refinement: {e}")
+            return {"error": f"AI processing failed: {str(e)}"}
+
+        tokens_used = result.get("tokens_used", 0)
+        response = json.loads(result['response'])
         return {
             "response": response,
             "tokens_used": tokens_used,
