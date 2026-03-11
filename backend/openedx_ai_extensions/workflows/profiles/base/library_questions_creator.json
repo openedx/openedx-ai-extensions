@@ -19,14 +19,14 @@ Works only in studio UI and over the CMS service_variant.
       "request": {
         "component": "LibraryProblemCreator",
         "config": {
-          "titleText": "AI Problem Creator",
+          "titleText": "AI Question Builder",
           "preloadPreviousSession": true
         }
       },
       "response": {
         "component": "LibraryProblemCreatorResponse",
         "config": {
-          "titleText": "AI Problem Creator",
+          "titleText": "AI Question Builder",
           "customMessage": "Questions saved to your Content Library.",
           "hyperlinkText": "View collection"
         }
