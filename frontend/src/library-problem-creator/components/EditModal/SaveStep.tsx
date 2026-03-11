@@ -95,7 +95,7 @@ const SaveStep = () => {
               >
                 <p>
                   <b>{question.displayName}</b>
-                  {/*eslint-disable-next-line react/no-danger*/}
+                  {/* eslint-disable-next-line react/no-danger */}
                   <div dangerouslySetInnerHTML={{ __html: question.questionHtml }} />
                 </p>
                 <ProblemTypeBadge problemType={question.problemType} />

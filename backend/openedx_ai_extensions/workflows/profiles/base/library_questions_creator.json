@@ -28,7 +28,7 @@ Works only in studio UI and over the CMS service_variant.
         "config": {
           "titleText": "AI Problem Creator",
           "customMessage": "Questions saved to your Content Library.",
-          "hyperlinkText": "View collection >"
+          "hyperlinkText": "View collection"
         }
       }
     }

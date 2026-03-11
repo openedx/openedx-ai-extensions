@@ -189,7 +189,7 @@ const messages = defineMessages({
   },
   'ai.library.creator.saving': {
     id: 'ai.library.creator.saving',
-    defaultMessage: 'Saving to library…',
+    defaultMessage: 'Saving to library',
     description: 'Status message while saving',
   },
   'ai.library.creator.error.generate': {
@@ -212,11 +212,6 @@ const messages = defineMessages({
     defaultMessage: 'No questions to save. Restore or regenerate at least one question.',
     description: 'Validation error when all questions discarded',
   },
-  'ai.library.creator.task.timeout': {
-    id: 'ai.library.creator.task.timeout',
-    defaultMessage: 'Generation is taking longer than expected. Please try again.',
-    description: 'Timeout message during generation polling',
-  },
   // Question card messages — field labels
   'ai.library.creator.card.field.question': {
     id: 'ai.library.creator.card.field.question',
@@ -232,11 +227,6 @@ const messages = defineMessages({
     id: 'ai.library.creator.card.field.answer',
     defaultMessage: 'Answer',
     description: 'Label for the answer value field in the card',
-  },
-  'ai.library.creator.card.field.tolerance': {
-    id: 'ai.library.creator.card.field.tolerance',
-    defaultMessage: 'Tolerance',
-    description: 'Label for the numeric tolerance field in the card',
   },
   'ai.library.creator.card.field.explanation': {
     id: 'ai.library.creator.card.field.explanation',
@@ -272,11 +262,6 @@ const messages = defineMessages({
     id: 'ai.library.creator.card.discarded.label',
     defaultMessage: 'Discarded',
     description: 'Label on discarded question overlay',
-  },
-  'ai.library.creator.card.regenerating': {
-    id: 'ai.library.creator.card.regenerating',
-    defaultMessage: 'Regenerating…',
-    description: 'Status while regenerating a question',
   },
   'ai.library.creator.card.regenerate.instructions.label': {
     id: 'ai.library.creator.card.regenerate.instructions.label',

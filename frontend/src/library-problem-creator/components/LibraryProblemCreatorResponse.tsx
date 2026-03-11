@@ -70,7 +70,7 @@ const LibraryProblemCreatorResponse = ({
                 destination={collectionUrl}
                 target="_blank"
                 externalLinkAlternativeText={intl.formatMessage(messages['ai.library.creator.response.opens.new.tab'])}
-                className="small d-block mb-3"
+                className="small mb-3"
               >
                 {displayHyperlinkText}
               </Hyperlink>

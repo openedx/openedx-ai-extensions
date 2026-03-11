@@ -122,7 +122,7 @@ const QuestionCard = ({ index }: { index: number }) => {
 
           {/* Question text */}
           <Field label={intl.formatMessage(messages['ai.library.creator.card.field.question'])}>
-            {/*eslint-disable-next-line react/no-danger*/}
+            {/* eslint-disable-next-line react/no-danger */}
             <div dangerouslySetInnerHTML={{ __html: question.questionHtml }} />
           </Field>
 
