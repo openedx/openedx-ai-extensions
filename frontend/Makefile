@@ -1,5 +1,6 @@
 precommit:
 	npm run lint
+	npm run types
 	npm audit
 
 requirements:
@@ -13,3 +14,15 @@ build:
 	cp ./package.json ./dist/package.json
 	cp ./LICENSE ./dist/LICENSE 2>/dev/null || cp ../LICENSE ./dist/LICENSE 2>/dev/null || true
 	cp ./README.md ./dist/README.md
+
+.PHONY: validate
+validate:
+	npm run lint -- --max-warnings 0
+	npm run types
+	npm test
+	make build
+
+.PHONY: validate.ci
+validate.ci:
+	npm ci
+	make validate
