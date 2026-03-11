@@ -1,1 +1,1 @@
-module.exports = require('@openedx/frontend-build/config/babel-typescript.config.js');
+module.exports = require('@openedx/frontend-build/config/babel-typescript.config');
