@@ -1,8 +1,20 @@
 {
   "name": "@openedx/openedx-ai-extensions-ui",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AI Extensions UI component for Open edX utilizing Frontend Plugin Framework",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openedx/openedx-ai-extensions.git"
@@ -12,6 +24,7 @@
   ],
   "scripts": {
     "build": "make build",
+    "prepublishOnly": "npm run build",
     "lint": "fedx-scripts eslint --ext .js --ext .jsx --ext .ts --ext .tsx .",
     "lint:fix": "fedx-scripts eslint --fix --ext .js --ext .jsx --ext .ts --ext .tsx .",
     "test": "fedx-scripts jest --coverage --passWithNoTests",
