@@ -6,7 +6,7 @@ Provider-specific quirks and adaptations for different LLM providers.
 # TODO: refactor this module to make it more extensible for future providers
 def adapt_to_provider(
         provider, params, *, has_user_input=True, user_session=None,
-        input_data=None, use_completion_api=False):
+        input_data=None):
     """
     Apply provider-specific modifications to API call parameters.
 
@@ -14,17 +14,19 @@ def adapt_to_provider(
     scattered throughout the codebase (e.g., OpenAI-specific threading,
     Anthropic's requirement for user messages).
 
+    For non-OpenAI providers that are streaming with Responses API params
+    (i.e. ``input`` key present), the parameters are automatically converted
+    to Completion API format (``messages``) because LiteLLM's Responses API
+    streaming translation does not surface tool-call events correctly for
+    those providers.  Callers can check for the ``"messages"`` key in the
+    returned dict to decide whether to use the Completion API path.
+
     Args:
         provider (str): The LLM provider name (e.g., 'openai', 'anthropic')
         params (dict): The parameters dictionary to modify
         has_user_input (bool): Whether the conversation includes user input
         user_session: Optional user session for threading support
         input_data: Optional input data for continuing conversations
-        use_completion_api (bool): When True, convert Responses API params
-            (``input``) to Completion API format (``messages``) and drop
-            Responses-API-only keys.  Used for non-OpenAI streaming where
-            LiteLLM's Responses API translation does not surface tool-call
-            events correctly.
 
     Returns:
         dict: Modified parameters with provider-specific adaptations applied
@@ -54,9 +56,10 @@ def adapt_to_provider(
                 elif "messages" in params:
                     params["messages"].append({"role": "user", "content": user_prompt})
 
-    if use_completion_api and "input" in params:
-        # Convert Responses API shape → Completion API shape so that
-        # completion() and _completion_with_tools() can be called directly.
+    if provider != "openai" and params.get("stream") and "input" in params:
+        # Non-OpenAI providers: convert Responses API shape → Completion API
+        # shape so that completion() / _completion_with_tools() can be called
+        # directly, ensuring tool-call events are visible during streaming.
         params["messages"] = params.pop("input")
         for key in ("previous_response_id", "store", "truncation"):
             params.pop(key, None)

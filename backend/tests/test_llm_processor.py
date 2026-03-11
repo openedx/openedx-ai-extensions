@@ -295,9 +295,9 @@ def test_chat_with_context_streaming_non_openai_uses_completion(
     completion() instead of responses() when streaming=True.
 
     LiteLLM's Responses API streaming translation does not surface tool-call
-    events for non-native providers, so adapt_to_provider converts the params
-    to Completion API format (input → messages) and _call_responses_wrapper
-    falls through to the completion path.
+    events for non-native providers, so adapt_to_provider automatically converts
+    the params to Completion API format (input → messages) and
+    _call_responses_wrapper detects the 'messages' key to take the completion path.
 
     The result must be a generator of encoded bytes (same as summarize_content).
     """

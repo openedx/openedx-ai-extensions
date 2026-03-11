@@ -4,7 +4,6 @@ Responses processor for threaded AI conversations using LiteLLM
 
 import json
 import logging
-import types
 from datetime import datetime, timezone
 
 from litellm import completion, get_responses, list_input_items, responses
@@ -12,6 +11,7 @@ from litellm import completion, get_responses, list_input_items, responses
 from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
 from openedx_ai_extensions.processors.llm.providers import adapt_to_provider, after_tool_call_adaptations
+from openedx_ai_extensions.processors.llm.tool_executor import ToolExecutor
 from openedx_ai_extensions.utils import normalize_input_to_text
 
 logger = logging.getLogger(__name__)
@@ -145,7 +145,6 @@ class LLMProcessor(LitellmProcessor):
             has_user_input=has_user_input,
             user_session=self.user_session,
             input_data=self.input_data,
-            use_completion_api=(self.provider != "openai" and self.stream),
         )
 
         return params
@@ -165,10 +164,7 @@ class LLMProcessor(LitellmProcessor):
         """
         try:
             if params["stream"]:
-                if self.provider != "openai":
-                    # params was already converted to Completion API format by
-                    # adapt_to_provider (use_completion_api=True), so call
-                    # completion() directly so tool-call events are visible.
+                if "messages" in params:
                     response = self._completion_with_tools([], params)
                     return self._handle_streaming_completion(response)
 
@@ -300,71 +296,8 @@ class LLMProcessor(LitellmProcessor):
         return response
 
     # -------------------------------------------------------------------------
-    # Shared tool-execution helpers
-    # -------------------------------------------------------------------------
-
-    def _execute_tool(self, function_name: str, arguments_str: str) -> str:
-        """
-        Parse *arguments_str* as JSON, look up *function_name* in AVAILABLE_TOOLS,
-        call it, and return the result as a string.
-        Returns a descriptive error string on any failure so the caller can
-        forward it to the LLM without raising.
-        """
-        if function_name not in AVAILABLE_TOOLS:
-            logger.error("Tool '%s' not found in AVAILABLE_TOOLS.", function_name)
-            return "Error: Tool not found."
-        try:
-            function_args = json.loads(arguments_str)
-        except json.JSONDecodeError:
-            logger.error("Failed to parse JSON arguments for '%s'.", function_name)
-            return "Error: Invalid JSON arguments provided."
-        try:
-            result = AVAILABLE_TOOLS[function_name](**function_args)
-            return str(result)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error executing tool: {e}"
-
-    # -------------------------------------------------------------------------
     # Completion API streaming helpers
     # -------------------------------------------------------------------------
-
-    @staticmethod
-    def _accumulate_tool_call_chunk(buffer: dict, tc_chunk) -> None:
-        """Merge a single streaming tool-call delta into the accumulation buffer."""
-        idx = tc_chunk.index
-        if idx not in buffer:
-            buffer[idx] = {"id": "", "type": "function", "function": {"name": "", "arguments": ""}}
-        if tc_chunk.id:
-            buffer[idx]["id"] += tc_chunk.id
-        if tc_chunk.function:
-            buffer[idx]["function"]["name"] += tc_chunk.function.name or ""
-            buffer[idx]["function"]["arguments"] += tc_chunk.function.arguments or ""
-
-    @staticmethod
-    def _reconstruct_tool_calls(buffer: dict):
-        """
-        Convert the chunk accumulation buffer into:
-        - a list of SimpleNamespace objects accepted by _completion_with_tools
-        - a list of dicts for the assistant history message
-        """
-        tool_call_objects = []
-        assistant_tool_calls = []
-        for idx in sorted(buffer):
-            data = buffer[idx]
-            fn = data["function"]
-            tool_call_objects.append(
-                types.SimpleNamespace(
-                    id=data["id"],
-                    type="function",
-                    function=types.SimpleNamespace(name=fn["name"], arguments=fn["arguments"]),
-                )
-            )
-            assistant_tool_calls.append({
-                "id": data["id"],
-                "type": "function",
-                "function": {"name": fn["name"], "arguments": fn["arguments"]},
-            })
-        return tool_call_objects, assistant_tool_calls
 
     def _handle_streaming_tool_calls(self, response, params):
         """
@@ -379,12 +312,12 @@ class LLMProcessor(LitellmProcessor):
             if delta.content:
                 yield chunk
             for tc_chunk in (delta.tool_calls or []):
-                self._accumulate_tool_call_chunk(tool_calls_buffer, tc_chunk)
+                ToolExecutor.accumulate_tool_call_chunk(tool_calls_buffer, tc_chunk)
 
         if not tool_calls_buffer:
             return
 
-        tool_call_objects, assistant_tool_calls = self._reconstruct_tool_calls(tool_calls_buffer)
+        tool_call_objects, assistant_tool_calls = ToolExecutor.reconstruct_tool_calls(tool_calls_buffer)
         params["messages"].append({
             "role": "assistant",
             "content": None,
@@ -421,7 +354,7 @@ class LLMProcessor(LitellmProcessor):
         Execute a completed Responses API tool call and append both the call
         intent and its output to *params['input']* so the LLM can continue.
         """
-        tool_output = self._execute_tool(item.name, item.arguments)
+        tool_output = ToolExecutor.execute_tool(item.name, item.arguments)
         params["input"].append({
             "type": "function_call",
             "call_id": item.call_id,
@@ -471,7 +404,7 @@ class LLMProcessor(LitellmProcessor):
             params["input"].append({
                 "type": "function_call_output",
                 "call_id": tool_call.call_id,
-                "output": self._execute_tool(tool_call.name, tool_call.arguments),
+                "output": ToolExecutor.execute_tool(tool_call.name, tool_call.arguments),
             })
 
         # Call responses API with updated input
