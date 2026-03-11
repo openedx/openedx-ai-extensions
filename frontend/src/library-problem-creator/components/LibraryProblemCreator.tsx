@@ -9,21 +9,23 @@ import {
   LibraryProblemCreatorProviderProps,
   useLibraryProblemCreatorContext,
 } from '../context/LibraryProblemCreatorContext';
-import messages from '../messages';
 import EditModal from './EditModal';
+
+import messages from '../messages';
 
 const loadingMessages = {
   generating: 'ai.library.creator.generating',
   saving: 'ai.library.creator.saving',
 };
 
-const Loading = (step) => {
+const Loading = ({ step }: { step: string }) => {
   const intl = useIntl();
+  const loadingText = intl.formatMessage(messages[loadingMessages[step]]);
   return (
-    <div className="text-center py-3">
-      <Spinner animation="border" size="sm" className="mr-2" />
-      <span className="small">
-        {intl.formatMessage(messages[loadingMessages[step]])}
+    <div role="status" aria-live="polite" className="text-center py-3">
+      <Spinner animation="border" size="sm" className="mr-2" screenReaderText={loadingText} />
+      <span className="small" aria-hidden="true">
+        {loadingText}
       </span>
     </div>
   );
@@ -122,7 +124,8 @@ const LibraryProblemCreatorInner = ({
                 <Form.Group controlId="numQuestions" className="mb-3">
                   <Form.Label>
                     {intl.formatMessage(messages['ai.library.creator.questions.label'])}
-                    <span className="text-danger">*</span>
+                    <span className="text-danger" aria-hidden="true">*</span>
+                    <span className="sr-only">{intl.formatMessage(messages['ai.library.creator.field.required'])}</span>
                   </Form.Label>
                   <Form.Control
                     type="number"
@@ -132,6 +135,7 @@ const LibraryProblemCreatorInner = ({
                     onChange={(e) => setNumQuestions(Number(e.target.value))}
                     size="sm"
                     required
+                    aria-required="true"
                   />
                   <Form.Text>
                     <small>{intl.formatMessage(messages['ai.library.creator.questions.help'])}</small>

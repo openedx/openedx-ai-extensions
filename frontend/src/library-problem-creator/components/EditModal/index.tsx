@@ -8,6 +8,8 @@ import SaveStep from './SaveStep';
 import messages from '../../messages';
 import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
 
+import './EditModal.scss';
+
 interface EditModalProps {
   isOpen: boolean;
   close: () => void;
@@ -56,7 +58,7 @@ const EditModal = ({ isOpen, close }: EditModalProps) => {
           </>
         )}
       >
-        <Container size="lg">
+        <Container size="lg" className="py-5">
           <Stepper.Step eventKey="review-questions" title={intl.formatMessage(messages['ai.library.creator.review.step.stepper.title'])}>
             <ReviewStep />
           </Stepper.Step>

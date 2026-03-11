@@ -4,15 +4,17 @@ import QuestionCard from './QuestionCard';
 import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
 import messages from '../../messages';
 
+const Bold = (text) => <b>{text}</b>;
+
 const ReviewStep = () => {
   const { questions, errorMessage } = useLibraryProblemCreatorContext();
   const intl = useIntl();
 
   return (
     <>
-      <h2>{intl.formatMessage(messages['ai.library.creator.review.step.heading'])}</h2>
-      <p>{intl.formatMessage(messages['ai.library.creator.review.step.description'])}</p>
-      <p className="small font-weight-bold mb-2">
+      <h3>{intl.formatMessage(messages['ai.library.creator.review.step.heading'])}</h3>
+      <p>{intl.formatMessage(messages['ai.library.creator.review.step.description'], { b: Bold })}</p>
+      <p className="small font-weight-bold mb-3">
         {intl.formatMessage(messages['ai.library.creator.review.heading'], { count: questions.length })}
       </p>
       {errorMessage && (

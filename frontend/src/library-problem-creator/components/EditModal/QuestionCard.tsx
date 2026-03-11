@@ -10,15 +10,19 @@ import VersionNavigator from './VersionNavigator';
 import AnswerOptionsDisplay from './AnswerOptionsDisplay';
 import messages from '../../messages';
 import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCreatorContext';
+
 /** Labelled field row */
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="mb-2">
+  <div role="group" aria-label={label} className="mb-2">
     <span className="small font-weight-bold">
       {label}
     </span>
     <div className="small mt-1">{children}</div>
   </div>
 );
+
+/** Check if user prefers reduced motion */
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const QuestionCard = ({ index }: { index: number }) => {
   const {
@@ -48,13 +52,17 @@ const QuestionCard = ({ index }: { index: number }) => {
   const isRegenerating = regeneratingIndices.has(index);
   const isEditing = editingIndex === index;
 
-  // Scroll into view when edit is saved
+  const scrollBehavior = prefersReducedMotion() ? 'auto' : 'smooth';
+
+  // Scroll into view and restore focus when edit is saved
   useEffect(() => {
     if (!isEditing && focusCard && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      cardRef.current.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
       setFocusCard(false);
+      // Return focus to the card after edit closes
+      requestAnimationFrame(() => cardRef.current?.focus());
     }
-  }, [isEditing, focusCard]);
+  }, [isEditing, focusCard, scrollBehavior]);
 
   // Scroll into view when regeneration starts
   useEffect(() => {
@@ -62,7 +70,7 @@ const QuestionCard = ({ index }: { index: number }) => {
     if (isRegenerating && cardRef.current) {
       // Small delay to ensure DOM has updated with loading state
       timer = setTimeout(() => {
-        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        cardRef.current?.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
       }, 50);
     }
     return () => {
@@ -70,7 +78,7 @@ const QuestionCard = ({ index }: { index: number }) => {
         clearTimeout(timer);
       }
     };
-  }, [isRegenerating]);
+  }, [isRegenerating, scrollBehavior]);
 
   const handleRegenerateSubmit = (idx: number, instructions?: string) => {
     setShowRegenerateForm(false);
@@ -78,7 +86,13 @@ const QuestionCard = ({ index }: { index: number }) => {
   };
 
   return (
-    <div ref={cardRef}>
+    <div
+      ref={cardRef}
+      tabIndex={-1}
+      aria-busy={isRegenerating}
+      role="article"
+      aria-label={intl.formatMessage(messages['ai.library.creator.card.question.number'], { number: index + 1, name: question.displayName })}
+    >
       <Card
         isLoading={isRegenerating}
         className={`position-relative mb-2 ${isDiscarded ? 'text-muted' : ''}`}
@@ -86,9 +100,9 @@ const QuestionCard = ({ index }: { index: number }) => {
         {/* ── Header ── */}
         <Card.Section>
           <div className="d-flex align-items-center justify-content-between">
-            <span className="font-weight-bold flex-1">
+            <h4 className="font-weight-bold flex-1 mb-0">
               {index + 1}. {question.displayName}
-            </span>
+            </h4>
             {isDiscarded
               ? (
                 <Badge variant="danger" pill>
@@ -108,7 +122,8 @@ const QuestionCard = ({ index }: { index: number }) => {
 
           {/* Question text */}
           <Field label={intl.formatMessage(messages['ai.library.creator.card.field.question'])}>
-            <div>{question.questionHtml}</div>
+            {/*eslint-disable-next-line react/no-danger*/}
+            <div dangerouslySetInnerHTML={{ __html: question.questionHtml }} />
           </Field>
 
           {/* Answer options — displayed as form components */}
@@ -202,10 +217,12 @@ const QuestionCard = ({ index }: { index: number }) => {
                   updateQuestion(index, updated);
                   setEditingIndex(null);
                   setFocusCard(true);
+                  requestAnimationFrame(() => cardRef.current?.focus());
                 }}
                 onCancel={() => {
                   setEditingIndex(null);
                   setFocusCard(true);
+                  requestAnimationFrame(() => cardRef.current?.focus());
                 }}
               />
             </>

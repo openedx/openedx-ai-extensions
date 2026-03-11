@@ -1,19 +1,18 @@
 import { useIntl } from '@edx/frontend-platform/i18n';
 import { Form } from '@openedx/paragon';
 import { useState } from 'react';
-import { Question } from '../../types';
+import { Choice, Question } from '../../types';
 import messages from '../../messages';
 
 interface AnswerOptionsDisplayProps {
   question: Question;
 }
-
 const AnswerOptionsDisplay = ({ question }: AnswerOptionsDisplayProps) => {
   const intl = useIntl();
   const {
     problemType, choices, answerValue, tolerance,
   } = question;
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState<Choice>();
 
   // Radio buttons for single choice
   if (problemType === 'multiplechoiceresponse') {
@@ -29,6 +28,7 @@ const AnswerOptionsDisplay = ({ question }: AnswerOptionsDisplayProps) => {
           {choices.map((choice) => (
             <div key={choice.text} className="mb-2">
               <Form.Radio
+                className="read-only"
                 value={choice.text}
                 description={choice.feedback}
                 isValid={choice.isCorrect}
@@ -56,11 +56,12 @@ const AnswerOptionsDisplay = ({ question }: AnswerOptionsDisplayProps) => {
           {choices.map((choice) => (
             <div key={choice.text} className="mb-2">
               <Form.Checkbox
+                className="read-only"
                 value={choice.text}
                 description={choice.feedback}
                 isValid={choice.isCorrect}
               >
-                <p>{choice.text}</p>
+                {choice.text}
               </Form.Checkbox>
             </div>
           ))}
@@ -76,28 +77,33 @@ const AnswerOptionsDisplay = ({ question }: AnswerOptionsDisplayProps) => {
         <Form.Label className="small font-weight-bold">
           {intl.formatMessage(messages['ai.library.creator.card.field.choices'])}
         </Form.Label>
+        {question.answerValue && (
+        <Form.Text>
+          {intl.formatMessage(messages['ai.library.creator.card.correct'], { answer: question.answerValue })}
+        </Form.Text>
+        )}
         <Form.Control
           as="select"
-          value={selected || ''}
-          onChange={(e) => setSelected(e.target.value)}
+          value={selected?.text || ''}
+          onChange={(e) => setSelected(choices.find(option => option.text === e.target.value))}
         >
-          <option value="">Select an option</option>
+          <option value="">
+            {intl.formatMessage(messages['ai.library.creator.card.field.select.placeholder'])}
+          </option>
           {choices.map((choice) => (
             <option
               key={choice.text}
               value={choice.text}
-              style={{
-                color: choice.isCorrect ? 'green' : 'inherit',
-                fontWeight: choice.isCorrect ? 'bold' : 'normal',
-              }}
             >
               {choice.text}
             </option>
           ))}
         </Form.Control>
-        <Form.Text>
-          {choices.find((c) => c.text === selected)?.feedback}
-        </Form.Text>
+        {selected?.feedback && (
+          <Form.Control.Feedback type={selected.isCorrect ? 'valid' : ''}>
+            {selected.feedback}
+          </Form.Control.Feedback>
+        )}
       </Form.Group>
     );
   }
@@ -109,10 +115,15 @@ const AnswerOptionsDisplay = ({ question }: AnswerOptionsDisplayProps) => {
         <Form.Label className="small font-weight-bold">
           {intl.formatMessage(messages['ai.library.creator.card.field.answer'])}
         </Form.Label>
-        <Form.Control type="number" disabled value={answerValue || ''} />
+        <Form.Control
+          type="number"
+          readOnly
+          value={answerValue || ''}
+          aria-label={intl.formatMessage(messages['ai.library.creator.card.field.answer'])}
+        />
         {tolerance && tolerance !== '<UNKNOWN>' && (
-          <Form.Text className="text-muted">
-            ±{tolerance} tolerance
+          <Form.Text>
+            {intl.formatMessage(messages['ai.library.creator.card.field.tolerance.label'], { tolerance })}
           </Form.Text>
         )}
       </Form.Group>
@@ -126,7 +137,13 @@ const AnswerOptionsDisplay = ({ question }: AnswerOptionsDisplayProps) => {
         <Form.Label className="small font-weight-bold">
           {intl.formatMessage(messages['ai.library.creator.card.field.answer'])}
         </Form.Label>
-        <Form.Control type="text" disabled value={answerValue || ''} />
+        <Form.Control
+          as="textarea"
+          autoResize
+          readOnly
+          value={answerValue || ''}
+          aria-label={intl.formatMessage(messages['ai.library.creator.card.field.answer'])}
+        />
       </Form.Group>
     );
   }

@@ -3,6 +3,7 @@ import { useIntl } from '@edx/frontend-platform/i18n';
 import { logError } from '@edx/frontend-platform/logging';
 import {
   Alert, Button, Card,
+  Hyperlink,
 } from '@openedx/paragon';
 import { prepareContextData } from '../../services';
 import { PluginContext } from '../../types';
@@ -65,9 +66,14 @@ const LibraryProblemCreatorResponse = ({
               {intl.formatMessage(messages['ai.library.creator.response.success.detail'])}
             </p>
             {collectionUrl && (
-              <a href={collectionUrl} target="_blank" rel="noopener noreferrer" className="small d-block mb-3">
+              <Hyperlink
+                destination={collectionUrl}
+                target="_blank"
+                externalLinkAlternativeText={intl.formatMessage(messages['ai.library.creator.response.opens.new.tab'])}
+                className="small d-block mb-3"
+              >
                 {displayHyperlinkText}
-              </a>
+              </Hyperlink>
             )}
             <div className="d-flex justify-content-end">
               <Button
