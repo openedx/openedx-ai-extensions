@@ -3,7 +3,7 @@ import { defineMessages } from '@edx/frontend-platform/i18n';
 const messages = defineMessages({
   'ai.library.creator.title': {
     id: 'ai.library.creator.title',
-    defaultMessage: 'AI Question Creator',
+    defaultMessage: 'AI Question Builder',
     description: 'Title for the library component creator',
   },
   'ai.library.creator.description': {
@@ -127,11 +127,6 @@ const messages = defineMessages({
     description: 'Save button to commit questions to library',
   },
   // Modal chrome
-  'ai.library.creator.modal.title': {
-    id: 'ai.library.creator.modal.title',
-    defaultMessage: 'AI Problem Creator',
-    description: 'Title shown in the fullscreen modal header',
-  },
   'ai.library.creator.modal.next': {
     id: 'ai.library.creator.modal.next',
     defaultMessage: 'Next',

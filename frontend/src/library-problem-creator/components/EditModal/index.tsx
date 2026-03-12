@@ -11,11 +11,12 @@ import { useLibraryProblemCreatorContext } from '../../context/LibraryProblemCre
 import './EditModal.scss';
 
 interface EditModalProps {
+  displayTitle: string;
   isOpen: boolean;
   close: () => void;
 }
 
-const EditModal = ({ isOpen, close }: EditModalProps) => {
+const EditModal = ({ isOpen, close, displayTitle }: EditModalProps) => {
   const {
     selectedLibrary,
     activeCount,
@@ -28,7 +29,7 @@ const EditModal = ({ isOpen, close }: EditModalProps) => {
   return (
     <Stepper activeKey={currentStep}>
       <FullscreenModal
-        title={intl.formatMessage(messages['ai.library.creator.modal.title'])}
+        title={displayTitle}
         className="bg-light-200"
         isOpen={isOpen}
         onClose={close}
