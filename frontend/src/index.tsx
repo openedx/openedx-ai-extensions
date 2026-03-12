@@ -4,7 +4,6 @@ import ConfigurableAIAssistance, {
   registerComponent,
   registerComponents,
 } from './ConfigurableAIAssistance';
-import { AIEducatorLibraryAssistComponent } from './components';
 import { AIExtensionsCard, AIExtensionsSettingsModal } from './ai-extensions-settings';
 import { REGISTRY_NAMES, getEntries } from './extensionRegistry';
 import type { RegistryEntry } from './extensionRegistry';
@@ -22,7 +21,6 @@ export * as services from './services';
  *
  * - ConfigurableAIAssistance: Fetches runtime config from API and renders appropriate component
  * - GetAIAssistanceButton: Direct component for advanced users who want manual control
- * - AIEducatorLibraryAssistComponent: Component for educators to generate library questions using AI
  * - registerComponent: Function to register a single workflow component from external plugins
  * - registerComponents: Function to register components or settings tabs
  *     registerComponents({ MyComponent })                              → workflow component
@@ -36,7 +34,6 @@ export {
   GetAIAssistanceButton,
   ConfigurableAIAssistance,
   RedLine,
-  AIEducatorLibraryAssistComponent,
   LibraryProblemCreator,
   LibraryProblemCreatorResponse,
   registerComponent,
