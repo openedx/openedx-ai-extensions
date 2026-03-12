@@ -14,7 +14,7 @@
   "files": [
     "dist/"
   ],
-  "sideEffects": false,
+  "sideEffects": ["**/*.scss", "**/*.css"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openedx/openedx-ai-extensions.git"
