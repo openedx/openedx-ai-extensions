@@ -311,127 +311,6 @@ def test_mocked_streaming_profile_integration(
 
 
 # ============================================================================
-# Base Profile: library_questions_assistant.json
-# ============================================================================
-
-
-@pytest.mark.django_db
-def test_library_questions_assistant_profile_integration(
-    api_client, user, course_key, location_id  # pylint: disable=redefined-outer-name,unused-argument
-):
-    """
-    Test complete flow for library_questions_assistant.json profile.
-    Uses EducatorAssistantOrchestrator - requires mocking AI and library operations.
-    Works in CMS (Studio) service variant.
-    """
-    # Create profile and scope for CMS
-    profile = AIWorkflowProfile.objects.create(
-        slug="test-library-questions",
-        description="Library questions assistant workflow test",
-        base_filepath="base/library_questions_assistant.json",
-        content_patch='{}'
-    )
-
-    AIWorkflowScope.objects.create(
-        location_regex=".*test_unit.*",
-        course_id=course_key,
-        service_variant="cms",  # This profile is for Studio (CMS)
-        profile=profile,
-        enabled=True,
-        ui_slot_selector_id="test-slot",
-    )
-
-    # Authenticate
-    api_client.login(username="testuser", password="password123")
-
-    # Step 1: GET /config (need to mock SERVICE_VARIANT to be cms)
-    config_url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
-    context = json.dumps({
-        "courseId": str(course_key),
-        "locationId": str(location_id),
-        "uiSlotSelectorId": "test-slot",
-    })
-
-    with patch("openedx_ai_extensions.workflows.models.settings.SERVICE_VARIANT", "cms"):
-        config_response = api_client.get(config_url, {"context": context})
-
-        assert config_response.status_code == 200
-        config_data = config_response.json()
-        assert "ui_components" in config_data
-        assert config_data["ui_components"]["request"]["component"] == "AIEducatorLibraryAssistComponent"
-        assert config_data["ui_components"]["response"]["component"] == "AIEducatorLibraryResponseComponent"
-
-        # Step 2: POST /workflows - Mock AI and library processor
-        workflows_url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
-
-        # Mock LLM response for quiz generation
-        mock_llm_response = {
-            "response": {
-                "collection": "AI Generated Quiz Questions",
-                "items": [
-                    {
-                        "question": "What is Python?",
-                        "options": ["A snake", "A programming language", "A tool", "A framework"],
-                        "correct_answer": 1
-                    },
-                    {
-                        "question": "What is Django?",
-                        "options": ["A database", "A web framework", "A language", "An editor"],
-                        "correct_answer": 1
-                    }
-                ]
-            },
-            "tokens_used": 200,
-            "model_used": "gpt-4"
-        }
-
-        educator_path = (
-            "openedx_ai_extensions.processors.llm.educator_assistant_processor."
-            "EducatorAssistantProcessor.process"
-        )
-        openedx_path = (
-            "openedx_ai_extensions.processors.openedx.openedx_processor."
-            "OpenEdXProcessor.process"
-        )
-        library_path = (
-            "openedx_ai_extensions.processors.openedx.content_libraries_processor."
-            "ContentLibraryProcessor.create_collection_and_add_items"
-        )
-
-        with patch(educator_path) as mock_educator, \
-             patch(openedx_path) as mock_openedx, \
-             patch(library_path) as mock_library:
-
-            mock_educator.return_value = mock_llm_response
-            mock_openedx.return_value = "Sample course unit content for quiz generation"
-            mock_library.return_value = "collection-v1:test-collection-key"
-
-            workflow_payload = {
-                "action": "run",
-                "user_input": {
-                    "library_id": "lib:test:library-123",
-                    "num_questions": 5
-                }
-            }
-
-            query_string = urlencode({"context": context})
-            workflow_response = api_client.post(
-                f"{workflows_url}?{query_string}",
-                data=json.dumps(workflow_payload),
-                content_type="application/json"
-            )
-
-            assert workflow_response.status_code == 200
-            response_data = workflow_response.json()
-            assert response_data["status"] == "completed"
-            assert "response" in response_data
-            assert "collection" in response_data["response"]
-            assert mock_educator.called
-            assert mock_openedx.called
-            assert mock_library.called
-
-
-# ============================================================================
 # Base Profile: library_questions_creator.json (iterative two-phase flow)
 # ============================================================================
 
@@ -444,7 +323,6 @@ def test_library_questions_creator_profile_integration(
     Test the two-phase iterative flow for library_questions_creator.json:
     Phase 1 — run without library_id → questions stored in session
     Phase 2 — save with library_id + questions → collection URL returned
-    The old library_questions_assistant.json flow (with library_id) is unaffected.
     """
     profile = AIWorkflowProfile.objects.create(
         slug="test-library-questions-creator",
