@@ -81,6 +81,81 @@ const messages = defineMessages({
     defaultMessage: 'Generating',
     description: 'Submit button label while generation is in progress',
   },
+  'ai.extensions.flashcard.creator.description': {
+    id: 'ai.extensions.flashcard.creator.description',
+    defaultMessage: 'Generate flashcards from the course content to study with spaced repetition.',
+    description: 'Description shown below the title in the flashcard creator card',
+  },
+  'ai.extensions.flashcard.creator.create.button': {
+    id: 'ai.extensions.flashcard.creator.create.button',
+    defaultMessage: 'Create New Cards',
+    description: 'Button to open the generate form',
+  },
+  'ai.extensions.flashcard.creator.display.button': {
+    id: 'ai.extensions.flashcard.creator.display.button',
+    defaultMessage: 'Display Cards',
+    description: 'Button to load and display the existing card stack from session',
+  },
+  'ai.extensions.flashcard.creator.start.over': {
+    id: 'ai.extensions.flashcard.creator.start.over',
+    defaultMessage: 'Start Over',
+    description: 'Button to return to the idle state after an error',
+  },
+  'ai.extensions.flashcard.error.network': {
+    id: 'ai.extensions.flashcard.error.network',
+    defaultMessage: 'A network error occurred. Please check your connection and try again.',
+    description: 'Error shown when a network error occurs during generation',
+  },
+  'ai.extensions.flashcard.error.load': {
+    id: 'ai.extensions.flashcard.error.load',
+    defaultMessage: 'Failed to load your flashcards. Please try again.',
+    description: 'Error shown when loading the session card stack fails',
+  },
+  'ai.extensions.flashcard.study.progress': {
+    id: 'ai.extensions.flashcard.study.progress',
+    defaultMessage: 'Card {current} of {total}',
+    description: 'Progress indicator showing which card is being studied',
+  },
+  'ai.extensions.flashcard.study.reviewed': {
+    id: 'ai.extensions.flashcard.study.reviewed',
+    defaultMessage: '{count} reviewed',
+    description: 'Count of cards reviewed in the current session',
+  },
+  'ai.extensions.flashcard.study.no.cards.due': {
+    id: 'ai.extensions.flashcard.study.no.cards.due',
+    defaultMessage: 'No cards are due for review right now.',
+    description: 'Message shown when all cards have been reviewed and none are due yet',
+  },
+  'ai.extensions.flashcard.study.next.due': {
+    id: 'ai.extensions.flashcard.study.next.due',
+    defaultMessage: 'Next card due {time}',
+    description: 'Shows when the next card will be due for review',
+  },
+  'ai.extensions.flashcard.study.save.progress': {
+    id: 'ai.extensions.flashcard.study.save.progress',
+    defaultMessage: 'Save Progress',
+    description: 'Button to save the current study progress to the session',
+  },
+  'ai.extensions.flashcard.study.saving': {
+    id: 'ai.extensions.flashcard.study.saving',
+    defaultMessage: 'Saving',
+    description: 'Button label while saving is in progress',
+  },
+  'ai.extensions.flashcard.study.back': {
+    id: 'ai.extensions.flashcard.study.back',
+    defaultMessage: 'Back',
+    description: 'Button to go back to the request component',
+  },
+  'ai.extensions.flashcard.study.empty': {
+    id: 'ai.extensions.flashcard.study.empty',
+    defaultMessage: 'No flashcards found. Generate some cards first.',
+    description: 'Message shown when the response contains no cards',
+  },
+  'ai.extensions.flashcard.error.save': {
+    id: 'ai.extensions.flashcard.error.save',
+    defaultMessage: 'Failed to save progress. Please try again.',
+    description: 'Error shown when saving the card stack fails',
+  },
 });
 
 export default messages;

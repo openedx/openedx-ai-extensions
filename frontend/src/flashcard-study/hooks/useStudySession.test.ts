@@ -62,7 +62,7 @@ describe('useStudySession', () => {
       result.current.nextCard();
     });
 
-    expect(result.current.reviewedCount).toBe(1);
+    expect(result.current.currentCard?.id).toBe('2');
   });
 
   it('wraps around to the first card when reaching the end', () => {
@@ -100,23 +100,37 @@ describe('useStudySession', () => {
     expect(result.current.nextDueIn).toBeNull();
   });
 
-  it('resetSession resets index and reviewedCount', () => {
+  it('resetSession resets to the first card', () => {
     const cards = [makeCard('1', 500_000), makeCard('2', 600_000)];
 
     const { result } = renderHook(() => useStudySession({ cards }));
 
-    act(() => {
-      result.current.nextCard();
-    });
+    act(() => { result.current.nextCard(); });
+
+    expect(result.current.currentCard?.id).toBe('2');
+
+    act(() => { result.current.resetSession(); });
+
+    expect(result.current.currentCard?.id).toBe('1');
+  });
+
+  it('derives reviewedCount from cards with lastReviewedAt set', () => {
+    const cards = [
+      { ...makeCard('1', 500_000), lastReviewedAt: 999_000 },
+      makeCard('2', 600_000),
+    ];
+
+    const { result } = renderHook(() => useStudySession({ cards }));
 
     expect(result.current.reviewedCount).toBe(1);
+  });
 
-    act(() => {
-      result.current.resetSession();
-    });
+  it('returns reviewedCount 0 when no cards have been rated yet', () => {
+    const cards = [makeCard('1', 500_000), makeCard('2', 600_000)];
+
+    const { result } = renderHook(() => useStudySession({ cards }));
 
     expect(result.current.reviewedCount).toBe(0);
-    expect(result.current.currentCard?.id).toBe('1');
   });
 
   it('cleans up interval on unmount', () => {

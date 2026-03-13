@@ -20,13 +20,12 @@ interface UseStudySessionOptions {
  * @returns currentCard  - The card currently being studied, or `null` if none are due.
  * @returns dueCards      - All cards whose review time has arrived.
  * @returns nextCard      - Advances to the next due card after rating.
- * @returns reviewedCount - How many cards have been reviewed this session.
+ * @returns reviewedCount - How many cards in the stack have been rated at least once (derived from lastReviewedAt).
  * @returns nextDueIn     - Milliseconds until the next card becomes due, or `null` if the stack is empty.
  * @returns resetSession  - Resets the index and reviewed count to start over.
  */
 export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [reviewedCount, setReviewedCount] = useState(0);
   const [tick, setTick] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -35,7 +34,8 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
     [cards, tick],
   );
 
-  const currentCard = dueCards[currentIndex] ?? null;
+  const safeIndex = dueCards.length > 0 ? currentIndex % dueCards.length : 0;
+  const currentCard = dueCards[safeIndex] ?? null;
 
   const nextDueIn = useMemo(() => {
     if (dueCards.length > 0) { return 0; }
@@ -47,7 +47,6 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   }, [cards, dueCards]);
 
   const nextCard = useCallback(() => {
-    setReviewedCount((prev) => prev + 1);
     setTick((t) => t + 1);
     setCurrentIndex((prev) => {
       const next = prev + 1;
@@ -57,7 +56,6 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
 
   const resetSession = useCallback(() => {
     setCurrentIndex(0);
-    setReviewedCount(0);
     setTick((t) => t + 1);
   }, []);
 
@@ -78,7 +76,7 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
     currentCard,
     dueCards,
     nextCard,
-    reviewedCount,
+    reviewedCount: cards.filter((c) => c.lastReviewedAt !== null).length,
     nextDueIn,
     resetSession,
   };
