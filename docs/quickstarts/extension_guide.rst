@@ -16,7 +16,11 @@ What you will achieve
 
 Prerequisites
 **************
-* Familiarity with Open edX plugin architecture.
+* Familiarity with the Open edX extension mechanisms used in this repository:
+
+  - `Django plugin apps in edx-django-utils <https://github.com/openedx/edx-django-utils/blob/master/edx_django_utils/plugins/docs/how_tos/how_to_create_a_plugin_app.rst>`_
+  - `Tutor plugin hooks and filters <https://docs.tutor.edly.io/plugins/index.html>`_
+  - `Frontend plugin slots in frontend-plugin-framework <https://github.com/openedx/frontend-plugin-framework>`_
 * A local Tutor environment properly configured.
 
 Project Structure
@@ -25,11 +29,11 @@ Project Structure
 A standard AI extension repository follows a modular layout designed to integrate with both the Open edX backend and the Micro-Frontend (MFE) architecture. While the reference implementation (``openedx-ai-badges``) includes all layers, the structure is adaptable to your specific needs:
 
 * **backend/**: The Django application containing custom processors, orchestrators, and profiles.
-* **frontend/**: React components, UI slots, and styles for MFE integration.
+* **frontend/**: React components and styles that are registered and rendered inside UI slots exposed by the target MFE.
 * **tutor/**: The Tutor plugin files required for environment configuration and automated deployment.
 
 .. note::
-   **Modular Flexibility**: You do not need to implement all three components. For example, if your feature only requires a new data transformation logic, you might only need the ``backend/`` directory. Similarly, a plugin might only provide a specialized UI for existing core logic. The framework allows you to mix and match components based on the specific requirements of your AI workflow.
+   **Modular Flexibility**: You do not need to implement all three components. For example, if your feature only requires new data transformation logic, you might only need the ``backend/`` directory. Similarly, a plugin might only provide a specialized UI for existing core logic. The framework allows you to mix and match components based on the specific requirements of your AI workflow. This quickstart, however, follows a full reference extension that includes both backend and frontend pieces, so the steps in the rest of this guide describe that combined implementation path.
 
 Backend Implementation
 ************************
@@ -87,6 +91,8 @@ In your plugin's settings (e.g., ``settings/common.py``):
 ==================================
 
 Ensure your plugin is correctly registered in Open edX so that the settings above are processed:
+
+In your plugin's app configuration (for example, ``backend/openedx_ai_badges/apps.py``):
 
 .. code-block:: python
 
@@ -166,7 +172,9 @@ The frontend integration is governed by a central **Extension Registry**. There 
 Pattern A: Using ConfigurableAIAssistance
 ==========================================
 
-This is the recommended pattern for standard AI interactions. The core provides a component called ``ConfigurableAIAssistance`` that acts as a dynamic frontend orchestrator.
+This is the recommended pattern for standard AI interactions. The core provides a component called ``ConfigurableAIAssistance`` that acts as a dynamic frontend orchestrator. It reads the profile's ``actuator_config.UIComponents`` section and renders the request and response UI components declared there.
+
+See the `ConfigurableAIAssistance implementation in openedx-ai-extensions <https://github.com/openedx/openedx-ai-extensions/blob/main/frontend/src/ConfigurableAIAssistance.tsx>`_ for a complete example of that rendering flow.
 
 * **How it works**: At runtime, this component fetches the configuration from the backend (based on the **AI Profile**). It looks for the component names defined in the profile's ``actuator_config`` and resolves them using the frontend registry.
 * **Backend Control**: The backend dictates which components to render for the "request" and "response" phases by sending their registered names in the API response.
@@ -234,16 +242,16 @@ In your ``frontend/src/index.tsx`` (or your plugin's entry point):
    import MyRequestComponent from './components/MyRequestComponent';
    import MyIndependentTabComponent from './components/MyIndependentTabComponent';
 
-   // Register a single component by name (Pattern A)
+   // Register workflow UI components so ConfigurableAIAssistance can resolve them by name.
+   registerComponents({
+     MyRequestComponent,
+   });
 
-   registerComponents('MyRequestComponent', MyRequestComponent);
-
-   // Register a specialized entry (e.g., a new tab in AI Settings)
-
-   registerComponents('settings', { 
-       id: 'my-plugin-id', 
-       label: 'My AI Plugin', 
-       component: MyIndependentTabComponent 
+   // Register a specialized entry (for example, a new tab in AI Settings).
+   registerComponents('settings', {
+     id: 'my-plugin-id',
+     label: 'My AI Plugin',
+     component: MyIndependentTabComponent,
    });
 
    export { MyRequestComponent, MyIndependentTabComponent };
@@ -251,10 +259,32 @@ In your ``frontend/src/index.tsx`` (or your plugin's entry point):
 .. note::
    If the backend returns a component name that is not found in the registry, ``ConfigurableAIAssistance`` will display a debug alert listing all currently registered components.
 
+The `openedx-ai-badges frontend entry point <https://github.com/eduNEXT/openedx-ai-badges/blob/main/frontend/src/index.tsx>`_ shows a complete example of this registration pattern.
+
+8. Mount the UI in the target MFE
+==================================
+
+Registering a component only makes it available to the registry. You still need to import your plugin package into the target micro-frontend and place the appropriate component in the desired UI slot.
+
+For **Pattern A**, the MFE renders ``ConfigurableAIAssistance`` in the slot. Your plugin package is imported so its registration side effects run before the component asks the backend which UI components to render.
+
+.. code-block:: tsx
+
+   import { ConfigurableAIAssistance } from '@openedx/openedx-ai-extensions-ui';
+   import '@openedx/openedx-ai-badges-ui';
+
+   export default function SomeSlotContainer(props) {
+     return <ConfigurableAIAssistance {...props} />;
+   }
+
+For **Pattern B**, import your custom component into the MFE and render that component directly in the slot, passing whatever props it needs.
+
+Use the slot system provided by the `frontend plugin framework <https://github.com/openedx/frontend-plugin-framework>`_ to place the component in the appropriate location in the MFE.
+
 Activation and Usage
 **********************
 
-After implementing the backend logic, defining the Profile JSON, and registering your frontend components:
+After implementing the backend logic, defining the Profile JSON, registering your frontend components, and mounting the UI in the target MFE:
 
 1. **Deploy**: Install your plugin in your Open edX environment.
 2. **Configure Profile**: In Django Admin, create an **AI Workflow Profile** and select your JSON file as the **Base filepath**.
