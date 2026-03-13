@@ -1,0 +1,85 @@
+import {
+  useState, useCallback, useEffect, useRef, useMemo,
+} from 'react';
+import { Flashcard } from '../types';
+
+const DUE_CHECK_INTERVAL = 30_000;
+
+interface UseStudySessionOptions {
+  cards: Flashcard[];
+}
+
+/**
+ * Manages the study session lifecycle for a set of flashcards.
+ *
+ * Filters cards whose `nextReviewTime` has passed (due cards), cycles through
+ * them as the learner reviews, and periodically re-checks for newly due cards
+ * every 30 seconds.
+ *
+ * @param options.cards - The full set of flashcards in the current stack.
+ * @returns currentCard  - The card currently being studied, or `null` if none are due.
+ * @returns dueCards      - All cards whose review time has arrived.
+ * @returns nextCard      - Advances to the next due card after rating.
+ * @returns reviewedCount - How many cards have been reviewed this session.
+ * @returns nextDueIn     - Milliseconds until the next card becomes due, or `null` if the stack is empty.
+ * @returns resetSession  - Resets the index and reviewed count to start over.
+ */
+export const useStudySession = ({ cards }: UseStudySessionOptions) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [reviewedCount, setReviewedCount] = useState(0);
+  const [tick, setTick] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const dueCards = useMemo(
+    () => cards.filter((c) => c.nextReviewTime <= Date.now()),
+    [cards, tick],
+  );
+
+  const currentCard = dueCards[currentIndex] ?? null;
+
+  const nextDueIn = useMemo(() => {
+    if (dueCards.length > 0) { return 0; }
+    const futureTimes = cards
+      .map((c) => c.nextReviewTime)
+      .filter((t) => t > Date.now());
+    if (futureTimes.length === 0) { return null; }
+    return Math.min(...futureTimes) - Date.now();
+  }, [cards, dueCards]);
+
+  const nextCard = useCallback(() => {
+    setReviewedCount((prev) => prev + 1);
+    setTick((t) => t + 1);
+    setCurrentIndex((prev) => {
+      const next = prev + 1;
+      return next < dueCards.length ? next : 0;
+    });
+  }, [dueCards.length]);
+
+  const resetSession = useCallback(() => {
+    setCurrentIndex(0);
+    setReviewedCount(0);
+    setTick((t) => t + 1);
+  }, []);
+
+  // Periodically re-check which cards are due
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      setTick((t) => t + 1);
+    }, DUE_CHECK_INTERVAL);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    currentCard,
+    dueCards,
+    nextCard,
+    reviewedCount,
+    nextDueIn,
+    resetSession,
+  };
+};
