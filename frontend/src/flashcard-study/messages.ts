@@ -36,6 +36,26 @@ const messages = defineMessages({
     defaultMessage: 'Show Question',
     description: 'Button label to flip the flashcard back to the question side',
   },
+  'ai.extensions.flashcard.controls.again': {
+    id: 'ai.extensions.flashcard.controls.again',
+    defaultMessage: 'Again',
+    description: 'Rating label for "Again" (fail)',
+  },
+  'ai.extensions.flashcard.controls.hard': {
+    id: 'ai.extensions.flashcard.controls.hard',
+    defaultMessage: 'Hard',
+    description: 'Rating label for "Hard"',
+  },
+  'ai.extensions.flashcard.controls.good': {
+    id: 'ai.extensions.flashcard.controls.good',
+    defaultMessage: 'Good',
+    description: 'Rating label for "Good"',
+  },
+  'ai.extensions.flashcard.controls.easy': {
+    id: 'ai.extensions.flashcard.controls.easy',
+    defaultMessage: 'Easy',
+    description: 'Rating label for "Easy"',
+  },
 });
 
 export default messages;
