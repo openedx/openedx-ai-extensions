@@ -44,7 +44,8 @@ def _mount_plugin(mounts, path):
 ########################
 
 hooks.Filters.CONFIG_DEFAULTS.add_items([
-    ("AI_EXTENSIONS_LLM_CACHE", {"enabled": False}),
+    ("AI_EXTENSIONS_ENABLE_LLM_CACHE", False),
+    ("AI_EXTENSIONS_LLM_CACHE", {}),
 ])
 
 # Actually connects the patch files as tutor env patches

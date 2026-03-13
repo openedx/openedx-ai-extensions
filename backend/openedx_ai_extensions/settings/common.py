@@ -76,22 +76,24 @@ def plugin_settings(settings):
     # -------------------------
     # Caching
     # -------------------------
-    # Configure the LiteLLM cache backend.  Set `enabled: True` and provide
-    # backend-specific params (type, host, port, …) to activate LLM-level
-    # caching (identical prompt+model pairs are served from cache).
+    # Toggle LLM-level response caching (identical prompt+model pairs served
+    # from cache).  Set AI_EXTENSIONS_ENABLE_LLM_CACHE = True to activate,
+    # then configure the backend via AI_EXTENSIONS_LLM_CACHE.
     #
     # Supported types mirror LiteLLM: "redis", "redis-semantic", "s3",
     # "disk", "in-memory".
     #
     # Example for Redis:
+    #   AI_EXTENSIONS_ENABLE_LLM_CACHE = True
     #   AI_EXTENSIONS_LLM_CACHE = {
-    #       "enabled": True,
     #       "type": "redis",
     #       "host": "localhost",
     #       "port": 6379,
     #   }
+    if not hasattr(settings, "AI_EXTENSIONS_ENABLE_LLM_CACHE"):
+        settings.AI_EXTENSIONS_ENABLE_LLM_CACHE = False
     if not hasattr(settings, "AI_EXTENSIONS_LLM_CACHE"):
-        settings.AI_EXTENSIONS_LLM_CACHE = {"enabled": False}
+        settings.AI_EXTENSIONS_LLM_CACHE = {}
 
     # -------------------------
     # Default field filters

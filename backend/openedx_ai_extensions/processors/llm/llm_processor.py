@@ -210,8 +210,9 @@ class LLMProcessor(LitellmProcessor):
             "messages": [
                 {"role": "system", "content": self.custom_prompt or system_role},
             ],
-            "caching": self.caching_enabled,
         }
+        if self.caching_enabled:
+            params["caching"] = True
 
         if self.context:
             params["messages"].append(

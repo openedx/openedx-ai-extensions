@@ -42,36 +42,42 @@ class OpenedxAIExtensionsConfig(AppConfig):
 
     def _configure_llm_cache(self):
         """
-        Initialise the LiteLLM cache backend from ``AI_EXTENSIONS_LLM_CACHE``.
+        Initialise the LiteLLM cache backend.
 
-        The setting is a dict with at least ``{"enabled": True/False}``.
-        Additional keys are forwarded verbatim to ``litellm.Cache(**kwargs)``.
+        Reads ``AI_EXTENSIONS_ENABLE_LLM_CACHE`` (bool) to decide whether to
+        activate caching, and ``AI_EXTENSIONS_LLM_CACHE`` (dict) for backend
+        kwargs forwarded verbatim to ``litellm.Cache(**kwargs)``.
 
         Example (Redis)::
 
+            AI_EXTENSIONS_ENABLE_LLM_CACHE = True
             AI_EXTENSIONS_LLM_CACHE = {
-                "enabled": True,
                 "type": "redis",
                 "host": "localhost",
                 "port": 6379,
             }
         """
+        import litellm  # pylint: disable=import-outside-toplevel
+        from django.conf import settings  # pylint: disable=import-outside-toplevel
+
+        if not getattr(settings, "AI_EXTENSIONS_ENABLE_LLM_CACHE", False):
+            return
+
+        cache_kwargs = getattr(settings, "AI_EXTENSIONS_LLM_CACHE", {})
         try:
-            import litellm  # pylint: disable=import-outside-toplevel
-            from django.conf import settings  # pylint: disable=import-outside-toplevel
-
-            cache_config = getattr(settings, "AI_EXTENSIONS_LLM_CACHE", {})
-            if not isinstance(cache_config, dict) or not cache_config.get("enabled"):
-                return
-
-            cache_kwargs = {k: v for k, v in cache_config.items() if k != "enabled"}
             litellm.cache = litellm.Cache(**cache_kwargs)
-            logger.info(
-                "LiteLLM cache initialised (type=%s)",
-                cache_kwargs.get("type", "default"),
-            )
         except Exception:  # pylint: disable=broad-exception-caught
-            logger.exception("Failed to initialise LiteLLM cache")
+            logger.exception(
+                "Failed to initialise LiteLLM cache with config=%r; "
+                "caching is disabled. Check AI_EXTENSIONS_LLM_CACHE.",
+                cache_kwargs,
+            )
+            return
+
+        logger.info(
+            "LiteLLM cache initialised (type=%s)",
+            cache_kwargs.get("type", "default"),
+        )
 
     plugin_app = {
         "url_config": {
