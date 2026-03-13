@@ -56,6 +56,31 @@ const messages = defineMessages({
     defaultMessage: 'Easy',
     description: 'Rating label for "Easy"',
   },
+  'ai.extensions.flashcard.generate.form.label': {
+    id: 'ai.extensions.flashcard.generate.form.label',
+    defaultMessage: 'Number of flashcards',
+    description: 'Label for the number of cards input in the generate form',
+  },
+  'ai.extensions.flashcard.generate.form.help': {
+    id: 'ai.extensions.flashcard.generate.form.help',
+    defaultMessage: 'Choose between 1 and 10',
+    description: 'Help text for the number of cards input',
+  },
+  'ai.extensions.flashcard.generate.form.error': {
+    id: 'ai.extensions.flashcard.generate.form.error',
+    defaultMessage: 'Number of flashcards must be between 1 and 10.',
+    description: 'Validation error for the number of cards input',
+  },
+  'ai.extensions.flashcard.generate.form.submit': {
+    id: 'ai.extensions.flashcard.generate.form.submit',
+    defaultMessage: 'Generate',
+    description: 'Submit button label for the generate form',
+  },
+  'ai.extensions.flashcard.generate.form.generating': {
+    id: 'ai.extensions.flashcard.generate.form.generating',
+    defaultMessage: 'Generating',
+    description: 'Submit button label while generation is in progress',
+  },
 });
 
 export default messages;
