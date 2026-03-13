@@ -31,6 +31,10 @@ import {
   LibraryProblemCreator,
   LibraryProblemCreatorResponse,
 } from './library-problem-creator';
+import {
+  FlashcardCreator,
+  FlashcardStudyResponse,
+} from './flashcard-study';
 import { PluginConfiguration } from './types';
 import { WORKFLOW_ACTIONS, WorkflowActionType } from './constants';
 
@@ -46,6 +50,8 @@ import messages from './messages';
   ['AIEducatorLibraryResponseComponent', AIEducatorLibraryResponseComponent],
   ['LibraryProblemCreator', LibraryProblemCreator],
   ['LibraryProblemCreatorResponse', LibraryProblemCreatorResponse],
+  ['FlashcardCreator', FlashcardCreator],
+  ['FlashcardStudyResponse', FlashcardStudyResponse],
 ].forEach(([id, component]) => registerEntry(
   REGISTRY_NAMES.COMPONENTS,
   { id: id as string, component: component as React.ComponentType<any> },

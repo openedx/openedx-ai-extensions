@@ -12,6 +12,8 @@ import {
   LibraryProblemCreator,
   LibraryProblemCreatorResponse,
 } from './library-problem-creator';
+import FlashcardCreator from './flashcard-study/components/FlashcardCreator';
+import FlashcardStudyResponse from './flashcard-study/components/FlashcardStudyResponse';
 
 export * as services from './services';
 
@@ -43,5 +45,7 @@ export {
   getEntries,
   AIExtensionsSettingsModal,
   AIExtensionsCard,
+  FlashcardCreator,
+  FlashcardStudyResponse,
 };
 export type { RegistryEntry };
