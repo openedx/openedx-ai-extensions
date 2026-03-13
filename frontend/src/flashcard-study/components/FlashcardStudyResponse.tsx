@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Alert, Button, Spinner, Stack,
+  Alert, Button, ModalDialog, Spinner,
 } from '@openedx/paragon';
 import Flashcard from './Flashcard';
 import StudyControls from './StudyControls';
@@ -101,110 +101,110 @@ const FlashcardStudyResponse = ({
     }
   };
 
-  if (!response && !error) { return null; }
-
-  if (isLoading) { return null; }
+  if (isLoading || (!response && !error)) { return null; }
 
   if (error) {
-    return (
-      <Alert variant="danger">
-        {error}
-      </Alert>
-    );
+    return <Alert variant="danger">{error}</Alert>;
   }
 
-  if (cards.length === 0) {
-    return (
-      <div className="flashcard-study-response mt-3">
+  const isOpen = cards.length > 0;
+  const currentIndex = currentCard ? dueCards.indexOf(currentCard) + 1 : 0;
+
+  return (
+    <>
+      {!isOpen && (
         <Alert variant="info">
           {intl.formatMessage(messages['ai.extensions.flashcard.study.empty'])}
         </Alert>
-        <Button variant="outline-secondary" size="sm" onClick={onClear}>
-          {intl.formatMessage(messages['ai.extensions.flashcard.study.back'])}
-        </Button>
-      </div>
-    );
-  }
+      )}
 
-  const currentIndex = currentCard
-    ? dueCards.indexOf(currentCard) + 1
-    : 0;
+      <ModalDialog
+        title={intl.formatMessage(messages['ai.extensions.flashcard.title'])}
+        isOpen={isOpen}
+        onClose={onClear}
+        size="lg"
+        isFullscreenOnMobile
+        isOverflowVisible={false}
+        className="flashcard-study-modal"
+      >
+        <ModalDialog.Header>
+          <ModalDialog.Title>
+            {intl.formatMessage(messages['ai.extensions.flashcard.title'])}
+          </ModalDialog.Title>
+        </ModalDialog.Header>
 
-  return (
-    <div className="flashcard-study-response mt-3">
-      {/* Progress bar */}
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <small className="text-gray-500">
-          {currentCard
-            ? intl.formatMessage(messages['ai.extensions.flashcard.study.progress'], {
-              current: currentIndex,
-              total: dueCards.length,
-            })
-            : intl.formatMessage(messages['ai.extensions.flashcard.study.no.cards.due'])}
-        </small>
-        <small className="text-gray-500">
-          {intl.formatMessage(messages['ai.extensions.flashcard.study.reviewed'], {
-            count: reviewedCount,
-          })}
-        </small>
-      </div>
-
-      {/* Current card or empty state */}
-      {currentCard ? (
-        <>
-          <Flashcard
-            question={currentCard.question}
-            answer={currentCard.answer}
-            isFlipped={isFlipped}
-            onFlip={handleFlip}
-          />
-          {isFlipped && (
-            <StudyControls card={currentCard} onRate={handleRate} />
-          )}
-        </>
-      ) : (
-        <>
-          {nextDueIn !== null && nextDueIn > 0 && (
-            <p className="text-center text-muted mt-3">
-              {intl.formatMessage(messages['ai.extensions.flashcard.study.next.due'], {
-                time: intl.formatRelativeTime(
-                  Math.ceil(nextDueIn / 60_000),
-                  'minute',
-                ),
+        <ModalDialog.Body>
+          {/* Progress */}
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <small className="text-gray-500">
+              {currentCard
+                ? intl.formatMessage(messages['ai.extensions.flashcard.study.progress'], {
+                  current: currentIndex,
+                  total: dueCards.length,
+                })
+                : intl.formatMessage(messages['ai.extensions.flashcard.study.no.cards.due'])}
+            </small>
+            <small className="text-gray-500">
+              {intl.formatMessage(messages['ai.extensions.flashcard.study.reviewed'], {
+                count: reviewedCount,
               })}
-            </p>
-          )}
-        </>
-      )}
+            </small>
+          </div>
 
-      {/* Save and back actions */}
-      {saveError && (
-        <Alert variant="danger" dismissible onClose={() => setSaveError('')} className="mt-2">
-          {saveError}
-        </Alert>
-      )}
-
-      <Stack direction="horizontal" gap={2} className="mt-3">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? (
+          {/* Card or no-cards-due state */}
+          {currentCard ? (
             <>
-              <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.study.saving'])} />
-              {intl.formatMessage(messages['ai.extensions.flashcard.study.saving'])}
+              <Flashcard
+                question={currentCard.question}
+                answer={currentCard.answer}
+                isFlipped={isFlipped}
+                onFlip={handleFlip}
+              />
+              <div className={isFlipped ? '' : 'invisible'}>
+                <StudyControls card={currentCard} onRate={handleRate} />
+              </div>
             </>
           ) : (
-            intl.formatMessage(messages['ai.extensions.flashcard.study.save.progress'])
+            nextDueIn !== null && nextDueIn > 0 && (
+              <p className="text-center text-muted mt-3">
+                {intl.formatMessage(messages['ai.extensions.flashcard.study.next.due'], {
+                  time: intl.formatRelativeTime(
+                    Math.ceil(nextDueIn / 60_000),
+                    'minute',
+                  ),
+                })}
+              </p>
+            )
           )}
-        </Button>
-        <Button variant="outline-secondary" size="sm" onClick={onClear}>
-          {intl.formatMessage(messages['ai.extensions.flashcard.study.back'])}
-        </Button>
-      </Stack>
-    </div>
+
+          {saveError && (
+            <Alert variant="danger" dismissible onClose={() => setSaveError('')} className="mt-3">
+              {saveError}
+            </Alert>
+          )}
+        </ModalDialog.Body>
+
+        <ModalDialog.Footer>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.study.saving'])} />
+                {intl.formatMessage(messages['ai.extensions.flashcard.study.saving'])}
+              </>
+            ) : (
+              intl.formatMessage(messages['ai.extensions.flashcard.study.save.progress'])
+            )}
+          </Button>
+          <ModalDialog.CloseButton variant="tertiary">
+            {intl.formatMessage(messages['ai.extensions.flashcard.study.done'])}
+          </ModalDialog.CloseButton>
+        </ModalDialog.Footer>
+      </ModalDialog>
+    </>
   );
 };
 

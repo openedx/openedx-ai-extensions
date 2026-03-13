@@ -9,6 +9,8 @@ interface UseStudySessionOptions {
   cards: Flashcard[];
 }
 
+const filterDueCards = (cards: Flashcard[]) => cards.filter((c) => c.nextReviewTime <= Date.now());
+
 /**
  * Manages the study session lifecycle for a set of flashcards.
  *
@@ -26,13 +28,13 @@ interface UseStudySessionOptions {
  */
 export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [tick, setTick] = useState(0);
+  const [dueCards, setDueCards] = useState<Flashcard[]>(() => filterDueCards(cards));
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const dueCards = useMemo(
-    () => cards.filter((c) => c.nextReviewTime <= Date.now()),
-    [cards, tick],
-  );
+  // Recompute due cards when the cards prop changes or the interval ticks
+  useEffect(() => {
+    setDueCards(filterDueCards(cards));
+  }, [cards]);
 
   const safeIndex = dueCards.length > 0 ? currentIndex % dueCards.length : 0;
   const currentCard = dueCards[safeIndex] ?? null;
@@ -47,22 +49,22 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   }, [cards, dueCards]);
 
   const nextCard = useCallback(() => {
-    setTick((t) => t + 1);
+    setDueCards(filterDueCards(cards));
     setCurrentIndex((prev) => {
       const next = prev + 1;
       return next < dueCards.length ? next : 0;
     });
-  }, [dueCards.length]);
+  }, [cards, dueCards.length]);
 
   const resetSession = useCallback(() => {
     setCurrentIndex(0);
-    setTick((t) => t + 1);
-  }, []);
+    setDueCards(filterDueCards(cards));
+  }, [cards]);
 
   // Periodically re-check which cards are due
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      setTick((t) => t + 1);
+      setDueCards(filterDueCards(cards));
     }, DUE_CHECK_INTERVAL);
 
     return () => {
@@ -70,7 +72,7 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
         clearInterval(intervalRef.current);
       }
     };
-  }, []);
+  }, [cards]);
 
   return {
     currentCard,

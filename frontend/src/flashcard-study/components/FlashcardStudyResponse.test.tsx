@@ -69,26 +69,25 @@ describe('FlashcardStudyResponse', () => {
   });
 
   describe('when the response has no cards', () => {
-    it('shows an empty state message and a back button', () => {
+    it('shows an empty state message', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
       expect(screen.getByText(/no flashcards found/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
-    });
-
-    it('calls onClear when the back button is clicked', async () => {
-      const user = userEvent.setup();
-      render(
-        <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
-      );
-
-      await user.click(screen.getByRole('button', { name: /back/i }));
-      expect(defaultProps.onClear).toHaveBeenCalled();
     });
   });
 
-  describe('when the user studies a due card', () => {
+  describe('when the modal opens with cards', () => {
+    it('shows the modal with the title', () => {
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('AI Flashcard Study')).toBeInTheDocument();
+    });
+
     it('shows the question side of the card with progress', () => {
       const card = makeDueCard();
       render(
@@ -100,6 +99,17 @@ describe('FlashcardStudyResponse', () => {
       expect(screen.getByText(/0 reviewed/i)).toBeInTheDocument();
     });
 
+    it('shows a Done button in the footer', () => {
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+
+      expect(screen.getByRole('button', { name: /done/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('when the user studies a due card', () => {
     it('shows the answer after clicking Show Answer', async () => {
       const user = userEvent.setup();
       const card = makeDueCard();
@@ -119,11 +129,12 @@ describe('FlashcardStudyResponse', () => {
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
 
-      expect(screen.queryByRole('button', { name: /again/i })).not.toBeInTheDocument();
+      // Controls are in the DOM but invisible before flipping
+      expect(screen.getByRole('button', { name: /again/i }).closest('.invisible')).toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: /show answer/i }));
 
-      expect(screen.getByRole('button', { name: /again/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /again/i }).closest('.invisible')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /hard/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /good/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /easy/i })).toBeInTheDocument();
@@ -140,7 +151,6 @@ describe('FlashcardStudyResponse', () => {
       );
 
       await user.click(screen.getByRole('button', { name: /show answer/i }));
-      // "Again" keeps the card due (resets interval to 1min with nextReviewTime near now)
       await user.click(screen.getByRole('button', { name: /again/i }));
 
       expect(screen.getByText('Q2')).toBeInTheDocument();
@@ -160,8 +170,8 @@ describe('FlashcardStudyResponse', () => {
       await user.click(screen.getByRole('button', { name: /show answer/i }));
       await user.click(screen.getByRole('button', { name: /again/i }));
 
-      // Rating controls should be hidden again for the new card
-      expect(screen.queryByRole('button', { name: /again/i })).not.toBeInTheDocument();
+      // Controls are hidden again after rating (card flipped back to question)
+      expect(screen.getByRole('button', { name: /again/i }).closest('.invisible')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /show answer/i })).toBeInTheDocument();
     });
   });
@@ -251,15 +261,15 @@ describe('FlashcardStudyResponse', () => {
     });
   });
 
-  describe('when the user navigates back', () => {
-    it('calls onClear when the Back button is clicked', async () => {
+  describe('when the user closes the modal', () => {
+    it('calls onClear when the Done button is clicked', async () => {
       const user = userEvent.setup();
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
 
-      await user.click(screen.getByRole('button', { name: /^back$/i }));
+      await user.click(screen.getByRole('button', { name: /^done$/i }));
       expect(defaultProps.onClear).toHaveBeenCalled();
     });
   });

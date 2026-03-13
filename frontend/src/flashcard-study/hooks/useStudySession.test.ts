@@ -26,7 +26,7 @@ describe('useStudySession', () => {
 
   it('filters due cards based on nextReviewTime <= now', () => {
     const cards = [
-      makeCard('1', 500_000),   // due (past)
+      makeCard('1', 500_000), // due (past)
       makeCard('2', 2_000_000), // not due (future)
       makeCard('3', 1_000_000), // due (exactly now)
     ];
