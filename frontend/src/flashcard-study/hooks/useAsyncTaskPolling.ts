@@ -31,7 +31,7 @@ interface UseAsyncTaskPollingOptions {
  * @param options.contextData - Workflow context (courseId, locationId, uiSlotSelectorId).
  * @param options.courseId    - Course identifier forwarded to the poll request.
  * @param options.onComplete  - Called with the response payload when the task succeeds.
- * @param options.onError     - Called with an error key (`'timeout'` | `'generate'` | `'network'`) and an optional detail message.
+ * @param options.onError     - Called with `'timeout'`, `'generate'`, or `'network'` and an optional detail.
  * @returns startPolling - Begins polling for the given `taskId`.
  * @returns stopPolling  - Cancels any active polling interval.
  */
@@ -98,4 +98,4 @@ export const useAsyncTaskPolling = ({
   useEffect(() => () => stopPolling(), [stopPolling]);
 
   return { startPolling, stopPolling };
-}
+};

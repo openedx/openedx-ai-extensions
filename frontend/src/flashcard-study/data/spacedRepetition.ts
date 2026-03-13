@@ -60,7 +60,7 @@ export const calculateNextReview = (
     repetitions: newRepetitions,
     nextReviewTime: Date.now() + newInterval * 60_000,
   };
-}
+};
 
 /**
  * Convert an interval in minutes to a { value, unit } tuple
@@ -80,7 +80,7 @@ export const toRelativeTime = (minutes: number): RelativeTimeValue => {
   }
   const weeks = Math.round(days / 7);
   return { value: weeks, unit: 'week' };
-}
+};
 
 /**
  * Compute the four interval choices for a given card's current state.
@@ -101,17 +101,15 @@ export const getIntervalChoices = (card: Flashcard): IntervalChoice[] => {
     { relativeTime: toRelativeTime(good.interval), minutes: good.interval, quality: 3 },
     { relativeTime: toRelativeTime(easy.interval), minutes: easy.interval, quality: 5 },
   ];
-}
+};
 
 /**
  * Create default SM-2 values for a new flashcard.
  */
-export const createDefaultSM2 = (): Pick<Flashcard, 'interval' | 'easeFactor' | 'repetitions' | 'nextReviewTime' | 'lastReviewedAt'> => {
-  return {
-    interval: 0,
-    easeFactor: DEFAULT_EASE_FACTOR,
-    repetitions: 0,
-    nextReviewTime: Date.now(),
-    lastReviewedAt: null,
-  };
-}
+export const createDefaultSM2 = (): Pick<Flashcard, 'interval' | 'easeFactor' | 'repetitions' | 'nextReviewTime' | 'lastReviewedAt'> => ({
+  interval: 0,
+  easeFactor: DEFAULT_EASE_FACTOR,
+  repetitions: 0,
+  nextReviewTime: Date.now(),
+  lastReviewedAt: null,
+});

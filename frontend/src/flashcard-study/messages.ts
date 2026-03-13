@@ -141,10 +141,10 @@ const messages = defineMessages({
     defaultMessage: 'Saving',
     description: 'Button label while saving is in progress',
   },
-  'ai.extensions.flashcard.study.back': {
-    id: 'ai.extensions.flashcard.study.back',
-    defaultMessage: 'Back',
-    description: 'Button to go back to the request component',
+  'ai.extensions.flashcard.study.done': {
+    id: 'ai.extensions.flashcard.study.done',
+    defaultMessage: 'Done',
+    description: 'Button to close the study modal and return to the request component',
   },
   'ai.extensions.flashcard.study.empty': {
     id: 'ai.extensions.flashcard.study.empty',

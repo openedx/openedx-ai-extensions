@@ -5,23 +5,23 @@ import { render } from '@testing-library/react';
 import { IntlProvider } from '@edx/frontend-platform/i18n';
 
 interface WrapperProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 export const renderWrapper = (ui, options = {}) => {
-    const Wrapper = ({ children }: WrapperProps) => (
-        <IntlProvider locale="en">{children}</IntlProvider>
-    );
+  const Wrapper = ({ children }: WrapperProps) => (
+    <IntlProvider locale="en">{children}</IntlProvider>
+  );
 
-    return render(ui, { wrapper: Wrapper, ...options });
+  return render(ui, { wrapper: Wrapper, ...options });
 };
 
 class ResizeObserver {
-    observe() { }
+  observe() { }
 
-    unobserve() { }
+  unobserve() { }
 
-    disconnect() { }
+  disconnect() { }
 }
 
 global.ResizeObserver = ResizeObserver;

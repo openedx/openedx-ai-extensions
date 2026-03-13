@@ -14,16 +14,14 @@ interface GenerateParams extends ContextParam {
 
 export const generateFlashcards = async ({
   context, numCards,
-}: GenerateParams) => {
-  return callWorkflowService({
-    context,
-    payload: {
-      action: WORKFLOW_ACTIONS.RUN_ASYNC,
-      requestId: `ai-request-${Date.now()}`,
-      userInput: { numCards },
-    },
-  });
-}
+}: GenerateParams) => callWorkflowService({
+  context,
+  payload: {
+    action: WORKFLOW_ACTIONS.RUN_ASYNC,
+    requestId: `ai-request-${Date.now()}`,
+    userInput: { numCards },
+  },
+});
 
 // ── Poll task status ────────────────────────────────────────────────────────
 
@@ -34,17 +32,15 @@ interface PollParams extends ContextParam {
 
 export const pollTaskStatus = async ({
   context, taskId, courseId,
-}: PollParams) => {
-  return callWorkflowService({
-    context,
-    payload: {
-      action: WORKFLOW_ACTIONS.GET_RUN_STATUS,
-      requestId: `ai-poll-${Date.now()}`,
-      taskId,
-      courseId,
-    },
-  });
-}
+}: PollParams) => callWorkflowService({
+  context,
+  payload: {
+    action: WORKFLOW_ACTIONS.GET_RUN_STATUS,
+    requestId: `ai-poll-${Date.now()}`,
+    taskId,
+    courseId,
+  },
+});
 
 // ── Save card stack ─────────────────────────────────────────────────────────
 
@@ -54,37 +50,31 @@ interface SaveParams extends ContextParam {
 
 export const saveCardStack = async ({
   context, cardStack,
-}: SaveParams) => {
-  return callWorkflowService({
-    context,
-    payload: {
-      action: WORKFLOW_ACTIONS.SAVE,
-      requestId: `ai-request-${Date.now()}`,
-      userInput: { cardStack },
-    },
-  });
-}
+}: SaveParams) => callWorkflowService({
+  context,
+  payload: {
+    action: WORKFLOW_ACTIONS.SAVE,
+    requestId: `ai-request-${Date.now()}`,
+    userInput: { cardStack },
+  },
+});
 
 // ── Get current session response ────────────────────────────────────────────
 
-export const getSessionResponse = async ({ context }: ContextParam) => {
-  return callWorkflowService({
-    context,
-    payload: {
-      action: WORKFLOW_ACTIONS.GET_CURRENT_SESSION_RESPONSE,
-      requestId: `ai-request-${Date.now()}`,
-    },
-  });
-}
+export const getSessionResponse = async ({ context }: ContextParam) => callWorkflowService({
+  context,
+  payload: {
+    action: WORKFLOW_ACTIONS.GET_CURRENT_SESSION_RESPONSE,
+    requestId: `ai-request-${Date.now()}`,
+  },
+});
 
 // ── Clear session ───────────────────────────────────────────────────────────
 
-export const clearSession = async ({ context }: ContextParam) => {
-  return callWorkflowService({
-    context,
-    payload: {
-      action: WORKFLOW_ACTIONS.CLEAR_SESSION,
-      requestId: `ai-request-${Date.now()}`,
-    },
-  });
-}
+export const clearSession = async ({ context }: ContextParam) => callWorkflowService({
+  context,
+  payload: {
+    action: WORKFLOW_ACTIONS.CLEAR_SESSION,
+    requestId: `ai-request-${Date.now()}`,
+  },
+});
