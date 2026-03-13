@@ -116,8 +116,8 @@ The ``orchestrator_class`` in your Profile JSON uses a full Python path to locat
 
 .. code-block:: python
 
-   # openedx_ai_badges/workflows/orchestrators.py
-   from openedx_ai_extensions.orchestrators import SessionBasedOrchestrator
+   # backend/openedx_ai_badges/workflows/orchestrators.py
+   from openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator import SessionBasedOrchestrator
 
    class BadgeOrchestrator(SessionBasedOrchestrator):
        """
@@ -222,7 +222,12 @@ Your component uses core services to build context and call the backend.
    const MyIndependentTabComponent = ({ uiSlotSelectorId, courseId, locationId }) => {
      const handleAction = async () => {
        const context = services.prepareContextData({ uiSlotSelectorId, courseId, locationId });
-       const response = await services.callWorkflowService(context);
+       const response = await services.callWorkflowService({
+         context,
+         payload: {
+           action: 'run',
+         },
+       });
        // Handle custom UI behavior with the response
      };
 
