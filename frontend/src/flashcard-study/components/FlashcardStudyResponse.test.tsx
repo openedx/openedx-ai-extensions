@@ -69,11 +69,21 @@ describe('FlashcardStudyResponse', () => {
   });
 
   describe('when the response has no cards', () => {
-    it('shows an empty state message', () => {
+    it('shows an empty state message with a create button', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
       expect(screen.getByText(/no flashcards found/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
+    });
+
+    it('calls onClear when the create button is clicked', async () => {
+      const user = userEvent.setup();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
+      );
+      await user.click(screen.getByRole('button', { name: /create new cards/i }));
+      expect(defaultProps.onClear).toHaveBeenCalled();
     });
   });
 

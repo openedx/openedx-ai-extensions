@@ -113,7 +113,14 @@ const FlashcardStudyResponse = ({
   return (
     <>
       {!isOpen && (
-        <Alert variant="info">
+        <Alert
+          variant="info"
+          actions={[
+            <Button onClick={onClear}>
+              {intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
+            </Button>,
+          ]}
+        >
           {intl.formatMessage(messages['ai.extensions.flashcard.study.empty'])}
         </Alert>
       )}

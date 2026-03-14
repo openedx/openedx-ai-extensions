@@ -1,5 +1,5 @@
 import {
-  useState, useCallback, useEffect, useRef, useMemo,
+  useState, useCallback, useEffect, useRef, useMemo, useReducer,
 } from 'react';
 import { Flashcard } from '../types';
 
@@ -8,8 +8,6 @@ const DUE_CHECK_INTERVAL = 30_000;
 interface UseStudySessionOptions {
   cards: Flashcard[];
 }
-
-const filterDueCards = (cards: Flashcard[]) => cards.filter((c) => c.nextReviewTime <= Date.now());
 
 /**
  * Manages the study session lifecycle for a set of flashcards.
@@ -28,13 +26,11 @@ const filterDueCards = (cards: Flashcard[]) => cards.filter((c) => c.nextReviewT
  */
 export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [dueCards, setDueCards] = useState<Flashcard[]>(() => filterDueCards(cards));
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Recompute due cards when the cards prop changes or the interval ticks
-  useEffect(() => {
-    setDueCards(filterDueCards(cards));
-  }, [cards]);
+  // Computed on every render — recomputed when forceUpdate triggers a re-render
+  const dueCards = cards.filter((c) => c.nextReviewTime <= Date.now());
 
   const safeIndex = dueCards.length > 0 ? currentIndex % dueCards.length : 0;
   const currentCard = dueCards[safeIndex] ?? null;
@@ -46,33 +42,31 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
       .filter((t) => t > Date.now());
     if (futureTimes.length === 0) { return null; }
     return Math.min(...futureTimes) - Date.now();
-  }, [cards, dueCards]);
+  }, [cards, dueCards.length]);
 
   const nextCard = useCallback(() => {
-    setDueCards(filterDueCards(cards));
+    forceUpdate();
     setCurrentIndex((prev) => {
       const next = prev + 1;
       return next < dueCards.length ? next : 0;
     });
-  }, [cards, dueCards.length]);
+  }, [dueCards.length]);
 
   const resetSession = useCallback(() => {
     setCurrentIndex(0);
-    setDueCards(filterDueCards(cards));
-  }, [cards]);
+    forceUpdate();
+  }, []);
 
   // Periodically re-check which cards are due
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setDueCards(filterDueCards(cards));
-    }, DUE_CHECK_INTERVAL);
+    intervalRef.current = setInterval(forceUpdate, DUE_CHECK_INTERVAL);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [cards]);
+  }, []);
 
   return {
     currentCard,
