@@ -5,3 +5,14 @@ AI_EXTENSIONS_MCP_CONFIGS = {
   {%- endfor %}
 }
 {%- endif %}
+
+AI_EXTENSIONS_ENABLE_LLM_CACHE = {{ "True" if AI_EXTENSIONS_ENABLE_LLM_CACHE else "False" }}
+{%- if AI_EXTENSIONS_ENABLE_LLM_CACHE %}
+{%- set llm_cache = AI_EXTENSIONS_LLM_CACHE if AI_EXTENSIONS_LLM_CACHE is defined else {} %}
+AI_EXTENSIONS_LLM_CACHE = {
+    "type": {{ llm_cache.get("type", "redis") | tojson }},
+    "host": {{ llm_cache.get("host", REDIS_HOST) | tojson }},
+    "port": {{ llm_cache.get("port", REDIS_PORT) }},
+    "ttl": {{ llm_cache.get("ttl", 259200) }},  # 72 hours
+}
+{%- endif %}

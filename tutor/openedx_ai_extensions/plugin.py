@@ -39,6 +39,15 @@ def _mount_plugin(mounts, path):
     mounts += [("openedx-ai-extensions-backend", "/openedx/openedx-ai-extensions/backend")]
     return mounts
 
+########################
+# Configuration defaults
+########################
+
+hooks.Filters.CONFIG_DEFAULTS.add_items([
+    ("AI_EXTENSIONS_ENABLE_LLM_CACHE", False),
+    ("AI_EXTENSIONS_LLM_CACHE", {}),
+])
+
 # Actually connects the patch files as tutor env patches
 for path in glob(str(importlib_resources.files("openedx_ai_extensions") / "patches" / "*")):
     with open(path, encoding="utf-8") as patch_file:
