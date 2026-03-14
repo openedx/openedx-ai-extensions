@@ -665,7 +665,7 @@ def test_mcp_configs_multiple_servers(mock_mcp_configs, mock_settings):  # pylin
 @patch.object(settings, "AI_EXTENSIONS", new={"default": {"MODEL": "openai/gpt-4"}})
 @patch.object(settings, "AI_EXTENSIONS_ENABLE_LLM_CACHE", new=True)
 @pytest.mark.django_db
-def test_caching_enabled_when_configured(mock_cache_settings, mock_settings):  # pylint: disable=unused-argument
+def test_caching_enabled_when_configured():
     """
     Test that caching is enabled when cache=True in config and
     AI_EXTENSIONS_ENABLE_LLM_CACHE is True.
@@ -683,7 +683,7 @@ def test_caching_enabled_when_configured(mock_cache_settings, mock_settings):  #
 @patch.object(settings, "AI_EXTENSIONS", new={"default": {"MODEL": "openai/gpt-4"}})
 @patch.object(settings, "AI_EXTENSIONS_ENABLE_LLM_CACHE", new=False)
 @pytest.mark.django_db
-def test_caching_disabled_when_cache_settings_disabled(_, __):
+def test_caching_disabled_when_cache_settings_disabled():
     """
     Test that caching is disabled when cache=True in config but
     AI_EXTENSIONS_ENABLE_LLM_CACHE is False, and a warning is logged.
@@ -704,7 +704,7 @@ def test_caching_disabled_when_cache_settings_disabled(_, __):
 
 @patch.object(settings, "AI_EXTENSIONS", new={"default": {"MODEL": "openai/gpt-4"}})
 @pytest.mark.django_db
-def test_caching_disabled_when_not_requested_in_config(mock_settings):  # pylint: disable=unused-argument
+def test_caching_disabled_when_not_requested_in_config():
     """
     Test that caching is disabled and no warning is emitted when cache is not
     set in config, regardless of AI_EXTENSIONS_ENABLE_LLM_CACHE.
@@ -721,7 +721,7 @@ def test_caching_disabled_when_not_requested_in_config(mock_settings):  # pylint
 
 @patch.object(settings, "AI_EXTENSIONS", new={"default": {"MODEL": "openai/gpt-4"}})
 @pytest.mark.django_db
-def test_caching_disabled_when_cache_setting_absent(mock_settings):  # pylint: disable=unused-argument
+def test_caching_disabled_when_cache_setting_absent():
     """
     Test that when AI_EXTENSIONS_ENABLE_LLM_CACHE is not defined on settings
     at all, cache=True in config still results in caching being disabled and a
