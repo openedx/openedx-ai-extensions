@@ -13,5 +13,6 @@ AI_EXTENSIONS_LLM_CACHE = {
     "type": {{ llm_cache.get("type", "redis") | tojson }},
     "host": {{ llm_cache.get("host", REDIS_HOST) | tojson }},
     "port": {{ llm_cache.get("port", REDIS_PORT) }},
+    "ttl": {{ llm_cache.get("ttl", 259200) }},  # 72 hours
 }
 {%- endif %}

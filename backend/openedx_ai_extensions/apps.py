@@ -55,6 +55,7 @@ class OpenedxAIExtensionsConfig(AppConfig):
                 "type": "redis",
                 "host": "localhost",
                 "port": 6379,
+                "ttl": 259200,  # 72 hours
             }
         """
         import litellm  # pylint: disable=import-outside-toplevel

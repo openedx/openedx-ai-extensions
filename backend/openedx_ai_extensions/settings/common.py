@@ -89,6 +89,7 @@ def plugin_settings(settings):
     #       "type": "redis",
     #       "host": "localhost",
     #       "port": 6379,
+    #       "ttl": 259200,  # 72 hours
     #   }
     if not hasattr(settings, "AI_EXTENSIONS_ENABLE_LLM_CACHE"):
         settings.AI_EXTENSIONS_ENABLE_LLM_CACHE = False
