@@ -23,6 +23,8 @@ export interface FlashcardCreatorProps {
   courseId?: string;
   locationId?: string;
   uiSlotSelectorId?: string;
+  buttonText?: string;
+  customMessage?: string;
 }
 
 const FlashcardCreator = ({
@@ -32,6 +34,8 @@ const FlashcardCreator = ({
   courseId = '',
   locationId = '',
   uiSlotSelectorId = '',
+  buttonText,
+  customMessage,
 }: FlashcardCreatorProps) => {
   const intl = useIntl();
   const [step, setStep] = useState<FlashcardStep>('idle');
@@ -106,7 +110,7 @@ const FlashcardCreator = ({
           {intl.formatMessage(messages['ai.extensions.flashcard.title'])}
         </h3>
         <small className="d-block mb-2 x-small">
-          {intl.formatMessage(messages['ai.extensions.flashcard.creator.description'])}
+          {customMessage || intl.formatMessage(messages['ai.extensions.flashcard.creator.description'])}
         </small>
 
         {step === 'idle' && (
@@ -120,7 +124,7 @@ const FlashcardCreator = ({
                   iconBefore={AutoAwesome}
                   onClick={() => setShowForm(true)}
                 >
-                  {intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
+                  {buttonText || intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
                 </Button>
                 <Button
                   variant="outline-primary"

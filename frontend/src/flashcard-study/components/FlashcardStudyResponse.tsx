@@ -17,6 +17,7 @@ export interface FlashcardStudyResponseProps {
   isLoading?: boolean;
   onClear: () => void;
   contextData?: Record<string, any>;
+  customMessage?: string;
 }
 
 const parseCards = (response: any): FlashcardType[] => {
@@ -31,6 +32,7 @@ const FlashcardStudyResponse = ({
   error,
   isLoading,
   onClear,
+  customMessage,
   contextData = {},
 }: FlashcardStudyResponseProps) => {
   const intl = useIntl();
@@ -126,7 +128,7 @@ const FlashcardStudyResponse = ({
       )}
 
       <ModalDialog
-        title={intl.formatMessage(messages['ai.extensions.flashcard.title'])}
+        title={customMessage || intl.formatMessage(messages['ai.extensions.flashcard.title'])}
         isOpen={isOpen}
         onClose={onClear}
         size="lg"
@@ -136,7 +138,7 @@ const FlashcardStudyResponse = ({
       >
         <ModalDialog.Header>
           <ModalDialog.Title>
-            {intl.formatMessage(messages['ai.extensions.flashcard.title'])}
+            {customMessage || intl.formatMessage(messages['ai.extensions.flashcard.title'])}
           </ModalDialog.Title>
         </ModalDialog.Header>
 
