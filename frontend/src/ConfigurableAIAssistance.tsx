@@ -24,8 +24,6 @@ import {
   AIRequestComponent,
   AIResponseComponent,
   AISidebarResponse,
-  AIEducatorLibraryAssistComponent,
-  AIEducatorLibraryResponseComponent,
 } from './components';
 import {
   LibraryProblemCreator,
@@ -42,8 +40,6 @@ import messages from './messages';
   ['AIRequestComponent', AIRequestComponent],
   ['AIResponseComponent', AIResponseComponent],
   ['AISidebarResponse', AISidebarResponse],
-  ['AIEducatorLibraryAssistComponent', AIEducatorLibraryAssistComponent],
-  ['AIEducatorLibraryResponseComponent', AIEducatorLibraryResponseComponent],
   ['LibraryProblemCreator', LibraryProblemCreator],
   ['LibraryProblemCreatorResponse', LibraryProblemCreatorResponse],
 ].forEach(([id, component]) => registerEntry(

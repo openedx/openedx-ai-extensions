@@ -201,7 +201,7 @@ const LibraryProblemCreatorInner = ({
 
         {/* EditModal is always mounted when we have questions; isOpen controls visibility */}
         {modalSteps.has(step) && (
-          <EditModal isOpen={isOpen} close={close} />
+          <EditModal isOpen={isOpen} close={close} displayTitle={displayTitle} />
         )}
 
         {/* Error step */}

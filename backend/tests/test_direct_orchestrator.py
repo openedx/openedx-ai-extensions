@@ -38,7 +38,7 @@ def workflow_profile(db):  # pylint: disable=unused-argument
     return AIWorkflowProfile.objects.create(
         slug="test-educator-assistant",
         description="Educator assistant profile for tests",
-        base_filepath="base/library_questions_assistant.json",
+        base_filepath="base/library_questions_creator.json",
         content_patch="{}",
     )
 

@@ -33,5 +33,5 @@ Works only in studio UI and over the CMS service_variant.
       }
     }
   },
-  "schema_version": "1.0",
+  "schema_version": "1.0"
 }
