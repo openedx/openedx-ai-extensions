@@ -11,44 +11,86 @@ describe('calculateNextReview', () => {
     jest.restoreAllMocks();
   });
 
-  it('resets interval to 1 minute when quality < 3', () => {
-    const result = calculateNextReview(2, 100, 2.5, 5);
-    expect(result.interval).toBe(1);
-    expect(result.repetitions).toBe(0);
+  describe('graduated steps (repetitions 0–1)', () => {
+    it('uses graduated steps for Again on a new card', () => {
+      const result = calculateNextReview(1, 0, 2.5, 0);
+      expect(result.interval).toBe(1);
+      expect(result.repetitions).toBe(0);
+    });
+
+    it('uses graduated steps for Hard on a new card', () => {
+      const result = calculateNextReview(2, 0, 2.5, 0);
+      expect(result.interval).toBe(3);
+      expect(result.repetitions).toBe(0);
+    });
+
+    it('uses graduated steps for Good on a new card', () => {
+      const result = calculateNextReview(3, 0, 2.5, 0);
+      expect(result.interval).toBe(5);
+      expect(result.repetitions).toBe(1);
+    });
+
+    it('uses graduated steps for Easy on a new card', () => {
+      const result = calculateNextReview(5, 0, 2.5, 0);
+      expect(result.interval).toBe(10);
+      expect(result.repetitions).toBe(1);
+    });
+
+    it('uses graduated steps for Good on second review', () => {
+      const result = calculateNextReview(3, 5, 2.5, 1);
+      expect(result.interval).toBe(10);
+      expect(result.repetitions).toBe(2);
+    });
+
+    it('uses graduated steps for Easy on second review', () => {
+      const result = calculateNextReview(5, 5, 2.5, 1);
+      expect(result.interval).toBe(20);
+      expect(result.repetitions).toBe(2);
+    });
   });
 
-  it('sets interval to 1 minute on first successful review', () => {
-    const result = calculateNextReview(3, 0, 2.5, 0);
-    expect(result.interval).toBe(1);
-    expect(result.repetitions).toBe(1);
+  describe('multiplier-based intervals (repetitions 2+)', () => {
+    it('Again resets to 1 minute', () => {
+      const result = calculateNextReview(1, 10, 2.5, 2);
+      expect(result.interval).toBe(1);
+      expect(result.repetitions).toBe(0);
+    });
+
+    it('Hard uses 1.2× multiplier without incrementing repetitions', () => {
+      const result = calculateNextReview(2, 10, 2.5, 2);
+      expect(result.interval).toBe(12);
+      expect(result.repetitions).toBe(2);
+    });
+
+    it('Good uses ease factor multiplier', () => {
+      const result = calculateNextReview(3, 10, 2.5, 2);
+      expect(result.interval).toBe(25);
+      expect(result.repetitions).toBe(3);
+    });
+
+    it('Easy uses ease factor × 1.3 bonus', () => {
+      const result = calculateNextReview(5, 10, 2.5, 2);
+      expect(result.interval).toBe(33);
+      expect(result.repetitions).toBe(3);
+    });
   });
 
-  it('sets interval to 10 minutes on second successful review', () => {
-    const result = calculateNextReview(4, 1, 2.5, 1);
-    expect(result.interval).toBe(10);
-    expect(result.repetitions).toBe(2);
-  });
+  describe('ease factor', () => {
+    it('never lets ease factor drop below 1.3', () => {
+      const result = calculateNextReview(0, 10, 1.3, 3);
+      expect(result.easeFactor).toBeGreaterThanOrEqual(1.3);
+    });
 
-  it('multiplies interval by ease factor on subsequent reviews', () => {
-    const result = calculateNextReview(4, 10, 2.5, 2);
-    expect(result.interval).toBe(25);
-    expect(result.repetitions).toBe(3);
-  });
-
-  it('never lets ease factor drop below 1.3', () => {
-    const result = calculateNextReview(0, 10, 1.3, 3);
-    expect(result.easeFactor).toBeGreaterThanOrEqual(1.3);
-  });
-
-  it('increases ease factor for high quality ratings', () => {
-    const result = calculateNextReview(5, 10, 2.5, 2);
-    expect(result.easeFactor).toBeGreaterThan(2.5);
+    it('increases ease factor for high quality ratings', () => {
+      const result = calculateNextReview(5, 10, 2.5, 2);
+      expect(result.easeFactor).toBeGreaterThan(2.5);
+    });
   });
 
   it('computes nextReviewTime from interval', () => {
     const result = calculateNextReview(3, 0, 2.5, 0);
-    // interval = 1 minute = 60_000ms, Date.now() = 1_000_000
-    expect(result.nextReviewTime).toBe(1_000_000 + 60_000);
+    // interval = 5 minutes = 300_000ms, Date.now() = 1_000_000
+    expect(result.nextReviewTime).toBe(1_000_000 + 5 * 60_000);
   });
 });
 
@@ -102,20 +144,28 @@ describe('getIntervalChoices', () => {
     expect(choices[0].relativeTime).toEqual({ value: 1, unit: 'minute' });
   });
 
-  it('Hard (quality=2) also resets to 1 minute', () => {
+  it('Hard (quality=2) uses 1.2× multiplier', () => {
     const choices = getIntervalChoices(card);
-    expect(choices[1].minutes).toBe(1);
+    // 10 * 1.2 = 12
+    expect(choices[1].minutes).toBe(12);
   });
 
-  it('Good (quality=3) uses SM-2 progression', () => {
+  it('Good (quality=3) uses ease factor multiplier', () => {
     const choices = getIntervalChoices(card);
-    // repetitions=2 → interval * easeFactor = 10 * 2.5 = 25
+    // 10 * 2.5 = 25
     expect(choices[2].minutes).toBe(25);
   });
 
-  it('Easy (quality=5) uses SM-2 progression', () => {
+  it('Easy (quality=5) uses ease factor × 1.3 bonus', () => {
     const choices = getIntervalChoices(card);
-    expect(choices[3].minutes).toBe(25);
+    // round(10 * 2.5 * 1.3) = 33
+    expect(choices[3].minutes).toBe(33);
+  });
+
+  it('all four choices produce distinct intervals', () => {
+    const choices = getIntervalChoices(card);
+    const intervals = choices.map((c) => c.minutes);
+    expect(new Set(intervals).size).toBe(4);
   });
 });
 

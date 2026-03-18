@@ -3,8 +3,19 @@ import { Flashcard, IntervalChoice } from '../types';
 // SM-2 algorithm floor: below 1.3 intervals shrink too aggressively, causing review fatigue.
 const MIN_EASE_FACTOR = 1.3;
 // SM-2 starting ease: 2.5 is the original Pimsleur/Wozniak default, producing a balanced
-// initial spacing curve (1m → 10m → 25m → 63m …) before adapting to the learner's performance.
+// initial spacing curve before adapting to the learner's performance.
 const DEFAULT_EASE_FACTOR = 2.5;
+// Anki-style multiplier for Hard: shorter than Good but not a full reset.
+const HARD_MULTIPLIER = 1.2;
+// Anki-style bonus multiplier for Easy: longer than Good to reward confidence.
+const EASY_BONUS = 1.3;
+
+// Fixed graduated steps for the first two repetitions (in minutes).
+// Each row: [Again, Hard, Good, Easy]
+const GRADUATED_STEPS: Record<number, [number, number, number, number]> = {
+  0: [1, 3, 5, 10],
+  1: [1, 5, 10, 20],
+};
 
 export interface SM2Result {
   interval: number;
@@ -19,7 +30,13 @@ export interface RelativeTimeValue {
 }
 
 /**
- * Simplified SM-2 spaced repetition algorithm.
+ * SM-2 spaced repetition algorithm with Anki-style interval differentiation.
+ *
+ * Quality ratings produce distinct intervals:
+ * - Again (0–1): resets repetitions, short fixed interval
+ * - Hard (2): keeps repetitions, interval × 1.2 (or graduated step)
+ * - Good (3–4): increments repetitions, interval × easeFactor (or graduated step)
+ * - Easy (5): increments repetitions, interval × easeFactor × 1.3 (or graduated step)
  *
  * @param quality - User rating 0–5 (0 = complete failure, 5 = perfect)
  * @param currentInterval - Current interval in minutes
@@ -36,18 +53,24 @@ export const calculateNextReview = (
   let newRepetitions: number;
   let newEaseFactor = easeFactor;
 
-  if (quality < 3) {
+  const steps = GRADUATED_STEPS[repetitions];
+
+  if (quality <= 1) {
+    // Again: full reset
     newRepetitions = 0;
-    newInterval = 1;
-  } else {
+    newInterval = steps ? steps[0] : 1;
+  } else if (quality === 2) {
+    // Hard: no reset, no increment — use shorter multiplier
+    newRepetitions = repetitions;
+    newInterval = steps ? steps[1] : Math.round(currentInterval * HARD_MULTIPLIER);
+  } else if (quality <= 4) {
+    // Good: standard SM-2 progression
     newRepetitions = repetitions + 1;
-    if (newRepetitions === 1) {
-      newInterval = 1;
-    } else if (newRepetitions === 2) {
-      newInterval = 10;
-    } else {
-      newInterval = Math.round(currentInterval * easeFactor);
-    }
+    newInterval = steps ? steps[2] : Math.round(currentInterval * easeFactor);
+  } else {
+    // Easy: SM-2 progression with bonus
+    newRepetitions = repetitions + 1;
+    newInterval = steps ? steps[3] : Math.round(currentInterval * easeFactor * EASY_BONUS);
   }
 
   // SM-2 ease factor update

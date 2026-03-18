@@ -25,9 +25,11 @@ describe('StudyControls', () => {
     expect(screen.getByRole('button', { name: /easy/i })).toBeInTheDocument();
 
     // intl.formatRelativeTime renders full localized strings
-    // repetitions=2 -> Again(1min), Hard(1min), Good(25min), Easy(25min)
-    expect(screen.getAllByText('in 1 minute')).toHaveLength(2);
-    expect(screen.getAllByText('in 25 minutes')).toHaveLength(2);
+    // repetitions=2 -> Again(1min), Hard(12min), Good(25min), Easy(33min)
+    expect(screen.getByText('in 1 minute')).toBeInTheDocument();
+    expect(screen.getByText('in 12 minutes')).toBeInTheDocument();
+    expect(screen.getByText('in 25 minutes')).toBeInTheDocument();
+    expect(screen.getByText('in 33 minutes')).toBeInTheDocument();
   });
 
   it('calls onRate with correct quality when buttons are clicked', async () => {
