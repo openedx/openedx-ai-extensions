@@ -60,7 +60,7 @@ describe('FlashcardCreator', () => {
       render(<FlashcardCreator {...defaultProps} preloadPreviousSession />);
 
       await waitFor(() => {
-        expect(defaultProps.setResponse).toHaveBeenCalledWith(sessionData);
+        expect(defaultProps.setResponse).toHaveBeenCalledWith({ ...sessionData, fromSession: true });
         expect(defaultProps.setHasAsked).toHaveBeenCalledWith(true);
       });
     });

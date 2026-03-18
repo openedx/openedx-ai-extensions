@@ -334,6 +334,31 @@ describe('FlashcardStudyResponse', () => {
     });
   });
 
+  describe('when the response comes from a preloaded session', () => {
+    it('does not open the modal automatically', () => {
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card], fromSession: true }} />,
+      );
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.getByText(/session is paused/i)).toBeInTheDocument();
+    });
+
+    it('opens the modal when the user clicks load session', async () => {
+      const user = userEvent.setup();
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card], fromSession: true }} />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /load session/i }));
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('What is React?')).toBeInTheDocument();
+    });
+  });
+
   describe('response parsing', () => {
     it('handles response as an array of cards', () => {
       const cards = [makeDueCard()];

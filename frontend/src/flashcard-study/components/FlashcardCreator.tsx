@@ -81,7 +81,7 @@ const FlashcardCreator = ({
         if (cancelled) { return; }
         const cards = data?.cards;
         if (Array.isArray(cards) && cards.length > 0) {
-          setResponse(data);
+          setResponse({ ...data, fromSession: true });
           setHasAsked(true);
         } else {
           setStep('idle');

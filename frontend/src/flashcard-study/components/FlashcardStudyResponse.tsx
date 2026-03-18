@@ -38,18 +38,22 @@ const FlashcardStudyResponse = ({
   customMessage,
   contextData = {},
 }: FlashcardStudyResponseProps) => {
+  console.debug(response)
   const intl = useIntl();
   const [cards, setCards] = useState<FlashcardType[]>(() => parseCards(response));
-  const [isModalOpen, setIsModalOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   // Re-parse cards when response changes and reopen the modal
+  console.debug(isModalOpen)
   useMemo(() => {
     const parsed = parseCards(response);
     if (parsed.length > 0) {
       setCards(parsed);
-      setIsModalOpen(true);
+      if (!response?.fromSession) {
+        setIsModalOpen(true);
+      }
     }
   }, [response]);
 
