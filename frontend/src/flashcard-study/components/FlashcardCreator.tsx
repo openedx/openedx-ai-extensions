@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import {
+  useState, useCallback, useEffect, useMemo,
+} from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Alert, Button, Card, Spinner, Stack,
+  Alert, Button, Card, Spinner,
 } from '@openedx/paragon';
 import { AutoAwesome } from '@openedx/paragon/icons';
 import { POLLING_ERROR_KEYS, useAsyncTaskPolling } from '../hooks/useAsyncTaskPolling';
@@ -25,6 +27,7 @@ export interface FlashcardCreatorProps {
   uiSlotSelectorId?: string;
   buttonText?: string;
   customMessage?: string;
+  preloadPreviousSession?: boolean;
 }
 
 const FlashcardCreator = ({
@@ -36,13 +39,17 @@ const FlashcardCreator = ({
   uiSlotSelectorId = '',
   buttonText,
   customMessage,
+  preloadPreviousSession = false,
 }: FlashcardCreatorProps) => {
   const intl = useIntl();
-  const [step, setStep] = useState<FlashcardStep>('idle');
+  const [step, setStep] = useState<FlashcardStep>(preloadPreviousSession ? 'loading' : 'idle');
   const [showForm, setShowForm] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const contextData = { courseId, locationId, uiSlotSelectorId };
+  const contextData = useMemo(
+    () => ({ courseId, locationId, uiSlotSelectorId }),
+    [courseId, locationId, uiSlotSelectorId],
+  );
 
   const onComplete = useCallback((responseData: any) => {
     setStep('idle');
@@ -63,6 +70,30 @@ const FlashcardCreator = ({
     onError,
   });
 
+  // Check for existing session on mount
+  useEffect(() => {
+    if (!preloadPreviousSession) { return undefined; }
+
+    let cancelled = false;
+    const checkSession = async () => {
+      try {
+        const data = await getSessionResponse({ context: contextData });
+        if (cancelled) { return; }
+        const cards = data?.cards;
+        if (Array.isArray(cards) && cards.length > 0) {
+          setResponse(data);
+          setHasAsked(true);
+        } else {
+          setStep('idle');
+        }
+      } catch {
+        if (!cancelled) { setStep('idle'); }
+      }
+    };
+    checkSession();
+    return () => { cancelled = true; };
+  }, [contextData, setResponse, setHasAsked, preloadPreviousSession]);
+
   const handleGenerate = async (numCards: number) => {
     setStep('generating');
     setShowForm(false);
@@ -78,19 +109,6 @@ const FlashcardCreator = ({
     } catch {
       setStep('error');
       setErrorMessage(intl.formatMessage(messages['ai.extensions.flashcard.error.generate']));
-    }
-  };
-
-  const handleDisplayCards = async () => {
-    setStep('generating');
-    try {
-      const data = await getSessionResponse({ context: contextData });
-      setResponse(data);
-      setHasAsked(true);
-      setStep('idle');
-    } catch {
-      setStep('error');
-      setErrorMessage(intl.formatMessage(messages['ai.extensions.flashcard.error.load']));
     }
   };
 
@@ -113,28 +131,27 @@ const FlashcardCreator = ({
           {customMessage || intl.formatMessage(messages['ai.extensions.flashcard.creator.description'])}
         </small>
 
+        {step === 'loading' && (
+          <div className="text-center py-3">
+            <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])} />
+            <span className="small">
+              {intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])}
+            </span>
+          </div>
+        )}
+
         {step === 'idle' && (
           <>
             {!showForm && (
-              <Stack gap={2}>
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  className="w-100"
-                  iconBefore={AutoAwesome}
-                  onClick={() => setShowForm(true)}
-                >
-                  {buttonText || intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
-                </Button>
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  className="w-100"
-                  onClick={handleDisplayCards}
-                >
-                  {intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}
-                </Button>
-              </Stack>
+              <Button
+                variant="outline-primary"
+                size="sm"
+                className="w-100"
+                iconBefore={AutoAwesome}
+                onClick={() => setShowForm(true)}
+              >
+                {buttonText || intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
+              </Button>
             )}
 
             {showForm && (

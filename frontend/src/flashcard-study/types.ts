@@ -1,4 +1,4 @@
-export type FlashcardStep = 'idle' | 'generating' | 'studying' | 'saving' | 'error';
+export type FlashcardStep = 'idle' | 'generating' | 'loading' | 'studying' | 'saving' | 'error';
 
 export interface Flashcard {
   id: string;

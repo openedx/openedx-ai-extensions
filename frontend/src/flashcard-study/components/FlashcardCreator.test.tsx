@@ -36,14 +36,62 @@ beforeEach(() => {
 });
 
 describe('FlashcardCreator', () => {
+  describe('when preloadPreviousSession is enabled', () => {
+    it('shows a loading spinner while checking', () => {
+      (getSessionResponse as jest.Mock).mockReturnValue(new Promise(() => {}));
+      render(<FlashcardCreator {...defaultProps} preloadPreviousSession />);
+
+      expect(screen.getByRole('status')).toBeInTheDocument();
+      expect(screen.getByText('Loading session', { selector: '.small' })).toBeInTheDocument();
+    });
+
+    it('hands off to the response component when a session with cards exists', async () => {
+      const sessionData = {
+        status: 'completed',
+        cards: [{ id: '1', question: 'Q1' }],
+      };
+      (getSessionResponse as jest.Mock).mockResolvedValue(sessionData);
+      render(<FlashcardCreator {...defaultProps} preloadPreviousSession />);
+
+      await waitFor(() => {
+        expect(defaultProps.setResponse).toHaveBeenCalledWith(sessionData);
+        expect(defaultProps.setHasAsked).toHaveBeenCalledWith(true);
+      });
+    });
+
+    it('shows the create button when no session exists', async () => {
+      (getSessionResponse as jest.Mock).mockResolvedValue({ cards: [] });
+      render(<FlashcardCreator {...defaultProps} preloadPreviousSession />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
+      });
+    });
+
+    it('shows the create button when the session check fails', async () => {
+      (getSessionResponse as jest.Mock).mockRejectedValue(new Error('Network'));
+      render(<FlashcardCreator {...defaultProps} preloadPreviousSession />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
+      });
+    });
+
+    it('does not call getSessionResponse when preloadPreviousSession is false', () => {
+      render(<FlashcardCreator {...defaultProps} />);
+
+      expect(getSessionResponse).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
+    });
+  });
+
   describe('when the user sees the initial screen', () => {
-    it('shows the title, description, and two action buttons', () => {
+    it('shows the title, description, and create button immediately', () => {
       render(<FlashcardCreator {...defaultProps} />);
 
       expect(screen.getByText('AI Flashcard Study')).toBeInTheDocument();
       expect(screen.getByText(/generate flashcards from the course content/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /display cards/i })).toBeInTheDocument();
     });
 
     it('hides the component when the response is already shown', () => {
@@ -53,7 +101,7 @@ describe('FlashcardCreator', () => {
   });
 
   describe('when the user creates new flashcards', () => {
-    it('opens the generate form and hides the action buttons', async () => {
+    it('opens the generate form and hides the action button', async () => {
       const user = userEvent.setup();
       render(<FlashcardCreator {...defaultProps} />);
 
@@ -62,7 +110,6 @@ describe('FlashcardCreator', () => {
       expect(screen.getByRole('spinbutton')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^generate$/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /create new cards/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /display cards/i })).not.toBeInTheDocument();
     });
 
     it('shows a spinner after submitting the form', async () => {
@@ -137,44 +184,6 @@ describe('FlashcardCreator', () => {
     });
   });
 
-  describe('when the user displays existing cards', () => {
-    it('loads the session and hands off to the response component', async () => {
-      const user = userEvent.setup();
-      const sessionData = { cards: [{ id: '1', question: 'Q1' }] };
-      (getSessionResponse as jest.Mock).mockResolvedValue(sessionData);
-      render(<FlashcardCreator {...defaultProps} />);
-
-      await user.click(screen.getByRole('button', { name: /display cards/i }));
-
-      await waitFor(() => {
-        expect(defaultProps.setResponse).toHaveBeenCalledWith(sessionData);
-        expect(defaultProps.setHasAsked).toHaveBeenCalledWith(true);
-      });
-    });
-
-    it('shows a spinner while loading', async () => {
-      const user = userEvent.setup();
-      (getSessionResponse as jest.Mock).mockReturnValue(new Promise(() => {}));
-      render(<FlashcardCreator {...defaultProps} />);
-
-      await user.click(screen.getByRole('button', { name: /display cards/i }));
-
-      expect(screen.getByRole('status')).toBeInTheDocument();
-    });
-
-    it('shows a load error when the session request fails', async () => {
-      const user = userEvent.setup();
-      (getSessionResponse as jest.Mock).mockRejectedValue(new Error('Network'));
-      render(<FlashcardCreator {...defaultProps} />);
-
-      await user.click(screen.getByRole('button', { name: /display cards/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText(/failed to load your flashcards/i)).toBeInTheDocument();
-      });
-    });
-  });
-
   describe('when the user encounters an error', () => {
     it('can return to the initial screen by clicking Start Over', async () => {
       const user = userEvent.setup();
@@ -191,7 +200,6 @@ describe('FlashcardCreator', () => {
       await user.click(screen.getByRole('button', { name: /start over/i }));
 
       expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /display cards/i })).toBeInTheDocument();
       expect(screen.queryByText(/failed to generate/i)).not.toBeInTheDocument();
     });
 

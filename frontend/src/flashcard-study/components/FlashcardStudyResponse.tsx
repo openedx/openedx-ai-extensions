@@ -1,4 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import {
+  useState, useCallback, useMemo,
+} from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Alert, Button, ModalDialog, Spinner,
@@ -7,7 +9,7 @@ import Flashcard from './Flashcard';
 import StudyControls from './StudyControls';
 import { useStudySession } from '../hooks/useStudySession';
 import { calculateNextReview } from '../data/spacedRepetition';
-import { saveCardStack } from '../data/workflowActions';
+import { saveCardStack, clearSession } from '../data/workflowActions';
 import { Flashcard as FlashcardType, CardStack } from '../types';
 import messages from '../messages';
 
@@ -20,10 +22,11 @@ export interface FlashcardStudyResponseProps {
   customMessage?: string;
 }
 
-const parseCards = (response: any): FlashcardType[] => {
-  if (!response) { return []; }
-  if (Array.isArray(response.cards)) { return response.cards; }
-  if (Array.isArray(response)) { return response; }
+const parseCards = (data: any): FlashcardType[] => {
+  if (!data) { return []; }
+  if (Array.isArray(data.cards)) { return data.cards; }
+  if (Array.isArray(data?.response?.cards)) { return data.response.cards; }
+  if (Array.isArray(data)) { return data; }
   return [];
 };
 
@@ -37,15 +40,16 @@ const FlashcardStudyResponse = ({
 }: FlashcardStudyResponseProps) => {
   const intl = useIntl();
   const [cards, setCards] = useState<FlashcardType[]>(() => parseCards(response));
+  const [isModalOpen, setIsModalOpen] = useState(true);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-
-  // Re-parse cards when response changes
+  // Re-parse cards when response changes and reopen the modal
   useMemo(() => {
     const parsed = parseCards(response);
     if (parsed.length > 0) {
       setCards(parsed);
+      setIsModalOpen(true);
     }
   }, [response]);
 
@@ -103,23 +107,43 @@ const FlashcardStudyResponse = ({
     }
   };
 
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleReopen = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleClearSession = async () => {
+    try {
+      await clearSession({ context: contextData });
+    } catch {
+      // Silently fail — still reset the UI
+    }
+    onClear();
+  };
+
   if (isLoading || (!response && !error)) { return null; }
 
   if (error) {
     return <Alert variant="danger">{error}</Alert>;
   }
 
-  const isOpen = cards.length > 0;
+  const hasCards = cards.length > 0;
   const currentIndex = currentCard ? dueCards.indexOf(currentCard) + 1 : 0;
 
   return (
     <>
-      {!isOpen && (
+      {!hasCards && (
         <Alert
           variant="info"
           actions={[
             <Button onClick={onClear}>
-              {intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
+              {intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}
+            </Button>,
+            <Button variant="outline-primary" onClick={handleClearSession}>
+              {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
             </Button>,
           ]}
         >
@@ -127,10 +151,26 @@ const FlashcardStudyResponse = ({
         </Alert>
       )}
 
+      {hasCards && !isModalOpen && (
+        <Alert
+          variant="info"
+          actions={[
+            <Button onClick={handleReopen}>
+              {intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}
+            </Button>,
+            <Button variant="outline-primary" onClick={handleClearSession}>
+              {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
+            </Button>,
+          ]}
+        >
+          {intl.formatMessage(messages['ai.extensions.flashcard.study.paused'])}
+        </Alert>
+      )}
+
       <ModalDialog
         title={customMessage || intl.formatMessage(messages['ai.extensions.flashcard.title'])}
-        isOpen={isOpen}
-        onClose={onClear}
+        isOpen={hasCards && isModalOpen}
+        onClose={handleCloseModal}
         size="lg"
         isFullscreenOnMobile
         isOverflowVisible={false}

@@ -2,11 +2,12 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWrapper as render } from '../../setupTest';
 import FlashcardStudyResponse from './FlashcardStudyResponse';
-import { saveCardStack } from '../data/workflowActions';
+import { saveCardStack, clearSession } from '../data/workflowActions';
 import { Flashcard } from '../types';
 
 jest.mock('../data/workflowActions', () => ({
-  saveCardStack: jest.fn(),
+  saveCardStack: jest.fn().mockResolvedValue({}),
+  clearSession: jest.fn().mockResolvedValue({}),
 }));
 
 const makeDueCard = (overrides: Partial<Flashcard> = {}): Flashcard => ({
@@ -42,6 +43,8 @@ const defaultProps = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (saveCardStack as jest.Mock).mockResolvedValue({});
+  (clearSession as jest.Mock).mockResolvedValue({});
 });
 
 describe('FlashcardStudyResponse', () => {
@@ -69,21 +72,35 @@ describe('FlashcardStudyResponse', () => {
   });
 
   describe('when the response has no cards', () => {
-    it('shows an empty state message with a create button', () => {
+    it('shows an empty state with display cards and clear session buttons', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
       expect(screen.getByText(/no flashcards found/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /load session/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /clear session/i })).toBeInTheDocument();
     });
 
-    it('calls onClear when the create button is clicked', async () => {
+    it('calls onClear when display cards is clicked', async () => {
       const user = userEvent.setup();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
+      await user.click(screen.getByRole('button', { name: /load session/i }));
       expect(defaultProps.onClear).toHaveBeenCalled();
+    });
+
+    it('clears the backend session and resets when clear session is clicked', async () => {
+      const user = userEvent.setup();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
+      );
+      await user.click(screen.getByRole('button', { name: /clear session/i }));
+
+      await waitFor(() => {
+        expect(clearSession).toHaveBeenCalledWith({ context: defaultProps.contextData });
+        expect(defaultProps.onClear).toHaveBeenCalled();
+      });
     });
   });
 
@@ -209,7 +226,6 @@ describe('FlashcardStudyResponse', () => {
   describe('when the user saves progress', () => {
     it('saves the card stack to the session', async () => {
       const user = userEvent.setup();
-      (saveCardStack as jest.Mock).mockResolvedValue({});
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
@@ -272,7 +288,7 @@ describe('FlashcardStudyResponse', () => {
   });
 
   describe('when the user closes the modal', () => {
-    it('calls onClear when the Done button is clicked', async () => {
+    it('hides the modal and shows paused state with actions', async () => {
       const user = userEvent.setup();
       const card = makeDueCard();
       render(
@@ -280,7 +296,41 @@ describe('FlashcardStudyResponse', () => {
       );
 
       await user.click(screen.getByRole('button', { name: /^done$/i }));
-      expect(defaultProps.onClear).toHaveBeenCalled();
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.getByText(/session is paused/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /load session/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /clear session/i })).toBeInTheDocument();
+    });
+
+    it('reopens the modal when display cards is clicked from paused state', async () => {
+      const user = userEvent.setup();
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /^done$/i }));
+      await user.click(screen.getByRole('button', { name: /load session/i }));
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('What is React?')).toBeInTheDocument();
+    });
+
+    it('clears backend session when clear session is clicked from paused state', async () => {
+      const user = userEvent.setup();
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /^done$/i }));
+      await user.click(screen.getByRole('button', { name: /clear session/i }));
+
+      await waitFor(() => {
+        expect(clearSession).toHaveBeenCalledWith({ context: defaultProps.contextData });
+        expect(defaultProps.onClear).toHaveBeenCalled();
+      });
     });
   });
 

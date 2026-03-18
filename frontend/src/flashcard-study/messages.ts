@@ -81,6 +81,11 @@ const messages = defineMessages({
     defaultMessage: 'Generating',
     description: 'Submit button label while generation is in progress',
   },
+  'ai.extensions.flashcard.creator.loading.session': {
+    id: 'ai.extensions.flashcard.creator.loading.session',
+    defaultMessage: 'Loading session',
+    description: 'Spinner text while loading an existing card session',
+  },
   'ai.extensions.flashcard.creator.description': {
     id: 'ai.extensions.flashcard.creator.description',
     defaultMessage: 'Generate flashcards from the course content to study with spaced repetition.',
@@ -93,7 +98,7 @@ const messages = defineMessages({
   },
   'ai.extensions.flashcard.creator.display.button': {
     id: 'ai.extensions.flashcard.creator.display.button',
-    defaultMessage: 'Display Cards',
+    defaultMessage: 'Load Session',
     description: 'Button to load and display the existing card stack from session',
   },
   'ai.extensions.flashcard.creator.start.over': {
@@ -155,6 +160,16 @@ const messages = defineMessages({
     id: 'ai.extensions.flashcard.error.save',
     defaultMessage: 'Failed to save progress. Please try again.',
     description: 'Error shown when saving the card stack fails',
+  },
+  'ai.extensions.flashcard.study.paused': {
+    id: 'ai.extensions.flashcard.study.paused',
+    defaultMessage: 'Your study session is paused.',
+    description: 'Message shown when the study modal is closed but cards are still loaded',
+  },
+  'ai.extensions.flashcard.study.clear.session': {
+    id: 'ai.extensions.flashcard.study.clear.session',
+    defaultMessage: 'Clear Session',
+    description: 'Button to clear the backend AI session and reset',
   },
 });
 
