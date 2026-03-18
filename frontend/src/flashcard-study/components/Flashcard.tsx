@@ -21,13 +21,13 @@ const Flashcard = ({
   const intl = useIntl();
 
   return (
-    <div className="flashcard-scene">
+    <div className="flashcard-scene p-2">
       <div
         className={`flashcard-stage ${isFlipped ? 'flashcard-stage--flipped' : ''}`}
         aria-live="polite"
       >
         {/* Question face */}
-        <Card className="flashcard-face flashcard-face--front bg-light-100 h-100 rounded-lg" aria-hidden={isFlipped}>
+        <Card className="flashcard-face flashcard-face--front bg-light-200 h-100 rounded-lg" aria-hidden={isFlipped}>
           <Card.Section className="d-flex flex-column align-items-center justify-content-center h-100">
             <span className="x-small text-uppercase font-weight-bold text-gray-500 mb-2">
               {intl.formatMessage(messages['ai.extensions.flashcard.card.question.label'])}
