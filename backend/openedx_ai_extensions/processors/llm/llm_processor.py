@@ -5,6 +5,7 @@ Responses processor for threaded AI conversations using LiteLLM
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from litellm import completion, get_responses, list_input_items, responses
 
@@ -651,3 +652,39 @@ class LLMProcessor(LitellmProcessor):
                 if summary_text:
                     items.append({"type": "reasoning", "role": "reasoning", "content": summary_text})
         return items
+
+    def generate_flashcards(self):
+        """Example method showing how to generate flashcards from content."""
+        prompt_file_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "prompts"
+            / "default_generate_flashcards.txt"
+        )
+        try:
+            with open(prompt_file_path, "r") as f:
+                prompt = f.read()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error loading prompt template: {e}")
+            return {"error": "Failed to load prompt template."}
+
+        for key, value in self.input_data.items():
+            placeholder = f"{{{{{key.upper()}}}}}"
+            prompt = prompt.replace(placeholder, str(value))
+
+        self.input_data = None
+
+        try:
+            result = self._call_completion_wrapper(prompt)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Error calling LiteLLM: {e}")
+            return {"error": f"AI processing failed: {str(e)}"}
+
+        tokens_used = result.get("tokens_used", 0)
+        response = json.loads(result['response'])
+
+        return {
+            "response": response,
+            "tokens_used": tokens_used,
+            "model_used": self.extra_params.get("model", "unknown"),
+            "status": "success",
+        }
