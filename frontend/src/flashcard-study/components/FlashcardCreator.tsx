@@ -3,7 +3,7 @@ import {
 } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Alert, Button, Card, Spinner,
+  Alert, Button, Spinner,
 } from '@openedx/paragon';
 import { AutoAwesome } from '@openedx/paragon/icons';
 import { POLLING_ERROR_KEYS, useAsyncTaskPolling } from '../hooks/useAsyncTaskPolling';
@@ -94,7 +94,7 @@ const FlashcardCreator = ({
     return () => { cancelled = true; };
   }, [contextData, setResponse, setHasAsked, preloadPreviousSession]);
 
-  const handleGenerate = async (numCards: number) => {
+  const handleGenerate = async (numCards: number | null) => {
     setStep('generating');
     setShowForm(false);
     try {
@@ -122,71 +122,62 @@ const FlashcardCreator = ({
   if (hasAsked) { return null; }
 
   return (
-    <Card className="flashcard-creator mt-3 mb-3">
-      <Card.Section>
-        <h3 className="d-block mb-1">
-          {intl.formatMessage(messages['ai.extensions.flashcard.title'])}
-        </h3>
-        <small className="d-block mb-2 x-small">
-          {customMessage || intl.formatMessage(messages['ai.extensions.flashcard.creator.description'])}
-        </small>
+    <div className="flashcard-creator my-2 py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
+      {step === 'loading' && (
+        <div className="text-center py-3 mx-auto">
+          <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])} />
+          <span className="small">
+            {intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])}
+          </span>
+        </div>
+      )}
 
-        {step === 'loading' && (
-          <div className="text-center py-3">
-            <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])} />
-            <span className="small">
-              {intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])}
-            </span>
-          </div>
-        )}
-
-        {step === 'idle' && (
-          <>
-            {!showForm && (
+      {step === 'idle' && (
+        <>
+          {!showForm && (
+            <>
+              <small className="d-block mb-2">
+                {customMessage || intl.formatMessage(messages['ai.extensions.flashcard.creator.description'])}
+              </small>
               <Button
-                variant="outline-primary"
+                variant="primary"
                 size="sm"
-                className="w-100"
                 iconBefore={AutoAwesome}
                 onClick={() => setShowForm(true)}
               >
                 {buttonText || intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
               </Button>
-            )}
+            </>
+          )}
 
-            {showForm && (
-              <GenerateForm
-                onGenerate={handleGenerate}
-                isLoading={false}
-              />
-            )}
-          </>
-        )}
+          {showForm && (
+            <GenerateForm
+              onGenerate={handleGenerate}
+              isLoading={false}
+            />
+          )}
+        </>
+      )}
 
-        {step === 'generating' && (
-          <div className="text-center py-3">
-            <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.generate.form.generating'])} />
-            <span className="small">
-              {intl.formatMessage(messages['ai.extensions.flashcard.generate.form.generating'])}
-            </span>
-          </div>
-        )}
+      {step === 'generating' && (
+        <div className="text-center py-3 mx-auto">
+          <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.generate.form.generating'])} />
+          <span className="small">
+            {intl.formatMessage(messages['ai.extensions.flashcard.generate.form.generating'])}
+          </span>
+        </div>
+      )}
 
-        {step === 'error' && (
-          <>
-            <Alert variant="danger">{errorMessage}</Alert>
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              className="w-100"
-              onClick={handleStartOver}
-            >
-              {intl.formatMessage(messages['ai.extensions.flashcard.creator.start.over'])}
-            </Button>
-          </>
-        )}
-      </Card.Section>
-    </Card>
+      {step === 'error' && (
+      <Alert
+        variant="danger"
+        dismissible
+        onClose={handleStartOver}
+        className="w-100"
+      >{errorMessage}
+      </Alert>
+      )}
+    </div>
   );
 };
 

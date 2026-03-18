@@ -35,6 +35,12 @@ beforeEach(() => {
   });
 });
 
+// Helper: open form and click a depth option
+const openFormAndGenerate = async (user: ReturnType<typeof userEvent.setup>, label = 'Auto') => {
+  await user.click(screen.getByRole('button', { name: /create new cards/i }));
+  await user.click(screen.getByText(label));
+};
+
 describe('FlashcardCreator', () => {
   describe('when preloadPreviousSession is enabled', () => {
     it('shows a loading spinner while checking', () => {
@@ -86,10 +92,9 @@ describe('FlashcardCreator', () => {
   });
 
   describe('when the user sees the initial screen', () => {
-    it('shows the title, description, and create button immediately', () => {
+    it('shows the description and create button immediately', () => {
       render(<FlashcardCreator {...defaultProps} />);
 
-      expect(screen.getByText('AI Flashcard Study')).toBeInTheDocument();
       expect(screen.getByText(/generate flashcards from the course content/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
     });
@@ -101,24 +106,23 @@ describe('FlashcardCreator', () => {
   });
 
   describe('when the user creates new flashcards', () => {
-    it('opens the generate form and hides the action button', async () => {
+    it('opens the depth selector and hides the action button', async () => {
       const user = userEvent.setup();
       render(<FlashcardCreator {...defaultProps} />);
 
       await user.click(screen.getByRole('button', { name: /create new cards/i }));
 
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^generate$/i })).toBeInTheDocument();
+      expect(screen.getByText(/choose a study depth/i)).toBeInTheDocument();
+      expect(screen.getByText('Auto')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /create new cards/i })).not.toBeInTheDocument();
     });
 
-    it('shows a spinner after submitting the form', async () => {
+    it('shows a spinner after clicking a depth option', async () => {
       const user = userEvent.setup();
       (generateFlashcards as jest.Mock).mockReturnValue(new Promise(() => {}));
       render(<FlashcardCreator {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
-      await user.click(screen.getByRole('button', { name: /^generate$/i }));
+      await openFormAndGenerate(user);
 
       expect(screen.getByRole('status')).toBeInTheDocument();
       expect(screen.getByText('Generating', { selector: '.small' })).toBeInTheDocument();
@@ -129,28 +133,37 @@ describe('FlashcardCreator', () => {
       (generateFlashcards as jest.Mock).mockResolvedValue({ taskId: 'task-123' });
       render(<FlashcardCreator {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
-      await user.click(screen.getByRole('button', { name: /^generate$/i }));
+      await openFormAndGenerate(user);
 
       await waitFor(() => {
         expect(mockStartPolling).toHaveBeenCalledWith('task-123');
       });
     });
 
-    it('sends the selected number of cards to the API', async () => {
+    it('sends the selected preset number of cards to the API', async () => {
       const user = userEvent.setup();
       (generateFlashcards as jest.Mock).mockResolvedValue({ taskId: 'task-1' });
       render(<FlashcardCreator {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
-      const input = screen.getByRole('spinbutton');
-      await user.clear(input);
-      await user.type(input, '8');
-      await user.click(screen.getByRole('button', { name: /^generate$/i }));
+      await openFormAndGenerate(user, '15 cards');
 
       await waitFor(() => {
         expect(generateFlashcards).toHaveBeenCalledWith(
-          expect.objectContaining({ numCards: 8 }),
+          expect.objectContaining({ numCards: 15 }),
+        );
+      });
+    });
+
+    it('sends null for auto-generation when Auto is clicked', async () => {
+      const user = userEvent.setup();
+      (generateFlashcards as jest.Mock).mockResolvedValue({ taskId: 'task-1' });
+      render(<FlashcardCreator {...defaultProps} />);
+
+      await openFormAndGenerate(user);
+
+      await waitFor(() => {
+        expect(generateFlashcards).toHaveBeenCalledWith(
+          expect.objectContaining({ numCards: null }),
         );
       });
     });
@@ -161,8 +174,7 @@ describe('FlashcardCreator', () => {
       (generateFlashcards as jest.Mock).mockResolvedValue(responseData);
       render(<FlashcardCreator {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
-      await user.click(screen.getByRole('button', { name: /^generate$/i }));
+      await openFormAndGenerate(user);
 
       await waitFor(() => {
         expect(defaultProps.setResponse).toHaveBeenCalledWith(responseData);
@@ -175,8 +187,7 @@ describe('FlashcardCreator', () => {
       (generateFlashcards as jest.Mock).mockRejectedValue(new Error('Server error'));
       render(<FlashcardCreator {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
-      await user.click(screen.getByRole('button', { name: /^generate$/i }));
+      await openFormAndGenerate(user);
 
       await waitFor(() => {
         expect(screen.getByText(/failed to generate flashcards/i)).toBeInTheDocument();
@@ -190,14 +201,13 @@ describe('FlashcardCreator', () => {
       (generateFlashcards as jest.Mock).mockRejectedValue(new Error('fail'));
       render(<FlashcardCreator {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
-      await user.click(screen.getByRole('button', { name: /^generate$/i }));
+      await openFormAndGenerate(user);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /start over/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /dismiss/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /start over/i }));
+      await user.click(screen.getByRole('button', { name: /dismiss/i }));
 
       expect(screen.getByRole('button', { name: /create new cards/i })).toBeInTheDocument();
       expect(screen.queryByText(/failed to generate/i)).not.toBeInTheDocument();
@@ -208,14 +218,13 @@ describe('FlashcardCreator', () => {
       (generateFlashcards as jest.Mock).mockRejectedValue(new Error('fail'));
       render(<FlashcardCreator {...defaultProps} />);
 
-      await user.click(screen.getByRole('button', { name: /create new cards/i }));
-      await user.click(screen.getByRole('button', { name: /^generate$/i }));
+      await openFormAndGenerate(user);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /start over/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /dismiss/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /start over/i }));
+      await user.click(screen.getByRole('button', { name: /dismiss/i }));
       expect(mockStopPolling).toHaveBeenCalled();
     });
 

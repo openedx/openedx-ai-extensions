@@ -9,7 +9,7 @@ interface ContextParam {
 // ── Generate flashcards (async) ─────────────────────────────────────────────
 
 interface GenerateParams extends ContextParam {
-  numCards: number;
+  numCards: number | null;
 }
 
 export const generateFlashcards = async ({

@@ -56,25 +56,40 @@ const messages = defineMessages({
     defaultMessage: 'Easy',
     description: 'Rating label for "Easy"',
   },
-  'ai.extensions.flashcard.generate.form.label': {
-    id: 'ai.extensions.flashcard.generate.form.label',
-    defaultMessage: 'Number of flashcards',
-    description: 'Label for the number of cards input in the generate form',
+  'ai.extensions.flashcard.generate.form.auto.help': {
+    id: 'ai.extensions.flashcard.generate.form.auto.help',
+    defaultMessage: 'Choose a study depth or let AI decide.',
+    description: 'Helper text for the depth selector',
   },
-  'ai.extensions.flashcard.generate.form.help': {
-    id: 'ai.extensions.flashcard.generate.form.help',
-    defaultMessage: 'Choose between 1 and 10',
-    description: 'Help text for the number of cards input',
+  'ai.extensions.flashcard.generate.depth.auto': {
+    id: 'ai.extensions.flashcard.generate.depth.auto',
+    defaultMessage: 'Auto',
+    description: 'Label for the auto depth option',
   },
-  'ai.extensions.flashcard.generate.form.error': {
-    id: 'ai.extensions.flashcard.generate.form.error',
-    defaultMessage: 'Number of flashcards must be between 1 and 10.',
-    description: 'Validation error for the number of cards input',
+  'ai.extensions.flashcard.generate.depth.auto.sublabel': {
+    id: 'ai.extensions.flashcard.generate.depth.auto.sublabel',
+    defaultMessage: 'Optimal',
+    description: 'Sublabel for the auto depth option',
   },
-  'ai.extensions.flashcard.generate.form.submit': {
-    id: 'ai.extensions.flashcard.generate.form.submit',
-    defaultMessage: 'Generate',
-    description: 'Submit button label for the generate form',
+  'ai.extensions.flashcard.generate.depth.cards': {
+    id: 'ai.extensions.flashcard.generate.depth.cards',
+    defaultMessage: '{count} cards',
+    description: 'Top label for a numeric depth option showing the card count',
+  },
+  'ai.extensions.flashcard.generate.depth.quick': {
+    id: 'ai.extensions.flashcard.generate.depth.quick',
+    defaultMessage: 'Quick',
+    description: 'Sublabel for the quick depth option',
+  },
+  'ai.extensions.flashcard.generate.depth.standard': {
+    id: 'ai.extensions.flashcard.generate.depth.standard',
+    defaultMessage: 'Standard',
+    description: 'Sublabel for the standard depth option',
+  },
+  'ai.extensions.flashcard.generate.depth.deep': {
+    id: 'ai.extensions.flashcard.generate.depth.deep',
+    defaultMessage: 'Deep',
+    description: 'Sublabel for the deep depth option',
   },
   'ai.extensions.flashcard.generate.form.generating': {
     id: 'ai.extensions.flashcard.generate.form.generating',
