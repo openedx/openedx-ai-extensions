@@ -86,7 +86,6 @@ class EducatorAssistantProcessor(LitellmProcessor):
         for key, value in input_data.items():
             placeholder = f"{{{{{key.upper()}}}}}"
             prompt = prompt.replace(placeholder, str(value))
-        logger.info(f"Generation prompt after placeholder replacement: {prompt}")
 
         try:
             result = self._call_completion_api(prompt)
