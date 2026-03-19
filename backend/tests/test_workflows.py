@@ -631,7 +631,16 @@ def test_session_based_orchestrator_get_run_status(
     context = {"location_id": None, "course_id": workflow_scope.course_id}
     orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
 
-    # Test 1: Processing status (default)
+    # Test 1: Idle status (default — no task submitted yet)
+    result = orchestrator.get_run_status({})
+    assert result["status"] == "idle"
+
+    # Test 1b: Processing status
+    orchestrator.session.metadata = {
+        "task_status": "processing",
+        "task_status_message": "AI workflow is running",
+    }
+    orchestrator.session.save()
     result = orchestrator.get_run_status({})
     assert result["status"] == "processing"
     assert result["message"] == "AI workflow is running"
