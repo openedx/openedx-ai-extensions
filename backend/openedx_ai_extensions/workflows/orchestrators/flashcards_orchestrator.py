@@ -81,19 +81,39 @@ class FlashCardsOrchestrator(SessionBasedOrchestrator):
         # 6. Emit completed event for one-shot workflow
         self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
 
-        cards = llm_result.get('response', None)
+        # Extract cards from the LLM response, which may be either:
+        # - a dict containing a "cards" list, or
+        # - a list of card dicts directly.
+        response_obj = llm_result.get('response')
+        cards = []
+        if isinstance(response_obj, dict):
+            potential_cards = response_obj.get('cards')
+            if isinstance(potential_cards, list):
+                cards = potential_cards
+        elif isinstance(response_obj, list):
+            cards = response_obj
+
         if cards is not None:
             for card in cards:
-                card['nextReviewTime'] = 0
-                card['interval'] = 1
-                card['easeFactor'] = 2.5
-                card['repetitions'] = 0
-                card['lastReviewedAt'] = None
+                # Ensure each card has the scheduling metadata required by the client.
+                if isinstance(card, dict):
+                    card['nextReviewTime'] = 0
+                    card['interval'] = 1
+                    card['easeFactor'] = 2.5
+                    card['repetitions'] = 0
+                    card['lastReviewedAt'] = None
+
+        # Reconstruct the response in the same structural shape we received.
+        if isinstance(response_obj, dict):
+            enriched_response = dict(response_obj)
+            enriched_response['cards'] = cards
+        else:
+            enriched_response = cards
 
         # --- 7. Return Structured Non-Streaming Result ---
         # If execution reaches this point, we have a successful, non-streaming result (Dict).
         response_data = {
-            'response': cards,
+            'response': enriched_response,
             'status': 'completed',
             'metadata': {
                 'tokens_used': llm_result.get('tokens_used'),
