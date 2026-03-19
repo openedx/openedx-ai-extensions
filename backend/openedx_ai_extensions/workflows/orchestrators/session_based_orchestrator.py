@@ -133,6 +133,14 @@ class SessionBasedOrchestrator(BaseOrchestrator):
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
 
+    def _set_status_message(self, message):
+        """
+        Write an intermediate status message to session metadata so pollers
+        can surface step-level progress while the task is running.
+        """
+        self.session.metadata['task_status_message'] = message
+        self.session.save(update_fields=['metadata'])
+
     def run_async(self, input_data):
         """
         Launch async task to execute the run method.
@@ -147,6 +155,7 @@ class SessionBasedOrchestrator(BaseOrchestrator):
         self.session.metadata['task_status'] = 'processing'
         self.session.metadata.pop('task_result', None)
         self.session.metadata.pop('task_error', None)
+        self.session.metadata.pop('task_status_message', None)
         self.session.save()
 
         task = _execute_orchestrator_async.delay(
@@ -171,7 +180,7 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             dict: Status information including task result if completed
         """
         metadata = self.session.metadata or {}
-        task_status = metadata.get('task_status', 'processing')
+        task_status = metadata.get('task_status', 'idle')
 
         if task_status == 'completed':
             return metadata.get('task_result', {
@@ -188,8 +197,13 @@ class SessionBasedOrchestrator(BaseOrchestrator):
                 'status': 'timeout',
                 'error': metadata.get('task_error', 'Task exceeded time limit')
             }
-        else:
+        elif task_status == 'processing':
             return {
                 'status': 'processing',
-                'message': 'AI workflow is running'
+                'message': metadata.get('task_status_message', 'AI workflow is running'),
+            }
+        else:
+            # 'idle' or any unknown status — no task has been started yet
+            return {
+                'status': 'idle',
             }
