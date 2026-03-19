@@ -356,10 +356,18 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
     Admin interface for managing AI Workflow Sessions.
     """
 
-    list_display = ("user", "course_id", "location_id")
-    search_fields = ("user__username", "course_id", "location_id")
+    list_display = ("user", "course_id", "profile_slug", "location_id")
+    search_fields = ("user__username", "course_id", "location_id", "profile__slug")
+    list_select_related = ("user", "profile")
     readonly_fields = ("local_submission_id", "remote_response_id", "metadata")
     actions = ["debug_thread"]
+
+    def profile_slug(self, obj):
+        """Return the profile slug for display."""
+        return obj.profile.slug if obj.profile else "-"
+
+    profile_slug.short_description = "Profile"
+    profile_slug.admin_order_field = "profile__slug"
 
     def get_urls(self):
         """Return custom admin URLs for debug views."""
