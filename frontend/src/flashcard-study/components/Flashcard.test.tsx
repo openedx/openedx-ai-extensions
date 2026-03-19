@@ -47,15 +47,15 @@ describe('Flashcard', () => {
     expect(onFlip).toHaveBeenCalledTimes(1);
   });
 
-  it('marks the front face as aria-hidden when flipped', () => {
+  it('marks the front face as inert when flipped', () => {
     const { container } = render(<Flashcard {...defaultProps} isFlipped />);
     const front = container.querySelector('.flashcard-face--front');
-    expect(front).toHaveAttribute('aria-hidden', 'true');
+    expect(front).toHaveAttribute('inert');
   });
 
-  it('marks the back face as aria-hidden when not flipped', () => {
+  it('marks the back face as inert when not flipped', () => {
     const { container } = render(<Flashcard {...defaultProps} isFlipped={false} />);
     const back = container.querySelector('.flashcard-face--back');
-    expect(back).toHaveAttribute('aria-hidden', 'true');
+    expect(back).toHaveAttribute('inert');
   });
 });

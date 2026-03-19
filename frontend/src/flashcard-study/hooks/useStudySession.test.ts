@@ -131,6 +131,27 @@ describe('useStudySession', () => {
     expect(result.current.reviewedCount).toBe(0);
   });
 
+  it('resets reviewedCount when due count increases while still studying', () => {
+    const cards = [makeCard('1', 500_000)];
+
+    const { result, rerender } = renderHook(
+      ({ c }) => useStudySession({ cards: c }),
+      { initialProps: { c: cards } },
+    );
+
+    // Review a card
+    act(() => { result.current.nextCard(); });
+    expect(result.current.reviewedCount).toBe(1);
+
+    // A second card becomes due while still studying
+    const moreCards = [
+      { ...cards[0], nextReviewTime: 500_000 },
+      makeCard('2', 500_000),
+    ];
+    rerender({ c: moreCards });
+    expect(result.current.reviewedCount).toBe(0);
+  });
+
   it('cleans up interval on unmount', () => {
     const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
     const cards = [makeCard('1', 500_000)];

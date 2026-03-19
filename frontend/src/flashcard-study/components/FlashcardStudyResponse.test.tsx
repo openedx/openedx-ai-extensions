@@ -72,25 +72,16 @@ describe('FlashcardStudyResponse', () => {
   });
 
   describe('when the response has no cards', () => {
-    it('shows an empty state with display cards and clear session buttons', () => {
+    it('shows an empty state with only a generate new set button', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
       expect(screen.getByText(/no flashcards found/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /let's practice/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /generate new set/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /let's practice/i })).not.toBeInTheDocument();
     });
 
-    it('calls onClear when display cards is clicked', async () => {
-      const user = userEvent.setup();
-      render(
-        <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
-      );
-      await user.click(screen.getByRole('button', { name: /let's practice/i }));
-      expect(defaultProps.onClear).toHaveBeenCalled();
-    });
-
-    it('clears the backend session and resets when clear session is clicked', async () => {
+    it('clears the backend session and resets when generate new set is clicked', async () => {
       const user = userEvent.setup();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,

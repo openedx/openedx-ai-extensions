@@ -29,7 +29,7 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   const [reviewedCount, setReviewedCount] = useState(0);
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const wasCaughtUpRef = useRef(false);
+  const prevDueCountRef = useRef(0);
 
   // Computed on every render — recomputed when forceUpdate triggers a re-render
   const dueCards = cards.filter((c) => c.nextReviewTime <= Date.now());
@@ -37,16 +37,13 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   const safeIndex = dueCards.length > 0 ? currentIndex % dueCards.length : 0;
   const currentCard = dueCards[safeIndex] ?? null;
 
-  // Reset reviewed count when new cards become due after being caught up
-  const isCaughtUp = dueCards.length === 0 && cards.length > 0;
+  // Reset reviewed count when new cards become due
   useEffect(() => {
-    if (isCaughtUp) {
-      wasCaughtUpRef.current = true;
-    } else if (wasCaughtUpRef.current) {
-      wasCaughtUpRef.current = false;
+    if (dueCards.length > prevDueCountRef.current) {
       setReviewedCount(0);
     }
-  }, [isCaughtUp]);
+    prevDueCountRef.current = dueCards.length;
+  }, [dueCards.length]);
 
   const nextCard = useCallback(() => {
     setReviewedCount((prev) => prev + 1);

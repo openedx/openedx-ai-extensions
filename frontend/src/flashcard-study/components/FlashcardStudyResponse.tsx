@@ -152,10 +152,7 @@ const FlashcardStudyResponse = ({
         <Alert
           variant="info"
           actions={[
-            <Button onClick={onClear}>
-              {intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}
-            </Button>,
-            <Button variant="outline-primary" onClick={handleClearSession}>
+            <Button onClick={handleClearSession}>
               {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
             </Button>,
           ]}
