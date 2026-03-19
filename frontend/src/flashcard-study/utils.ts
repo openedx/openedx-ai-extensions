@@ -1,4 +1,4 @@
-import { Flashcard, IntervalChoice } from '../types';
+import { Flashcard, IntervalChoice } from './types';
 
 // SM-2 algorithm floor: below 1.3 intervals shrink too aggressively, causing review fatigue.
 const MIN_EASE_FACTOR = 1.3;

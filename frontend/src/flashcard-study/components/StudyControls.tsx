@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import { Button, ButtonGroup } from '@openedx/paragon';
 import { Flashcard } from '../types';
-import { getIntervalChoices } from '../data/spacedRepetition';
+import { getIntervalChoices } from '../utils';
 import messages from '../messages';
 
 export interface StudyControlsProps {

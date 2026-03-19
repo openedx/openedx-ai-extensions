@@ -1,17 +1,18 @@
 import {
-  useState, useCallback, useMemo,
+  useState, useCallback, useEffect, useMemo, useRef,
 } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Alert, Badge, Button, ModalDialog, Row, Spinner,
+  Alert, Badge, Button, ModalDialog,
   Stack,
 } from '@openedx/paragon';
 import Flashcard from './Flashcard';
 import StudyControls from './StudyControls';
 import { useStudySession } from '../hooks/useStudySession';
-import { calculateNextReview } from '../data/spacedRepetition';
+import { calculateNextReview } from '../utils';
 import { saveCardStack, clearSession } from '../data/workflowActions';
 import { Flashcard as FlashcardType, CardStack } from '../types';
+import LastReviewLabel from './LastReviewLabel';
 import messages from '../messages';
 
 export interface FlashcardStudyResponseProps {
@@ -43,10 +44,10 @@ const FlashcardStudyResponse = ({
   const [cards, setCards] = useState<FlashcardType[]>(() => parseCards(response));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const isDirtyRef = useRef(false);
+  const cardsRef = useRef(cards);
   // Re-parse cards when response changes and reopen the modal
-  console.debug(isModalOpen)
   useMemo(() => {
     const parsed = parseCards(response);
     if (parsed.length > 0) {
@@ -59,8 +60,34 @@ const FlashcardStudyResponse = ({
     dueCards,
     nextCard,
     reviewedCount,
-    nextDueIn,
   } = useStudySession({ cards });
+
+  // Keep cardsRef in sync so the auto-save callback always has fresh data
+  useEffect(() => { cardsRef.current = cards; }, [cards]);
+
+  const autoSave = useCallback(async () => {
+    if (!isDirtyRef.current) { return; }
+    isDirtyRef.current = false;
+    try {
+      const cardStack: CardStack = {
+        cards: cardsRef.current,
+        createdAt: Date.now(),
+        lastStudiedAt: Date.now(),
+      };
+      await saveCardStack({ context: contextData, cardStack });
+    } catch {
+      setSaveError(intl.formatMessage(messages['ai.extensions.flashcard.error.save']));
+    }
+  }, [contextData, intl]);
+
+  // Auto-save when the tab becomes hidden (covers tab switches, screen locks, alt-tabs)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden) { autoSave(); }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [autoSave]);
 
   const handleFlip = useCallback(() => {
     setIsFlipped((prev) => !prev);
@@ -87,28 +114,13 @@ const FlashcardStudyResponse = ({
       }
       : c)));
 
+    isDirtyRef.current = true;
     setIsFlipped(false);
     nextCard();
   }, [currentCard, nextCard]);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    setSaveError('');
-    try {
-      const cardStack: CardStack = {
-        cards,
-        createdAt: Date.now(),
-        lastStudiedAt: Date.now(),
-      };
-      await saveCardStack({ context: contextData, cardStack });
-    } catch {
-      setSaveError(intl.formatMessage(messages['ai.extensions.flashcard.error.save']));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleCloseModal = () => {
+    autoSave();
     setIsModalOpen(false);
   };
 
@@ -154,21 +166,16 @@ const FlashcardStudyResponse = ({
 
       {hasCards && (
         <div className="d-flex align items-center justify-content-between my-3 py-3 small border-bottom">
-          
-          {response?.fromSession
-            ? intl.formatMessage(messages['ai.extensions.flashcard.study.paused.session'], {
-              date: intl.formatDate(
-                Math.max(...cards.map((c) => c.lastReviewedAt ?? 0)) || Date.now(),
-                { dateStyle: 'medium' },
-              ),
-            })
-            : intl.formatMessage(messages['ai.extensions.flashcard.study.paused.new'])}
-            <Stack gap={2} direction="horizontal">
-           <Button size="sm" onClick={handleReopen}>
-              <span className="mr-2">{intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}</span>
+          <div>
+            <span>{intl.formatMessage(messages['ai.extensions.flashcard.study.session.description'])}</span>
+            <LastReviewLabel cards={cards} />
+          </div>
+          <Stack gap={2} direction="horizontal">
+            <Button size="sm" onClick={handleReopen}>
+              <span>{intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}</span>
               {dueCards.length > 0 && (
                 <>
-                  <Badge variant="primary" className="border py-1">{dueCards.length}</Badge>
+                  <Badge variant="primary" className="ml-2 border py-1">{dueCards.length}</Badge>
                   <span className="sr-only">{intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button.due'])}</span>
                 </>
               )}
@@ -176,7 +183,7 @@ const FlashcardStudyResponse = ({
             <Button size="sm" variant="outline-primary" onClick={handleClearSession}>
               {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
             </Button>
-            </Stack>
+          </Stack>
         </div>
       )}
 
@@ -196,26 +203,23 @@ const FlashcardStudyResponse = ({
         </ModalDialog.Header>
 
         <ModalDialog.Body>
-          {/* Progress */}
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <small className="text-gray-500">
-              {currentCard
-                ? intl.formatMessage(messages['ai.extensions.flashcard.study.progress'], {
-                  current: currentIndex,
-                  total: dueCards.length,
-                })
-                : intl.formatMessage(messages['ai.extensions.flashcard.study.no.cards.due'])}
-            </small>
-            <small className="text-gray-500">
-              {intl.formatMessage(messages['ai.extensions.flashcard.study.reviewed'], {
-                count: reviewedCount,
-              })}
-            </small>
-          </div>
-
-          {/* Card or no-cards-due state */}
           {currentCard ? (
             <>
+              {/* Progress */}
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <small className="text-gray-500">
+                  {intl.formatMessage(messages['ai.extensions.flashcard.study.progress'], {
+                    current: currentIndex,
+                    total: dueCards.length,
+                  })}
+                </small>
+                <small className="text-gray-500">
+                  {intl.formatMessage(messages['ai.extensions.flashcard.study.reviewed'], {
+                    count: reviewedCount,
+                  })}
+                </small>
+              </div>
+
               <Flashcard
                 question={currentCard.question}
                 answer={currentCard.answer}
@@ -227,45 +231,45 @@ const FlashcardStudyResponse = ({
               </div>
             </>
           ) : (
-            nextDueIn !== null && nextDueIn > 0 && (
-              <p className="text-center text-muted mt-3">
-                {intl.formatMessage(messages['ai.extensions.flashcard.study.next.due'], {
-                  time: intl.formatRelativeTime(
-                    Math.ceil(nextDueIn / 60_000),
-                    'minute',
-                  ),
-                })}
+            <div className="text-center py-4">
+              <h4>{intl.formatMessage(messages['ai.extensions.flashcard.study.no.cards.due'])}</h4>
+              <p className="text-muted">
+                {intl.formatMessage(messages['ai.extensions.flashcard.study.no.cards.due.description'])}
               </p>
-            )
+              {reviewedCount > 0 && (
+                <small className="text-gray-500">
+                  {intl.formatMessage(messages['ai.extensions.flashcard.study.reviewed'], {
+                    count: reviewedCount,
+                  })}
+                </small>
+              )}
+            </div>
           )}
 
-          {saveError && (
-            <Alert variant="danger" dismissible onClose={() => setSaveError('')} className="mt-3">
-              {saveError}
-            </Alert>
-          )}
         </ModalDialog.Body>
 
         <ModalDialog.Footer>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.study.saving'])} />
-                {intl.formatMessage(messages['ai.extensions.flashcard.study.saving'])}
-              </>
-            ) : (
-              intl.formatMessage(messages['ai.extensions.flashcard.study.save.progress'])
-            )}
-          </Button>
           <ModalDialog.CloseButton variant="tertiary">
             {intl.formatMessage(messages['ai.extensions.flashcard.study.done'])}
           </ModalDialog.CloseButton>
         </ModalDialog.Footer>
       </ModalDialog>
+
+      {saveError && (
+        <Alert
+          variant="danger"
+          dismissible
+          onClose={() => setSaveError('')}
+          className="mt-3"
+          actions={[
+            <Button variant="primary" onClick={() => { setSaveError(''); isDirtyRef.current = true; autoSave(); }}>
+              {intl.formatMessage(messages['ai.extensions.flashcard.error.save.retry'])}
+            </Button>,
+          ]}
+        >
+          {saveError}
+        </Alert>
+      )}
     </>
   );
 };

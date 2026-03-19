@@ -121,20 +121,10 @@ const messages = defineMessages({
     defaultMessage: 'cards due',
     description: 'Screen reader text for the due cards badge on the practice button',
   },
-  'ai.extensions.flashcard.creator.start.over': {
-    id: 'ai.extensions.flashcard.creator.start.over',
-    defaultMessage: 'Start Over',
-    description: 'Button to return to the idle state after an error',
-  },
   'ai.extensions.flashcard.error.network': {
     id: 'ai.extensions.flashcard.error.network',
     defaultMessage: 'A network error occurred. Please check your connection and try again.',
     description: 'Error shown when a network error occurs during generation',
-  },
-  'ai.extensions.flashcard.error.load': {
-    id: 'ai.extensions.flashcard.error.load',
-    defaultMessage: 'Failed to load your flashcards. Please try again.',
-    description: 'Error shown when loading the session card stack fails',
   },
   'ai.extensions.flashcard.study.progress': {
     id: 'ai.extensions.flashcard.study.progress',
@@ -148,23 +138,13 @@ const messages = defineMessages({
   },
   'ai.extensions.flashcard.study.no.cards.due': {
     id: 'ai.extensions.flashcard.study.no.cards.due',
-    defaultMessage: 'No cards are due for review right now.',
-    description: 'Message shown when all cards have been reviewed and none are due yet',
+    defaultMessage: "You're all caught up!",
+    description: 'Title shown when all cards have been reviewed and none are due yet',
   },
-  'ai.extensions.flashcard.study.next.due': {
-    id: 'ai.extensions.flashcard.study.next.due',
-    defaultMessage: 'Next card due {time}',
-    description: 'Shows when the next card will be due for review',
-  },
-  'ai.extensions.flashcard.study.save.progress': {
-    id: 'ai.extensions.flashcard.study.save.progress',
-    defaultMessage: 'Save Progress',
-    description: 'Button to save the current study progress to the session',
-  },
-  'ai.extensions.flashcard.study.saving': {
-    id: 'ai.extensions.flashcard.study.saving',
-    defaultMessage: 'Saving',
-    description: 'Button label while saving is in progress',
+  'ai.extensions.flashcard.study.no.cards.due.description': {
+    id: 'ai.extensions.flashcard.study.no.cards.due.description',
+    defaultMessage: 'Your memory of this unit is fresh. Your next scheduled review will appear here when it\'s time.',
+    description: 'Description shown when all cards have been reviewed and none are due yet',
   },
   'ai.extensions.flashcard.study.done': {
     id: 'ai.extensions.flashcard.study.done',
@@ -178,18 +158,28 @@ const messages = defineMessages({
   },
   'ai.extensions.flashcard.error.save': {
     id: 'ai.extensions.flashcard.error.save',
-    defaultMessage: 'Failed to save progress. Please try again.',
+    defaultMessage: 'Failed to save progress.',
     description: 'Error shown when saving the card stack fails',
   },
-  'ai.extensions.flashcard.study.paused.session': {
-    id: 'ai.extensions.flashcard.study.paused.session',
-    defaultMessage: 'Last review: {date}. Ready to practice?',
-    description: 'Message shown when a preloaded session has cards ready for review',
+  'ai.extensions.flashcard.error.save.retry': {
+    id: 'ai.extensions.flashcard.error.save.retry',
+    defaultMessage: 'Retry',
+    description: 'Button to retry saving the card stack after a failure',
   },
-  'ai.extensions.flashcard.study.paused.new': {
-    id: 'ai.extensions.flashcard.study.paused.new',
-    defaultMessage: 'Your cards are ready to review the unit concepts.',
-    description: 'Message shown when a newly generated deck is ready for review',
+  'ai.extensions.flashcard.study.session.description': {
+    id: 'ai.extensions.flashcard.study.session.description',
+    defaultMessage: 'Use your flashcards to review the unit content.',
+    description: 'Message shown when a preloaded session has cards available',
+  },
+  'ai.extensions.flashcard.study.paused.session.justNow': {
+    id: 'ai.extensions.flashcard.study.paused.session.justNow',
+    defaultMessage: 'Last review: just now',
+    description: 'Text shown when the last review was less than a minute ago',
+  },
+  'ai.extensions.flashcard.study.paused.session.lastReview': {
+    id: 'ai.extensions.flashcard.study.paused.session.lastReview',
+    defaultMessage: 'Last review: {time}',
+    description: 'Small text showing when the last card review happened',
   },
   'ai.extensions.flashcard.study.clear.session': {
     id: 'ai.extensions.flashcard.study.clear.session',

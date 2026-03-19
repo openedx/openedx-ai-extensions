@@ -248,7 +248,7 @@ describe('FlashcardStudyResponse', () => {
       await user.click(screen.getByRole('button', { name: /let's practice/i }));
     };
 
-    it('shows the no cards due message when all cards are in the future', async () => {
+    it('shows a caught-up message when all cards are in the future', async () => {
       const user = userEvent.setup();
       const card = makeFutureCard();
       render(
@@ -256,27 +256,17 @@ describe('FlashcardStudyResponse', () => {
       );
       await openModal(user);
 
-      expect(screen.getByText(/no cards are due for review/i)).toBeInTheDocument();
-    });
-
-    it('shows when the next card will be due', async () => {
-      const user = userEvent.setup();
-      const card = makeFutureCard();
-      render(
-        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
-      );
-      await openModal(user);
-
-      expect(screen.getByText(/next card due/i)).toBeInTheDocument();
+      expect(screen.getByText(/you're all caught up/i)).toBeInTheDocument();
+      expect(screen.getByText(/your memory of this unit is fresh/i)).toBeInTheDocument();
     });
   });
 
-  describe('when the user saves progress', () => {
+  describe('auto-save', () => {
     const openModal = async (user: ReturnType<typeof userEvent.setup>) => {
       await user.click(screen.getByRole('button', { name: /let's practice/i }));
     };
 
-    it('saves the card stack to the session', async () => {
+    it('saves automatically when the modal is closed after rating a card', async () => {
       const user = userEvent.setup();
       const card = makeDueCard();
       render(
@@ -284,7 +274,9 @@ describe('FlashcardStudyResponse', () => {
       );
       await openModal(user);
 
-      await user.click(screen.getByRole('button', { name: /save progress/i }));
+      await user.click(screen.getByRole('button', { name: /show answer/i }));
+      await user.click(screen.getByRole('button', { name: /good/i }));
+      await user.click(screen.getByRole('button', { name: /^done$/i }));
 
       await waitFor(() => {
         expect(saveCardStack).toHaveBeenCalledWith({
@@ -296,21 +288,57 @@ describe('FlashcardStudyResponse', () => {
       });
     });
 
-    it('disables the save button while saving', async () => {
+    it('does not save when closing without any rating', async () => {
       const user = userEvent.setup();
-      (saveCardStack as jest.Mock).mockReturnValue(new Promise(() => {}));
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
       await openModal(user);
 
-      await user.click(screen.getByRole('button', { name: /save progress/i }));
+      await user.click(screen.getByRole('button', { name: /^done$/i }));
 
-      expect(screen.getByRole('button', { name: /saving/i })).toBeDisabled();
+      expect(saveCardStack).not.toHaveBeenCalled();
     });
 
-    it('shows an error when saving fails', async () => {
+    it('saves when the tab becomes hidden after rating', async () => {
+      const user = userEvent.setup();
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+      await openModal(user);
+
+      await user.click(screen.getByRole('button', { name: /show answer/i }));
+      await user.click(screen.getByRole('button', { name: /good/i }));
+
+      Object.defineProperty(document, 'hidden', { value: true, writable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      await waitFor(() => {
+        expect(saveCardStack).toHaveBeenCalled();
+      });
+
+      Object.defineProperty(document, 'hidden', { value: false, writable: true });
+    });
+
+    it('does not save on visibilitychange when nothing has changed', async () => {
+      const user = userEvent.setup();
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+      await openModal(user);
+
+      Object.defineProperty(document, 'hidden', { value: true, writable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(saveCardStack).not.toHaveBeenCalled();
+
+      Object.defineProperty(document, 'hidden', { value: false, writable: true });
+    });
+
+    it('shows an error with retry button when auto-save fails on close', async () => {
       const user = userEvent.setup();
       (saveCardStack as jest.Mock).mockRejectedValue(new Error('fail'));
       const card = makeDueCard();
@@ -319,26 +347,38 @@ describe('FlashcardStudyResponse', () => {
       );
       await openModal(user);
 
-      await user.click(screen.getByRole('button', { name: /save progress/i }));
+      await user.click(screen.getByRole('button', { name: /show answer/i }));
+      await user.click(screen.getByRole('button', { name: /good/i }));
+      await user.click(screen.getByRole('button', { name: /^done$/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/failed to save progress/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
       });
     });
 
-    it('re-enables the save button after a failed save', async () => {
+    it('retries saving when the retry button is clicked', async () => {
       const user = userEvent.setup();
-      (saveCardStack as jest.Mock).mockRejectedValue(new Error('fail'));
+      (saveCardStack as jest.Mock).mockRejectedValueOnce(new Error('fail')).mockResolvedValueOnce({});
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
       await openModal(user);
 
-      await user.click(screen.getByRole('button', { name: /save progress/i }));
+      await user.click(screen.getByRole('button', { name: /show answer/i }));
+      await user.click(screen.getByRole('button', { name: /good/i }));
+      await user.click(screen.getByRole('button', { name: /^done$/i }));
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /save progress/i })).toBeEnabled();
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /retry/i }));
+
+      await waitFor(() => {
+        expect(saveCardStack).toHaveBeenCalledTimes(2);
+        expect(screen.queryByText(/failed to save progress/i)).not.toBeInTheDocument();
       });
     });
   });
@@ -359,7 +399,7 @@ describe('FlashcardStudyResponse', () => {
       await user.click(screen.getByRole('button', { name: /^done$/i }));
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(screen.getByText(/cards are ready to review/i)).toBeInTheDocument();
+      expect(screen.getByText(/use your flashcards to review/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /let's practice/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /generate new set/i })).toBeInTheDocument();
     });
@@ -396,7 +436,6 @@ describe('FlashcardStudyResponse', () => {
       });
     });
   });
-
 
   describe('response parsing', () => {
     it('handles response as an array of cards', async () => {

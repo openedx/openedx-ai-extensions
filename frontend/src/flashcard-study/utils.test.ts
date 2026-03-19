@@ -1,6 +1,6 @@
 import {
   calculateNextReview, toRelativeTime, getIntervalChoices, createDefaultSM2,
-} from './spacedRepetition';
+} from './utils';
 
 describe('calculateNextReview', () => {
   beforeEach(() => {

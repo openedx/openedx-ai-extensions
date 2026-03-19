@@ -1,5 +1,5 @@
 import {
-  useState, useCallback, useEffect, useRef, useMemo, useReducer,
+  useState, useCallback, useEffect, useRef, useReducer,
 } from 'react';
 import { Flashcard } from '../types';
 
@@ -19,15 +19,17 @@ interface UseStudySessionOptions {
  * @param options.cards - The full set of flashcards in the current stack.
  * @returns currentCard  - The card currently being studied, or `null` if none are due.
  * @returns dueCards      - All cards whose review time has arrived.
- * @returns nextCard      - Advances to the next due card after rating.
- * @returns reviewedCount - How many cards in the stack have been rated at least once (derived from lastReviewedAt).
- * @returns nextDueIn     - Milliseconds until the next card becomes due, or `null` if the stack is empty.
+ * @returns nextCard      - Advances to the next due card after rating and increments reviewedCount.
+ * @returns reviewedCount - How many cards were reviewed in the current cycle.
+ *                          Resets when new cards become due after being caught up.
  * @returns resetSession  - Resets the index and reviewed count to start over.
  */
 export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [reviewedCount, setReviewedCount] = useState(0);
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wasCaughtUpRef = useRef(false);
 
   // Computed on every render — recomputed when forceUpdate triggers a re-render
   const dueCards = cards.filter((c) => c.nextReviewTime <= Date.now());
@@ -35,16 +37,19 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
   const safeIndex = dueCards.length > 0 ? currentIndex % dueCards.length : 0;
   const currentCard = dueCards[safeIndex] ?? null;
 
-  const nextDueIn = useMemo(() => {
-    if (dueCards.length > 0) { return 0; }
-    const futureTimes = cards
-      .map((c) => c.nextReviewTime)
-      .filter((t) => t > Date.now());
-    if (futureTimes.length === 0) { return null; }
-    return Math.min(...futureTimes) - Date.now();
-  }, [cards, dueCards.length]);
+  // Reset reviewed count when new cards become due after being caught up
+  const isCaughtUp = dueCards.length === 0 && cards.length > 0;
+  useEffect(() => {
+    if (isCaughtUp) {
+      wasCaughtUpRef.current = true;
+    } else if (wasCaughtUpRef.current) {
+      wasCaughtUpRef.current = false;
+      setReviewedCount(0);
+    }
+  }, [isCaughtUp]);
 
   const nextCard = useCallback(() => {
+    setReviewedCount((prev) => prev + 1);
     forceUpdate();
     setCurrentIndex((prev) => {
       const next = prev + 1;
@@ -54,6 +59,7 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
 
   const resetSession = useCallback(() => {
     setCurrentIndex(0);
+    setReviewedCount(0);
     forceUpdate();
   }, []);
 
@@ -72,8 +78,7 @@ export const useStudySession = ({ cards }: UseStudySessionOptions) => {
     currentCard,
     dueCards,
     nextCard,
-    reviewedCount: cards.filter((c) => c.lastReviewedAt !== null).length,
-    nextDueIn,
+    reviewedCount,
     resetSession,
   };
 };

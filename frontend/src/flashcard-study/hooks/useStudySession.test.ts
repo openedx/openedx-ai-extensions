@@ -78,29 +78,7 @@ describe('useStudySession', () => {
     expect(result.current.currentCard?.id).toBe('1');
   });
 
-  it('returns nextDueIn as 0 when there are due cards', () => {
-    const cards = [makeCard('1', 500_000)];
-
-    const { result } = renderHook(() => useStudySession({ cards }));
-
-    expect(result.current.nextDueIn).toBe(0);
-  });
-
-  it('returns nextDueIn as ms until next card when none are due', () => {
-    const cards = [makeCard('1', 1_060_000)]; // 60s from now
-
-    const { result } = renderHook(() => useStudySession({ cards }));
-
-    expect(result.current.nextDueIn).toBe(60_000);
-  });
-
-  it('returns nextDueIn as null when the stack is empty', () => {
-    const { result } = renderHook(() => useStudySession({ cards: [] }));
-
-    expect(result.current.nextDueIn).toBeNull();
-  });
-
-  it('resetSession resets to the first card', () => {
+  it('resetSession resets to the first card and reviewed count', () => {
     const cards = [makeCard('1', 500_000), makeCard('2', 600_000)];
 
     const { result } = renderHook(() => useStudySession({ cards }));
@@ -108,28 +86,48 @@ describe('useStudySession', () => {
     act(() => { result.current.nextCard(); });
 
     expect(result.current.currentCard?.id).toBe('2');
+    expect(result.current.reviewedCount).toBe(1);
 
     act(() => { result.current.resetSession(); });
 
     expect(result.current.currentCard?.id).toBe('1');
+    expect(result.current.reviewedCount).toBe(0);
   });
 
-  it('derives reviewedCount from cards with lastReviewedAt set', () => {
-    const cards = [
-      { ...makeCard('1', 500_000), lastReviewedAt: 999_000 },
-      makeCard('2', 600_000),
-    ];
-
-    const { result } = renderHook(() => useStudySession({ cards }));
-
-    expect(result.current.reviewedCount).toBe(1);
-  });
-
-  it('returns reviewedCount 0 when no cards have been rated yet', () => {
+  it('increments reviewedCount on each nextCard call', () => {
     const cards = [makeCard('1', 500_000), makeCard('2', 600_000)];
 
     const { result } = renderHook(() => useStudySession({ cards }));
 
+    expect(result.current.reviewedCount).toBe(0);
+
+    act(() => { result.current.nextCard(); });
+    expect(result.current.reviewedCount).toBe(1);
+
+    act(() => { result.current.nextCard(); });
+    expect(result.current.reviewedCount).toBe(2);
+  });
+
+  it('resets reviewedCount when new cards become due after being caught up', () => {
+    const cards = [makeCard('1', 500_000)];
+
+    const { result, rerender } = renderHook(
+      ({ c }) => useStudySession({ cards: c }),
+      { initialProps: { c: cards } },
+    );
+
+    // Review the card
+    act(() => { result.current.nextCard(); });
+    expect(result.current.reviewedCount).toBe(1);
+
+    // All cards now in the future — caught up
+    const caughtUpCards = [{ ...cards[0], nextReviewTime: 2_000_000 }];
+    rerender({ c: caughtUpCards });
+    expect(result.current.reviewedCount).toBe(1);
+
+    // A card becomes due again — new cycle
+    const newDueCards = [{ ...cards[0], nextReviewTime: 500_000 }];
+    rerender({ c: newDueCards });
     expect(result.current.reviewedCount).toBe(0);
   });
 
