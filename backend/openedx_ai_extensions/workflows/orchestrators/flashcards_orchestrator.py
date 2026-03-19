@@ -14,6 +14,7 @@ from .session_based_orchestrator import SessionBasedOrchestrator
 class FlashCardsOrchestrator(SessionBasedOrchestrator):
     """
     Orchestrator for flashcards generation using LLM.
+
     Does a single call to an LLM and gives a response.
     """
 
@@ -110,8 +111,7 @@ class FlashCardsOrchestrator(SessionBasedOrchestrator):
         Saves the generated flashcards to the database or a file.
         This is a placeholder implementation and should be replaced with actual saving logic.
         """
-        # Placeholder: Implement actual saving logic here (e.g., save to DB or file)
-        self.session.metadata['cards'] = input_data.get('card_stack')
+        self.session.metadata['cards'] = input_data.get('cards') or input_data.get('card_stack')
         self.session.save(update_fields=['metadata'])
         return {
             'status': 'flashcards_saved',

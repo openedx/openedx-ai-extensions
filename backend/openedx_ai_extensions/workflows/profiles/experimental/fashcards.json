@@ -1,7 +1,7 @@
 /*
-Use an AI workflow to create multiple answer questions in a library
-starting from the current course content unit
-Works only in studio UI and over the CMS service_variant.
+Use an AI workflow to generate and study flashcards
+starting from the current course content unit.
+Works only in Studio UI and over the CMS service_variant.
 */
 {
   "orchestrator_class": "openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.FlashCardsOrchestrator",
