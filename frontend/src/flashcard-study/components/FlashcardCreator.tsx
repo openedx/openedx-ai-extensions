@@ -125,9 +125,9 @@ const FlashcardCreator = ({
     <div className="flashcard-creator my-2 py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
       {step === 'loading' && (
         <div className="text-center py-3 mx-auto">
-          <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])} />
+          <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.creator.loading'])} />
           <span className="small">
-            {intl.formatMessage(messages['ai.extensions.flashcard.creator.loading.session'])}
+            {intl.formatMessage(messages['ai.extensions.flashcard.creator.loading'])}
           </span>
         </div>
       )}

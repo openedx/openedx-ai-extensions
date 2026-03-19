@@ -48,7 +48,7 @@ describe('FlashcardCreator', () => {
       render(<FlashcardCreator {...defaultProps} preloadPreviousSession />);
 
       expect(screen.getByRole('status')).toBeInTheDocument();
-      expect(screen.getByText('Loading session', { selector: '.small' })).toBeInTheDocument();
+      expect(screen.getByText('Loading', { selector: '.small' })).toBeInTheDocument();
     });
 
     it('hands off to the response component when a session with cards exists', async () => {

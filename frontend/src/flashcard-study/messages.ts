@@ -96,10 +96,10 @@ const messages = defineMessages({
     defaultMessage: 'Generating',
     description: 'Submit button label while generation is in progress',
   },
-  'ai.extensions.flashcard.creator.loading.session': {
-    id: 'ai.extensions.flashcard.creator.loading.session',
-    defaultMessage: 'Loading session',
-    description: 'Spinner text while loading an existing card session',
+  'ai.extensions.flashcard.creator.loading': {
+    id: 'ai.extensions.flashcard.creator.loading',
+    defaultMessage: 'Loading',
+    description: 'Generic spinner text while loading',
   },
   'ai.extensions.flashcard.creator.description': {
     id: 'ai.extensions.flashcard.creator.description',
