@@ -3,7 +3,8 @@ import {
 } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Alert, Button, ModalDialog, Spinner,
+  Alert, Badge, Button, ModalDialog, Row, Spinner,
+  Stack,
 } from '@openedx/paragon';
 import Flashcard from './Flashcard';
 import StudyControls from './StudyControls';
@@ -38,7 +39,6 @@ const FlashcardStudyResponse = ({
   customMessage,
   contextData = {},
 }: FlashcardStudyResponseProps) => {
-  console.debug(response)
   const intl = useIntl();
   const [cards, setCards] = useState<FlashcardType[]>(() => parseCards(response));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -51,9 +51,6 @@ const FlashcardStudyResponse = ({
     const parsed = parseCards(response);
     if (parsed.length > 0) {
       setCards(parsed);
-      if (!response?.fromSession) {
-        setIsModalOpen(true);
-      }
     }
   }, [response]);
 
@@ -155,20 +152,32 @@ const FlashcardStudyResponse = ({
         </Alert>
       )}
 
-      {hasCards && !isModalOpen && (
-        <Alert
-          variant="info"
-          actions={[
-            <Button onClick={handleReopen}>
-              {intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}
-            </Button>,
-            <Button variant="outline-primary" onClick={handleClearSession}>
+      {hasCards && (
+        <div className="d-flex align items-center justify-content-between my-3 py-3 small border-bottom">
+          
+          {response?.fromSession
+            ? intl.formatMessage(messages['ai.extensions.flashcard.study.paused.session'], {
+              date: intl.formatDate(
+                Math.max(...cards.map((c) => c.lastReviewedAt ?? 0)) || Date.now(),
+                { dateStyle: 'medium' },
+              ),
+            })
+            : intl.formatMessage(messages['ai.extensions.flashcard.study.paused.new'])}
+            <Stack gap={2} direction="horizontal">
+           <Button size="sm" onClick={handleReopen}>
+              <span className="mr-2">{intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}</span>
+              {dueCards.length > 0 && (
+                <>
+                  <Badge variant="primary" className="border py-1">{dueCards.length}</Badge>
+                  <span className="sr-only">{intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button.due'])}</span>
+                </>
+              )}
+            </Button>
+            <Button size="sm" variant="outline-primary" onClick={handleClearSession}>
               {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
-            </Button>,
-          ]}
-        >
-          {intl.formatMessage(messages['ai.extensions.flashcard.study.paused'])}
-        </Alert>
+            </Button>
+            </Stack>
+        </div>
       )}
 
       <ModalDialog

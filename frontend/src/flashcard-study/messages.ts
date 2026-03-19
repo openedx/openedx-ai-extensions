@@ -113,8 +113,13 @@ const messages = defineMessages({
   },
   'ai.extensions.flashcard.creator.display.button': {
     id: 'ai.extensions.flashcard.creator.display.button',
-    defaultMessage: 'Load Session',
-    description: 'Button to load and display the existing card stack from session',
+    defaultMessage: "Let's Practice",
+    description: 'Button to open the modal and study the existing card deck',
+  },
+  'ai.extensions.flashcard.creator.display.button.due': {
+    id: 'ai.extensions.flashcard.creator.display.button.due',
+    defaultMessage: 'cards due',
+    description: 'Screen reader text for the due cards badge on the practice button',
   },
   'ai.extensions.flashcard.creator.start.over': {
     id: 'ai.extensions.flashcard.creator.start.over',
@@ -176,15 +181,20 @@ const messages = defineMessages({
     defaultMessage: 'Failed to save progress. Please try again.',
     description: 'Error shown when saving the card stack fails',
   },
-  'ai.extensions.flashcard.study.paused': {
-    id: 'ai.extensions.flashcard.study.paused',
-    defaultMessage: 'Your study session is paused.',
-    description: 'Message shown when the study modal is closed but cards are still loaded',
+  'ai.extensions.flashcard.study.paused.session': {
+    id: 'ai.extensions.flashcard.study.paused.session',
+    defaultMessage: 'Last review: {date}. Ready to practice?',
+    description: 'Message shown when a preloaded session has cards ready for review',
+  },
+  'ai.extensions.flashcard.study.paused.new': {
+    id: 'ai.extensions.flashcard.study.paused.new',
+    defaultMessage: 'Your cards are ready to review the unit concepts.',
+    description: 'Message shown when a newly generated deck is ready for review',
   },
   'ai.extensions.flashcard.study.clear.session': {
     id: 'ai.extensions.flashcard.study.clear.session',
-    defaultMessage: 'Clear Session',
-    description: 'Button to clear the backend AI session and reset',
+    defaultMessage: 'Generate New Set',
+    description: 'Button to clear the current session and generate a new card deck',
   },
 });
 

@@ -77,8 +77,8 @@ describe('FlashcardStudyResponse', () => {
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
       expect(screen.getByText(/no flashcards found/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /load session/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /clear session/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /let's practice/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /generate new set/i })).toBeInTheDocument();
     });
 
     it('calls onClear when display cards is clicked', async () => {
@@ -86,7 +86,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
-      await user.click(screen.getByRole('button', { name: /load session/i }));
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
       expect(defaultProps.onClear).toHaveBeenCalled();
     });
 
@@ -95,7 +95,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [] }} />,
       );
-      await user.click(screen.getByRole('button', { name: /clear session/i }));
+      await user.click(screen.getByRole('button', { name: /generate new set/i }));
 
       await waitFor(() => {
         expect(clearSession).toHaveBeenCalledWith({ context: defaultProps.contextData });
@@ -104,45 +104,82 @@ describe('FlashcardStudyResponse', () => {
     });
   });
 
-  describe('when the modal opens with cards', () => {
-    it('shows the modal with the title', () => {
+  describe('when cards are available but modal is closed', () => {
+    it('does not open the modal automatically', () => {
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('shows the practice prompt with action buttons', () => {
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+
+      expect(screen.getByRole('button', { name: /let's practice/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /generate new set/i })).toBeInTheDocument();
+    });
+
+    it('opens the modal when the user clicks let\'s practice', async () => {
+      const user = userEvent.setup();
+      const card = makeDueCard();
+      render(
+        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByText('AI Flashcard Study')).toBeInTheDocument();
     });
+  });
 
-    it('shows the question side of the card with progress', () => {
+  describe('when the modal is open with cards', () => {
+    const openModal = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
+    };
+
+    it('shows the question side of the card with progress', async () => {
+      const user = userEvent.setup();
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       expect(screen.getByText('What is React?')).toBeInTheDocument();
       expect(screen.getByText(/card 1 of 1/i)).toBeInTheDocument();
       expect(screen.getByText(/0 reviewed/i)).toBeInTheDocument();
     });
 
-    it('shows a Done button in the footer', () => {
+    it('shows a Done button in the footer', async () => {
+      const user = userEvent.setup();
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       expect(screen.getByRole('button', { name: /done/i })).toBeInTheDocument();
     });
   });
 
   describe('when the user studies a due card', () => {
+    const openModal = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
+    };
+
     it('shows the answer after clicking Show Answer', async () => {
       const user = userEvent.setup();
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /show answer/i }));
 
@@ -155,6 +192,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       // Controls are in the DOM but invisible before flipping
       expect(screen.getByRole('button', { name: /again/i }).closest('.invisible')).toBeInTheDocument();
@@ -176,6 +214,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /show answer/i }));
       await user.click(screen.getByRole('button', { name: /again/i }));
@@ -193,6 +232,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /show answer/i }));
       await user.click(screen.getByRole('button', { name: /again/i }));
@@ -204,32 +244,45 @@ describe('FlashcardStudyResponse', () => {
   });
 
   describe('when no cards are due', () => {
-    it('shows the no cards due message when all cards are in the future', () => {
+    const openModal = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
+    };
+
+    it('shows the no cards due message when all cards are in the future', async () => {
+      const user = userEvent.setup();
       const card = makeFutureCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       expect(screen.getByText(/no cards are due for review/i)).toBeInTheDocument();
     });
 
-    it('shows when the next card will be due', () => {
+    it('shows when the next card will be due', async () => {
+      const user = userEvent.setup();
       const card = makeFutureCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       expect(screen.getByText(/next card due/i)).toBeInTheDocument();
     });
   });
 
   describe('when the user saves progress', () => {
+    const openModal = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
+    };
+
     it('saves the card stack to the session', async () => {
       const user = userEvent.setup();
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /save progress/i }));
 
@@ -250,6 +303,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /save progress/i }));
 
@@ -263,6 +317,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /save progress/i }));
 
@@ -278,6 +333,7 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /save progress/i }));
 
@@ -288,19 +344,24 @@ describe('FlashcardStudyResponse', () => {
   });
 
   describe('when the user closes the modal', () => {
+    const openModal = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
+    };
+
     it('hides the modal and shows paused state with actions', async () => {
       const user = userEvent.setup();
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /^done$/i }));
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(screen.getByText(/session is paused/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /load session/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /clear session/i })).toBeInTheDocument();
+      expect(screen.getByText(/cards are ready to review/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /let's practice/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /generate new set/i })).toBeInTheDocument();
     });
 
     it('reopens the modal when display cards is clicked from paused state', async () => {
@@ -309,9 +370,10 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /^done$/i }));
-      await user.click(screen.getByRole('button', { name: /load session/i }));
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByText('What is React?')).toBeInTheDocument();
@@ -323,9 +385,10 @@ describe('FlashcardStudyResponse', () => {
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+      await openModal(user);
 
       await user.click(screen.getByRole('button', { name: /^done$/i }));
-      await user.click(screen.getByRole('button', { name: /clear session/i }));
+      await user.click(screen.getByRole('button', { name: /generate new set/i }));
 
       await waitFor(() => {
         expect(clearSession).toHaveBeenCalledWith({ context: defaultProps.contextData });
@@ -334,46 +397,28 @@ describe('FlashcardStudyResponse', () => {
     });
   });
 
-  describe('when the response comes from a preloaded session', () => {
-    it('does not open the modal automatically', () => {
-      const card = makeDueCard();
-      render(
-        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card], fromSession: true }} />,
-      );
-
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(screen.getByText(/session is paused/i)).toBeInTheDocument();
-    });
-
-    it('opens the modal when the user clicks load session', async () => {
-      const user = userEvent.setup();
-      const card = makeDueCard();
-      render(
-        <FlashcardStudyResponse {...defaultProps} response={{ cards: [card], fromSession: true }} />,
-      );
-
-      await user.click(screen.getByRole('button', { name: /load session/i }));
-
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText('What is React?')).toBeInTheDocument();
-    });
-  });
 
   describe('response parsing', () => {
-    it('handles response as an array of cards', () => {
+    it('handles response as an array of cards', async () => {
+      const user = userEvent.setup();
       const cards = [makeDueCard()];
       render(
         <FlashcardStudyResponse {...defaultProps} response={cards} />,
       );
 
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
+
       expect(screen.getByText('What is React?')).toBeInTheDocument();
     });
 
-    it('handles response as an object with cards property', () => {
+    it('handles response as an object with cards property', async () => {
+      const user = userEvent.setup();
       const card = makeDueCard();
       render(
         <FlashcardStudyResponse {...defaultProps} response={{ cards: [card] }} />,
       );
+
+      await user.click(screen.getByRole('button', { name: /let's practice/i }));
 
       expect(screen.getByText('What is React?')).toBeInTheDocument();
     });
