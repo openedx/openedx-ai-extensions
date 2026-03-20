@@ -1,0 +1,37 @@
+/*
+Use an AI workflow to generate and study flashcards
+starting from the current course content unit.
+Works only in Studio UI and over the CMS service_variant.
+*/
+{
+  "orchestrator_class": "openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.FlashCardsOrchestrator",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_location_content"
+    },
+    "LLMProcessor": {
+      "function": "generate_flashcards",
+      "provider": "openai",
+      "cache": true
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "FlashcardCreator",
+        "config": {
+          "buttonText": "Start",
+          "customMessage": "",
+          "preloadPreviousSession": true
+        }
+      },
+      "response": {
+        "component": "FlashcardStudyResponse",
+        "config": {
+          "customMessage": "Assistance completed successfully",
+        }
+      }
+    }
+  },
+  "schema_version": "1.0",
+}
