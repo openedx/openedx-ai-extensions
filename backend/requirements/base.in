@@ -15,3 +15,4 @@ beautifulsoup4
 jsonschema
 jsonmerge
 json5
+django_celery_beat

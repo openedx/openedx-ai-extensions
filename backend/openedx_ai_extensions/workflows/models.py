@@ -308,30 +308,22 @@ class AIWorkflowScope(models.Model):
 
         Returns: Dictionary with execution results
         """
+        # Load the orchestrator for this workflow
+        orchestrator = BaseOrchestrator.get_orchestrator(
+            workflow=self,
+            user=user,
+            context=running_context,
+        )
 
-        try:
-            # Load the orchestrator for this workflow
-            orchestrator = BaseOrchestrator.get_orchestrator(
-                workflow=self,
-                user=user,
-                context=running_context,
+        self.action = action
+
+        if not hasattr(orchestrator, action):
+            raise NotImplementedError(
+                f"Orchestrator '{self.profile.orchestrator_class}' does not implement action '{action}'"
             )
+        result = getattr(orchestrator, action)(user_input)
 
-            self.action = action
-
-            if not hasattr(orchestrator, action):
-                raise NotImplementedError(
-                    f"Orchestrator '{self.profile.orchestrator_class}' does not implement action '{action}'"
-                )
-            result = getattr(orchestrator, action)(user_input)
-
-            return result
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return {
-                "error": f"Workflow execution failed: {str(e)}",
-                "status": "error",
-            }
+        return result
 
     def clean(self):
         """Validate the scope before saving."""

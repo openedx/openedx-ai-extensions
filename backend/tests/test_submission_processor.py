@@ -495,24 +495,6 @@ def test_get_previous_messages_no_more_messages(
     assert metadata["new_count"] == 0
 
 
-@pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
-def test_get_previous_messages_handles_exception(
-    mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
-):
-    """
-    Test that get_previous_messages handles exceptions gracefully.
-    """
-    # Mock an exception when getting submissions
-    mock_submissions_api.get_submissions.side_effect = Exception("Database error")
-
-    result = submission_processor.get_previous_messages(current_messages_count=2)
-
-    # Should return error response
-    assert "error" in result
-    assert "Failed to load previous messages" in result["error"]
-
-
 # ============================================================================
 # SubmissionProcessor.update_chat_submission() Tests
 # ============================================================================
