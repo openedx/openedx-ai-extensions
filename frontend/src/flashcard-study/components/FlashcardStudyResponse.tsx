@@ -12,6 +12,7 @@ import { useStudySession } from '../hooks/useStudySession';
 import { calculateNextReview } from '../utils';
 import { saveCardStack, clearSession } from '../data/workflowActions';
 import { Flashcard as FlashcardType, CardStack } from '../types';
+import { prepareContextData } from '../../services';
 import LastReviewLabel from './LastReviewLabel';
 import messages from '../messages';
 
@@ -41,6 +42,7 @@ const FlashcardStudyResponse = ({
   contextData = {},
 }: FlashcardStudyResponseProps) => {
   const intl = useIntl();
+  const preparedContext = useMemo(() => prepareContextData(contextData), [contextData]);
   const [cards, setCards] = useState<FlashcardType[]>(() => parseCards(response));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -74,11 +76,11 @@ const FlashcardStudyResponse = ({
         createdAt: Date.now(),
         lastStudiedAt: Date.now(),
       };
-      await saveCardStack({ context: contextData, cardStack });
+      await saveCardStack({ context: preparedContext, cardStack });
     } catch {
       setSaveError(intl.formatMessage(messages['ai.extensions.flashcard.error.save']));
     }
-  }, [contextData, intl]);
+  }, [preparedContext, intl]);
 
   // Auto-save when the tab becomes hidden (covers tab switches, screen locks, alt-tabs)
   useEffect(() => {
@@ -130,7 +132,7 @@ const FlashcardStudyResponse = ({
 
   const handleClearSession = async () => {
     try {
-      await clearSession({ context: contextData });
+      await clearSession({ context: preparedContext });
     } catch {
       // Silently fail — still reset the UI
     }
