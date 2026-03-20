@@ -677,6 +677,9 @@ class LLMProcessor(LitellmProcessor):
             logger.exception(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
+        if "error" in result:
+            return result
+
         tokens_used = result.get("tokens_used", 0)
         response = json.loads(result['response'])
 

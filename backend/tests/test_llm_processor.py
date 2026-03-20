@@ -2,9 +2,10 @@
 Tests for the LLMProcessor module.
 """
 # pylint: disable=redefined-outer-name,protected-access
+import json
 import types
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, mock_open, patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -1417,3 +1418,206 @@ def test_yield_threaded_stream_recursive_tool_call(
         assert history[1]["name"] == "roll_dice"
 
         mock_responses.assert_called_once()
+
+
+# ============================================================================
+# generate_flashcards Tests
+# ============================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_generate_flashcards_success(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that generate_flashcards loads the prompt template, replaces
+    placeholders, calls LLM, and returns parsed JSON response.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "openai/gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "generate_flashcards",
+            "model": "gpt-3.5-turbo",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    flashcards_json = json.dumps({
+        "cards": [
+            {"id": "card-1", "question": "What is Python?", "answer": "A programming language."}
+        ]
+    })
+    mock_resp_obj = MockChunk(flashcards_json, is_stream=False)
+    mock_completion.return_value = mock_resp_obj
+
+    prompt_template = "Generate {{NUM_CARDS}} flashcards about {{TOPIC}}."
+    with patch("builtins.open", mock_open(read_data=prompt_template)):
+        result = processor.process(
+            input_data={"num_cards": "5", "topic": "Python"},
+        )
+
+    assert result["status"] == "success"
+    assert isinstance(result["response"], dict)
+    assert len(result["response"]["cards"]) == 1
+    assert result["response"]["cards"][0]["question"] == "What is Python?"
+
+    # Verify placeholder replacement was applied to the prompt
+    call_kwargs = mock_completion.call_args[1]
+    messages = call_kwargs["messages"]
+    system_msg = messages[0]["content"]
+    assert "5" in system_msg
+    assert "Python" in system_msg
+    assert "{{NUM_CARDS}}" not in system_msg
+    assert "{{TOPIC}}" not in system_msg
+
+
+@pytest.mark.django_db
+def test_generate_flashcards_prompt_file_error(
+    user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that generate_flashcards returns an error when the prompt file cannot be loaded.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "openai/gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "generate_flashcards",
+            "model": "gpt-3.5-turbo",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    with patch("builtins.open", side_effect=FileNotFoundError("prompt file not found")):
+        result = processor.process(
+            input_data={"num_cards": "5"},
+        )
+
+    assert "error" in result
+    assert result["error"] == "Failed to load prompt template."
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_generate_flashcards_llm_api_error(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that generate_flashcards returns an error when the LLM API call fails.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "openai/gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "generate_flashcards",
+            "model": "gpt-3.5-turbo",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    mock_completion.side_effect = Exception("API connection refused")
+
+    prompt_template = "Generate {{NUM_CARDS}} flashcards."
+    with patch("builtins.open", mock_open(read_data=prompt_template)):
+        result = processor.process(
+            input_data={"num_cards": "3"},
+        )
+
+    assert "error" in result
+    assert "API connection refused" in result["error"]
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_generate_flashcards_clears_input_data(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that generate_flashcards clears self.input_data before calling the LLM
+    (so it's not passed as a user message by _call_completion_wrapper).
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "openai/gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "generate_flashcards",
+            "model": "gpt-3.5-turbo",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    flashcards_json = json.dumps({"cards": []})
+    mock_resp_obj = MockChunk(flashcards_json, is_stream=False)
+    mock_completion.return_value = mock_resp_obj
+
+    prompt_template = "Generate {{NUM_CARDS}} flashcards."
+    with patch("builtins.open", mock_open(read_data=prompt_template)):
+        processor.process(input_data={"num_cards": "3"})
+
+    # input_data should have been cleared before calling _call_completion_wrapper
+    assert processor.input_data is None
+
+    # Verify no user message was added (only system message + possibly context)
+    call_kwargs = mock_completion.call_args[1]
+    messages = call_kwargs["messages"]
+    user_messages = [m for m in messages if m.get("role") == "user"]
+    assert len(user_messages) == 0
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_generate_flashcards_returns_tokens_and_model(
+    mock_completion, user_session, settings  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that generate_flashcards returns tokens_used and model_used in the result.
+    """
+    settings.AI_EXTENSIONS = {
+        "default": {
+            "MODEL": "openai/gpt-3.5-turbo",
+            "API_KEY": "test-key"
+        }
+    }
+
+    config = {
+        "LLMProcessor": {
+            "function": "generate_flashcards",
+            "model": "gpt-4o",
+        }
+    }
+    processor = LLMProcessor(config=config, user_session=user_session)
+
+    flashcards_json = json.dumps({"cards": [{"id": "card-1", "question": "Q?", "answer": "A"}]})
+    mock_resp = MockChunk(flashcards_json, is_stream=False)
+    mock_resp.usage = Mock(total_tokens=150)
+    mock_completion.return_value = mock_resp
+
+    prompt_template = "Generate flashcards."
+    with patch("builtins.open", mock_open(read_data=prompt_template)):
+        result = processor.process(input_data={})
+
+    assert result["tokens_used"] == 150
+    # model_used comes from extra_params which resolves from AI_EXTENSIONS settings
+    assert result["model_used"] == "openai/gpt-3.5-turbo"
