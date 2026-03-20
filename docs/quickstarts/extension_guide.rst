@@ -21,7 +21,7 @@ Prerequisites
   - `Django plugin apps in edx-django-utils <https://github.com/openedx/edx-django-utils/blob/master/edx_django_utils/plugins/docs/how_tos/how_to_create_a_plugin_app.rst>`_
   - `Tutor plugin hooks and filters <https://docs.tutor.edly.io/plugins/index.html>`_
   - `Frontend plugin slots in frontend-plugin-framework <https://github.com/openedx/frontend-plugin-framework>`_
-* A local Tutor environment properly configured.
+* A local `Tutor environment <https://docs.openedx.org/en/latest/developers/quickstarts/tutor_quickstart_dev.html#tutor-qs-dev>`_ properly configured.
 
 Project Structure
 *******************
