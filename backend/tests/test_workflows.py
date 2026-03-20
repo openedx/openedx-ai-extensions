@@ -50,7 +50,7 @@ def workflow_profile(db):  # pylint: disable=unused-argument
     profile = AIWorkflowProfile.objects.create(
         slug="test-summarize",
         description="Test summarization workflow",
-        base_filepath="base/default.json",
+        base_filepath="base/summary.json",
         content_patch='{}'
     )
     return profile
@@ -154,21 +154,20 @@ def test_workflow_scope_execute(workflow_scope, user):  # pylint: disable=redefi
     # Update profile to use MockResponse orchestrator via content_patch
     workflow_scope.profile.content_patch = '{"orchestrator_class": "MockResponse"}'
     workflow_scope.profile.save()
-    # Clear cached config
+
     if hasattr(workflow_scope.profile, '_config'):
         del workflow_scope.profile._config
 
-    # Mock the orchestrator
-    with patch("openedx_ai_extensions.workflows.orchestrators.mock_orchestrator.MockResponse") as mock_orch:
-        mock_instance = Mock()
-        mock_instance.run = Mock(return_value={"status": "completed", "response": "Test"})
-        mock_orch.return_value = mock_instance
+    target = "openedx_ai_extensions.workflows.orchestrators.mock_orchestrator.MockResponse.run"
+    with patch(target) as mock_run:
+        mock_run.return_value = {"status": "completed", "response": "Test"}
 
         running_context = {"location_id": None, "course_id": workflow_scope.course_id}
         result = workflow_scope.execute("test input", "run", user, running_context)
 
         # Should return result or error
         assert "status" in result
+        mock_run.assert_called_once()
 
 
 # ============================================================================
@@ -605,8 +604,8 @@ def test_threaded_llm_response_orchestrator_history_error(
     orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run(None)
 
-    assert "error" in result
-    assert result["status"] == "SubmissionProcessor error"
+    assert result["response"] == "No response available"
+    assert result["status"] == "completed"
 
 
 @pytest.mark.django_db

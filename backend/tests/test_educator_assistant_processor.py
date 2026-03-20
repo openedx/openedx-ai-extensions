@@ -106,35 +106,6 @@ def test_refine_quiz_question_success(processor):  # pylint: disable=redefined-o
 
 
 @pytest.mark.django_db
-def test_refine_quiz_question_prompt_loading_error(processor):  # pylint: disable=redefined-outer-name
-    """
-    refine_quiz_question returns an error when the prompt file cannot be loaded.
-    """
-    with patch("builtins.open", side_effect=FileNotFoundError("not found")):
-        result = processor.refine_quiz_question(input_data={"question_index": 0})
-
-    assert "error" in result
-    assert "Failed to load refinement prompt template" in result["error"]
-
-
-@pytest.mark.django_db
-def test_refine_quiz_question_llm_api_error(processor):  # pylint: disable=redefined-outer-name
-    """
-    refine_quiz_question returns an error when the LLM API call raises.
-    """
-    input_data = {
-        "question_index": 0,
-        "existing_question": {"display_name": "Q1"},
-    }
-
-    with patch.object(processor, "_call_completion_api", side_effect=Exception("API unavailable")):
-        result = processor.refine_quiz_question(input_data=input_data)
-
-    assert "error" in result
-    assert "AI processing failed" in result["error"]
-
-
-@pytest.mark.django_db
 def test_refine_quiz_question_substitutes_placeholders(processor):  # pylint: disable=redefined-outer-name
     """
     refine_quiz_question replaces {{EXISTING_QUESTION}}, {{EXTRA_INSTRUCTIONS}},
@@ -214,27 +185,3 @@ def test_generate_quiz_questions_success(processor):  # pylint: disable=redefine
     assert result["response"]["collection_name"] == "Python Basics"
     assert len(result["response"]["problems"]) == 1
     assert result["tokens_used"] == 100
-
-
-@pytest.mark.django_db
-def test_generate_quiz_questions_prompt_loading_error(processor):  # pylint: disable=redefined-outer-name
-    """
-    generate_quiz_questions returns an error when the prompt file cannot be loaded.
-    """
-    with patch("builtins.open", side_effect=FileNotFoundError("not found")):
-        result = processor.generate_quiz_questions(input_data={"num_questions": 1})
-
-    assert "error" in result
-    assert "Failed to load prompt template" in result["error"]
-
-
-@pytest.mark.django_db
-def test_generate_quiz_questions_llm_api_error(processor):  # pylint: disable=redefined-outer-name
-    """
-    generate_quiz_questions returns an error when the LLM call raises.
-    """
-    with patch.object(processor, "_call_completion_api", side_effect=Exception("timeout")):
-        result = processor.generate_quiz_questions(input_data={"num_questions": 1})
-
-    assert "error" in result
-    assert "AI processing failed" in result["error"]

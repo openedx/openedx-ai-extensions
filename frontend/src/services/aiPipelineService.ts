@@ -81,7 +81,8 @@ export const callWorkflowService = async ({
       responseType: 'stream',
       adapter: 'fetch',
       signal: controller.signal as AbortSignal,
-    } as RequestInit);
+      validateStatus: () => true,
+    } as any);
 
     const contentType = (response.headers && (response.headers['content-type'] || response.headers['Content-Type'])) || '';
     const isJson = String(contentType).toLowerCase().includes('application/json');
@@ -113,8 +114,40 @@ export const callWorkflowService = async ({
       if (done) { streamingComplete = true; break; }
       const chunkText = decoder.decode(value, { stream: true });
       if (chunkText) {
+        const previousAccumulatedText = fullAccumulatedText;
         fullAccumulatedText += chunkText;
-        if (!isJson && onStreamChunk && typeof onStreamChunk === 'function') {
+
+        // Check for mid-stream error marker
+        const markerStart = fullAccumulatedText.indexOf('||{"error_in_stream":');
+        if (markerStart !== -1) {
+          // Push only the safe part (before the marker) to the queue
+          const markerStartInChunk = markerStart - previousAccumulatedText.length;
+          if (markerStartInChunk > 0) {
+            const safeChunk = chunkText.substring(0, markerStartInChunk);
+            if (!isJson && onStreamChunk && typeof onStreamChunk === 'function') {
+              chunkQueue.push(safeChunk);
+            }
+          }
+
+          const markerEnd = fullAccumulatedText.indexOf('||', markerStart + 2);
+          if (markerEnd !== -1) {
+            const markerJson = fullAccumulatedText.substring(markerStart + 2, markerEnd);
+            try {
+              const errorObj = JSON.parse(markerJson);
+              const error = new Error(errorObj.message || 'Streaming error');
+              (error as any).code = errorObj.code || 'streaming_failed';
+              (error as any).isStreamError = true;
+              // Clear queue and stop further chunk processing
+              chunkQueue.length = 0;
+              streamingComplete = true;
+              throw error;
+            } catch (e: any) {
+              if (e.isStreamError) { throw e; }
+              // JSON parse failed or other error
+            }
+          }
+          // Marker found but not complete - don't push the rest of this chunk
+        } else if (!isJson && onStreamChunk && typeof onStreamChunk === 'function') {
           chunkQueue.push(chunkText);
           if (!isProcessingQueue) {
             isProcessingQueue = true;
@@ -134,9 +167,14 @@ export const callWorkflowService = async ({
     if (isJson) {
       try {
         const jsonResult = JSON.parse(fullAccumulatedText);
-        if (response.status >= 400) { throw new Error(jsonResult.error || 'AI Service Error'); }
+        if (response.status >= 400 || jsonResult.status === 'error') {
+          const error = new Error(jsonResult.error?.message || 'AI Service Error');
+          (error as any).code = jsonResult.error?.code;
+          throw error;
+        }
         return camelCaseObject(jsonResult) as WorkflowServiceResult;
       } catch (e: any) {
+        if (e && e.code) { throw e; }
         if (e && e.message && e.message !== 'Unexpected end of JSON input') { throw e; }
         // parse failed
         logError('Failed to parse AI response:', e);
