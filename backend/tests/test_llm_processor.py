@@ -391,12 +391,8 @@ def test_chat_error_handling(
     Test API error handling in chat (non-streaming).
     """
     mock_responses.side_effect = Exception("API connection failed")
-
-    result = llm_processor.process(context="Ctx", input_data="Hi", chat_history=[])
-
-    assert "error" in result
-    assert "AI processing failed" in result["error"]
-    assert "API connection failed" in result["error"]
+    with pytest.raises(Exception):
+        llm_processor.process(context="Ctx", input_data="Hi", chat_history=[])
 
 
 @pytest.mark.django_db
@@ -425,7 +421,7 @@ def test_completion_error_handling_stream(
 
     # Should yield content then the error message
     assert results[0] == b"Start"
-    assert b"[AI Error: Stream cut off]" in results[1]
+    assert b'"error_in_stream": true' in results[1]
 
 
 # ============================================================================

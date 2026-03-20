@@ -95,18 +95,43 @@ export const getDefaultEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKF
 };
 
 /**
- * Format error message for user display
- * Maps technical errors to user-friendly messages
- * @param error - Error object or string
+ * User-friendly error messages keyed by backend error codes.
+ * This can be easily extended or moved to a configuration file.
+ */
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_api_key: 'The AI service is currently unavailable due to a configuration error. Please contact support.',
+  rate_limit_exceeded: 'The AI service is currently busy. Please try again in a few moments.',
+  service_unavailable: 'The AI service is temporarily unavailable. Please try again later.',
+  context_window_exceeded: 'The text is too long for the AI to process. Please try with a shorter selection.',
+  validation_error: 'There was a problem with the request. Please check your input and try again.',
+  streaming_failed: 'The AI service encountered an error while generating the response. Please try again.',
+  internal_error: 'An unexpected error occurred. Please try again later.',
+};
+
+/**
+ * Format error message for user display.
+ * Prioritizes localized messages from ERROR_MESSAGES dictionary.
+ *
+ * @param error - Error object containing code and message properties
  * @returns User-friendly error message
  */
-export const formatErrorMessage = (error: Error | any): string => {
-  const errorMessage = (error && error.message) ? String(error.message) : String(error || 'Unknown error occurred');
-  if (errorMessage.includes('fetch')) { return 'Unable to connect to AI service. Please check your connection.'; }
-  if (errorMessage.includes('404')) { return 'AI service not available. Please contact support.'; }
-  if (errorMessage.includes('500')) { return 'AI service temporarily unavailable. Please try again later.'; }
-  if (errorMessage.includes('timeout')) { return 'Request timed out. The AI service may be busy, please try again.'; }
-  return 'Failed to get AI assistance. Please try again.';
+export const formatErrorMessage = (error: any): string => {
+  // 1. Check for the new error contract structure
+  const errorCode = error?.errorCode || error?.code;
+  if (errorCode && ERROR_MESSAGES[errorCode]) {
+    return ERROR_MESSAGES[errorCode];
+  }
+
+  // 2. Fall back to the message provided by the backend (sanitized for the user)
+  if (error?.message && typeof error.message === 'string') {
+    // Basic sanitization: don't show raw JSON or technical stack traces
+    if (!error.message.includes('{') && !error.message.includes('Traceback')) {
+      return error.message;
+    }
+  }
+
+  // 3. Generic fallback
+  return 'Failed to get AI assistance. Please try again later.';
 };
 
 /**
