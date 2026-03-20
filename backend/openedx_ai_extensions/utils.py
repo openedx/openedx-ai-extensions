@@ -4,6 +4,10 @@ Utility functions for Open edX AI Extensions.
 
 from types import GeneratorType
 
+# Standardized error message for mid-stream failures.
+# This MUST match the frontend's ERROR_MESSAGES.streaming_failed for consistency.
+STREAMING_FAILED_MESSAGE = "The AI service encountered an error while generating the response. Please try again."
+
 
 def normalize_input_to_text(input_data) -> str:
     """

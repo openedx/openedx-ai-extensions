@@ -8,12 +8,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from litellm import completion, get_responses, list_input_items, responses
+from litellm.exceptions import BadRequestError
 
 from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
 from openedx_ai_extensions.processors.llm.providers import adapt_to_provider, after_tool_call_adaptations
 from openedx_ai_extensions.processors.llm.tool_executor import ToolExecutor
-from openedx_ai_extensions.utils import normalize_input_to_text
+from openedx_ai_extensions.utils import STREAMING_FAILED_MESSAGE, normalize_input_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,14 @@ class LLMProcessor(LitellmProcessor):
                     yield content.encode('utf-8')
 
         except Exception as e:  # pylint: disable=broad-exception-caught
+            # Log exact error, but yield sanitized JSON marker to UI
             logger.error(f"Error during AI streaming: {e}", exc_info=True)
-            yield f"\n[AI Error: {e}]".encode("utf-8")
+            error_marker = json.dumps({
+                "error_in_stream": True,
+                "code": "streaming_failed",
+                "message": STREAMING_FAILED_MESSAGE
+            })
+            yield f"||{error_marker}||".encode("utf-8")
             return
 
         # Log tokens at end
@@ -122,17 +129,22 @@ class LLMProcessor(LitellmProcessor):
         params = {}
         params["stream"] = self.stream
 
+        system_input = [
+            {"role": "system", "content": self.custom_prompt or system_role},
+            {"role": "system", "content": self.context},
+        ]
+
         if self.chat_history:
             user_text = normalize_input_to_text(self.input_data)
             if user_text:
                 self.chat_history.append({"role": "user", "content": user_text})
-            params["input"] = self.chat_history
+
+            # Prepend system messages to ensure the LLM has the necessary instructions,
+            # especially if we are falling back from a lost thread.
+            params["input"] = system_input + self.chat_history
         else:
             # Initialize new thread with system role and context
-            params["input"] = [
-                {"role": "system", "content": self.custom_prompt or system_role},
-                {"role": "system", "content": self.context},
-            ]
+            params["input"] = system_input
 
         # Add optional parameters only if configured
         params.update(self.extra_params)
@@ -157,7 +169,7 @@ class LLMProcessor(LitellmProcessor):
         """
         yield from self._handle_streaming_tool_calls_responses(response, params or {})
 
-    def _call_responses_wrapper(self, params, initialize=False):
+    def _call_responses_wrapper(self, params, initialize=False, system_role=None):
         """
         Wrapper around LiteLLM responses() call.
         """
@@ -191,10 +203,21 @@ class LLMProcessor(LitellmProcessor):
                 system_msgs = [msg for msg in params.get("input", []) if "role" in msg and msg["role"] == "system"]
                 result["system_messages"] = system_msgs
             return result
+        except BadRequestError as e:
+            error_code = getattr(e, "code", str(e))
+            if "previous_response_not_found" in str(error_code):
+                logger.warning(
+                    "Previous response ID '%s' not found. Clearing and retrying with full history fallback.",
+                    self.user_session.remote_response_id if self.user_session else "Unknown"
+                )
+                if self.user_session:
+                    self.user_session.remote_response_id = None
+                    self.user_session.save()
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error calling LiteLLM: {e}")
-            return {"error": f"AI processing failed: {str(e)}"}
+                # Re-build params without previous_response_id and with full history
+                params = self._build_response_api_params(system_role=system_role)
+                return self._call_responses_wrapper(params=params, initialize=True, system_role=system_role)
+            raise
 
     def _call_completion_wrapper(self, system_role):
         """
@@ -232,21 +255,13 @@ class LLMProcessor(LitellmProcessor):
             input_data=self.input_data,
         )
 
-        try:
-            # 1. Call the LiteLLM API
-            response = self._completion_with_tools(tool_calls=[], params=params)
-            # 2. Handle streaming response (Generator)
-            if self.stream:
-                return self._handle_streaming_completion(response)  # Return the generator object
-            else:
-                return self._handle_non_streaming_completion(response)  # Return the dictionary
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # Catch errors that occur during the INITIAL API call (before streaming starts)
-            error_message = f"Error during initial AI completion call: {e}"
-            logger.exception(error_message, exc_info=True)
-            # Always return a dictionary error in this outer block
-            return {"error": f"AI processing failed: {str(e)}"}
+        # 1. Call the LiteLLM API
+        response = self._completion_with_tools(tool_calls=[], params=params)
+        # 2. Handle streaming response (Generator)
+        if self.stream:
+            return self._handle_streaming_completion(response)  # Return the generator object
+        else:
+            return self._handle_non_streaming_completion(response)  # Return the dictionary
 
     def _completion_with_tools(self, tool_calls, params):
         """Handle tool calls recursively until no more tool calls are present."""
@@ -391,7 +406,18 @@ class LLMProcessor(LitellmProcessor):
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Error during streaming tool calls: %s", e, exc_info=True)
-            yield f"\n[AI Error: {e}]"
+            # Clear the remote response ID if it was partially saved but the stream failed
+            # This prevents subsequent calls from using an invalid/incomplete thread ID.
+            if self.user_session and self.user_session.remote_response_id:
+                self.user_session.remote_response_id = None
+                self.user_session.save()
+
+            error_marker = json.dumps({
+                "error_in_stream": True,
+                "code": "streaming_failed",
+                "message": STREAMING_FAILED_MESSAGE
+            })
+            yield f"||{error_marker}||"
             return
 
         if total_tokens is not None:
@@ -469,8 +495,8 @@ class LLMProcessor(LitellmProcessor):
             """
         params = self._build_response_api_params(system_role=system_role)
         if self.user_session and self.user_session.remote_response_id:
-            return self._call_responses_wrapper(params=params)
-        return self._call_responses_wrapper(params=params, initialize=True)
+            return self._call_responses_wrapper(params=params, system_role=system_role)
+        return self._call_responses_wrapper(params=params, initialize=True, system_role=system_role)
 
     def summarize_content(self):
         """Summarize content using LiteLLM"""
