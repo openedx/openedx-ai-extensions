@@ -8,6 +8,7 @@ import {
 import { AutoAwesome } from '@openedx/paragon/icons';
 import { POLLING_ERROR_KEYS, useAsyncTaskPolling } from '../hooks/useAsyncTaskPolling';
 import { generateFlashcards, getSessionResponse } from '../data/workflowActions';
+import { prepareContextData } from '../../services';
 import GenerateForm from './GenerateForm';
 import messages from '../messages';
 import { FlashcardStep } from '../types';
@@ -47,7 +48,7 @@ const FlashcardCreator = ({
   const [errorMessage, setErrorMessage] = useState('');
 
   const contextData = useMemo(
-    () => ({ courseId, locationId, uiSlotSelectorId }),
+    () => prepareContextData({ courseId, locationId, uiSlotSelectorId }),
     [courseId, locationId, uiSlotSelectorId],
   );
 
