@@ -1,0 +1,44 @@
+.flashcard-scene {
+  perspective: 1000px;
+  width: 100%;
+  min-height: 300px;
+}
+
+.flashcard-stage {
+  position: relative;
+  display: block; // Ensure it doesn't behave like flex
+  width: 100%;
+  height: 300px;
+  transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+
+  &--flipped {
+    transform: rotateY(180deg);
+  }
+}
+
+.flashcard-face {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+
+  // Ensure the Card content takes up full space
+  display: flex;
+  flex-direction: column;
+
+  &--front {
+    transform: rotateY(0deg);
+  }
+
+  &--back {
+    transform: rotateY(180deg);
+  }
+}
