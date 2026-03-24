@@ -18,9 +18,12 @@ sys.modules["submissions"] = MagicMock()
 sys.modules["submissions.api"] = MagicMock()
 
 from openedx_ai_extensions.api.v1.workflows.serializers import (  # noqa: E402 pylint: disable=wrong-import-position
+    AIWorkflowProfileListSerializer,
     AIWorkflowProfileSerializer,
+    redact_sensitive_config,
 )
 from openedx_ai_extensions.api.v1.workflows.views import (  # noqa: E402 pylint: disable=wrong-import-position
+    AIWorkflowProfilesListView,
     AIWorkflowProfileView,
 )
 from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
@@ -705,4 +708,391 @@ def test_workflow_config_view_invalid_context_json_unit(
     response = view(request)
 
     # Should return error status for invalid JSON
+    assert response.status_code == 500
+
+
+# ============================================================================
+# Tests - Profiles List Endpoint (GET /v1/profiles/)
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_profiles_list_url_is_registered():
+    """
+    Test that the profiles list URL is properly registered and accessible.
+    """
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+    assert url == "/openedx-ai-extensions/v1/profiles/"
+
+
+@pytest.mark.django_db
+def test_profiles_list_requires_authentication(api_client):  # pylint: disable=redefined-outer-name
+    """
+    Test that the profiles list endpoint requires authentication.
+    """
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+    response = api_client.get(url)
+    assert response.status_code in [401, 403]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_profiles_list_happy_path(api_client, course_key):  # pylint: disable=redefined-outer-name
+    """
+    Two scopes with different slots pointing to two distinct profiles are both returned.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+
+    profile_a = AIWorkflowProfile.objects.create(
+        slug="pl-happy-a", description="A", base_filepath="base/default.json", content_patch="{}"
+    )
+    profile_b = AIWorkflowProfile.objects.create(
+        slug="pl-happy-b", description="B", base_filepath="base/default.json", content_patch="{}"
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile_a,
+        enabled=True, ui_slot_selector_id="slot-a",
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile_b,
+        enabled=True, ui_slot_selector_id="slot-b",
+    )
+
+    context = json.dumps({"courseId": str(course_key)})
+    response = api_client.get(url, {"context": context})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    assert len(data["profiles"]) == 2
+    slugs = {p["slug"] for p in data["profiles"]}
+    assert slugs == {"pl-happy-a", "pl-happy-b"}
+    for profile in data["profiles"]:
+        assert "id" in profile
+        assert "slug" in profile
+        assert "description" in profile
+        assert "effective_config" in profile
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_profiles_list_no_matches(api_client):  # pylint: disable=redefined-outer-name
+    """
+    Unknown course returns an empty list without errors.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+
+    context = json.dumps({"courseId": "course-v1:Unknown+X+NoSuchCourse"})
+    response = api_client.get(url, {"context": context})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 0
+    assert data["profiles"] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.list_profiles_for_context")
+def test_profiles_list_api_keys_are_redacted(  # pylint: disable=redefined-outer-name
+    mock_list, api_client, course_key
+):
+    """
+    API keys present in the effective config must not appear in the response.
+
+    Uses a mock profile so the test is not affected by template-file availability.
+    The redact_sensitive_config unit tests verify the redaction logic independently.
+    """
+    mock_profile = Mock()
+    mock_profile.id = "00000000-0000-0000-0000-000000000002"
+    mock_profile.slug = "pl-redact"
+    mock_profile.description = "Redact test"
+    mock_profile.config = {
+        "processor_config": {"LLMProcessor": {"options": {"api_key": "sk-secret-123"}}}
+    }
+    mock_list.return_value = [mock_profile]
+
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+    context = json.dumps({"courseId": str(course_key), "uiSlotSelectorId": "slot-redact"})
+    response = api_client.get(url, {"context": context})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    effective_config = data["profiles"][0]["effective_config"]
+    processor_opts = effective_config.get("processor_config", {}).get("LLMProcessor", {}).get("options", {})
+    assert processor_opts.get("api_key") == "[REDACTED]"
+    assert "sk-secret-123" not in json.dumps(data)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_profiles_list_deduplication(api_client, course_key):  # pylint: disable=redefined-outer-name
+    """
+    Two scopes pointing to the same profile return only one profile entry.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+
+    profile = AIWorkflowProfile.objects.create(
+        slug="pl-dedup", description="Dedup test", base_filepath="base/default.json", content_patch="{}"
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile,
+        enabled=True, ui_slot_selector_id="slot-x",
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile,
+        enabled=True, ui_slot_selector_id="slot-y",
+    )
+
+    context = json.dumps({"courseId": str(course_key)})
+    response = api_client.get(url, {"context": context})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["profiles"][0]["slug"] == "pl-dedup"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_profiles_list_filtered_by_ui_slot(api_client, course_key):  # pylint: disable=redefined-outer-name
+    """
+    When uiSlotSelectorId is provided, only profiles for that slot are returned.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+
+    profile_a = AIWorkflowProfile.objects.create(
+        slug="pl-slot-a", description="A", base_filepath="base/default.json", content_patch="{}"
+    )
+    profile_b = AIWorkflowProfile.objects.create(
+        slug="pl-slot-b", description="B", base_filepath="base/default.json", content_patch="{}"
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile_a,
+        enabled=True, ui_slot_selector_id="slot-wanted",
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile_b,
+        enabled=True, ui_slot_selector_id="slot-other",
+    )
+
+    context = json.dumps({"courseId": str(course_key), "uiSlotSelectorId": "slot-wanted"})
+    response = api_client.get(url, {"context": context})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["profiles"][0]["slug"] == "pl-slot-a"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_profiles_list_no_slot_returns_all(api_client, course_key):  # pylint: disable=redefined-outer-name
+    """
+    When no uiSlotSelectorId is provided, all profiles for the course are returned
+    regardless of their individual slot assignments. This is the intended call
+    pattern for the Studio settings panel.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+
+    profile_a = AIWorkflowProfile.objects.create(
+        slug="pl-noslot-a", description="A", base_filepath="base/default.json", content_patch="{}"
+    )
+    profile_b = AIWorkflowProfile.objects.create(
+        slug="pl-noslot-b", description="B", base_filepath="base/default.json", content_patch="{}"
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile_a,
+        enabled=True, ui_slot_selector_id="slot-lms-widget",
+    )
+    AIWorkflowScope.objects.create(
+        course_id=course_key, service_variant="lms", profile=profile_b,
+        enabled=True, ui_slot_selector_id="slot-another-widget",
+    )
+
+    context = json.dumps({"courseId": str(course_key)})
+    response = api_client.get(url, {"context": context})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    slugs = {p["slug"] for p in data["profiles"]}
+    assert slugs == {"pl-noslot-a", "pl-noslot-b"}
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_profiles_list_invalid_course_id(api_client):  # pylint: disable=redefined-outer-name
+    """
+    Malformed courseId returns HTTP 400 with an error key.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+
+    context = json.dumps({"courseId": "not-a-valid-course-key"})
+    response = api_client.get(url, {"context": context})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "error" in data
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_profiles_list_no_context_param(api_client):  # pylint: disable=redefined-outer-name
+    """
+    Missing context param is treated as empty context — no crash, returns empty list.
+    """
+    api_client.login(username="testuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+
+    response = api_client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "count" in data
+    assert "profiles" in data
+
+
+# ============================================================================
+# Unit Tests - redact_sensitive_config
+# ============================================================================
+
+
+def test_redact_sensitive_config_top_level_key():
+    """API_KEY at the top level is redacted."""
+    config = {"api_key": "sk-secret", "model": "gpt-4"}
+    result = redact_sensitive_config(config)
+    assert result["api_key"] == "[REDACTED]"
+    assert result["model"] == "gpt-4"
+
+
+def test_redact_sensitive_config_nested_key():
+    """Sensitive key nested inside a sub-dict is redacted."""
+    config = {"processor_config": {"LLMProcessor": {"options": {"API_KEY": "sk-nested"}}}}
+    result = redact_sensitive_config(config)
+    assert result["processor_config"]["LLMProcessor"]["options"]["API_KEY"] == "[REDACTED]"
+
+
+def test_redact_sensitive_config_inside_list():
+    """Sensitive key inside a list element is redacted."""
+    config = {"tools": [{"name": "search", "token": "tok-abc"}]}
+    result = redact_sensitive_config(config)
+    assert result["tools"][0]["token"] == "[REDACTED]"
+    assert result["tools"][0]["name"] == "search"
+
+
+def test_redact_sensitive_config_does_not_mutate_original():
+    """Original config is not mutated."""
+    config = {"api_key": "sk-original"}
+    redact_sensitive_config(config)
+    assert config["api_key"] == "sk-original"
+
+
+def test_redact_sensitive_config_case_insensitive():
+    """Redaction is case-insensitive on the key name."""
+    config = {"API_KEY": "upper", "Api_Key": "mixed", "api_key": "lower"}
+    result = redact_sensitive_config(config)
+    for key in result:
+        assert result[key] == "[REDACTED]"
+
+
+def test_redact_sensitive_config_non_sensitive_keys_preserved():
+    """Non-sensitive keys like max_tokens are not redacted."""
+    config = {"max_tokens": 4096, "temperature": 0.7}
+    result = redact_sensitive_config(config)
+    assert result["max_tokens"] == 4096
+    assert result["temperature"] == 0.7
+
+
+# ============================================================================
+# Unit Tests - AIWorkflowProfileListSerializer
+# ============================================================================
+
+
+def test_profile_list_serializer_create_not_implemented():
+    """AIWorkflowProfileListSerializer.create raises NotImplementedError."""
+    mock_profile = Mock()
+    mock_profile.config = {}
+    serializer = AIWorkflowProfileListSerializer(mock_profile)
+    with pytest.raises(NotImplementedError):
+        serializer.create({})
+
+
+def test_profile_list_serializer_update_not_implemented():
+    """AIWorkflowProfileListSerializer.update raises NotImplementedError."""
+    mock_profile = Mock()
+    mock_profile.config = {}
+    serializer = AIWorkflowProfileListSerializer(mock_profile)
+    with pytest.raises(NotImplementedError):
+        serializer.update(mock_profile, {})
+
+
+def test_profile_list_serializer_handles_none_config():
+    """Serializer does not crash when profile.config is None."""
+    mock_profile = Mock()
+    mock_profile.config = None
+    serializer = AIWorkflowProfileListSerializer(mock_profile)
+    effective = serializer.get_effective_config(mock_profile)
+    assert effective == {}
+
+
+# ============================================================================
+# Unit Tests - AIWorkflowProfilesListView with mocks
+# ============================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.list_profiles_for_context")
+def test_profiles_list_view_returns_200_unit(mock_list, user):  # pylint: disable=redefined-outer-name
+    """
+    AIWorkflowProfilesListView returns 200 with correct shape (unit test).
+    """
+    mock_profile = Mock()
+    mock_profile.id = "00000000-0000-0000-0000-000000000001"
+    mock_profile.slug = "mock-profile"
+    mock_profile.description = "Mock"
+    mock_profile.config = {}
+    mock_list.return_value = [mock_profile]
+
+    factory = APIRequestFactory()
+    request = factory.get("/openedx-ai-extensions/v1/profiles/", {"context": "{}"})
+    request.user = user
+
+    view = AIWorkflowProfilesListView.as_view()
+    response = view(request)
+    response.render()
+
+    assert response.status_code == 200
+    data = json.loads(response.content)
+    assert data["count"] == 1
+    assert len(data["profiles"]) == 1
+    assert "timestamp" in data
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.list_profiles_for_context")
+def test_profiles_list_view_invalid_context_json_unit(mock_list, user):  # pylint: disable=redefined-outer-name
+    """
+    AIWorkflowProfilesListView returns 500 for invalid JSON context (unit test).
+    """
+    mock_list.return_value = []
+
+    factory = APIRequestFactory()
+    request = factory.get(
+        "/openedx-ai-extensions/v1/profiles/", {"context": "invalid json{"}
+    )
+    request.user = user
+
+    view = AIWorkflowProfilesListView.as_view()
+    response = view(request)
+    response.render()
+
     assert response.status_code == 500

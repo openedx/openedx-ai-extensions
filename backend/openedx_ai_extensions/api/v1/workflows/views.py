@@ -22,7 +22,7 @@ from rest_framework.views import APIView
 from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.workflows.models import AIWorkflowScope
 
-from .serializers import AIWorkflowProfileSerializer
+from .serializers import AIWorkflowProfileListSerializer, AIWorkflowProfileSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +190,84 @@ class AIWorkflowProfileView(APIView):
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception("🤖 CONFIG PROFILE ERROR")
+            return Response(
+                {
+                    "error": str(e),
+                    "status": "error",
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class AIWorkflowProfilesListView(APIView):
+    """
+    API endpoint to list all AI Workflow Profiles matching a given context.
+
+    Returns every distinct AIWorkflowProfile reachable for the requested
+    course_id / location_id / ui_slot_selector_id / service_variant combination.
+    Effective configurations are included with all sensitive values redacted.
+
+    When no ``uiSlotSelectorId`` is provided, profiles for all slots are returned
+    — the intended call pattern for the Studio settings panel.
+    """
+
+    # TODO: elevate to course-staff permission once the edxapp_wrapper provides a
+    # has_course_author_access integration. Requires common.djangoapps.student.roles
+    # (edx-platform) which is not a standalone dependency of this plugin.
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        List workflow profiles for the given context.
+
+        Accepts the same ``context`` JSON query param as ``profile/``, with optional
+        ``courseId``, ``locationId``, ``uiSlotSelectorId``, and ``serviceVariant``
+        keys. When ``serviceVariant`` is omitted, profiles for all service variants
+        are returned.
+
+        Returns:
+            200: {"profiles": [...], "count": N, "timestamp": "..."}
+            400: Validation error (malformed course or location key)
+            500: Unexpected server error
+        """
+        try:
+            context = get_context_from_request(request)
+
+            # service_variant is specific to this endpoint and is read directly
+            # from the raw context rather than through get_context_from_request.
+            raw_context = json.loads(request.query_params.get("context", "{}"))
+            service_variant = (
+                raw_context.get("serviceVariant") or raw_context.get("service_variant") or None
+            )
+
+            profiles = AIWorkflowScope.list_profiles_for_context(
+                **context, service_variant=service_variant
+            )
+            serializer = AIWorkflowProfileListSerializer(profiles, many=True)
+
+            return Response(
+                {
+                    "profiles": serializer.data,
+                    "count": len(profiles),
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except ValidationError as e:
+            logger.warning("🤖 PROFILES LIST VALIDATION ERROR: %s", str(e))
+            return Response(
+                {
+                    "error": str(e),
+                    "status": "validation_error",
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("🤖 PROFILES LIST ERROR")
             return Response(
                 {
                     "error": str(e),

@@ -305,6 +305,77 @@ class AIWorkflowScope(models.Model):
 
         return None
 
+    @classmethod
+    def list_profiles_for_context(
+        cls, course_id=None, location_id=None, ui_slot_selector_id=None, service_variant=None
+    ):
+        """
+        Return all distinct AIWorkflowProfile objects reachable for the given context.
+
+        Unlike ``get_profile``, which returns the single best-matching scope, this
+        method collects every enabled scope whose course_id and location_regex match
+        the context and returns the unique set of associated AIWorkflowProfile objects
+        (deduplicated by profile pk).
+
+        When ``ui_slot_selector_id`` is provided, only scopes matching that exact
+        value or the empty-string wildcard are included. When it is omitted, all
+        profiles for the course are returned regardless of slot assignment — useful
+        for the Studio settings panel where all available workflows should be visible.
+
+        When ``service_variant`` is provided, results are filtered to that variant
+        only. When omitted, scopes from all service variants are returned.
+
+        Args:
+            course_id (str | None): Opaque course key string.
+            location_id (str | None): Opaque usage key string for location filtering.
+            ui_slot_selector_id (str | None): Optional UI slot filter.
+            service_variant (str | None): Optional service variant filter (``"lms"``
+                or ``"cms"``). When ``None``, all variants are included.
+
+        Returns:
+            list[AIWorkflowProfile]: Deduplicated list of matching profiles, ordered
+            by descending specificity_index of the first matching scope per profile.
+        """
+        course_filter = Q(course_id=course_id) | Q(course_id=CourseKeyField.Empty)
+        base_filter = {"enabled": True}
+        if service_variant:
+            base_filter["service_variant"] = service_variant
+
+        if ui_slot_selector_id:
+            candidates = cls.objects.filter(
+                course_filter,
+                Q(ui_slot_selector_id=ui_slot_selector_id) | Q(ui_slot_selector_id=""),
+                **base_filter,
+            ).select_related("profile").order_by("-specificity_index")
+        else:
+            candidates = cls.objects.filter(
+                course_filter,
+                **base_filter,
+            ).select_related("profile").order_by("-specificity_index")
+
+        seen_profile_ids = set()
+        profiles = []
+
+        for scope in candidates:
+            if scope.location_regex is None:
+                # NULL location_regex is a wildcard — matches any location
+                pass
+            elif not location_id:
+                # Scope requires a specific location but none was provided — skip
+                continue
+            else:
+                try:
+                    if not re.search(scope.location_regex, location_id):
+                        continue
+                except re.error:
+                    continue
+
+            if scope.profile_id not in seen_profile_ids:
+                seen_profile_ids.add(scope.profile_id)
+                profiles.append(scope.profile)
+
+        return profiles
+
     def execute(self, user_input, action, user, running_context) -> dict[str, str | dict[str, str]] | Any:
         """
         Execute this workflow using its configured orchestrator
