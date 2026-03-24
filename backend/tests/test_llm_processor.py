@@ -9,6 +9,7 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from litellm.exceptions import BadRequestError
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
@@ -1439,6 +1440,7 @@ def test_llm_processor_streaming_error_marker(mock_completion, workflow_scope, u
 
     # Mock completion to return a generator that raises an exception
     class MockStreamResponse:
+        """Mock stream response."""
         def __iter__(self):
             chunk = Mock()
             chunk.choices = [Mock(delta=Mock(content="Partial response"))]
@@ -1470,8 +1472,6 @@ def test_llm_processor_streaming_error_marker(mock_completion, workflow_scope, u
 @patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
 def test_llm_processor_lost_thread_retry(mock_responses, workflow_scope, user):
     """Test that LLMProcessor retries with full history if previous response ID is not found."""
-    from litellm.exceptions import BadRequestError
-
     processor_config = {
         "LLMProcessor": {
             "provider": "default",
@@ -1521,7 +1521,6 @@ def test_llm_processor_lost_thread_retry(mock_responses, workflow_scope, user):
     # Verify second call did NOT have the lost ID
     args, kwargs = mock_responses.call_args_list[1]
     assert "previous_response_id" not in kwargs or kwargs["previous_response_id"] is None
-
 
 
 # ============================================================================
