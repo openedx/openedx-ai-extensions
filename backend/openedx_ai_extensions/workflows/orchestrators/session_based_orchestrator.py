@@ -42,9 +42,11 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
         session = AIWorkflowSession.objects.select_related('scope', 'profile', 'user').get(id=session_id)
 
         # 2. Build context from session
+        metadata = session.metadata or {}
+        location_id = metadata.get('location_id') or session.location_id
         context = {
             'course_id': str(session.course_id) if session.course_id is not None else None,
-            'location_id': str(session.location_id) if session.location_id is not None else None,
+            'location_id': str(location_id) if location_id is not None else None,
         }
 
         # 3. Resolve and instantiate orchestrator via centralized factory
@@ -226,3 +228,37 @@ class ScopedSessionOrchestrator(SessionBasedOrchestrator):  # pylint: disable=ab
             profile=self.workflow.profile,
             course_id=self.course_id,
         )
+
+    def run_async(self, input_data):
+        """
+        Launch async task for scoped sessions.
+
+        Unlike the parent implementation, this does **not** write
+        ``location_id`` to the session row (which has no location_id in its
+        unique-together lookup).  Instead the current location is persisted
+        in ``metadata['location_id']`` so the Celery task can recover it
+        without risking an integrity-error collision with any pre-existing
+        location-scoped session.
+        """
+        self.session.course_id = self.course_id
+        self.session.metadata = self.session.metadata or {}
+        self.session.metadata['task_status'] = 'processing'
+        self.session.metadata['location_id'] = self.location_id
+        self.session.metadata.pop('task_result', None)
+        self.session.metadata.pop('task_error', None)
+        self.session.metadata.pop('task_status_message', None)
+        self.session.save()
+
+        task = _execute_orchestrator_async.delay(
+            session_id=self.session.id,
+            action='run',
+            params={
+                "input_data": input_data,
+            }
+        )
+
+        return {
+            'status': 'processing',
+            'task_id': task.id,
+            'message': 'AI workflow has started'
+        }

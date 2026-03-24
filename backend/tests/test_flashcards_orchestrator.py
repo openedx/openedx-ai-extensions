@@ -456,8 +456,8 @@ def test_run_dict_response_no_cards_key(
     flashcards_orchestrator,  # pylint: disable=redefined-outer-name
 ):
     """
-    When response is a dict but has no 'cards' key, enriched_response wraps
-    the original dict and adds a 'cards' key referencing it.
+    When the LLM response is a dict without a 'cards' key, it is treated as
+    having no cards — the result contains an empty list.
     """
     mock_openedx = Mock()
     mock_openedx.process.return_value = {"content": "course content"}
@@ -475,8 +475,7 @@ def test_run_dict_response_no_cards_key(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    assert isinstance(result["response"], dict)
-    assert result["response"]["other_data"] == "value"
+    assert result["response"] == []
 
 
 # ===========================================================================
@@ -511,8 +510,8 @@ def test_run_none_response(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    # None is neither dict nor list, so enriched_response = cards = None
-    assert result["response"] is None
+    # None is normalized to an empty list by _get_structured_cards
+    assert result["response"] == []
 
 
 # ===========================================================================
@@ -742,3 +741,129 @@ def test_run_passes_content_and_input_data_to_llm(
     call_kwargs = mock_llm.process.call_args[1]
     assert call_kwargs["context"] == str(content_data)
     assert call_kwargs["input_data"] == input_data
+
+
+# ===========================================================================
+# FlashCardsOrchestrator.run — existing cards are sent as context (lines 86-96)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.LLMProcessor")
+def test_run_existing_cards_passed_as_context(
+    mock_llm_class,
+    mock_openedx_class,
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When session already contains cards, run() builds an existing_cards string
+    and includes it in input_data so the LLM avoids duplicates.
+    """
+    existing = [
+        {"id": "card-1", "question": "What is 2+2?", "answer": "4"},
+        {"id": "card-2", "question": "Capital of France?", "answer": "Paris"},
+    ]
+    flashcards_orchestrator.session.metadata = {"cards": existing}
+    flashcards_orchestrator.session.save(update_fields=["metadata"])
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"content": "course content"}
+    mock_openedx_class.return_value = mock_openedx
+
+    mock_llm = Mock()
+    mock_llm.process.return_value = {
+        "response": {"cards": [{"id": "card-3", "question": "Q3?", "answer": "A3"}]},
+        "tokens_used": 50,
+        "model_used": "openai/gpt-4",
+    }
+    mock_llm_class.return_value = mock_llm
+
+    with patch.object(flashcards_orchestrator, "_emit_workflow_event"):
+        flashcards_orchestrator.run({"num_cards": 1})
+
+    call_kwargs = mock_llm.process.call_args[1]
+    existing_cards_str = call_kwargs["input_data"]["existing_cards"]
+    assert "Id: card-1" in existing_cards_str
+    assert "Question: What is 2+2?" in existing_cards_str
+    assert "Answer: 4" in existing_cards_str
+    assert "Id: card-2" in existing_cards_str
+    assert "Question: Capital of France?" in existing_cards_str
+    assert "Answer: Paris" in existing_cards_str
+
+
+# ===========================================================================
+# FlashCardsOrchestrator.run — new cards extend existing (line 123)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.LLMProcessor")
+def test_run_extends_existing_cards_in_session(
+    mock_llm_class,
+    mock_openedx_class,
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When session already has cards, run() extends the list rather than
+    replacing it.
+    """
+    existing = [
+        {"id": "card-1", "question": "Q1?", "answer": "A1"},
+    ]
+    flashcards_orchestrator.session.metadata = {"cards": existing}
+    flashcards_orchestrator.session.save(update_fields=["metadata"])
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"content": "course content"}
+    mock_openedx_class.return_value = mock_openedx
+
+    new_cards = [
+        {"id": "card-2", "question": "Q2?", "answer": "A2"},
+    ]
+    mock_llm = Mock()
+    mock_llm.process.return_value = {
+        "response": {"cards": new_cards},
+        "tokens_used": 50,
+        "model_used": "openai/gpt-4",
+    }
+    mock_llm_class.return_value = mock_llm
+
+    with patch.object(flashcards_orchestrator, "_emit_workflow_event"):
+        flashcards_orchestrator.run({"num_cards": 1})
+
+    flashcards_orchestrator.session.refresh_from_db()
+    stored = flashcards_orchestrator.session.metadata["cards"]
+    assert len(stored) == 2
+    assert stored[0]["id"] == "card-1"
+    assert stored[1]["id"] == "card-2"
+
+
+# ===========================================================================
+# FlashCardsOrchestrator.save — card_stack dict unwrapping (line 145)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+def test_save_unwraps_card_stack_dict(
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When 'card_stack' is a dict containing a 'cards' key, save() extracts
+    the inner list instead of storing the wrapper dict.
+    """
+    flashcards_orchestrator.session.metadata = {}
+
+    inner_cards = [
+        {"id": "card-1", "question": "Q1?", "answer": "A1"},
+        {"id": "card-2", "question": "Q2?", "answer": "A2"},
+    ]
+    card_stack = {"cards": inner_cards, "created_at": 12345, "last_studied_at": 67890}
+    result = flashcards_orchestrator.save({"card_stack": card_stack})
+
+    assert result["status"] == "saved"
+    assert result["message"] == "2 cards saved successfully."
+
+    flashcards_orchestrator.session.refresh_from_db()
+    assert flashcards_orchestrator.session.metadata["cards"] == inner_cards
