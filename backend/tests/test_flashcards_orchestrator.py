@@ -867,3 +867,61 @@ def test_save_unwraps_card_stack_dict(
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] == inner_cards
+
+
+# ===========================================================================
+# ScopedSessionOrchestrator — session scoping & run_async
+# ===========================================================================
+
+
+@pytest.mark.django_db
+def test_scoped_session_has_no_location_id(
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    ScopedSessionOrchestrator creates a session without location_id so it is
+    shared across all locations within the same course.
+    """
+    assert flashcards_orchestrator.session.location_id is None
+
+
+@pytest.mark.django_db
+@patch(
+    "openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator"
+    "._execute_orchestrator_async"
+)
+def test_scoped_run_async_stores_location_in_metadata(
+    mock_task,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
+    course_key,  # pylint: disable=redefined-outer-name
+):
+    """
+    ScopedSessionOrchestrator.run_async persists the current location_id in
+    metadata (not on the session row) so the async task can recover it
+    without risking a unique-constraint collision.
+    """
+    location = "block-v1:edX+DemoX+Demo_Course+type@vertical+block@test_unit_1"
+    context = {
+        "course_id": str(course_key),
+        "location_id": location,
+    }
+    orchestrator = FlashCardsOrchestrator(
+        workflow=workflow_scope,
+        user=user,
+        context=context,
+    )
+
+    mock_task.delay.return_value = Mock(id="celery-task-id-123")
+    result = orchestrator.run_async({"num_cards": 5})
+
+    assert result["status"] == "processing"
+    assert result["task_id"] == "celery-task-id-123"
+
+    # location_id must NOT be written to the session row
+    orchestrator.session.refresh_from_db()
+    assert orchestrator.session.location_id is None
+
+    # location_id must be stored in metadata for the async task
+    assert orchestrator.session.metadata["location_id"] == location
+    assert orchestrator.session.metadata["task_status"] == "processing"
