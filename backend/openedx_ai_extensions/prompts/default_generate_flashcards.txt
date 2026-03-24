@@ -18,6 +18,9 @@
     Cover a diverse range of concepts from the material — do not repeat the same idea across multiple cards.
     Each card must have a unique `id` in the format "card-1", "card-2", etc.
 
+    Here are the existing cards for the current context, you shouldn't generate same questions:
+    {{EXISTING_CARDS}}
+
 - Question Writing Guidelines
 
     Good question patterns:

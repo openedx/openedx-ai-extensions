@@ -207,3 +207,22 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             return {
                 'status': 'idle',
             }
+
+
+class ScopedSessionOrchestrator(SessionBasedOrchestrator):  # pylint: disable=abstract-method
+    """
+    Orchestrator that follows the scope's location specificity for sessions.
+
+    Intentionally skips ``SessionBasedOrchestrator.__init__`` to avoid creating
+    a location-specific session; instead creates a course-scoped session
+    shared across locations.
+    """
+
+    def __init__(self, workflow, user, context):  # pylint: disable=super-init-not-called
+        BaseOrchestrator.__init__(self, workflow, user, context)  # pylint: disable=non-parent-init-called
+        self.session, _ = AIWorkflowSession.objects.get_or_create(
+            user=self.user,
+            scope=self.workflow,
+            profile=self.workflow.profile,
+            course_id=self.course_id,
+        )

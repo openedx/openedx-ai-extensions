@@ -88,7 +88,7 @@ def test_get_current_session_response_with_cards(
     flashcards_orchestrator.session.metadata = {"cards": cards}
 
     result = flashcards_orchestrator.get_current_session_response(None)
-    assert result == cards
+    assert result == {'cards': cards, 'status': 'completed'}
 
 
 @pytest.mark.django_db
@@ -101,7 +101,7 @@ def test_get_current_session_response_no_cards(
     flashcards_orchestrator.session.metadata = {}
 
     result = flashcards_orchestrator.get_current_session_response(None)
-    assert result is None
+    assert result == {'cards': None, 'status': 'no_flashcards'}
 
 
 @pytest.mark.django_db
@@ -114,7 +114,7 @@ def test_get_current_session_response_none_metadata(
     flashcards_orchestrator.session.metadata = None
 
     result = flashcards_orchestrator.get_current_session_response(None)
-    assert result is None
+    assert result == {'cards': None, 'status': 'no_flashcards'}
 
 
 # ===========================================================================
@@ -213,7 +213,8 @@ def test_run_success_dict_response(
     assert result["metadata"]["tokens_used"] == 200
     assert result["metadata"]["model_used"] == "openai/gpt-4"
 
-    enriched_cards = result["response"]["cards"]
+    enriched_cards = result["response"]
+    assert isinstance(enriched_cards, list)
     assert len(enriched_cards) == 2
     for card in enriched_cards:
         assert card["nextReviewTime"] == 0
@@ -438,7 +439,7 @@ def test_run_success_empty_cards(
         result = flashcards_orchestrator.run({"num_cards": 0})
 
     assert result["status"] == "completed"
-    assert result["response"]["cards"] == []
+    assert result["response"] == []
 
 
 # ===========================================================================
@@ -455,8 +456,8 @@ def test_run_dict_response_no_cards_key(
     flashcards_orchestrator,  # pylint: disable=redefined-outer-name
 ):
     """
-    When response is a dict but has no 'cards' key, enriched_response should
-    still be a dict with an empty cards list.
+    When response is a dict but has no 'cards' key, enriched_response wraps
+    the original dict and adds a 'cards' key referencing it.
     """
     mock_openedx = Mock()
     mock_openedx.process.return_value = {"content": "course content"}
@@ -474,7 +475,8 @@ def test_run_dict_response_no_cards_key(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    assert result["response"]["cards"] == []
+    assert isinstance(result["response"], dict)
+    assert result["response"]["other_data"] == "value"
 
 
 # ===========================================================================
@@ -509,8 +511,8 @@ def test_run_none_response(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    # None is neither dict nor list, so enriched_response = cards = []
-    assert result["response"] == []
+    # None is neither dict nor list, so enriched_response = cards = None
+    assert result["response"] is None
 
 
 # ===========================================================================
@@ -533,7 +535,7 @@ def test_save_stores_cards_in_session(
     ]
     result = flashcards_orchestrator.save({"cards": cards})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] == cards
@@ -553,7 +555,7 @@ def test_save_stores_card_stack_fallback(
     ]
     result = flashcards_orchestrator.save({"card_stack": card_stack})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] == card_stack
@@ -572,7 +574,7 @@ def test_save_prefers_cards_over_card_stack(
     card_stack = [{"id": "card-2", "question": "Q2?", "answer": "A2"}]
     result = flashcards_orchestrator.save({"cards": cards, "card_stack": card_stack})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] == cards
@@ -589,7 +591,8 @@ def test_save_with_no_cards_or_card_stack(
 
     result = flashcards_orchestrator.save({})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
+    assert result["message"] == "0 cards saved successfully."
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] is None
@@ -645,7 +648,7 @@ def test_run_card_enrichment_preserves_original_fields(
     with patch.object(flashcards_orchestrator, "_emit_workflow_event"):
         result = flashcards_orchestrator.run({"num_cards": 1})
 
-    card = result["response"]["cards"][0]
+    card = result["response"][0]
     # Original fields preserved
     assert card["id"] == "card-1"
     assert card["question"] == "What is DNA?"
@@ -695,7 +698,8 @@ def test_run_non_dict_card_items_are_skipped(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    enriched_cards = result["response"]["cards"]
+    enriched_cards = result["response"]
+    assert isinstance(enriched_cards, list)
     # Only the dict item gets enriched
     assert "nextReviewTime" in enriched_cards[0]
     assert enriched_cards[1] == "not-a-dict"
