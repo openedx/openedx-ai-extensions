@@ -678,37 +678,41 @@ def test_threaded_orchestrator_handles_error_marker(
     mock_openedx_processor_class,
     mock_submission_processor_class,
     mock_llm_processor_class,
-    workflow_scope,
-    user,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
 ):
     """Test that ThreadedLLMResponse handles the error marker from a streaming response."""
     # Mock LLMProcessor to return a generator with an error marker
     mock_llm = Mock()
+
     def mock_generator(*args, **kwargs):
         yield b"Partial response"
-        yield b'||{"error_in_stream": true, "code": "streaming_failed", "message": "The AI service encountered an error while generating the response. Please try again."}||'
+        yield (
+            b'||{"error_in_stream": true, "code": "streaming_failed", "message": "The AI service encountered '
+            b'an error while generating the response. Please try again."}||'
+        )
     mock_llm.process.return_value = mock_generator()
     mock_llm_processor_class.return_value = mock_llm
-    
+
     # Mock other processors
     mock_submission = Mock()
     mock_submission.get_full_message_history.return_value = []
     mock_submission_processor_class.return_value = mock_submission
-    
+
     mock_openedx = Mock()
     mock_openedx.process.return_value = {}
     mock_openedx_processor_class.return_value = mock_openedx
-    
+
     context = {"course_id": workflow_scope.course_id}
     orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
-    
+
     # Execute orchestrator
     result = orchestrator.run(input_data={"user_input": "test"})
-    
+
     # Consume generator to trigger history saving
     chunks = list(result)
     assert b"Partial response" in chunks
-    
+
     # Verify history saving
     mock_submission.update_chat_submission.assert_called_once()
     messages = mock_submission.update_chat_submission.call_args[0][0]
@@ -724,41 +728,41 @@ def test_threaded_orchestrator_handles_invalid_error_marker_fallback(
     mock_openedx_processor_class,
     mock_submission_processor_class,
     mock_llm_processor_class,
-    workflow_scope,
-    user,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
 ):
     """Test that ThreadedLLMResponse handles invalid JSON in error marker correctly."""
     # Mock LLMProcessor to return a generator with an invalid error marker
     mock_llm = Mock()
+
     def mock_generator(*args, **kwargs):
         yield b"Partial response"
         yield b'||{"invalid_json": true||'
     mock_llm.process.return_value = mock_generator()
     mock_llm_processor_class.return_value = mock_llm
-    
+
     # Mock other processors
     mock_submission = Mock()
     mock_submission.get_full_message_history.return_value = []
     mock_submission_processor_class.return_value = mock_submission
-    
+
     mock_openedx = Mock()
     mock_openedx.process.return_value = {}
     mock_openedx_processor_class.return_value = mock_openedx
-    
+
     context = {"course_id": workflow_scope.course_id}
     orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
-    
+
     # Execute orchestrator
     result = orchestrator.run(input_data={"user_input": "test"})
-    
+
     # Consume generator
     chunks = list(result)
     assert b"Partial response" in chunks
     assert b'||{"invalid_json": true||' in chunks
-    
+
     # Verify history saving - should include the invalid marker as is
     mock_submission.update_chat_submission.assert_called_once()
     messages = mock_submission.update_chat_submission.call_args[0][0]
     final_response = next(m["content"] for m in messages if m["role"] == "assistant")
     assert '||{"invalid_json": true||' in final_response
-
