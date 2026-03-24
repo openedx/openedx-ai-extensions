@@ -186,6 +186,11 @@ const messages = defineMessages({
     defaultMessage: 'Generate New Set',
     description: 'Button to clear the current session and generate a new card deck',
   },
+  'ai.extensions.flashcard.creator.add.cards.button': {
+    id: 'ai.extensions.flashcard.creator.add.cards.button',
+    defaultMessage: 'Add cards',
+    description: 'Button to directly generate and add flashcards via run_async',
+  },
 });
 
 export default messages;

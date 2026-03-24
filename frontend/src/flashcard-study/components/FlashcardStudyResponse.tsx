@@ -4,13 +4,15 @@ import {
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Alert, Badge, Button, ModalDialog,
-  Stack,
+  Spinner, Stack,
 } from '@openedx/paragon';
+import { AutoAwesome } from '@openedx/paragon/icons';
 import Flashcard from './Flashcard';
 import StudyControls from './StudyControls';
 import { useStudySession } from '../hooks/useStudySession';
 import { calculateNextReview } from '../utils';
-import { saveCardStack, clearSession } from '../data/workflowActions';
+import { saveCardStack, clearSession, generateFlashcards } from '../data/workflowActions';
+import { POLLING_ERROR_KEYS, useAsyncTaskPolling } from '../hooks/useAsyncTaskPolling';
 import { Flashcard as FlashcardType, CardStack } from '../types';
 import { prepareContextData } from '../../services';
 import LastReviewLabel from './LastReviewLabel';
@@ -47,6 +49,8 @@ const FlashcardStudyResponse = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState('');
   const isDirtyRef = useRef(false);
   const cardsRef = useRef(cards);
   // Re-parse cards when response changes and reopen the modal
@@ -66,6 +70,49 @@ const FlashcardStudyResponse = ({
 
   // Keep cardsRef in sync so the auto-save callback always has fresh data
   useEffect(() => { cardsRef.current = cards; }, [cards]);
+
+  // ── Add cards (run_async) ───────────────────────────────────────────────
+  const courseId = (contextData as any)?.courseId || '';
+
+  const onAddComplete = useCallback((responseData: any) => {
+    const newCards = parseCards(responseData);
+    if (newCards.length > 0) {
+      setCards((prev) => [...prev, ...newCards]);
+      isDirtyRef.current = true;
+    }
+    setIsAdding(false);
+  }, []);
+
+  const onAddError = useCallback((errorKey: string) => {
+    setIsAdding(false);
+    const key = errorKey === POLLING_ERROR_KEYS.TIMEOUT
+      ? 'ai.extensions.flashcard.error.timeout'
+      : 'ai.extensions.flashcard.error.generate';
+    setAddError(intl.formatMessage(messages[key]));
+  }, [intl]);
+
+  const { startPolling: startAddPolling, stopPolling: stopAddPolling } = useAsyncTaskPolling({
+    contextData: preparedContext,
+    courseId,
+    onComplete: onAddComplete,
+    onError: onAddError,
+  });
+
+  const handleAddCards = async () => {
+    setIsAdding(true);
+    setAddError('');
+    try {
+      const data = await generateFlashcards({ context: preparedContext, numCards: null });
+      if (data.taskId) {
+        startAddPolling(data.taskId);
+      } else {
+        onAddComplete(data);
+      }
+    } catch {
+      setIsAdding(false);
+      setAddError(intl.formatMessage(messages['ai.extensions.flashcard.error.generate']));
+    }
+  };
 
   const autoSave = useCallback(async () => {
     if (!isDirtyRef.current) { return; }
@@ -179,6 +226,19 @@ const FlashcardStudyResponse = ({
                 </>
               )}
             </Button>
+            <Button
+              size="sm"
+              variant="outline-primary"
+              iconBefore={isAdding ? undefined : AutoAwesome}
+              onClick={handleAddCards}
+              disabled={isAdding}
+            >
+              {isAdding ? (
+                <Spinner animation="border" size="sm" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.generate.form.generating'])} />
+              ) : (
+                intl.formatMessage(messages['ai.extensions.flashcard.creator.add.cards.button'])
+              )}
+            </Button>
             <Button size="sm" variant="outline-primary" onClick={handleClearSession}>
               {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
             </Button>
@@ -253,6 +313,17 @@ const FlashcardStudyResponse = ({
           </ModalDialog.CloseButton>
         </ModalDialog.Footer>
       </ModalDialog>
+
+      {addError && (
+        <Alert
+          variant="danger"
+          dismissible
+          onClose={() => { setAddError(''); stopAddPolling(); }}
+          className="mt-3"
+        >
+          {addError}
+        </Alert>
+      )}
 
       {saveError && (
         <Alert
