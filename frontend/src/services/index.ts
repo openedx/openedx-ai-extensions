@@ -8,6 +8,8 @@ export {
 
 export {
   fetchProfilesList,
+  fetchPromptTemplate,
+  savePromptTemplate,
 } from './profilesService';
 
 export {

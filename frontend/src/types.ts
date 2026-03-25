@@ -43,6 +43,14 @@ export interface AIModelResponse extends Message {
   role: 'user' | 'assistant';
 }
 
+export interface PromptTemplate {
+  id: string;
+  slug: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AIWorkflowScope {
   id: string;
   courseId: string | null;

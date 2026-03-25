@@ -1,10 +1,11 @@
 /**
  * Profiles Service
- * Handles fetching the list of AI Workflow Profiles available for a given course context
+ * Handles fetching the list of AI Workflow Profiles available for a given course context,
+ * and fetching/saving individual prompt templates.
  */
 import { camelCaseObject } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
-import { PluginContext, ProfilesListResponse } from '../types';
+import { PluginContext, ProfilesListResponse, PromptTemplate } from '../types';
 import { ENDPOINT_TYPES } from '../constants';
 import { getDefaultEndpoint } from './utils';
 
@@ -13,11 +14,6 @@ interface FetchProfilesListParams {
   signal?: AbortSignal | null;
 }
 
-/**
- * Fetch all AI Workflow Profiles available for the given course context.
- * Omitting uiSlotSelectorId returns profiles for all slots — the intended
- * pattern for the Studio settings panel.
- */
 export const fetchProfilesList = async ({
   contextData,
   signal = null,
@@ -27,9 +23,34 @@ export const fetchProfilesList = async ({
   if (contextData) {
     params.append('context', JSON.stringify(contextData));
   }
-
   const url = `${endpoint}?${params.toString()}`;
-  const client = getAuthenticatedHttpClient();
-  const response = await client.get(url, { signal });
+  const response = await getAuthenticatedHttpClient().get(url, { signal });
   return camelCaseObject(response.data) as ProfilesListResponse;
+};
+
+const getPromptUrl = (identifier: string): string => {
+  const base = getDefaultEndpoint('prompts' as any).replace(/\/$/, '');
+  return `${base}/${identifier}/`;
+};
+
+export const fetchPromptTemplate = async ({
+  identifier,
+  signal = null,
+}: {
+  identifier: string;
+  signal?: AbortSignal | null;
+}): Promise<PromptTemplate> => {
+  const response = await getAuthenticatedHttpClient().get(getPromptUrl(identifier), { signal });
+  return camelCaseObject(response.data) as PromptTemplate;
+};
+
+export const savePromptTemplate = async ({
+  identifier,
+  body,
+}: {
+  identifier: string;
+  body: string;
+}): Promise<PromptTemplate> => {
+  const response = await getAuthenticatedHttpClient().patch(getPromptUrl(identifier), { body });
+  return camelCaseObject(response.data) as PromptTemplate;
 };
