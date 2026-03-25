@@ -42,3 +42,16 @@ export interface AIChatMessage extends Message {
 export interface AIModelResponse extends Message {
   role: 'user' | 'assistant';
 }
+
+export interface AIWorkflowProfile {
+  id: string;
+  slug: string;
+  description: string | null;
+  effectiveConfig: Record<string, any>;
+}
+
+export interface ProfilesListResponse {
+  profiles: AIWorkflowProfile[];
+  count: number;
+  timestamp: string;
+}

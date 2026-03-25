@@ -38,6 +38,33 @@ const messages = defineMessages({
     defaultMessage: 'Workflows configuration is under development. This feature will allow you to configure AI-powered workflows for your course.',
     description: 'Placeholder text for workflows config tab',
   },
+
+  // Profiles list
+  'openedx-ai-extensions.settings-modal.workflows.profiles.title': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.profiles.title',
+    defaultMessage: 'Available AI Profiles',
+    description: 'Section title for the list of available AI profiles',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.profiles.loading': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.profiles.loading',
+    defaultMessage: 'Loading profiles...',
+    description: 'Loading message while fetching AI profiles',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.profiles.empty': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.profiles.empty',
+    defaultMessage: 'No AI profiles are configured for this course.',
+    description: 'Message shown when no profiles are found for the course',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.profiles.error': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.profiles.error',
+    defaultMessage: 'Failed to load profiles. Please try again.',
+    description: 'Error message shown when the profiles list request fails',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.profiles.config-label': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.profiles.config-label',
+    defaultMessage: 'Configuration',
+    description: 'Label for the effective configuration section of a profile card',
+  },
 });
 
 export default messages;
