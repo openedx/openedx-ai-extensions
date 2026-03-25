@@ -111,7 +111,90 @@ Usage
 Setting Up Development Environment
 ===================================
 
-TBD when the tutor plugin PR is merged.
+For detailed setup instructions and community tips, see `GitHub Issue #83 <https://github.com/openedx/openedx-ai-extensions/issues/83>`_.
+
+Below is a condensed guide based on the approaches shared by contributors.
+
+Backend Setup
+-------------
+
+1. Clone the repository into a local directory (e.g. ``extra/``)::
+
+    git clone https://github.com/openedx/openedx-ai-extensions.git
+
+2. Mount the plugin source into LMS and CMS. Add to your Tutor ``config.yml``::
+
+    MOUNTS:
+    - lms,cms:/full/path/to/extra:/openedx/extra
+
+3. Create a ``requirements.txt`` inside your ``extra/`` folder with::
+
+    -e ./openedx-ai-extensions/backend
+
+4. Configure the AI provider in ``config.yml``::
+
+    AI_EXTENSIONS:
+      openai:
+        API_KEY: "sk-proj-your-api-key"
+        MODEL: "openai/gpt-4o-mini"
+
+    PLUGINS:
+    - openedx-ai-extensions
+
+5. Build and launch::
+
+    pip install git+https://github.com/openedx/openedx-ai-extensions.git
+    tutor plugins enable openedx-ai-extensions
+    tutor images build openedx
+    tutor images build mfe
+    tutor dev launch
+
+6. Install the backend in editable mode inside both containers::
+
+    tutor dev exec lms bash -c "cd /openedx/extra && pip install -r requirements.txt"
+    tutor dev exec cms bash -c "cd /openedx/extra && pip install -r requirements.txt"
+
+7. Run migrations::
+
+    tutor dev exec lms python manage.py lms migrate openedx_ai_extensions
+
+Frontend Setup
+--------------
+
+1. Install frontend dependencies::
+
+    cd openedx-ai-extensions/frontend && npm install
+
+2. Mount the Learning and/or Authoring MFE repos and add the required
+   ``env.config.jsx`` and ``module.config.js`` files.
+   See `efortish's gists <https://github.com/openedx/openedx-ai-extensions/issues/83#issuecomment-2652413543>`_ for ready-to-use examples.
+
+3. Start the MFE dev server::
+
+    cd frontend-app-learning && npm ci && npm install && npm run dev
+
+Loading Demo Fixtures
+---------------------
+
+A set of demo fixtures is included to quickly populate the database with example
+AI workflow profiles and scopes. These cover several common configurations:
+flashcards, box chat with summary, chat with function calling, streaming chat,
+educator assistant, and mocked streaming.
+
+Load them with::
+
+    tutor dev exec lms python manage.py lms loaddata demo_profiles
+
+.. important::
+
+   The fixtures ship with a placeholder API key (``sk-proj-your-openai-api-key-here``).
+   After loading, open the Django admin at ``/admin/openedx_ai_extensions/aiworkflowprofile/``
+   and update the ``content_patch`` field of each profile with your real API key.
+
+   Alternatively, you can skip per-profile API keys entirely and configure a
+   global provider key in your Tutor ``config.yml`` under ``AI_EXTENSIONS`` —
+   profiles that use ``"provider": "openai"`` (or any other configured provider)
+   will automatically pick up the key from settings.
 
 
 Code Standards
