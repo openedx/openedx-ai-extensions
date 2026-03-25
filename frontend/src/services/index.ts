@@ -7,6 +7,10 @@ export {
 } from './configService';
 
 export {
+  fetchProfilesList,
+} from './profilesService';
+
+export {
   extractCourseIdFromUrl,
   extractLocationIdFromUrl,
   prepareContextData,
