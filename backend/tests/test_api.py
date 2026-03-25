@@ -20,12 +20,14 @@ sys.modules["submissions.api"] = MagicMock()
 from openedx_ai_extensions.api.v1.workflows.serializers import (  # noqa: E402 pylint: disable=wrong-import-position
     AIWorkflowProfileListSerializer,
     AIWorkflowProfileSerializer,
+    PromptTemplateSerializer,
     redact_sensitive_config,
 )
 from openedx_ai_extensions.api.v1.workflows.views import (  # noqa: E402 pylint: disable=wrong-import-position
     AIWorkflowProfilesListView,
     AIWorkflowProfileView,
 )
+from openedx_ai_extensions.models import PromptTemplate  # noqa: E402 pylint: disable=wrong-import-position
 from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
     AIWorkflowProfile,
     AIWorkflowScope,
@@ -1112,3 +1114,210 @@ def test_profiles_list_view_invalid_context_json_unit(mock_list, user):  # pylin
     response.render()
 
     assert response.status_code == 500
+
+
+# ============================================================================
+# Tests - Prompt Template Detail Endpoint (GET /v1/prompts/<identifier>/)
+# ============================================================================
+
+
+@pytest.fixture
+def prompt_template(db):  # pylint: disable=unused-argument
+    """Create a PromptTemplate for tests."""
+    return PromptTemplate.objects.create(
+        slug="test-prompt",
+        body="You are a helpful assistant. Explain: {{ topic }}",
+    )
+
+
+@pytest.mark.django_db
+def test_prompt_detail_url_is_registered():
+    """Prompt detail URL resolves for both slug and uuid patterns."""
+    url = reverse("openedx_ai_extensions:api:v1:aiext_prompt_detail", kwargs={"identifier": "my-slug"})
+    assert url == "/openedx-ai-extensions/v1/prompts/my-slug/"
+
+
+@pytest.mark.django_db
+def test_prompt_detail_requires_authentication(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """Unauthenticated requests are rejected."""
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": prompt_template.slug},
+    )
+    response = api_client.get(url)
+    assert response.status_code in [401, 403]
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_prompt_detail_requires_staff(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """Non-staff authenticated users are rejected."""
+    api_client.login(username="testuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": prompt_template.slug},
+    )
+    response = api_client.get(url)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_detail_by_slug(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """Fetching a prompt by slug returns 200 with all fields."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": prompt_template.slug},
+    )
+    response = api_client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["slug"] == prompt_template.slug
+    assert data["body"] == prompt_template.body
+    assert str(data["id"]) == str(prompt_template.id)
+    assert "created_at" in data
+    assert "updated_at" in data
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_detail_by_uuid(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """Fetching a prompt by UUID returns the same template."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": str(prompt_template.id)},
+    )
+    response = api_client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["slug"] == prompt_template.slug
+    assert str(data["id"]) == str(prompt_template.id)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_detail_not_found(api_client):  # pylint: disable=redefined-outer-name
+    """Unknown identifier returns 404 with a meaningful error."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": "does-not-exist"},
+    )
+    response = api_client.get(url)
+
+    assert response.status_code == 404
+    data = response.json()
+    assert "error" in data
+    assert data["status"] == "not_found"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_detail_unknown_uuid(api_client):  # pylint: disable=redefined-outer-name
+    """A well-formed UUID that matches no record returns 404."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": "00000000-0000-0000-0000-000000000000"},
+    )
+    response = api_client.get(url)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_patch_updates_body(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """PATCH with only body updates the template and returns the full representation."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": prompt_template.slug},
+    )
+    response = api_client.patch(url, {"body": "New prompt text."}, format="json")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["body"] == "New prompt text."
+    prompt_template.refresh_from_db()
+    assert prompt_template.body == "New prompt text."
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_patch_rejects_extra_fields(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """PATCH with any field besides body is rejected with 400."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": prompt_template.slug},
+    )
+    response = api_client.patch(
+        url, {"body": "ok", "slug": "hacked"}, format="json"
+    )
+
+    assert response.status_code == 400
+    assert "slug" in response.json()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_patch_rejects_id_change(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """PATCH attempting to change the id is rejected."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": prompt_template.slug},
+    )
+    response = api_client.patch(
+        url, {"id": "00000000-0000-0000-0000-000000000000"}, format="json"
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+def test_prompt_patch_not_found(api_client):  # pylint: disable=redefined-outer-name
+    """PATCH on a non-existent identifier returns 404."""
+    api_client.login(username="staffuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": "no-such-template"},
+    )
+    response = api_client.patch(url, {"body": "irrelevant"}, format="json")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("user")
+def test_prompt_patch_requires_staff(api_client, prompt_template):  # pylint: disable=redefined-outer-name
+    """Non-staff users cannot PATCH."""
+    api_client.login(username="testuser", password="password123")
+    url = reverse(
+        "openedx_ai_extensions:api:v1:aiext_prompt_detail",
+        kwargs={"identifier": prompt_template.slug},
+    )
+    response = api_client.patch(url, {"body": "attempt"}, format="json")
+
+    assert response.status_code == 403
+
+
+# ============================================================================
+# Unit Tests - PromptTemplateSerializer
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_prompt_template_serializer_read_only(prompt_template):  # pylint: disable=redefined-outer-name
+    """PromptTemplateDetailView is read-only."""
+    serializer = PromptTemplateSerializer(prompt_template)
+    with pytest.raises(NotImplementedError):
+        serializer.create({})
+    with pytest.raises(NotImplementedError):
+        serializer.update(prompt_template, {})

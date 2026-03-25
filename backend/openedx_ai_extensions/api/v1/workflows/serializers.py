@@ -6,6 +6,8 @@ import copy
 
 from rest_framework import serializers
 
+from openedx_ai_extensions.models import PromptTemplate
+
 # Keys whose values must never be exposed to the frontend.
 _SENSITIVE_KEYS = frozenset({
     "api_key",
@@ -54,6 +56,54 @@ def _redact_node(node):
         for i, item in enumerate(node):
             node[i] = _redact_node(item)
     return node
+
+
+class PromptTemplateSerializer(serializers.Serializer):
+    """
+    Serializer for a PromptTemplate instance.
+
+    Exposes all public fields of the template.
+    """
+
+    id = serializers.UUIDField(read_only=True)
+    slug = serializers.SlugField(read_only=True)
+    body = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+    def create(self, validated_data):
+        """Read-only serializer — creation not supported."""
+        raise NotImplementedError("PromptTemplateSerializer is read-only")
+
+    def update(self, instance, validated_data):
+        """Read-only serializer — update not supported."""
+        raise NotImplementedError("PromptTemplateSerializer is read-only")
+
+
+class PromptTemplateUpdateSerializer(serializers.ModelSerializer):
+    """
+    Write serializer for PromptTemplate — only ``body`` may be changed.
+
+    Any field other than ``body`` in the request payload is rejected with a
+    validation error. ``created_at`` and ``updated_at`` are managed by Django
+    automatically and are never accepted as input.
+    """
+
+    class Meta:
+        """Serializer metadata."""
+
+        model = PromptTemplate
+        fields = ["body"]
+
+    def validate(self, attrs):
+        """Reject any field not in the allowed set."""
+        allowed = {"body"}
+        extra = set(self.initial_data.keys()) - allowed
+        if extra:
+            raise serializers.ValidationError(
+                {field: "This field cannot be changed." for field in extra}
+            )
+        return super().validate(attrs)
 
 
 class AIWorkflowProfileSerializer(serializers.Serializer):
