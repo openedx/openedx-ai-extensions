@@ -335,6 +335,8 @@ class AIWorkflowScope(models.Model):
         Returns:
             list[AIWorkflowProfile]: Deduplicated list of matching profiles, ordered
             by descending specificity_index of the first matching scope per profile.
+            Each profile has a ``matched_scopes`` attribute containing all
+            ``AIWorkflowScope`` instances that linked to it in this context.
         """
         course_filter = Q(course_id=course_id) | Q(course_id=CourseKeyField.Empty)
         base_filter = {"enabled": True}
@@ -353,8 +355,8 @@ class AIWorkflowScope(models.Model):
                 **base_filter,
             ).select_related("profile").order_by("-specificity_index")
 
-        seen_profile_ids = set()
-        profiles = []
+        # profile_id → (profile, [matching scopes]) preserving insertion order
+        seen: dict = {}
 
         for scope in candidates:
             if scope.location_regex is None:
@@ -370,9 +372,15 @@ class AIWorkflowScope(models.Model):
                 except re.error:
                     continue
 
-            if scope.profile_id not in seen_profile_ids:
-                seen_profile_ids.add(scope.profile_id)
-                profiles.append(scope.profile)
+            if scope.profile_id not in seen:
+                seen[scope.profile_id] = (scope.profile, [scope])
+            else:
+                seen[scope.profile_id][1].append(scope)
+
+        profiles = []
+        for profile, matched_scopes in seen.values():
+            profile.matched_scopes = matched_scopes
+            profiles.append(profile)
 
         return profiles
 
