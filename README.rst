@@ -139,7 +139,7 @@ Backend Setup
         MODEL: "openai/gpt-4o-mini"
 
     PLUGINS:
-    - openedx-ai-extensions
+        - openedx-ai-extensions
 
 5. Build and launch::
 
@@ -187,14 +187,21 @@ Load them with::
 
 .. important::
 
-   The fixtures ship with a placeholder API key (``sk-proj-your-openai-api-key-here``).
-   After loading, open the Django admin at ``/admin/openedx_ai_extensions/aiworkflowprofile/``
-   and update the ``content_patch`` field of each profile with your real API key.
+   The fixtures do **not** include inline API keys — they rely on the global
+   provider configuration in your Tutor ``config.yml`` (the ``AI_EXTENSIONS``
+   block). Make sure you have configured at least one provider with a valid key
+   before using the profiles that call a real LLM.
 
-   Alternatively, you can skip per-profile API keys entirely and configure a
-   global provider key in your Tutor ``config.yml`` under ``AI_EXTENSIONS`` —
-   profiles that use ``"provider": "openai"`` (or any other configured provider)
-   will automatically pick up the key from settings.
+   If you need a per-profile API key override instead, edit the profile's
+   ``content_patch`` in the Django admin and add an ``options`` block::
+
+       "processor_config": {
+         "LLMProcessor": {
+           "options": {
+             "API_KEY": "your-api-key-here",
+           },
+         },
+       }
 
 
 Code Standards
