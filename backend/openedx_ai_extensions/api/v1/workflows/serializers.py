@@ -79,25 +79,56 @@ class AIWorkflowProfileSerializer(serializers.Serializer):
         raise NotImplementedError("AIWorkflowProfileSerializer is read-only")
 
 
+class AIWorkflowScopeSerializer(serializers.Serializer):
+    """
+    Serializer for an AIWorkflowScope instance in the profiles list endpoint.
+
+    Exposes the routing fields that caused a scope to match the request context.
+    """
+
+    id = serializers.UUIDField(read_only=True)
+    course_id = serializers.CharField(allow_null=True, read_only=True)
+    service_variant = serializers.CharField(read_only=True)
+    enabled = serializers.BooleanField(read_only=True)
+    ui_slot_selector_id = serializers.CharField(read_only=True)
+    location_regex = serializers.CharField(allow_null=True, read_only=True)
+    specificity_index = serializers.IntegerField(read_only=True)
+
+    def create(self, validated_data):
+        """Read-only serializer — creation not supported."""
+        raise NotImplementedError("AIWorkflowScopeSerializer is read-only")
+
+    def update(self, instance, validated_data):
+        """Read-only serializer — update not supported."""
+        raise NotImplementedError("AIWorkflowScopeSerializer is read-only")
+
+
 class AIWorkflowProfileListSerializer(serializers.Serializer):
     """
     Serializer for a single AIWorkflowProfile in the profiles list endpoint.
 
-    Exposes the profile's identity fields and its complete effective
-    configuration with sensitive values redacted. Designed to be extended
-    in future iterations to expose globally-configured provider information
-    alongside profile-level settings.
+    Exposes the profile's identity fields, its complete effective configuration
+    with sensitive values redacted, and the list of scopes that link to it in
+    the current request context. Designed to be extended in future iterations
+    to expose globally-configured provider information alongside profile-level
+    settings.
     """
 
     id = serializers.UUIDField(read_only=True)
     slug = serializers.SlugField(read_only=True)
     description = serializers.CharField(allow_null=True, read_only=True)
     effective_config = serializers.SerializerMethodField()
+    scopes = serializers.SerializerMethodField()
 
     def get_effective_config(self, obj):
         """Return effective config with sensitive values redacted."""
         config = obj.config or {}
         return redact_sensitive_config(config)
+
+    def get_scopes(self, obj):
+        """Return all scopes that matched this profile in the request context."""
+        matched_scopes = getattr(obj, "matched_scopes", [])
+        return AIWorkflowScopeSerializer(matched_scopes, many=True).data
 
     def create(self, validated_data):
         """Read-only serializer — creation not supported."""

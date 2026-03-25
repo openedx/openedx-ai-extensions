@@ -773,6 +773,16 @@ def test_profiles_list_happy_path(api_client, course_key):  # pylint: disable=re
         assert "slug" in profile
         assert "description" in profile
         assert "effective_config" in profile
+        assert "scopes" in profile
+        assert len(profile["scopes"]) == 1
+        scope = profile["scopes"][0]
+        assert "id" in scope
+        assert "course_id" in scope
+        assert "service_variant" in scope
+        assert "enabled" in scope
+        assert "ui_slot_selector_id" in scope
+        assert "location_regex" in scope
+        assert "specificity_index" in scope
 
 
 @pytest.mark.django_db
@@ -812,6 +822,7 @@ def test_profiles_list_api_keys_are_redacted(  # pylint: disable=redefined-outer
     mock_profile.config = {
         "processor_config": {"LLMProcessor": {"options": {"api_key": "sk-secret-123"}}}
     }
+    mock_profile.matched_scopes = []
     mock_list.return_value = [mock_profile]
 
     api_client.login(username="testuser", password="password123")
@@ -856,6 +867,10 @@ def test_profiles_list_deduplication(api_client, course_key):  # pylint: disable
     data = response.json()
     assert data["count"] == 1
     assert data["profiles"][0]["slug"] == "pl-dedup"
+    # Both matching scopes must be included
+    assert len(data["profiles"][0]["scopes"]) == 2
+    slot_ids = {s["ui_slot_selector_id"] for s in data["profiles"][0]["scopes"]}
+    assert slot_ids == {"slot-x", "slot-y"}
 
 
 @pytest.mark.django_db
@@ -1060,6 +1075,7 @@ def test_profiles_list_view_returns_200_unit(mock_list, user):  # pylint: disabl
     mock_profile.slug = "mock-profile"
     mock_profile.description = "Mock"
     mock_profile.config = {}
+    mock_profile.matched_scopes = []
     mock_list.return_value = [mock_profile]
 
     factory = APIRequestFactory()
