@@ -1,11 +1,9 @@
 import {
-  useState, useCallback, useEffect, useMemo,
+  useState, useCallback, useEffect, useMemo, useRef,
 } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
-import {
-  Alert, Button, Spinner,
-} from '@openedx/paragon';
-import { AutoAwesome } from '@openedx/paragon/icons';
+import { Alert, Icon, StatefulButton } from '@openedx/paragon';
+import { AutoAwesome, SpinnerSimple } from '@openedx/paragon/icons';
 import { POLLING_ERROR_KEYS, useAsyncTaskPolling } from '../hooks/useAsyncTaskPolling';
 import { generateFlashcards, getSessionResponse } from '../data/workflowActions';
 import { prepareContextData } from '../../services';
@@ -45,7 +43,9 @@ const FlashcardCreator = ({
   const intl = useIntl();
   const [step, setStep] = useState<FlashcardStep>(preloadPreviousSession ? 'loading' : 'idle');
   const [showForm, setShowForm] = useState(false);
+  const numCardsRef = useRef<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [progressMessage, setProgressMessage] = useState('');
 
   const contextData = useMemo(
     () => prepareContextData({ courseId, locationId, uiSlotSelectorId }),
@@ -54,21 +54,28 @@ const FlashcardCreator = ({
 
   const onComplete = useCallback((responseData: any) => {
     setStep('idle');
-    setResponse(responseData);
+    setProgressMessage('');
+    setResponse({ cards: responseData, numCards: numCardsRef.current });
     setHasAsked(true);
   }, [setResponse, setHasAsked]);
 
   const onError = useCallback((errorKey: string) => {
     setStep('error');
+    setProgressMessage('');
     const messageKey = ERROR_MESSAGES[errorKey] || 'ai.extensions.flashcard.error.generate';
     setErrorMessage(intl.formatMessage(messages[messageKey]));
   }, [intl]);
+
+  const onProgress = useCallback((message: string) => {
+    setProgressMessage(message);
+  }, []);
 
   const { startPolling, stopPolling } = useAsyncTaskPolling({
     contextData,
     courseId,
     onComplete,
     onError,
+    onProgress,
   });
 
   // Check for existing session on mount
@@ -95,13 +102,16 @@ const FlashcardCreator = ({
     return () => { cancelled = true; };
   }, [contextData, setResponse, setHasAsked, preloadPreviousSession]);
 
-  const handleGenerate = async (numCards: number | null) => {
-    setStep('generating');
+  const handleGenerate = async (selectedNumCards: number | null) => {
+    numCardsRef.current = selectedNumCards;
     setShowForm(false);
+    setStep('generating');
+    setProgressMessage('');
     try {
-      const data = await generateFlashcards({ context: contextData, numCards });
+      const data = await generateFlashcards({ context: contextData, numCards: selectedNumCards });
       if (data.taskId) {
         startPolling(data.taskId);
+        if (data.message) { setProgressMessage(data.message); }
       } else {
         setResponse(data);
         setHasAsked(true);
@@ -116,68 +126,52 @@ const FlashcardCreator = ({
   const handleStartOver = () => {
     stopPolling();
     setStep('idle');
-    setShowForm(false);
     setErrorMessage('');
+    setProgressMessage('');
   };
 
   if (hasAsked) { return null; }
 
   return (
-    <div className="flashcard-creator my-2 py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap">
-      {step === 'loading' && (
-        <div className="text-center py-3 mx-auto">
-          <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.creator.loading'])} />
-          <span className="small">
-            {intl.formatMessage(messages['ai.extensions.flashcard.creator.loading'])}
-          </span>
-        </div>
-      )}
+    <div className="flashcard-creator d-flex align-items-center justify-content-end px-3 small flex-wrap">
 
-      {step === 'idle' && (
+      { (!errorMessage && showForm) ? (
+        <GenerateForm onGenerate={handleGenerate} isLoading={false} />
+      ) : (
         <>
-          {!showForm && (
-            <>
-              <small className="d-block mb-2">
-                {customMessage || intl.formatMessage(messages['ai.extensions.flashcard.creator.description'])}
-              </small>
-              <Button
-                variant="primary"
-                size="sm"
-                iconBefore={AutoAwesome}
-                onClick={() => setShowForm(true)}
-              >
-                {buttonText || intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button'])}
-              </Button>
-            </>
-          )}
-
-          {showForm && (
-            <GenerateForm
-              onGenerate={handleGenerate}
-              isLoading={false}
-            />
-          )}
+          <small className="d-block my-2 pr-md-5 container-mw-xs">
+            {customMessage || intl.formatMessage(messages['ai.extensions.flashcard.creator.description'])}
+          </small>
+          <StatefulButton
+            variant="primary"
+            size="sm"
+            state={step}
+            onClick={() => setShowForm(!showForm)}
+            labels={{
+              default: buttonText || intl.formatMessage(messages['ai.extensions.flashcard.creator.create.button']),
+              generating: progressMessage || intl.formatMessage(messages['ai.extensions.flashcard.generating']),
+              loading: intl.formatMessage(messages['ai.extensions.flashcard.creator.loading']),
+            }}
+            icons={{
+              default: <Icon src={AutoAwesome} />,
+              generating: <Icon src={SpinnerSimple} className="icon-spin" />,
+              loading: <Icon src={SpinnerSimple} className="icon-spin" />,
+            }}
+            disabledStates={['loading', 'generating']}
+          />
         </>
       )}
-
-      {step === 'generating' && (
-        <div className="text-center py-3 mx-auto">
-          <Spinner animation="border" size="sm" className="mr-2" screenReaderText={intl.formatMessage(messages['ai.extensions.flashcard.generate.form.generating'])} />
-          <span className="small">
-            {intl.formatMessage(messages['ai.extensions.flashcard.generate.form.generating'])}
-          </span>
-        </div>
-      )}
-
-      {step === 'error' && (
-      <Alert
-        variant="danger"
-        dismissible
-        onClose={handleStartOver}
-        className="w-100"
-      >{errorMessage}
-      </Alert>
-      )}
+      {
+        step === 'error' && (
+          <Alert
+            variant="danger"
+            dismissible
+            onClose={handleStartOver}
+            className="w-100"
+          >{errorMessage}
+          </Alert>
+        )
+      }
     </div>
   );
 };

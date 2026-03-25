@@ -88,7 +88,7 @@ def test_get_current_session_response_with_cards(
     flashcards_orchestrator.session.metadata = {"cards": cards}
 
     result = flashcards_orchestrator.get_current_session_response(None)
-    assert result == cards
+    assert result == {'cards': cards, 'status': 'completed'}
 
 
 @pytest.mark.django_db
@@ -101,7 +101,7 @@ def test_get_current_session_response_no_cards(
     flashcards_orchestrator.session.metadata = {}
 
     result = flashcards_orchestrator.get_current_session_response(None)
-    assert result is None
+    assert result == {'cards': None, 'status': 'no_flashcards'}
 
 
 @pytest.mark.django_db
@@ -114,7 +114,7 @@ def test_get_current_session_response_none_metadata(
     flashcards_orchestrator.session.metadata = None
 
     result = flashcards_orchestrator.get_current_session_response(None)
-    assert result is None
+    assert result == {'cards': None, 'status': 'no_flashcards'}
 
 
 # ===========================================================================
@@ -213,7 +213,8 @@ def test_run_success_dict_response(
     assert result["metadata"]["tokens_used"] == 200
     assert result["metadata"]["model_used"] == "openai/gpt-4"
 
-    enriched_cards = result["response"]["cards"]
+    enriched_cards = result["response"]
+    assert isinstance(enriched_cards, list)
     assert len(enriched_cards) == 2
     for card in enriched_cards:
         assert card["nextReviewTime"] == 0
@@ -438,7 +439,7 @@ def test_run_success_empty_cards(
         result = flashcards_orchestrator.run({"num_cards": 0})
 
     assert result["status"] == "completed"
-    assert result["response"]["cards"] == []
+    assert result["response"] == []
 
 
 # ===========================================================================
@@ -455,8 +456,8 @@ def test_run_dict_response_no_cards_key(
     flashcards_orchestrator,  # pylint: disable=redefined-outer-name
 ):
     """
-    When response is a dict but has no 'cards' key, enriched_response should
-    still be a dict with an empty cards list.
+    When the LLM response is a dict without a 'cards' key, it is treated as
+    having no cards — the result contains an empty list.
     """
     mock_openedx = Mock()
     mock_openedx.process.return_value = {"content": "course content"}
@@ -474,7 +475,7 @@ def test_run_dict_response_no_cards_key(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    assert result["response"]["cards"] == []
+    assert result["response"] == []
 
 
 # ===========================================================================
@@ -509,7 +510,7 @@ def test_run_none_response(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    # None is neither dict nor list, so enriched_response = cards = []
+    # None is normalized to an empty list by _get_structured_cards
     assert result["response"] == []
 
 
@@ -533,7 +534,7 @@ def test_save_stores_cards_in_session(
     ]
     result = flashcards_orchestrator.save({"cards": cards})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] == cards
@@ -553,7 +554,7 @@ def test_save_stores_card_stack_fallback(
     ]
     result = flashcards_orchestrator.save({"card_stack": card_stack})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] == card_stack
@@ -572,7 +573,7 @@ def test_save_prefers_cards_over_card_stack(
     card_stack = [{"id": "card-2", "question": "Q2?", "answer": "A2"}]
     result = flashcards_orchestrator.save({"cards": cards, "card_stack": card_stack})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] == cards
@@ -589,7 +590,8 @@ def test_save_with_no_cards_or_card_stack(
 
     result = flashcards_orchestrator.save({})
 
-    assert result["status"] == "flashcards_saved"
+    assert result["status"] == "saved"
+    assert result["message"] == "0 cards saved successfully."
 
     flashcards_orchestrator.session.refresh_from_db()
     assert flashcards_orchestrator.session.metadata["cards"] is None
@@ -645,7 +647,7 @@ def test_run_card_enrichment_preserves_original_fields(
     with patch.object(flashcards_orchestrator, "_emit_workflow_event"):
         result = flashcards_orchestrator.run({"num_cards": 1})
 
-    card = result["response"]["cards"][0]
+    card = result["response"][0]
     # Original fields preserved
     assert card["id"] == "card-1"
     assert card["question"] == "What is DNA?"
@@ -695,7 +697,8 @@ def test_run_non_dict_card_items_are_skipped(
         result = flashcards_orchestrator.run({"num_cards": 1})
 
     assert result["status"] == "completed"
-    enriched_cards = result["response"]["cards"]
+    enriched_cards = result["response"]
+    assert isinstance(enriched_cards, list)
     # Only the dict item gets enriched
     assert "nextReviewTime" in enriched_cards[0]
     assert enriched_cards[1] == "not-a-dict"
@@ -738,3 +741,187 @@ def test_run_passes_content_and_input_data_to_llm(
     call_kwargs = mock_llm.process.call_args[1]
     assert call_kwargs["context"] == str(content_data)
     assert call_kwargs["input_data"] == input_data
+
+
+# ===========================================================================
+# FlashCardsOrchestrator.run — existing cards are sent as context (lines 86-96)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.LLMProcessor")
+def test_run_existing_cards_passed_as_context(
+    mock_llm_class,
+    mock_openedx_class,
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When session already contains cards, run() builds an existing_cards string
+    and includes it in input_data so the LLM avoids duplicates.
+    """
+    existing = [
+        {"id": "card-1", "question": "What is 2+2?", "answer": "4"},
+        {"id": "card-2", "question": "Capital of France?", "answer": "Paris"},
+    ]
+    flashcards_orchestrator.session.metadata = {"cards": existing}
+    flashcards_orchestrator.session.save(update_fields=["metadata"])
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"content": "course content"}
+    mock_openedx_class.return_value = mock_openedx
+
+    mock_llm = Mock()
+    mock_llm.process.return_value = {
+        "response": {"cards": [{"id": "card-3", "question": "Q3?", "answer": "A3"}]},
+        "tokens_used": 50,
+        "model_used": "openai/gpt-4",
+    }
+    mock_llm_class.return_value = mock_llm
+
+    with patch.object(flashcards_orchestrator, "_emit_workflow_event"):
+        flashcards_orchestrator.run({"num_cards": 1})
+
+    call_kwargs = mock_llm.process.call_args[1]
+    existing_cards_str = call_kwargs["input_data"]["existing_cards"]
+    assert "Id: card-1" in existing_cards_str
+    assert "Question: What is 2+2?" in existing_cards_str
+    assert "Answer: 4" in existing_cards_str
+    assert "Id: card-2" in existing_cards_str
+    assert "Question: Capital of France?" in existing_cards_str
+    assert "Answer: Paris" in existing_cards_str
+
+
+# ===========================================================================
+# FlashCardsOrchestrator.run — new cards extend existing (line 123)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator.LLMProcessor")
+def test_run_extends_existing_cards_in_session(
+    mock_llm_class,
+    mock_openedx_class,
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When session already has cards, run() extends the list rather than
+    replacing it.
+    """
+    existing = [
+        {"id": "card-1", "question": "Q1?", "answer": "A1"},
+    ]
+    flashcards_orchestrator.session.metadata = {"cards": existing}
+    flashcards_orchestrator.session.save(update_fields=["metadata"])
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"content": "course content"}
+    mock_openedx_class.return_value = mock_openedx
+
+    new_cards = [
+        {"id": "card-2", "question": "Q2?", "answer": "A2"},
+    ]
+    mock_llm = Mock()
+    mock_llm.process.return_value = {
+        "response": {"cards": new_cards},
+        "tokens_used": 50,
+        "model_used": "openai/gpt-4",
+    }
+    mock_llm_class.return_value = mock_llm
+
+    with patch.object(flashcards_orchestrator, "_emit_workflow_event"):
+        flashcards_orchestrator.run({"num_cards": 1})
+
+    flashcards_orchestrator.session.refresh_from_db()
+    stored = flashcards_orchestrator.session.metadata["cards"]
+    assert len(stored) == 2
+    assert stored[0]["id"] == "card-1"
+    assert stored[1]["id"] == "card-2"
+
+
+# ===========================================================================
+# FlashCardsOrchestrator.save — card_stack dict unwrapping (line 145)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+def test_save_unwraps_card_stack_dict(
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    When 'card_stack' is a dict containing a 'cards' key, save() extracts
+    the inner list instead of storing the wrapper dict.
+    """
+    flashcards_orchestrator.session.metadata = {}
+
+    inner_cards = [
+        {"id": "card-1", "question": "Q1?", "answer": "A1"},
+        {"id": "card-2", "question": "Q2?", "answer": "A2"},
+    ]
+    card_stack = {"cards": inner_cards, "created_at": 12345, "last_studied_at": 67890}
+    result = flashcards_orchestrator.save({"card_stack": card_stack})
+
+    assert result["status"] == "saved"
+    assert result["message"] == "2 cards saved successfully."
+
+    flashcards_orchestrator.session.refresh_from_db()
+    assert flashcards_orchestrator.session.metadata["cards"] == inner_cards
+
+
+# ===========================================================================
+# ScopedSessionOrchestrator — session scoping & run_async
+# ===========================================================================
+
+
+@pytest.mark.django_db
+def test_scoped_session_has_no_location_id(
+    flashcards_orchestrator,  # pylint: disable=redefined-outer-name
+):
+    """
+    ScopedSessionOrchestrator creates a session without location_id so it is
+    shared across all locations within the same course.
+    """
+    assert flashcards_orchestrator.session.location_id is None
+
+
+@pytest.mark.django_db
+@patch(
+    "openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator"
+    "._execute_orchestrator_async"
+)
+def test_scoped_run_async_stores_location_in_metadata(
+    mock_task,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
+    course_key,  # pylint: disable=redefined-outer-name
+):
+    """
+    ScopedSessionOrchestrator.run_async persists the current location_id in
+    metadata (not on the session row) so the async task can recover it
+    without risking a unique-constraint collision.
+    """
+    location = "block-v1:edX+DemoX+Demo_Course+type@vertical+block@test_unit_1"
+    context = {
+        "course_id": str(course_key),
+        "location_id": location,
+    }
+    orchestrator = FlashCardsOrchestrator(
+        workflow=workflow_scope,
+        user=user,
+        context=context,
+    )
+
+    mock_task.delay.return_value = Mock(id="celery-task-id-123")
+    result = orchestrator.run_async({"num_cards": 5})
+
+    assert result["status"] == "processing"
+    assert result["task_id"] == "celery-task-id-123"
+
+    # location_id must NOT be written to the session row
+    orchestrator.session.refresh_from_db()
+    assert orchestrator.session.location_id is None
+
+    # location_id must be stored in metadata for the async task
+    assert orchestrator.session.metadata["location_id"] == location
+    assert orchestrator.session.metadata["task_status"] == "processing"

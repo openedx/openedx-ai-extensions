@@ -18,6 +18,9 @@
     Cover a diverse range of concepts from the material — do not repeat the same idea across multiple cards.
     Each card must have a unique `id` in the format "card-1", "card-2", etc.
 
+    If any flashcards for the current context are provided below, treat them as existing cards and do not generate duplicate or highly similar questions. If no cards are provided, ignore this instruction:
+    {{EXISTING_CARDS}}
+
 - Question Writing Guidelines
 
     Good question patterns:

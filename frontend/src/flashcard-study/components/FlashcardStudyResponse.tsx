@@ -3,15 +3,17 @@ import {
 } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Alert, Badge, Button, ModalDialog,
-  Stack,
+  Alert, Badge, Button, Icon, ModalDialog,
+  Stack, StatefulButton,
 } from '@openedx/paragon';
+import { AutoAwesome, Quiz, SpinnerSimple } from '@openedx/paragon/icons';
 import Flashcard from './Flashcard';
 import StudyControls from './StudyControls';
 import { useStudySession } from '../hooks/useStudySession';
+import { useAsyncTaskPolling, POLLING_ERROR_KEYS } from '../hooks/useAsyncTaskPolling';
 import { calculateNextReview } from '../utils';
-import { saveCardStack, clearSession } from '../data/workflowActions';
-import { Flashcard as FlashcardType, CardStack } from '../types';
+import { saveCardStack, generateFlashcards } from '../data/workflowActions';
+import { Flashcard as FlashcardType, CardStack, FlashcardStep } from '../types';
 import { prepareContextData } from '../../services';
 import LastReviewLabel from './LastReviewLabel';
 import messages from '../messages';
@@ -20,7 +22,6 @@ export interface FlashcardStudyResponseProps {
   response: any;
   error?: string;
   isLoading?: boolean;
-  onClear: () => void;
   contextData?: Record<string, any>;
   customMessage?: string;
 }
@@ -33,11 +34,16 @@ const parseCards = (data: any): FlashcardType[] => {
   return [];
 };
 
+const ERROR_MESSAGES: Record<string, keyof typeof messages> = {
+  [POLLING_ERROR_KEYS.TIMEOUT]: 'ai.extensions.flashcard.error.timeout',
+  [POLLING_ERROR_KEYS.GENERATE]: 'ai.extensions.flashcard.error.generate',
+  [POLLING_ERROR_KEYS.NETWORK]: 'ai.extensions.flashcard.error.network',
+};
+
 const FlashcardStudyResponse = ({
   response,
   error,
   isLoading,
-  onClear,
   customMessage,
   contextData = {},
 }: FlashcardStudyResponseProps) => {
@@ -47,6 +53,9 @@ const FlashcardStudyResponse = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [step, setStep] = useState<FlashcardStep>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [progressMessage, setProgressMessage] = useState('');
   const isDirtyRef = useRef(false);
   const cardsRef = useRef(cards);
   // Re-parse cards when response changes and reopen the modal
@@ -66,6 +75,61 @@ const FlashcardStudyResponse = ({
 
   // Keep cardsRef in sync so the auto-save callback always has fresh data
   useEffect(() => { cardsRef.current = cards; }, [cards]);
+
+  // ── Add cards (run_async) ───────────────────────────────────────────────
+  const courseId = (contextData as any)?.courseId || '';
+  const numCards = response?.numCards ?? null;
+  const onAddComplete = useCallback((responseData: any) => {
+    const newCards = parseCards(responseData);
+    if (newCards.length > 0) {
+      setCards((prev) => [...prev, ...newCards]);
+      isDirtyRef.current = true;
+    }
+    setStep('idle');
+    setProgressMessage('');
+  }, []);
+
+  const onAddError = useCallback((errorKey: string) => {
+    setStep('error');
+    setProgressMessage('');
+    const key = ERROR_MESSAGES[errorKey] || 'ai.extensions.flashcard.error.generate';
+    setErrorMessage(intl.formatMessage(messages[key]));
+  }, [intl]);
+
+  const onAddProgress = useCallback((message: string) => {
+    setProgressMessage(message);
+  }, []);
+
+  const { startPolling: startAddPolling } = useAsyncTaskPolling({
+    contextData: preparedContext,
+    courseId,
+    onComplete: onAddComplete,
+    onError: onAddError,
+    onProgress: onAddProgress,
+  });
+
+  const handleAddCards = async () => {
+    setStep('generating');
+    setErrorMessage('');
+    setProgressMessage('');
+    try {
+      const data = await generateFlashcards({ context: preparedContext, numCards });
+      if (data.taskId) {
+        startAddPolling(data.taskId);
+        if (data.message) { setProgressMessage(data.message); }
+      } else {
+        onAddComplete(data);
+      }
+    } catch {
+      setStep('error');
+      setErrorMessage(intl.formatMessage(messages['ai.extensions.flashcard.error.generate']));
+    }
+  };
+
+  const handleDismissError = () => {
+    setStep('idle');
+    setErrorMessage('');
+  };
 
   const autoSave = useCallback(async () => {
     if (!isDirtyRef.current) { return; }
@@ -130,15 +194,6 @@ const FlashcardStudyResponse = ({
     setIsModalOpen(true);
   };
 
-  const handleClearSession = async () => {
-    try {
-      await clearSession({ context: preparedContext });
-    } catch {
-      // Silently fail — still reset the UI
-    }
-    onClear();
-  };
-
   if (isLoading || (!response && !error)) { return null; }
 
   if (error) {
@@ -150,27 +205,14 @@ const FlashcardStudyResponse = ({
 
   return (
     <>
-      {!hasCards && (
-        <Alert
-          variant="info"
-          actions={[
-            <Button onClick={handleClearSession}>
-              {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
-            </Button>,
-          ]}
-        >
-          {intl.formatMessage(messages['ai.extensions.flashcard.study.empty'])}
-        </Alert>
-      )}
-
-      {hasCards && (
-        <div className="d-flex align items-center justify-content-between my-3 py-3 small border-bottom">
-          <div>
-            <span>{intl.formatMessage(messages['ai.extensions.flashcard.study.session.description'])}</span>
-            <LastReviewLabel cards={cards} />
-          </div>
-          <Stack gap={2} direction="horizontal">
-            <Button size="sm" onClick={handleReopen}>
+      <div className="d-flex align-items-center justify-content-end px-3 small flex-wrap">
+        <div className="my-2 mw-md-50">
+          <span className="pr-md-5">{intl.formatMessage(messages['ai.extensions.flashcard.study.session.description'])}</span>
+          <LastReviewLabel cards={cards} />
+        </div>
+        <Stack gap={2} direction="horizontal">
+          {hasCards && (
+            <Button size="sm" onClick={handleReopen} iconBefore={Quiz}>
               <span>{intl.formatMessage(messages['ai.extensions.flashcard.creator.display.button'])}</span>
               {dueCards.length > 0 && (
                 <>
@@ -179,12 +221,30 @@ const FlashcardStudyResponse = ({
                 </>
               )}
             </Button>
-            <Button size="sm" variant="outline-primary" onClick={handleClearSession}>
-              {intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session'])}
-            </Button>
-          </Stack>
-        </div>
-      )}
+          )}
+          <StatefulButton
+            variant="outline-primary"
+            size="sm"
+            onClick={handleAddCards}
+            state={step}
+            labels={{
+              idle: intl.formatMessage(messages['ai.extensions.flashcard.study.clear.session']),
+              loading: intl.formatMessage(messages['ai.extensions.flashcard.creator.loading']),
+              generating: progressMessage || intl.formatMessage(messages['ai.extensions.flashcard.generating']),
+            }}
+            icons={{
+              idle: <Icon src={AutoAwesome} />,
+              generating: <Icon src={SpinnerSimple} className="icon-spin" />,
+            }}
+            disabledStates={['loading', 'generating']}
+          />
+        </Stack>
+        {step === 'error' && errorMessage && (
+          <Alert variant="danger" dismissible onClose={handleDismissError} className="mt-3">
+            {errorMessage}
+          </Alert>
+        )}
+      </div>
 
       <ModalDialog
         title={customMessage || intl.formatMessage(messages['ai.extensions.flashcard.title'])}

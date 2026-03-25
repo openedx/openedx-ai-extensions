@@ -91,8 +91,8 @@ const messages = defineMessages({
     defaultMessage: 'Deep',
     description: 'Sublabel for the deep depth option',
   },
-  'ai.extensions.flashcard.generate.form.generating': {
-    id: 'ai.extensions.flashcard.generate.form.generating',
+  'ai.extensions.flashcard.generating': {
+    id: 'ai.extensions.flashcard.generating',
     defaultMessage: 'Generating',
     description: 'Submit button label while generation is in progress',
   },
@@ -151,11 +151,6 @@ const messages = defineMessages({
     defaultMessage: 'Done',
     description: 'Button to close the study modal and return to the request component',
   },
-  'ai.extensions.flashcard.study.empty': {
-    id: 'ai.extensions.flashcard.study.empty',
-    defaultMessage: 'No flashcards found. Generate some cards first.',
-    description: 'Message shown when the response contains no cards',
-  },
   'ai.extensions.flashcard.error.save': {
     id: 'ai.extensions.flashcard.error.save',
     defaultMessage: 'Failed to save progress.',
@@ -168,7 +163,7 @@ const messages = defineMessages({
   },
   'ai.extensions.flashcard.study.session.description': {
     id: 'ai.extensions.flashcard.study.session.description',
-    defaultMessage: 'Use your flashcards to review the unit content.',
+    defaultMessage: 'Use your flashcards to review the course content.',
     description: 'Message shown when a preloaded session has cards available',
   },
   'ai.extensions.flashcard.study.paused.session.justNow': {
@@ -183,8 +178,8 @@ const messages = defineMessages({
   },
   'ai.extensions.flashcard.study.clear.session': {
     id: 'ai.extensions.flashcard.study.clear.session',
-    defaultMessage: 'Generate New Set',
-    description: 'Button to clear the current session and generate a new card deck',
+    defaultMessage: 'Generate Unit Cards',
+    description: 'Generate cards for the current unit and add it to the course deck',
   },
 });
 

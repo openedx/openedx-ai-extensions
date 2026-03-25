@@ -17,6 +17,7 @@ interface UseAsyncTaskPollingOptions {
   courseId: string;
   onComplete: (responseData: any) => void;
   onError: (errorKey: string, detail?: string) => void;
+  onProgress?: (message: string) => void;
 }
 
 /**
@@ -32,6 +33,7 @@ interface UseAsyncTaskPollingOptions {
  * @param options.courseId    - Course identifier forwarded to the poll request.
  * @param options.onComplete  - Called with the response payload when the task succeeds.
  * @param options.onError     - Called with `'timeout'`, `'generate'`, or `'network'` and an optional detail.
+ * @param options.onProgress  - Called with the backend message on each in-progress poll response.
  * @returns startPolling - Begins polling for the given `taskId`.
  * @returns stopPolling  - Cancels any active polling interval.
  */
@@ -40,6 +42,7 @@ export const useAsyncTaskPolling = ({
   courseId,
   onComplete,
   onError,
+  onProgress,
 }: UseAsyncTaskPollingOptions) => {
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingStartTimeRef = useRef<number | null>(null);
@@ -61,13 +64,15 @@ export const useAsyncTaskPolling = ({
       } else if (data.status === 'error' || data.status === 'timeout' || data.error) {
         stopPolling();
         onError(POLLING_ERROR_KEYS.GENERATE, data.error || data.message);
+      } else if (data.message && onProgress) {
+        onProgress(data.message);
       }
     } catch (err) {
       logError('useAsyncTaskPolling: poll error:', err);
       stopPolling();
       onError(POLLING_ERROR_KEYS.NETWORK, (err as Error).message);
     }
-  }, [contextData, courseId, onComplete, onError, stopPolling]);
+  }, [contextData, courseId, onComplete, onError, onProgress, stopPolling]);
 
   const startPolling = useCallback((taskId: string) => {
     pollingStartTimeRef.current = Date.now();
