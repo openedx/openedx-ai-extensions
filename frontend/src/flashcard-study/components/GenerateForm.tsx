@@ -31,9 +31,9 @@ const GenerateForm = ({ onGenerate, isLoading }: GenerateFormProps) => {
 
   return (
 
-    <Container className="d-flex justify-content-between align-items-center flex-wrap">
-      <span className="small">{intl.formatMessage(messages['ai.extensions.flashcard.generate.form.auto.help'])}</span>
-      <ButtonGroup size="sm" className="w-sm-100 w-md-50">
+    <Container className="d-flex align-items-center justify-content-end px-3 small flex-wrap">
+      <span className="d-block my-2 pr-md-5 container-mw-xs">{intl.formatMessage(messages['ai.extensions.flashcard.generate.form.auto.help'])}</span>
+      <ButtonGroup size="sm" className="w-sm-100 w-md-25">
         {DEPTH_OPTIONS.map(({
           value, numCards, sublabelKey, icon,
         }) => (
@@ -44,14 +44,14 @@ const GenerateForm = ({ onGenerate, isLoading }: GenerateFormProps) => {
             onClick={() => onGenerate(numCards)}
             disabled={isLoading}
           >
-            <div className="d-flex flex-column">
+            <div className="d-flex flex-column x-small">
 
               <strong>
                 {numCards === null
                   ? intl.formatMessage(messages['ai.extensions.flashcard.generate.depth.auto'])
                   : intl.formatMessage(messages['ai.extensions.flashcard.generate.depth.cards'], { count: numCards })}
               </strong>
-              <small className="x-small">{intl.formatMessage(messages[sublabelKey])}</small>
+              <span>{intl.formatMessage(messages[sublabelKey])}</span>
             </div>
           </Button>
         ))}
