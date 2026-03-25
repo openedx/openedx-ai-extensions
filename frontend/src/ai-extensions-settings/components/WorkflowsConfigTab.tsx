@@ -9,8 +9,10 @@
 
 import { useEffect, useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
-import { Alert, Badge, Spinner } from '@openedx/paragon';
+import { Alert, Badge, Button, Spinner } from '@openedx/paragon';
 import { AIWorkflowProfile } from '../../types';
+
+type ProfileView = 'profile' | 'scopes' | 'prompt';
 import { fetchProfilesList } from '../../services/profilesService';
 import { prepareContextData } from '../../services/utils';
 import messages from '../messages';
@@ -81,6 +83,12 @@ const WorkflowsConfigTab = () => {
   const [error, setError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<AIWorkflowProfile[]>([]);
   const [selected, setSelected] = useState<AIWorkflowProfile | null>(null);
+  const [view, setView] = useState<ProfileView>('profile');
+
+  const handleSelectProfile = (profile: AIWorkflowProfile) => {
+    setSelected(profile);
+    setView('profile');
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -127,6 +135,7 @@ const WorkflowsConfigTab = () => {
   }
 
   const configJson = selected ? JSON.stringify(selected.effectiveConfig, null, 2) : '';
+  const scopesJson = selected ? JSON.stringify(selected.scopes, null, 2) : '';
 
   return (
     <div style={{ display: 'flex', height: '100%', minHeight: '520px' }}>
@@ -152,7 +161,7 @@ const WorkflowsConfigTab = () => {
               key={profile.id}
               profile={profile}
               isSelected={selected?.id === profile.id}
-              onSelect={setSelected}
+              onSelect={handleSelectProfile}
             />
           ))}
         </div>
@@ -166,14 +175,27 @@ const WorkflowsConfigTab = () => {
               className="bg-light border-bottom d-flex align-items-center px-4"
               style={{ height: COLUMN_HEADER_HEIGHT, flexShrink: 0, gap: '0.5rem' }}
             >
-              <span className="font-weight-bold">{selected.slug}</span>
-              <span className="text-muted small">·</span>
-              <span className="text-muted small">
-                {intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.profiles.config-label'])}
-              </span>
+              <span className="font-weight-bold mr-3">{selected.slug}</span>
+              {(['profile', 'scopes', 'prompt'] as ProfileView[]).map((v) => (
+                <Button
+                  key={v}
+                  size="sm"
+                  variant={view === v ? 'primary' : 'tertiary'}
+                  onClick={() => setView(v)}
+                  className="text-capitalize"
+                >
+                  {v}
+                </Button>
+              ))}
             </div>
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <JsonViewer content={configJson} />
+              {view === 'profile' && <JsonViewer content={configJson} />}
+              {view === 'scopes' && <JsonViewer content={scopesJson} />}
+              {view === 'prompt' && (
+                <div className="p-4">
+                  <Alert variant="info">Prompt editing is not yet available.</Alert>
+                </div>
+              )}
             </div>
           </>
         )}
