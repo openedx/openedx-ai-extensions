@@ -168,47 +168,6 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         if 'error' in llm_result:
             return {'error': llm_result['error'], 'status': 'LLMProcessor error'}
 
-        lib_key_str = input_data.get('library_id')
-
-        # TODO: Remove the direct-commit path once iterative review is fully supported in the UI
-        if lib_key_str:
-            # Legacy direct-commit path
-            items = []
-            for problem in llm_result.get("response", {}).get("problems", []):
-                try:
-                    olx_content = json_to_olx(problem)
-                    items.append(olx_content)
-                except Exception as e:  # pylint: disable=broad-except
-                    logger.exception(f"Error converting problem to OLX: {e}")
-                    continue
-
-            library_processor = ContentLibraryProcessor(
-                library_key=lib_key_str,
-                user=self.user,
-                config=self.profile.processor_config
-            )
-            collection_key = library_processor.create_collection_and_add_items(
-                title=llm_result.get("response", {}).get("collection_name", "AI Generated Questions"),
-                description="AI-generated quiz questions",
-                items=items
-            )
-
-            self.session.metadata = {
-                "library_id": lib_key_str,
-                "collection_url": f"authoring/library/{lib_key_str}/collection/{collection_key}",
-                "collection_id": collection_key,
-            }
-            self.session.save(update_fields=["metadata"])
-            self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
-            return {
-                'response': f"authoring/library/{lib_key_str}/collection/{collection_key}",
-                'status': 'completed',
-                'metadata': {
-                    'tokens_used': llm_result.get('tokens_used'),
-                    'model_used': llm_result.get('model_used')
-                }
-            }
-
         # Iterative path: store questions for review
         response_payload = llm_result.get("response", {}) or {}
         problems = response_payload.get("problems", []) or []
