@@ -85,7 +85,7 @@ def handle_ai_errors(func):
                 {
                     "error": {
                         "code": error_config["code"],
-                        "message": str(e) if isinstance(e, ValidationError) else error_config["message"],
+                        "message": list(e.messages) if isinstance(e, ValidationError) else error_config["message"],
                     },
                     "status": "error",
                     "timestamp": datetime.now(timezone.utc).isoformat(),

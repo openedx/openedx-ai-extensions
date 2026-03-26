@@ -296,7 +296,7 @@ const ConfigurableAIAssistance = ({
       setHasAsked(true);
     } catch (err) {
       logError('[ConfigurableAIAssistance] AI Assistant Error:', err);
-      const userFriendlyError = formatErrorMessage(err);
+      const userFriendlyError = formatErrorMessage(err, intl);
       setError(userFriendlyError);
       // Ensure we mark that we've tried to ask, so partial response remains visible if it was a stream error
       setHasAsked(true);

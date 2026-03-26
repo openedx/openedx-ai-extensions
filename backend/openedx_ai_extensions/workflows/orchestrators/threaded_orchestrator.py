@@ -77,7 +77,12 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error in stream wrapper: {e}")
-            yield f"\n[Error processing stream: {e}]".encode("utf-8")
+            error_marker = json.dumps({
+                "error_in_stream": True,
+                "code": "streaming_failed",
+                "message": STREAMING_FAILED_MESSAGE
+            })
+            yield f"||{error_marker}||".encode("utf-8")
 
         finally:
             # 2. Save History (Post-Stream Phase)
@@ -85,8 +90,12 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             final_response = "".join(full_response_text)
 
             if "||{\"error_in_stream\":" in final_response:
-                # Regex matches || followed by any characters until the next ||
-                final_response = re.sub(r"\|\|\{.*?\}\|\|", f"\n\n{STREAMING_FAILED_MESSAGE}", final_response)
+                # Target specifically the error-in-stream JSON marker
+                final_response = re.sub(
+                    r"\|\|\{\"error_in_stream\":\s*true,.*?\}\|\|",
+                    f"\n\n{STREAMING_FAILED_MESSAGE}",
+                    final_response
+                )
 
             user_text = normalize_input_to_text(input_data)
 
@@ -134,9 +143,14 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # 3. Process with LLM processor
         llm_processor = LLMProcessor(self.profile.processor_config, self.session)
-        # Always fetch history for all providers. This enables self-healing/fallback
-        # if a provider-specific threading ID (like OpenAI's remote_response_id) is lost.
-        chat_history = submission_processor.get_full_message_history() or []
+
+        # Only fetch history if we don't have a remote thread ID.
+        # This reduces DB + JSON overhead on every request.
+        # Fallback (self-healing) is handled via lazy-fetching or explicit retry if needed.
+        has_remote_id = bool(self.session and self.session.remote_response_id)
+        chat_history = []
+        if not has_remote_id:
+            chat_history = submission_processor.get_full_message_history() or []
 
         # Call the processor
         llm_result = llm_processor.process(
