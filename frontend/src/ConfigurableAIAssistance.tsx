@@ -300,7 +300,7 @@ const ConfigurableAIAssistance = ({
     } finally {
       setIsLoading(false);
     }
-  }, [additionalProps, id]);
+  }, [additionalProps, id, intl]);
 
   const handleOpenSidebar = useCallback(() => {
     setOpenSidebarSignal((prev) => prev + 1);
