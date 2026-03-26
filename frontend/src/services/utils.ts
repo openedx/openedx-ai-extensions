@@ -1,6 +1,7 @@
 import { getConfig } from '@edx/frontend-platform';
 import { PluginContext } from '../types';
 import { ENDPOINT_TYPES, EndpointType } from '../constants';
+import messages from '../messages';
 
 /**
  * Extract course ID from current URL
@@ -96,30 +97,32 @@ export const getDefaultEndpoint = (endpoint: EndpointType = ENDPOINT_TYPES.WORKF
 
 /**
  * User-friendly error messages keyed by backend error codes.
- * This can be easily extended or moved to a configuration file.
+ * This maps codes to i18n message descriptors.
  */
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid_api_key: 'The AI service is currently unavailable due to a configuration error. Please contact support.',
-  rate_limit_exceeded: 'The AI service is currently busy. Please try again in a few moments.',
-  service_unavailable: 'The AI service is temporarily unavailable. Please try again later.',
-  context_window_exceeded: 'The text is too long for the AI to process. Please try with a shorter selection.',
-  validation_error: 'There was a problem with the request. Please check your input and try again.',
-  streaming_failed: 'The AI service encountered an error while generating the response. Please try again.',
-  internal_error: 'An unexpected error occurred. Please try again later.',
+const ERROR_MESSAGES_MAP: Record<string, any> = {
+  invalid_api_key: messages['ai.extensions.error.invalid_api_key'],
+  rate_limit_exceeded: messages['ai.extensions.error.rate_limit_exceeded'],
+  service_unavailable: messages['ai.extensions.error.service_unavailable'],
+  context_window_exceeded: messages['ai.extensions.error.context_window_exceeded'],
+  validation_error: messages['ai.extensions.error.validation_error'],
+  streaming_failed: messages['ai.extensions.error.streaming_failed'],
+  internal_error: messages['ai.extensions.error.internal_error'],
+  processor_error: messages['ai.extensions.error.processor_error'],
 };
 
 /**
  * Format error message for user display.
- * Prioritizes localized messages from ERROR_MESSAGES dictionary.
+ * Prioritizes localized messages from ERROR_MESSAGES_MAP dictionary.
  *
  * @param error - Error object containing code and message properties
+ * @param intl - React-intl object for localization
  * @returns User-friendly error message
  */
-export const formatErrorMessage = (error: any): string => {
+export const formatErrorMessage = (error: any, intl: any): string => {
   // 1. Check for the new error contract structure
   const errorCode = error?.errorCode || error?.code;
-  if (errorCode && ERROR_MESSAGES[errorCode]) {
-    return ERROR_MESSAGES[errorCode];
+  if (errorCode && ERROR_MESSAGES_MAP[errorCode] && intl) {
+    return intl.formatMessage(ERROR_MESSAGES_MAP[errorCode]);
   }
 
   // 2. Fall back to the message provided by the backend (sanitized for the user)
@@ -131,7 +134,7 @@ export const formatErrorMessage = (error: any): string => {
   }
 
   // 3. Generic fallback
-  return 'Failed to get AI assistance. Please try again later.';
+  return intl ? intl.formatMessage(messages['ai.extensions.error.generic_fallback']) : 'Failed to get AI assistance. Please try again later.';
 };
 
 /**
