@@ -302,6 +302,52 @@ const messages = defineMessages({
     defaultMessage: 'Provide learning assistance for this content',
     description: 'Fallback message sent to AI if none provided',
   },
+  // Error Messages
+  'ai.extensions.error.invalid_api_key': {
+    id: 'ai.extensions.error.invalid_api_key',
+    defaultMessage: 'The AI service is currently unavailable due to a configuration error. Please contact support.',
+    description: 'Error message when AI API key is invalid or missing',
+  },
+  'ai.extensions.error.rate_limit_exceeded': {
+    id: 'ai.extensions.error.rate_limit_exceeded',
+    defaultMessage: 'The AI service is currently busy. Please try again in a few moments.',
+    description: 'Error message when AI rate limit is exceeded',
+  },
+  'ai.extensions.error.service_unavailable': {
+    id: 'ai.extensions.error.service_unavailable',
+    defaultMessage: 'The AI service is temporarily unavailable. Please try again later.',
+    description: 'Error message when AI service is down or timeout',
+  },
+  'ai.extensions.error.context_window_exceeded': {
+    id: 'ai.extensions.error.context_window_exceeded',
+    defaultMessage: 'The text is too long for the AI to process. Please try with a shorter selection.',
+    description: 'Error message when input exceeds AI context window',
+  },
+  'ai.extensions.error.validation_error': {
+    id: 'ai.extensions.error.validation_error',
+    defaultMessage: 'There was a problem with the request. Please check your input and try again.',
+    description: 'Error message for general validation failures',
+  },
+  'ai.extensions.error.streaming_failed': {
+    id: 'ai.extensions.error.streaming_failed',
+    defaultMessage: 'The AI service encountered an error while generating the response. Please try again.',
+    description: 'Error message for mid-stream failures',
+  },
+  'ai.extensions.error.internal_error': {
+    id: 'ai.extensions.error.internal_error',
+    defaultMessage: 'An unexpected error occurred. Please try again later.',
+    description: 'General internal server error message',
+  },
+  'ai.extensions.error.processor_error': {
+    id: 'ai.extensions.error.processor_error',
+    defaultMessage: 'An error occurred while processing the AI request. Please try again.',
+    description: 'Error message for failures within AI processors',
+  },
+  'ai.extensions.error.generic_fallback': {
+    id: 'ai.extensions.error.generic_fallback',
+    defaultMessage: 'Failed to get AI assistance. Please try again later.',
+    description: 'Generic fallback error message',
+  },
 });
 
 export default messages;

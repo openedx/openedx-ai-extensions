@@ -109,7 +109,7 @@ const GetAIAssistanceButton = ({
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('AI Assistant Error:', err);
-      setError(formatErrorMessage(err));
+      setError(formatErrorMessage(err, intl));
       // DON'T set hasAsked to true on error - keep button available
     } finally {
       setIsLoading(false);

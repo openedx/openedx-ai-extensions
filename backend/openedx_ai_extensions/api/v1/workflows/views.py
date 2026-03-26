@@ -49,7 +49,10 @@ def get_context_from_request(request):
     else:
         context_str = request.query_params.get("context", "{}")
 
-    context = json.loads(context_str)
+    try:
+        context = json.loads(context_str)
+    except json.JSONDecodeError as e:
+        raise ValidationError("Invalid JSON format in 'context' parameter.") from e
     validated_context = {}
 
     # Validate and convert courseId to course_id
@@ -93,7 +96,10 @@ class AIGenericWorkflowView(View):
 
         request_body = {}
         if request.body:
-            request_body = json.loads(request.body.decode("utf-8"))
+            try:
+                request_body = json.loads(request.body.decode("utf-8"))
+            except json.JSONDecodeError as e:
+                raise ValidationError("Invalid JSON format in request body.") from e
         action = request_body.get("action", "")
         user_input = request_body.get("user_input", {})
 
@@ -110,7 +116,7 @@ class AIGenericWorkflowView(View):
                 {
                     "error": {
                         "code": "processor_error",
-                        "message": result.get("error", "An unexpected error occurred during AI processing."),
+                        "message": "An error occurred while processing the AI request.",
                     },
                     "status": "error",
                     "timestamp": datetime.now(timezone.utc).isoformat(),

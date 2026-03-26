@@ -129,22 +129,17 @@ class LLMProcessor(LitellmProcessor):
         params = {}
         params["stream"] = self.stream
 
-        system_input = [
-            {"role": "system", "content": self.custom_prompt or system_role},
-            {"role": "system", "content": self.context},
-        ]
-
         if self.chat_history:
             user_text = normalize_input_to_text(self.input_data)
             if user_text:
                 self.chat_history.append({"role": "user", "content": user_text})
-
-            # Prepend system messages to ensure the LLM has the necessary instructions,
-            # especially if we are falling back from a lost thread.
-            params["input"] = system_input + self.chat_history
+            params["input"] = self.chat_history
         else:
             # Initialize new thread with system role and context
-            params["input"] = system_input
+            params["input"] = [
+                {"role": "system", "content": self.custom_prompt or system_role},
+                {"role": "system", "content": self.context},
+            ]
 
         # Add optional parameters only if configured
         params.update(self.extra_params)
