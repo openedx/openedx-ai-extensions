@@ -382,8 +382,6 @@ def test_library_questions_creator_profile_integration(
             "collection_name": "Django Quiz",
             "problems": problems,
         },
-        "tokens_used": 100,
-        "model_used": "gpt-4",
     }
 
     educator_path = (

@@ -53,6 +53,11 @@ class BaseAIWorkflowTransformer(XApiTransformer):
         if location_id:
             extensions[constants.XAPI_EXTENSION_LOCATION_ID] = location_id
 
+        # Add LLM usage data (token counts, etc.) if available
+        usage: Optional[dict] = self.get_data("usage")
+        if usage:
+            extensions[constants.XAPI_EXTENSION_USAGE] = usage
+
         return Activity(
             id=self.get_object_iri("ai_workflow", "__".join([profile_name, action])),
             definition=ActivityDefinition(

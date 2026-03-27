@@ -86,7 +86,6 @@ def test_refine_quiz_question_success(processor):  # pylint: disable=redefined-o
 
     mock_completion_result = {
         "response": llm_response,
-        "tokens_used": 75,
         "model_used": "openai/gpt-4",
         "status": "success",
     }
@@ -102,7 +101,6 @@ def test_refine_quiz_question_success(processor):  # pylint: disable=redefined-o
 
     assert "error" not in result
     assert result["response"]["problems"][0]["display_name"] == "Improved Q1"
-    assert result["tokens_used"] == 75
 
 
 @pytest.mark.django_db
@@ -151,7 +149,6 @@ def test_refine_quiz_question_substitutes_placeholders(processor):  # pylint: di
         captured_prompts.append(prompt)
         return {
             "response": llm_response,
-            "tokens_used": 10,
         }
 
     input_data = {
@@ -202,8 +199,6 @@ def test_generate_quiz_questions_success(processor):  # pylint: disable=redefine
 
     mock_result = {
         "response": llm_response,
-        "tokens_used": 100,
-        "model_used": "openai/gpt-4",
         "status": "success",
     }
 
@@ -213,7 +208,6 @@ def test_generate_quiz_questions_success(processor):  # pylint: disable=redefine
     assert "error" not in result
     assert result["response"]["collection_name"] == "Python Basics"
     assert len(result["response"]["problems"]) == 1
-    assert result["tokens_used"] == 100
 
 
 @pytest.mark.django_db

@@ -58,7 +58,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
 
             return {
                 "response": content,
-                "tokens_used": response.usage.total_tokens if response.usage else 0,
+                "usage": response.usage if response.usage else None,
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
@@ -93,12 +93,11 @@ class EducatorAssistantProcessor(LitellmProcessor):
             logger.exception(f"Error calling LiteLLM: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
-        tokens_used = result.get("tokens_used", 0)
         response = json.loads(result['response'])
 
         return {
             "response": response,
-            "tokens_used": tokens_used,
+            "usage": result.get("usage", None),
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }
@@ -121,7 +120,6 @@ class EducatorAssistantProcessor(LitellmProcessor):
         for key, value in input_data.items():
             placeholder = f"{{{{{key.upper()}}}}}"
             prompt = prompt.replace(placeholder, str(value))
-        logger.info(f"Refinement prompt after placeholder replacement: {prompt}")
 
         try:
             result = self._call_completion_api(prompt)
@@ -129,11 +127,10 @@ class EducatorAssistantProcessor(LitellmProcessor):
             logger.exception(f"Error calling LiteLLM during refinement: {e}")
             return {"error": f"AI processing failed: {str(e)}"}
 
-        tokens_used = result.get("tokens_used", 0)
         response = json.loads(result['response'])
         return {
             "response": response,
-            "tokens_used": tokens_used,
+            "usage": result.get("usage", None),
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }

@@ -184,16 +184,12 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # Emit appropriate event based on interaction state
         if is_first_interaction:
-            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED)
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED, usage=llm_result.get("usage", None))
         else:
-            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED)
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED, usage=llm_result.get("usage", None))
 
         # 4. Return result
         return {
             "response": llm_result.get("response", "No response available"),
             "status": "completed",
-            "metadata": {
-                "tokens_used": llm_result.get("tokens_used"),
-                "model_used": llm_result.get("model_used"),
-            },
         }
