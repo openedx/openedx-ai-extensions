@@ -10,7 +10,7 @@ from django.contrib import admin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 from django.template.response import TemplateResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 
@@ -193,7 +193,7 @@ class AIWorkflowProfileAdmin(admin.ModelAdmin):
 
     list_display = ("slug", "base_filepath", "description_preview", "is_valid")
     list_filter = ("base_filepath",)
-    search_fields = ("slug", "description", "base_filepath")
+    search_fields = ("slug", "description", "base_filepath", "content_patch")
 
     fieldsets = (
         (
@@ -359,11 +359,73 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
     list_display = ("user", "course_id", "profile_slug", "location_id")
     search_fields = ("user__username", "course_id", "location_id", "profile__slug")
     list_select_related = ("user", "profile")
-    readonly_fields = ("local_submission_id", "remote_response_id", "metadata")
+    readonly_fields = (
+        "user_link", "scope_link", "profile_link",
+        "course_id", "location_id",
+        "local_submission_id_link", "remote_response_id",
+        "debug_link", "metadata_pretty",
+    )
+    exclude = ("user", "scope", "profile", "local_submission_id", "metadata")
     actions = ["debug_thread"]
 
+    def user_link(self, obj):
+        """Render user as a link to their admin change page."""
+        if not obj.user_id:
+            return "-"
+        url = reverse("admin:auth_user_change", args=[obj.user_id])
+        return format_html('<a href="{}">{}</a>', url, obj.user)
+
+    user_link.short_description = "User"
+
+    def scope_link(self, obj):
+        """Render scope as a link to its admin change page."""
+        if not obj.scope_id:
+            return "-"
+        url = reverse("admin:openedx_ai_extensions_aiworkflowscope_change", args=[obj.scope_id])
+        return format_html('<a href="{}">{}</a>', url, obj.scope_id)
+
+    scope_link.short_description = "Scope"
+
+    def profile_link(self, obj):
+        """Render profile as a link to its admin change page."""
+        if not obj.profile_id:
+            return "-"
+        url = reverse("admin:openedx_ai_extensions_aiworkflowprofile_change", args=[obj.profile_id])
+        return format_html('<a href="{}">{}</a>', url, obj.profile)
+
+    profile_link.short_description = "Profile"
+
+    def local_submission_id_link(self, obj):
+        """Render local_submission_id as a link to submissions filtered by student_item_id."""
+        if not obj.local_submission_id:
+            return "-"
+        try:
+            from submissions.models import Submission  # pylint: disable=import-outside-toplevel
+            submission = Submission.objects.get(uuid=obj.local_submission_id)
+            url = reverse("admin:submissions_submission_changelist") + f"?student_item_id={submission.student_item_id}"
+            return format_html('<a href="{}">{}</a>', url, obj.local_submission_id)
+        except Exception:  # pylint: disable=broad-exception-caught
+            return obj.local_submission_id
+
+    local_submission_id_link.short_description = "Local Submission ID"
+
+    def debug_link(self, obj):
+        """Render a link to the debug thread view for this session."""
+        if not obj.pk:
+            return "-"
+        url = reverse("admin:aiworkflowsession_debug_thread") + f"?ids={obj.pk}"
+        return format_html('<a href="{}" target="_blank">Open debug thread</a>', url)
+
+    debug_link.short_description = "Debug thread"
+
+    def metadata_pretty(self, obj):
+        """Render metadata as indented JSON."""
+        return format_html("<pre>{}</pre>", json.dumps(obj.metadata, indent=2, ensure_ascii=False))
+
+    metadata_pretty.short_description = "Metadata"
+
     def profile_slug(self, obj):
-        """Return the profile slug for display."""
+        """Return the profile slug for list display."""
         return obj.profile.slug if obj.profile else "-"
 
     profile_slug.short_description = "Profile"
@@ -552,11 +614,22 @@ class AIWorkflowConfigAdmin(admin.ModelAdmin):
         "ui_slot_selector_id",
         "specificity_index",
         "service_variant",
-        "profile",
         "enabled",
+        "profile_link",
     )
-    search_fields = ("course_id", "location_regex", "ui_slot_selector_id", "profile__slug")
+    search_fields = ("course_id", "location_regex", "ui_slot_selector_id", "profile__slug", "profile__content_patch")
     list_filter = ("service_variant", "enabled", "ui_slot_selector_id")
+
+    def profile_link(self, obj):
+        """Render the profile as a clickable link to its admin change page."""
+        if not obj.profile_id:
+            return "-"
+        url = reverse("admin:openedx_ai_extensions_aiworkflowprofile_change", args=[obj.profile_id])
+        return format_html('<a href="{}">{}</a>', url, obj.profile)
+
+    profile_link.short_description = "Profile"
+    profile_link.admin_order_field = "profile"
+
     fieldsets = (
         (
             "Scope Matching",
