@@ -641,7 +641,8 @@ def test_run_with_library_id_stores_metadata_and_emits_event(
         result = educator_orchestrator.run({"library_id": "lib:org:mylib", "num_questions": 1})
 
     assert result["status"] == "completed"
-    assert result["response"] == "authoring/library/lib:org:mylib/collection/legacy-coll-key"
+    assert result["response"]["collection_name"] == "Legacy Quiz"
+    assert len(result["response"]["question_slots"]) == 1
 
     # Session metadata stores question_slots and collection_name
     meta = educator_orchestrator.session.metadata
