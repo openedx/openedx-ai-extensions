@@ -4,9 +4,10 @@ Base classes to hold the logic of execution in ai workflows
 """
 import json
 import logging
+import re
 
 from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
-from openedx_ai_extensions.utils import is_generator, normalize_input_to_text
+from openedx_ai_extensions.utils import STREAMING_FAILED_MESSAGE, is_generator, normalize_input_to_text
 from openedx_ai_extensions.xapi.constants import EVENT_NAME_WORKFLOW_INITIALIZED, EVENT_NAME_WORKFLOW_INTERACTED
 
 from .session_based_orchestrator import SessionBasedOrchestrator
@@ -76,12 +77,26 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(f"Error in stream wrapper: {e}")
-            yield f"\n[Error processing stream: {e}]".encode("utf-8")
+            error_marker = json.dumps({
+                "error_in_stream": True,
+                "code": "streaming_failed",
+                "message": STREAMING_FAILED_MESSAGE
+            })
+            yield f"||{error_marker}||".encode("utf-8")
 
         finally:
             # 2. Save History (Post-Stream Phase)
             # This executes after the view has consumed the last chunk
             final_response = "".join(full_response_text)
+
+            if "||{\"error_in_stream\":" in final_response:
+                # Target specifically the error-in-stream JSON marker
+                final_response = re.sub(
+                    r"\|\|\{\"error_in_stream\":\s*true,.*?\}\|\|",
+                    f"\n\n{STREAMING_FAILED_MESSAGE}",
+                    final_response
+                )
+
             user_text = normalize_input_to_text(input_data)
 
             messages = [{"role": "assistant", "content": final_response}]
@@ -112,12 +127,6 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         # 1. get chat history if there is user session
         if has_previous_session and not input_data:
             history_result = submission_processor.process(context=context)
-
-            if "error" in history_result:
-                return {
-                    "error": history_result["error"],
-                    "status": "SubmissionProcessor error",
-                }
             return {
                 "response": history_result.get("response", "No response available"),
                 "status": "completed",
@@ -132,18 +141,16 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         )
         content_result = openedx_processor.process()
 
-        if "error" in content_result:
-            return {
-                "error": content_result["error"],
-                "status": "OpenEdXProcessor error",
-            }
-
         # 3. Process with LLM processor
         llm_processor = LLMProcessor(self.profile.processor_config, self.session)
 
+        # Only fetch history if we don't have a remote thread ID.
+        # This reduces DB + JSON overhead on every request.
+        # Fallback (self-healing) is handled via lazy-fetching or explicit retry if needed.
+        has_remote_id = bool(self.session and self.session.remote_response_id)
         chat_history = []
-        if llm_processor.get_provider() != "openai":
-            chat_history = submission_processor.get_full_message_history()
+        if not has_remote_id:
+            chat_history = submission_processor.get_full_message_history() or []
 
         # Call the processor
         llm_result = llm_processor.process(
@@ -160,11 +167,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
                 initial_system_msgs=None
             )
 
-        # --- BRANCH B: Handle Error ---
-        if "error" in llm_result:
-            return {"error": llm_result["error"], "status": "ResponsesProcessor error"}
-
-        # --- BRANCH C: Handle Non-Streaming (Standard) ---
+        # --- BRANCH B: Handle Non-Streaming (Standard) ---
         messages = [
             {"role": "assistant", "content": llm_result.get("response", "")},
         ]
@@ -172,15 +175,13 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         if user_text:
             messages.insert(0, {"role": "user", "content": user_text})
 
-        if llm_processor.get_provider() != "openai":
-            system_messages = llm_result.get("system_messages", {})
-            for msg in system_messages:
-                messages.insert(0, {"role": msg["role"], "content": msg["content"]})
+        # Save system messages (if present) so they are available in local history
+        # for fallback if remote threading is lost.
+        system_messages = llm_result.get("system_messages", [])
+        for msg in reversed(system_messages):
+            messages.insert(0, {"role": msg["role"], "content": msg["content"]})
 
         submission_processor.update_chat_submission(messages)
-
-        if "error" in llm_result:
-            return {"error": llm_result["error"], "status": "LLMProcessor error"}
 
         # Emit appropriate event based on interaction state
         if is_first_interaction:

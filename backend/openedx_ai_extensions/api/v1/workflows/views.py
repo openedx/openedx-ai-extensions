@@ -5,7 +5,7 @@ Refactored to use Django models and workflow orchestrators
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -19,6 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from openedx_ai_extensions.decorators import handle_ai_errors
 from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.workflows.models import AIWorkflowScope
 
@@ -48,7 +49,10 @@ def get_context_from_request(request):
     else:
         context_str = request.query_params.get("context", "{}")
 
-    context = json.loads(context_str)
+    try:
+        context = json.loads(context_str)
+    except json.JSONDecodeError as e:
+        raise ValidationError("Invalid JSON format in 'context' parameter.") from e
     validated_context = {}
 
     # Validate and convert courseId to course_id
@@ -78,6 +82,7 @@ def get_context_from_request(request):
 
 
 @method_decorator(login_required, name="dispatch")
+@method_decorator(handle_ai_errors, name="dispatch")
 class AIGenericWorkflowView(View):
     """
     AI Workflow API endpoint
@@ -86,61 +91,46 @@ class AIGenericWorkflowView(View):
     def post(self, request):
         """Common handler for GET and POST requests"""
 
-        try:
-            context = get_context_from_request(request)
-            workflow_profile = AIWorkflowScope.get_profile(**context)
+        context = get_context_from_request(request)
+        workflow_profile = AIWorkflowScope.get_profile(**context)
 
-            request_body = {}
-            if request.body:
+        request_body = {}
+        if request.body:
+            try:
                 request_body = json.loads(request.body.decode("utf-8"))
-            action = request_body.get("action", "")
-            user_input = request_body.get("user_input", {})
+            except json.JSONDecodeError as e:
+                raise ValidationError("Invalid JSON format in request body.") from e
+        action = request_body.get("action", "")
+        user_input = request_body.get("user_input", {})
 
-            result = workflow_profile.execute(
-                user_input=user_input,
-                action=action,
-                user=request.user,
-                running_context=context,
-            )
+        result = workflow_profile.execute(
+            user_input=user_input,
+            action=action,
+            user=request.user,
+            running_context=context,
+        )
 
-            if is_generator(result):
-                return StreamingHttpResponse(
-                    result,
-                    content_type="text/plain"
-                )
-
-            # Check result status and return appropriate HTTP status
-            result_status = result.get("status", "success")
-            if result_status == "error":
-                http_status = 500  # Internal Server Error for processing failures
-            elif result_status in ["validation_error", "bad_request"]:
-                http_status = 400  # Bad Request for validation issues
-            else:
-                http_status = 200  # Success for completed/success status
-
-            return JsonResponse(result, status=http_status)
-
-        except ValidationError as e:
-            logger.warning("🤖 WORKFLOW VALIDATION ERROR: %s", str(e))
+        # Handle structured error responses from processors/orchestrators
+        if not is_generator(result) and isinstance(result, dict) and "error" in result:
             return JsonResponse(
                 {
-                    "error": str(e),
-                    "status": "validation_error",
-                    "timestamp": datetime.now().isoformat(),
-                },
-                status=400,
-            )
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("🤖 WORKFLOW ERROR")
-            return JsonResponse(
-                {
-                    "error": str(e),
+                    "error": {
+                        "code": "processor_error",
+                        "message": "An error occurred while processing the AI request.",
+                    },
                     "status": "error",
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
-                status=500,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+        if is_generator(result):
+            return StreamingHttpResponse(
+                result,
+                content_type="text/plain"
+            )
+
+        return JsonResponse(result, status=200)
 
 
 class AIWorkflowProfileView(APIView):
@@ -150,51 +140,29 @@ class AIWorkflowProfileView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(handle_ai_errors)
     def get(self, request):
         """
         Retrieve workflow configuration for a given action and context
         """
 
-        try:
-            # Get workflow configuration profile
-            context = get_context_from_request(request)
-            profile = AIWorkflowScope.get_profile(**context)
+        # Get workflow configuration profile
+        context = get_context_from_request(request)
+        profile = AIWorkflowScope.get_profile(**context)
 
-            if not profile:
-                # No profile found - return empty response so UI doesn't show components
-                return Response(
-                    {
-                        "status": "no_config",
-                        "timestamp": datetime.now().isoformat(),
-                    },
-                    status=status.HTTP_200_OK,
-                )
-
-            serializer = AIWorkflowProfileSerializer(profile)
-
-            response_data = serializer.data
-            response_data["timestamp"] = datetime.now().isoformat()
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except ValidationError as e:
-            logger.warning("🤖 CONFIG PROFILE VALIDATION ERROR: %s", str(e))
+        if not profile:
+            # No profile found - return empty response so UI doesn't show components
             return Response(
                 {
-                    "error": str(e),
-                    "status": "validation_error",
+                    "status": "no_config",
                     "timestamp": datetime.now().isoformat(),
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_200_OK,
             )
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("🤖 CONFIG PROFILE ERROR")
-            return Response(
-                {
-                    "error": str(e),
-                    "status": "error",
-                    "timestamp": datetime.now().isoformat(),
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        serializer = AIWorkflowProfileSerializer(profile)
+
+        response_data = serializer.data
+        response_data["timestamp"] = datetime.now().isoformat()
+
+        return Response(response_data, status=status.HTTP_200_OK)
