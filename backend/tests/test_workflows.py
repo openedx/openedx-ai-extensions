@@ -370,8 +370,6 @@ def test_direct_llm_response_orchestrator_success(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": "This is a summary",
-        "tokens_used": 150,
-        "model_used": "gpt-3.5-turbo",
     }
     mock_llm_processor_class.return_value = mock_llm
 
@@ -384,7 +382,6 @@ def test_direct_llm_response_orchestrator_success(
 
     assert result["status"] == "completed"
     assert result["response"] == "This is a summary"
-    assert result["metadata"]["tokens_used"] == 150
 
 
 @pytest.mark.django_db
@@ -464,8 +461,6 @@ def test_threaded_llm_response_orchestrator_new_session(
     mock_responses = Mock()
     mock_responses.process.return_value = {
         "response": "AI chat response",
-        "tokens_used": 200,
-        "model_used": "gpt-4",
     }
     mock_responses_processor_class.return_value = mock_responses
 

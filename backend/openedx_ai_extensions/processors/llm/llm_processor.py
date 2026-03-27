@@ -83,12 +83,10 @@ class LLMProcessor(LitellmProcessor):
     def _handle_non_streaming_completion(self, response):
         """Handles the non-streaming logic, returning a response dict."""
         content = response.choices[0].message.content
-        total_tokens = response.usage.total_tokens if response.usage else 0
-        logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
 
         return {
             "response": content,
-            "tokens_used": total_tokens,
+            "usage": response.usage if response.usage else None,
             "model_used": self.provider,
             "status": "success",
         }
@@ -181,12 +179,10 @@ class LLMProcessor(LitellmProcessor):
             if response_id:
                 self.user_session.remote_response_id = response_id
                 self.user_session.save()
-            total_tokens = response.usage.total_tokens if response.usage else 0
-            logger.info(f"[LLM NON-STREAM] Tokens used: {total_tokens}")
 
             result = {
                 "response": content,
-                "tokens_used": total_tokens,
+                "usage": response.usage if response.usage else None,
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
@@ -682,12 +678,11 @@ class LLMProcessor(LitellmProcessor):
         if "error" in result:
             return result
 
-        tokens_used = result.get("tokens_used", 0)
         response = json.loads(result['response'])
 
         return {
             "response": response,
-            "tokens_used": tokens_used,
+            "usage": result.get("usage", None),
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }

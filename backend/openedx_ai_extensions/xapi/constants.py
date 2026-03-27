@@ -22,6 +22,7 @@ XAPI_ACTIVITY_AI_WORKFLOW = "https://w3id.org/xapi/openedx/activity/ai-workflow"
 XAPI_EXTENSION_WORKFLOW_ACTION = "https://w3id.org/xapi/openedx/extension/ai-workflow-action"
 XAPI_EXTENSION_PROMPT_TEMPLATE_SLUG = "https://w3id.org/xapi/openedx/extension/prompt-template-slug"
 XAPI_EXTENSION_LOCATION_ID = "https://w3id.org/xapi/openedx/extension/location-id"
+XAPI_EXTENSION_USAGE = "https://w3id.org/xapi/openedx/extension/ai-usage"
 
 # Event names
 EVENT_NAME_WORKFLOW_INITIALIZED = "openedx.ai.workflow.initialized"

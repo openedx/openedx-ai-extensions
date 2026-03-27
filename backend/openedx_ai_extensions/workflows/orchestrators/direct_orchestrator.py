@@ -70,17 +70,13 @@ class DirectLLMResponse(BaseOrchestrator):
             }
 
         # 6. Emit completed event for one-shot workflow
-        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_result.get('usage', None))
 
         # --- 7. Return Structured Non-Streaming Result ---
         # If execution reaches this point, we have a successful, non-streaming result (Dict).
         response_data = {
             'response': llm_result.get('response', 'No response available'),
             'status': 'completed',
-            'metadata': {
-                'tokens_used': llm_result.get('tokens_used'),
-                'model_used': llm_result.get('model_used')
-            }
         }
         return response_data
 

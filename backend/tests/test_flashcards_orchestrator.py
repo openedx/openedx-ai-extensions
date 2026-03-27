@@ -201,8 +201,6 @@ def test_run_success_dict_response(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": cards},
-        "tokens_used": 200,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -210,8 +208,6 @@ def test_run_success_dict_response(
         result = flashcards_orchestrator.run({"num_cards": 2})
 
     assert result["status"] == "completed"
-    assert result["metadata"]["tokens_used"] == 200
-    assert result["metadata"]["model_used"] == "openai/gpt-4"
 
     enriched_cards = result["response"]
     assert isinstance(enriched_cards, list)
@@ -242,8 +238,6 @@ def test_run_success_emits_workflow_event(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": []},
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -279,8 +273,6 @@ def test_run_success_list_response(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": cards,
-        "tokens_used": 50,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -323,8 +315,6 @@ def test_run_default_num_cards(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": []},
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -355,8 +345,6 @@ def test_run_explicit_num_cards_not_overridden(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": []},
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -390,8 +378,6 @@ def test_run_loads_schema_and_passes_response_format(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": []},
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -430,8 +416,6 @@ def test_run_success_empty_cards(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": []},
-        "tokens_used": 5,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -466,8 +450,6 @@ def test_run_dict_response_no_cards_key(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"other_data": "value"},
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -501,8 +483,6 @@ def test_run_none_response(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": None,
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -639,8 +619,6 @@ def test_run_card_enrichment_preserves_original_fields(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": cards},
-        "tokens_used": 100,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -688,8 +666,6 @@ def test_run_non_dict_card_items_are_skipped(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": cards},
-        "tokens_used": 50,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -729,8 +705,6 @@ def test_run_passes_content_and_input_data_to_llm(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": []},
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -774,8 +748,6 @@ def test_run_existing_cards_passed_as_context(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": [{"id": "card-3", "question": "Q3?", "answer": "A3"}]},
-        "tokens_used": 50,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -825,8 +797,6 @@ def test_run_extends_existing_cards_in_session(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": {"cards": new_cards},
-        "tokens_used": 50,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 

@@ -220,8 +220,6 @@ def test_educator_orchestrator_run_json_to_olx_exception_is_swallowed(
             "collection_name": "Test Collection",
             "problems": [{"problem_type": "bad_type"}],
         },
-        "tokens_used": 100,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -270,8 +268,6 @@ def test_educator_orchestrator_run_success_with_library_id(
                 }
             ],
         },
-        "tokens_used": 200,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -327,8 +323,6 @@ def test_educator_orchestrator_run_no_library_id_stores_questions(
             "collection_name": "Iterative Quiz",
             "problems": problems,
         },
-        "tokens_used": 100,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -389,7 +383,6 @@ def test_regenerate_question_replaces_correct_index(
     mock_llm = Mock()
     mock_llm.refine_quiz_question.return_value = {
         "response": {"problems": [new_question]},
-        "tokens_used": 50,
     }
     mock_llm_class.return_value = mock_llm
 
@@ -539,7 +532,6 @@ def test_regenerate_question_empty_problems_returns_error(
     mock_llm = Mock()
     mock_llm.refine_quiz_question.return_value = {
         "response": {"problems": []},
-        "tokens_used": 10,
     }
     mock_llm_class.return_value = mock_llm
 
@@ -576,7 +568,6 @@ def test_regenerate_question_appends_version_history(
     mock_llm = Mock()
     mock_llm.refine_quiz_question.return_value = {
         "response": {"problems": [v2]},
-        "tokens_used": 50,
     }
     mock_llm_class.return_value = mock_llm
 
@@ -590,7 +581,6 @@ def test_regenerate_question_appends_version_history(
     v3 = {"display_name": "Q1-v3", "problem_type": "multiplechoiceresponse"}
     mock_llm.refine_quiz_question.return_value = {
         "response": {"problems": [v3]},
-        "tokens_used": 50,
     }
 
     result2 = educator_orchestrator.regenerate_question({"question_index": 0})
@@ -644,8 +634,6 @@ def test_run_with_library_id_stores_metadata_and_emits_event(
                 }
             ],
         },
-        "tokens_used": 100,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -653,8 +641,7 @@ def test_run_with_library_id_stores_metadata_and_emits_event(
         result = educator_orchestrator.run({"library_id": "lib:org:mylib", "num_questions": 1})
 
     assert result["status"] == "completed"
-    assert result["response"]["collection_name"] == "Legacy Quiz"
-    assert len(result["response"]["question_slots"]) == 1
+    assert result["response"] == "authoring/library/lib:org:mylib/collection/legacy-coll-key"
 
     # Session metadata stores question_slots and collection_name
     meta = educator_orchestrator.session.metadata
@@ -685,8 +672,6 @@ def test_run_with_library_id_empty_problems_list(
             "collection_name": "Empty Quiz",
             "problems": [],
         },
-        "tokens_used": 10,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
@@ -733,8 +718,6 @@ def test_run_with_library_id_multiple_problems_converted(
             "collection_name": "Multi Quiz",
             "problems": problems,
         },
-        "tokens_used": 300,
-        "model_used": "openai/gpt-4",
     }
     mock_llm_class.return_value = mock_llm
 
