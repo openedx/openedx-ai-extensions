@@ -111,11 +111,6 @@ Usage
 Setting Up Development Environment
 ===================================
 
-For detailed setup instructions and community tips, see `GitHub Issue #83 <https://github.com/openedx/openedx-ai-extensions/issues/83>`_.
-
-Backend Setup
--------------
-
 For automated or non-interactive environments, configure the plugin via Tutor's ``config.yml`` and build the images.
 
 1. **Configure the Extension**:
