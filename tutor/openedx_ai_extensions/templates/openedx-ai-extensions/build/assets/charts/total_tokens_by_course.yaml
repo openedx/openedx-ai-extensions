@@ -1,0 +1,81 @@
+_file_name: total_tokens_by_course.yaml
+uuid: 3f2e2d1c-4b5a-6e7f-8a9b-0c1d2e3f4a5b
+dataset_uuid: a7c3e8f1-5b2d-4e9a-8f1c-3d7e5a9b2c4f
+slice_name: Total Tokens By Course
+description: null
+certified_by: null
+certification_details: null
+viz_type: echarts_timeseries_bar
+params:
+  datasource: 92__table
+  viz_type: echarts_timeseries_bar
+  slice_id: 170
+  x_axis: course_key
+  xAxisForceCategorical: true
+  x_axis_sort: course_key
+  x_axis_sort_asc: true
+  x_axis_sort_series: name
+  x_axis_sort_series_ascending: true
+  metrics:
+  - expressionType: SIMPLE
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: total_tokens
+      description: Total tokens used (prompt + completion)
+      expression: null
+      filterable: true
+      groupby: false
+      id: 927
+      is_certified: false
+      is_dttm: false
+      python_date_format: null
+      type: Nullable(Int64)
+      type_generic: 0
+      verbose_name: Total Tokens
+      warning_markdown: null
+    aggregate: SUM
+    sqlExpression: null
+    datasourceWarning: false
+    hasCustomLabel: true
+    label: Total Tokens
+    optionName: metric_gzreklovcg_eh7or6gyrcp
+  groupby: []
+  adhoc_filters:
+  - clause: WHERE
+    comparator: No filter
+    expressionType: SIMPLE
+    operator: TEMPORAL_RANGE
+    subject: emission_time
+  order_desc: true
+  row_limit: 10000
+  truncate_metric: true
+  show_empty_columns: true
+  comparison_type: values
+  annotation_layers: []
+  forecastPeriods: 10
+  forecastInterval: 0.8
+  orientation: vertical
+  x_axis_title_margin: 15
+  y_axis_title_margin: 15
+  y_axis_title_position: Left
+  sort_series_type: sum
+  color_scheme: supersetColors
+  only_total: true
+  show_legend: true
+  legendType: scroll
+  legendOrientation: top
+  x_axis_time_format: smart_date
+  y_axis_format: SMART_NUMBER
+  truncateXAxis: true
+  y_axis_bounds:
+  - null
+  - null
+  rich_tooltip: true
+  tooltipTimeFormat: smart_date
+  extra_form_data: {}
+  dashboards: []
+query_context: null
+cache_timeout: null
+version: 1.0.0
