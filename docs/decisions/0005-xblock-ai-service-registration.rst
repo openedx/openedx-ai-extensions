@@ -329,3 +329,4 @@ References
 * Option 3 (setting) — `openedx-ai-extensions commit 9823902 <https://github.com/openedx/openedx-ai-extensions/commit/9823902af0df3ad8e249450580a46796681bfc01>`_
   and `edx-platform commit 087fce3 <https://github.com/Henrrypg/openedx-platform/commit/087fce3868a6a94e51409dacf1c82e2232f322e9>`_
 * OpenEdX Filters framework (OEP-50) — https://github.com/openedx/openedx-filters
+* Community discussion — https://discuss.openedx.org/t/plugin-provided-xblock-runtime-services/18682
