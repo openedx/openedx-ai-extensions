@@ -247,7 +247,6 @@ class AIWorkflowScope(models.Model):
         self._action = value
 
     @classmethod
-    @functools.lru_cache(maxsize=128)
     def get_profile(cls, course_id=None, location_id=None, ui_slot_selector_id=None):
         """
         Resolve the best-matching AIWorkflowScope for the given context.
@@ -583,16 +582,3 @@ class AIWorkflowSession(models.Model):
             combined.insert(insert_at, entry)
 
         return combined
-
-
-# Signal handlers for cache invalidation
-@receiver(post_save, sender=AIWorkflowScope)
-@receiver(post_delete, sender=AIWorkflowScope)
-@receiver(post_save, sender=AIWorkflowProfile)
-@receiver(post_delete, sender=AIWorkflowProfile)
-def clear_workflow_cache(**kwargs):
-    """
-    Clear get_profile LRU cache when AIWorkflowScope or AIWorkflowProfile objects change.
-    This ensures the cache stays fresh when workflow configurations are modified.
-    """
-    AIWorkflowScope.get_profile.cache_clear()
