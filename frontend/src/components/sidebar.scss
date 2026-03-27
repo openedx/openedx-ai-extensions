@@ -8,11 +8,15 @@
     }
 }
 
+.ai-sidebar-chat-button-wrapper {
+    position: absolute;
+    right: calc(1.5rem - 4px);
+    bottom: calc(1.5rem - 4px);
+    padding: 4px;
+}
+
 .ai-sidebar-chat-button {
     width: fit-content;
-    position: absolute;
-    right: 1.5rem;
-    bottom: 1.5rem;
 }
 
 .ai-sidebar-chat-input textarea {
