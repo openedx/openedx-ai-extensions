@@ -748,15 +748,17 @@ const AISidebarResponse = ({
               className="ai-sidebar-chat-input"
             />
             {/* Send button positioned inside textarea */}
-            <Button
-              size="sm"
-              className="ai-sidebar-chat-button zindex-1"
-              onClick={handleFollowUpSubmit}
-              disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
-              aria-label={intl.formatMessage(messages['ai.extensions.sidebar.send.label'])}
-            >
-              <Icon src={Send} aria-hidden="true" size="xs" />
-            </Button>
+            <div className="ai-sidebar-chat-button-wrapper">
+              <Button
+                size="sm"
+                className="ai-sidebar-chat-button zindex-1"
+                onClick={handleFollowUpSubmit}
+                disabled={isLoading || isSendingFollowUp || !followUpQuestion.trim()}
+                aria-label={intl.formatMessage(messages['ai.extensions.sidebar.send.label'])}
+              >
+                <Icon src={Send} aria-hidden="true" size="xs" />
+              </Button>
+            </div>
           </div>
         )}
       </div>
