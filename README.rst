@@ -113,65 +113,36 @@ Setting Up Development Environment
 
 For detailed setup instructions and community tips, see `GitHub Issue #83 <https://github.com/openedx/openedx-ai-extensions/issues/83>`_.
 
-Below is a condensed guide based on the approaches shared by contributors.
-
 Backend Setup
 -------------
 
-1. Clone the repository into a local directory (e.g. ``extra/``)::
+For automated or non-interactive environments, configure the plugin via Tutor's ``config.yml`` and build the images.
 
-    git clone https://github.com/openedx/openedx-ai-extensions.git
+1. **Configure the Extension**:
+   Add the repository and AI provider settings to your Tutor ``config.yml``:
 
-2. Mount the plugin source into LMS and CMS. Add to your Tutor ``config.yml``::
+   .. code-block:: yaml
 
-    MOUNTS:
-    - lms,cms:/full/path/to/extra:/openedx/extra
+      AI_EXTENSIONS:
+        <your-config-name>:
+          API_KEY: "your-api-key"
+          MODEL: "openai/gpt-4o-mini"
 
-3. Create a ``requirements.txt`` inside your ``extra/`` folder with::
+2. **Enable and Build**:
+   Enable the plugin and rebuild the Open edX images to bake in the dependencies:
 
-    -e ./openedx-ai-extensions/backend
+   .. code-block:: bash
 
-4. Configure the AI provider in ``config.yml``::
+      tutor plugins enable openedx-ai-extensions
+      tutor images build openedx
+      tutor dev launch
 
-    AI_EXTENSIONS:
-      openai:
-        API_KEY: "sk-proj-your-api-key"
-        MODEL: "openai/gpt-4o-mini"
+3. **Initialize Database**:
+   Run migrations as a one-time setup step:
 
-    PLUGINS:
-        - openedx-ai-extensions
+   .. code-block:: bash
 
-5. Build and launch::
-
-    pip install git+https://github.com/openedx/openedx-ai-extensions.git
-    tutor plugins enable openedx-ai-extensions
-    tutor images build openedx
-    tutor images build mfe
-    tutor dev launch
-
-6. Install the backend in editable mode inside both containers::
-
-    tutor dev exec lms bash -c "cd /openedx/extra && pip install -r requirements.txt"
-    tutor dev exec cms bash -c "cd /openedx/extra && pip install -r requirements.txt"
-
-7. Run migrations::
-
-    tutor dev exec lms python manage.py lms migrate openedx_ai_extensions
-
-Frontend Setup
---------------
-
-1. Install frontend dependencies::
-
-    cd openedx-ai-extensions/frontend && npm install
-
-2. Mount the Learning and/or Authoring MFE repos and add the required
-   ``env.config.jsx`` and ``module.config.js`` files.
-   See `efortish's gists <https://github.com/openedx/openedx-ai-extensions/issues/83#issuecomment-2652413543>`_ for ready-to-use examples.
-
-3. Start the MFE dev server::
-
-    cd frontend-app-learning && npm ci && npm install && npm run dev
+      tutor dev exec lms python manage.py lms migrate openedx_ai_extensions
 
 Loading Demo Fixtures
 ---------------------
