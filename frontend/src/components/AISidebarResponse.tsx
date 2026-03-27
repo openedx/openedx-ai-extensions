@@ -546,6 +546,7 @@ const AISidebarResponse = ({
       }]);
     } finally {
       setIsSendingFollowUp(false);
+      textareaRef.current?.focus();
     }
   };
 
