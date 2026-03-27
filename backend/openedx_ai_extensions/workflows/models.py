@@ -1,7 +1,6 @@
 """
 AI Workflow models for managing flexible AI workflow execution
 """
-import functools
 import logging
 import re
 from typing import Any, Optional
@@ -12,8 +11,6 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
-from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
 from django.utils.functional import cached_property
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 

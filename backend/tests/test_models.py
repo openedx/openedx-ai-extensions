@@ -716,9 +716,7 @@ class TestAIWorkflowScopeResolution:
         )
 
         resolved_a = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-a")
-        AIWorkflowScope.get_profile.cache_clear()
         resolved_b = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-b")
-        AIWorkflowScope.get_profile.cache_clear()
         resolved_c = AIWorkflowScope.get_profile(course_key, location_id, ui_slot_selector_id="widget-c")
 
         assert resolved_a is not None and resolved_a.profile.slug == "profile-widget-a"
