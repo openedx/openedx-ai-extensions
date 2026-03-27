@@ -1,0 +1,4 @@
+{% for file in "openedx-ai-extensions/build/assets"|walk_templates %}
+---
+{% include file %}
+{% endfor %}

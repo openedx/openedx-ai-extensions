@@ -1,0 +1,321 @@
+_file_name: fact_ai_workflow_interactions.yaml
+always_filter_main_dttm: false
+cache_timeout: null
+columns:
+- advanced_data_type: null
+  column_name: event_id
+  description: Unique identifier for each xAPI event
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: false
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: UUID
+  verbose_name: Event ID
+- advanced_data_type: null
+  column_name: emission_time
+  description: Timestamp when the event was emitted
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: true
+  python_date_format: null
+  type: DateTime
+  verbose_name: Emission Time
+- advanced_data_type: null
+  column_name: actor_id
+  description: Anonymous user identifier
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Actor ID
+- advanced_data_type: null
+  column_name: verb
+  description: "Short verb name: initialized, interacted, or completed"
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Verb
+- advanced_data_type: null
+  column_name: workflow_name
+  description: Name of the AI workflow profile (e.g. chat_with_anthropic, openai_threads)
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Workflow Name
+- advanced_data_type: null
+  column_name: workflow_action
+  description: The action performed in the workflow (e.g. run, chat, summarize)
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Workflow Action
+- advanced_data_type: null
+  column_name: course_key
+  description: "Course key (e.g. course-v1:org+course+run)"
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Course Key
+- advanced_data_type: null
+  column_name: org
+  description: Organization identifier extracted from the course key
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Organization
+- advanced_data_type: null
+  column_name: location_id
+  description: "The Open edX usage key (unit/block) where the workflow was triggered"
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Location ID
+- advanced_data_type: null
+  column_name: emission_date
+  description: Date portion of the emission time (for daily aggregation)
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: true
+  python_date_format: null
+  type: Date
+  verbose_name: Emission Date
+- advanced_data_type: null
+  column_name: prompt_tokens
+  description: Number of tokens in the prompt sent to the LLM
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: false
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: Nullable(Int64)
+  verbose_name: Prompt Tokens
+- advanced_data_type: null
+  column_name: completion_tokens
+  description: Number of tokens in the LLM-generated completion
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: false
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: Nullable(Int64)
+  verbose_name: Completion Tokens
+- advanced_data_type: null
+  column_name: total_tokens
+  description: Total tokens used (prompt + completion)
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: false
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: Nullable(Int64)
+  verbose_name: Total Tokens
+- advanced_data_type: null
+  column_name: llm_cost
+  description: Estimated cost in USD for this LLM call (may be null if provider does not report cost)
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: false
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: Nullable(Float64)
+  verbose_name: LLM Cost (USD)
+database_uuid: 21174b6c-4d40-4958-8161-d6c3cf5e77b6
+default_endpoint: null
+description: >
+  Fact table for AI workflow interactions from the openedx-ai-extensions plugin.
+  Tracks when learners initialize, interact with, or complete AI-powered
+  educational workflows. Filters xapi_events_all_parsed to only include
+  events with the ai-workflow activity type.
+extra: {}
+fetch_values_predicate: null
+filter_select_enabled: true
+main_dttm_col: emission_time
+metrics:
+- currency: null
+  d3format: null
+  description: Total number of AI workflow events
+  expression: COUNT(*)
+  extra:
+    warning_markdown: ''
+  metric_name: count
+  metric_type: count
+  verbose_name: COUNT(*)
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Number of unique users who interacted with AI workflows
+  expression: COUNT(DISTINCT actor_id)
+  extra:
+    warning_markdown: ''
+  metric_name: unique_actors
+  metric_type: null
+  verbose_name: Unique Users
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Number of unique workflow sessions initialized
+  expression: countIf(verb = 'initialized')
+  extra:
+    warning_markdown: ''
+  metric_name: sessions_initialized
+  metric_type: null
+  verbose_name: Sessions Initialized
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Number of workflow interactions (follow-up messages in threaded workflows)
+  expression: countIf(verb = 'interacted')
+  extra:
+    warning_markdown: ''
+  metric_name: interactions
+  metric_type: null
+  verbose_name: Interactions
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Number of completed workflow executions
+  expression: countIf(verb = 'completed')
+  extra:
+    warning_markdown: ''
+  metric_name: completions
+  metric_type: null
+  verbose_name: Completions
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Total prompt tokens consumed across all events
+  expression: SUM(prompt_tokens)
+  extra:
+    warning_markdown: ''
+  metric_name: total_prompt_tokens
+  metric_type: null
+  verbose_name: Total Prompt Tokens
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Total completion tokens generated across all events
+  expression: SUM(completion_tokens)
+  extra:
+    warning_markdown: ''
+  metric_name: total_completion_tokens
+  metric_type: null
+  verbose_name: Total Completion Tokens
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Total tokens (prompt + completion) consumed across all events
+  expression: SUM(total_tokens)
+  extra:
+    warning_markdown: ''
+  metric_name: total_tokens_sum
+  metric_type: null
+  verbose_name: Total Tokens
+  warning_text: null
+- currency: null
+  d3format: null
+  description: Average tokens per AI workflow interaction
+  expression: AVG(total_tokens)
+  extra:
+    warning_markdown: ''
+  metric_name: avg_tokens_per_interaction
+  metric_type: null
+  verbose_name: Avg Tokens per Interaction
+  warning_text: null
+- currency: USD
+  d3format: ',.4f'
+  description: Total estimated LLM cost in USD across all events
+  expression: SUM(llm_cost)
+  extra:
+    warning_markdown: ''
+  metric_name: total_llm_cost
+  metric_type: null
+  verbose_name: Total LLM Cost (USD)
+  warning_text: null
+- currency: USD
+  d3format: ',.6f'
+  description: Average estimated LLM cost per interaction in USD
+  expression: AVG(llm_cost)
+  extra:
+    warning_markdown: ''
+  metric_name: avg_llm_cost
+  metric_type: null
+  verbose_name: Avg LLM Cost (USD)
+  warning_text: null
+normalize_columns: true
+offset: 0
+params: null
+schema: '{{ ASPECTS_XAPI_DATABASE }}'
+sql: |-
+  SELECT
+      event_id,
+      emission_time,
+      toDate(emission_time) AS emission_date,
+      actor_id,
+      splitByChar('/', verb_id)[-1] AS verb,
+      JSON_VALUE(event, '$.object.definition.name.en') AS workflow_name,
+      JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-workflow-action"') AS workflow_action,
+      course_key,
+      org,
+      JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/location-id"') AS location_id,
+      nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".prompt_tokens') AS Nullable(Int64)), 0) AS prompt_tokens,
+      nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".completion_tokens') AS Nullable(Int64)), 0) AS completion_tokens,
+      nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".total_tokens') AS Nullable(Int64)), 0) AS total_tokens,
+      nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".cost') AS Nullable(Float64)), 0) AS llm_cost
+  FROM {{ ASPECTS_XAPI_DATABASE }}.xapi_events_all_parsed
+  WHERE
+      JSON_VALUE(event, '$.object.definition.type') = 'https://w3id.org/xapi/openedx/activity/ai-workflow'
+table_name: fact_ai_workflow_interactions
+template_params: null
+uuid: a7c3e8f1-5b2d-4e9a-8f1c-3d7e5a9b2c4f
+version: 1.0.0
