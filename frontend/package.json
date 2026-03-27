@@ -1,6 +1,6 @@
 {
   "name": "@openedx/openedx-ai-extensions-ui",
-  "version": "1.3.0",
+  "version": "1.6.0",
   "description": "AI Extensions UI component for Open edX utilizing Frontend Plugin Framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
