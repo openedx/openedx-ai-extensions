@@ -7,6 +7,12 @@ export {
 } from './configService';
 
 export {
+  fetchProfilesList,
+  fetchPromptTemplate,
+  savePromptTemplate,
+} from './profilesService';
+
+export {
   extractCourseIdFromUrl,
   extractLocationIdFromUrl,
   prepareContextData,

@@ -15,14 +15,20 @@ from django.views import View
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from openedx_ai_extensions.models import PromptTemplate
 from openedx_ai_extensions.utils import is_generator
 from openedx_ai_extensions.workflows.models import AIWorkflowScope
 
-from .serializers import AIWorkflowProfileSerializer
+from .serializers import (
+    AIWorkflowProfileListSerializer,
+    AIWorkflowProfileSerializer,
+    PromptTemplateSerializer,
+    PromptTemplateUpdateSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -198,3 +204,163 @@ class AIWorkflowProfileView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class AIWorkflowProfilesListView(APIView):
+    """
+    API endpoint to list all AI Workflow Profiles matching a given context.
+
+    Returns every distinct AIWorkflowProfile reachable for the requested
+    course_id / location_id / ui_slot_selector_id / service_variant combination.
+    Effective configurations are included with all sensitive values redacted.
+
+    When no ``uiSlotSelectorId`` is provided, profiles for all slots are returned
+    — the intended call pattern for the Studio settings panel.
+    """
+
+    # TODO: elevate to course-staff permission once the edxapp_wrapper provides a
+    # has_course_author_access integration. Requires common.djangoapps.student.roles
+    # (edx-platform) which is not a standalone dependency of this plugin.
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        List workflow profiles for the given context.
+
+        Accepts the same ``context`` JSON query param as ``profile/``, with optional
+        ``courseId``, ``locationId``, ``uiSlotSelectorId``, and ``serviceVariant``
+        keys. When ``serviceVariant`` is omitted, profiles for all service variants
+        are returned.
+
+        Returns:
+            200: {"profiles": [...], "count": N, "timestamp": "..."}
+            400: Validation error (malformed course or location key)
+            500: Unexpected server error
+        """
+        try:
+            context = get_context_from_request(request)
+
+            # service_variant is specific to this endpoint and is read directly
+            # from the raw context rather than through get_context_from_request.
+            raw_context = json.loads(request.query_params.get("context", "{}"))
+            service_variant = (
+                raw_context.get("serviceVariant") or raw_context.get("service_variant") or None
+            )
+
+            profiles = AIWorkflowScope.list_profiles_for_context(
+                **context, service_variant=service_variant
+            )
+            serializer = AIWorkflowProfileListSerializer(profiles, many=True)
+
+            return Response(
+                {
+                    "profiles": serializer.data,
+                    "count": len(profiles),
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except ValidationError as e:
+            logger.warning("🤖 PROFILES LIST VALIDATION ERROR: %s", str(e))
+            return Response(
+                {
+                    "error": str(e),
+                    "status": "validation_error",
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("🤖 PROFILES LIST ERROR")
+            return Response(
+                {
+                    "error": str(e),
+                    "status": "error",
+                    "timestamp": datetime.now().isoformat(),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class PromptTemplateDetailView(APIView):
+    """
+    API endpoint to retrieve a single PromptTemplate by slug or UUID.
+
+    Accepts either form as the ``identifier`` URL segment:
+    ``GET /v1/prompts/<slug>/``
+    ``GET /v1/prompts/<uuid>/``
+    """
+
+    # Staff-only for now.
+    # TODO: replace with fine-grained openedx-authz permission (course-staff /
+    # content-author) once the openedx-authz integration is in place.
+    permission_classes = [IsAdminUser]
+
+    def _get_template(self, identifier):
+        """
+        Look up a PromptTemplate by slug first, then by UUID.
+
+        Args:
+            identifier (str): Slug or UUID string.
+
+        Returns:
+            PromptTemplate or None
+        """
+        try:
+            return PromptTemplate.objects.get(slug=identifier)
+        except PromptTemplate.DoesNotExist:
+            pass
+        try:
+            return PromptTemplate.objects.get(id=identifier)
+        except (PromptTemplate.DoesNotExist, Exception):  # pylint: disable=broad-exception-caught
+            return None
+
+    def get(self, request, identifier):
+        """
+        Retrieve a prompt template by slug or UUID.
+
+        Args:
+            identifier (str): Slug or UUID of the prompt template.
+
+        Returns:
+            200: Serialized prompt template.
+            404: No template found for the given identifier.
+        """
+        template = self._get_template(identifier)
+        if template is None:
+            return Response(
+                {"error": f"Prompt template '{identifier}' not found.", "status": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(PromptTemplateSerializer(template).data, status=status.HTTP_200_OK)
+
+    def patch(self, request, identifier):
+        """
+        Update the body of a prompt template.
+
+        Only the ``body`` field may be changed. Any other field in the request
+        payload is rejected with HTTP 400.
+
+        Args:
+            identifier (str): Slug or UUID of the prompt template.
+
+        Returns:
+            200: Updated serialized prompt template.
+            400: Payload contains fields other than ``body``, or body is blank.
+            404: No template found for the given identifier.
+        """
+        template = self._get_template(identifier)
+        if template is None:
+            return Response(
+                {"error": f"Prompt template '{identifier}' not found.", "status": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = PromptTemplateUpdateSerializer(template, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer.save()
+        return Response(PromptTemplateSerializer(template).data, status=status.HTTP_200_OK)
