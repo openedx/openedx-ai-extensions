@@ -15,7 +15,7 @@
     "fields": {
       "slug": "demo-flashcards",
       "description": "Flashcards profile for demo course. Generates flashcards from unit content.",
-      "base_filepath": "experimental/fashcards.json",
+      "base_filepath": "experimental/flashcards.json",
       "content_patch": "{\n  // -----------------------------------------------\n  // Flashcards demo profile\n  // Generates flashcards from the current unit content.\n  // Uses the provider configured in AI_EXTENSIONS settings.\n  // To override per-profile, uncomment the options block below.\n  // -----------------------------------------------\n  // \"processor_config\": {\n  //   \"LLMProcessor\": {\n  //     \"options\": {\n  //       \"API_KEY\": \"your-api-key-here\",\n  //     },\n  //   },\n  // },\n}"
     }
   },
