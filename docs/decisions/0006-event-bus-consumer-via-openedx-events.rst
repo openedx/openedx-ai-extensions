@@ -11,12 +11,12 @@ Context
 *******
 
 ``openedx-ai-extensions`` exposes AI orchestration workflows that can be triggered
-by many different consumers across the Open edX ecosystem (e.g. ``openedx-ai-badges``,
-custom XBlocks, or other plugins). Up to now, triggering an orchestration run required
+by different elements of the UI and also from pluggable extensions. Work is underway
+to make it trigger from xblocks. Up to now, triggering an orchestration run required
 a direct Python API call—coupling the calling code to the internal structure of this
 package.
 
-We need a decoupled, standards-compliant mechanism so that:
+We want a decoupled, standards-compliant mechanism so that:
 
 * Any plugin or service can request an AI orchestration run without importing internal
   modules of ``openedx-ai-extensions``.
@@ -32,6 +32,16 @@ Decision
 
 ``openedx-ai-extensions`` owns and publishes an ``OpenEdxPublicSignal`` that any
 consumer can fire to trigger an AI orchestration run.
+
+.. note::
+
+   The signal is defined in this repository as a pragmatic starting point.
+   The **long-term intent** is to move ``AI_ORCHESTRATION_REQUESTED`` (and its
+   accompanying data class) to the `openedx-events
+   <https://github.com/openedx/openedx-events>`_ repository, so that any package
+   wishing to *send* the event does not need to take a dependency on
+   ``openedx-ai-extensions`` itself.  Until that migration happens, callers must
+   import from ``openedx_ai_extensions.events``.
 
 Signal definition
 -----------------
@@ -56,7 +66,7 @@ A new ``events`` sub-package is introduced inside ``openedx_ai_extensions``:
         course_id           = attr.ib(type=str,  default=None)
         location_id         = attr.ib(type=str,  default=None)
         ui_slot_selector_id = attr.ib(type=str,  default=None)
-        user_input          = attr.ib(type=dict, default={})
+        user_input          = attr.ib(type=dict, factory=attr.Factory(dict))
         action              = attr.ib(type=str,  default="run")
 
 **Signal** (``events/signals.py``):
@@ -91,19 +101,21 @@ Signal receiver
 ---------------
 
 A new ``receivers.py`` module inside ``openedx_ai_extensions`` subscribes to the
-signal using Django's ``@receiver`` decorator and bridges it to the existing
-``AIWorkflowScope`` orchestrator:
+signal using Django's ``@receiver`` decorator.  The receiver follows the same
+context-scoping process used elsewhere in the package: it builds a context dict
+from the event payload, passes it to ``AIWorkflowScope.get_profile()`` to resolve
+the matching workflow profile, and then calls ``execute()`` on the result:
 
 .. code-block:: python
 
     @receiver(AI_ORCHESTRATION_REQUESTED)
     def handle_ai_orchestration_requested(sender, ai_orchestration_request, **kwargs):
-        user    = User.objects.get(id=ai_orchestration_request.user_id)
-        context = {k: v for k, v in {
-            "course_id":           ai_orchestration_request.course_id,
-            "location_id":         ai_orchestration_request.location_id,
+        user = User.objects.get(id=ai_orchestration_request.user_id)
+        context = {
+            "course_id": ai_orchestration_request.course_id,
+            "location_id": ai_orchestration_request.location_id,
             "ui_slot_selector_id": ai_orchestration_request.ui_slot_selector_id,
-        }.items() if v is not None}
+        }
 
         workflow = AIWorkflowScope.get_profile(**context)
         workflow.execute(
@@ -124,13 +136,21 @@ The receiver is registered by importing ``openedx_ai_extensions.receivers`` insi
 Event Bus consumer configuration
 ---------------------------------
 
-Settings are injected via ``plugin_settings`` so that the Open edX platform's
-event bus worker picks up the signal automatically:
+The event bus consumer settings are **not active by default**.  To enable them,
+set the following flag in your environment (e.g. in ``lms.env.yml`` or a Tutor
+plugin):
+
+.. code-block:: python
+
+    AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER = True
+
+When that flag is present and ``True``, ``plugin_settings`` injects the necessary
+configuration so that the Open edX platform's event bus worker picks up the signal
+automatically:
 
 .. code-block:: python
 
     settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
-
     settings.EVENT_BUS_CONSUMER_CONFIG = {
         "org.openedx.ai_extensions.orchestration.requested.v1": {
             "ai-orchestration-requests": {
@@ -183,8 +203,11 @@ Consequences
   APIs.
 * The same receiver is transparently invoked when the event arrives over the Redis
   event bus, enabling cross-service triggering without any additional code.
-* ``openedx-ai-extensions`` is the **sole owner** of the signal definition and the
+* ``openedx-ai-extensions`` is the **current owner** of the signal definition and the
   **sole consumer**; other packages only need to import the public ``events`` subpackage.
+  Once the signal is migrated to ``openedx-events``, callers will no longer need a
+  dependency on ``openedx-ai-extensions`` to fire the event—only this package (as the
+  consumer/orchestrator) will retain that dependency.
 * The chosen event type ``org.openedx.ai_extensions.orchestration.requested.v1``
   follows the Open edX event naming convention and is versioned from the start.
 * Operators who do not need cross-service triggering can leave
