@@ -4,7 +4,7 @@
 Status
 ******
 
-**Proposed**
+**Provisional**
 
 
 Context
@@ -175,8 +175,6 @@ separate implementation PR):
 +--------------------------------------------------------------+----------------------------------------------+
 | File                                                         | Change                                       |
 +==============================================================+==============================================+
-| ``backend/openedx_ai_extensions/events/__init__.py``         | New – empty package marker                   |
-+--------------------------------------------------------------+----------------------------------------------+
 | ``backend/openedx_ai_extensions/events/data.py``             | New – ``AIOrchestrationRequestData`` attr    |
 |                                                              | data-class                                   |
 +--------------------------------------------------------------+----------------------------------------------+
@@ -185,14 +183,8 @@ separate implementation PR):
 | ``backend/openedx_ai_extensions/receivers.py``               | New – ``handle_ai_orchestration_requested``  |
 |                                                              | Django receiver                              |
 +--------------------------------------------------------------+----------------------------------------------+
-| ``backend/openedx_ai_extensions/apps.py``                    | Modified – import ``receivers`` in           |
-|                                                              | ``ready()``                                  |
-+--------------------------------------------------------------+----------------------------------------------+
 | ``backend/openedx_ai_extensions/settings/common.py``         | Modified – add ``EVENT_BUS_CONSUMER`` and    |
-|                                                              | ``EVENT_BUS_CONSUMER_CONFIG`` settings       |
-+--------------------------------------------------------------+----------------------------------------------+
-| ``backend/requirements/base.in``                             | Modified – explicit ``openedx-events``       |
-|                                                              | dependency                                   |
+|                                                              | ``EVENT_BUS_CONSUMER_CONFIG`` settings       |                                                  | dependency                                   |
 +--------------------------------------------------------------+----------------------------------------------+
 
 Consequences
