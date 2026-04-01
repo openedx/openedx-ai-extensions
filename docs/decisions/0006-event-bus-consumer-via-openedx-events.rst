@@ -184,7 +184,7 @@ separate implementation PR):
 |                                                              | Django receiver                              |
 +--------------------------------------------------------------+----------------------------------------------+
 | ``backend/openedx_ai_extensions/settings/common.py``         | Modified – add ``EVENT_BUS_CONSUMER`` and    |
-|                                                              | ``EVENT_BUS_CONSUMER_CONFIG`` settings       |                                                  | dependency                                   |
+|                                                              | ``EVENT_BUS_CONSUMER_CONFIG`` settings       |
 +--------------------------------------------------------------+----------------------------------------------+
 
 Consequences
