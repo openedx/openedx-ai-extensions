@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 @receiver(AI_ORCHESTRATION_REQUESTED)
-def handle_ai_orchestration_requested(sender, ai_orchestration_request, **kwargs):  # pylint: disable=unused-argument
+def handle_ai_orchestration_requested(_sender, ai_orchestration_request, **kwargs):
     """
     Triggered when any app publishes AI_ORCHESTRATION_REQUESTED.
 
@@ -40,7 +40,7 @@ def handle_ai_orchestration_requested(sender, ai_orchestration_request, **kwargs
         workflow = AIWorkflowScope.get_profile(**context)
         if workflow is None:
             log.error(
-                "TEST No workflow profile found for orchestration request. Context: %s",
+                "No workflow profile found for orchestration request. Context: %s",
                 context,
             )
             return
