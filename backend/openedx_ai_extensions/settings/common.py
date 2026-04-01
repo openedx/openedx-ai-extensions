@@ -125,13 +125,14 @@ def plugin_settings(settings):
         ))
 
     if hasattr(settings, 'AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER') and settings.AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER:
-        settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
+        if not getattr(settings, 'EVENT_BUS_CONSUMER', None):
+            settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
 
-        settings.EVENT_BUS_CONSUMER_CONFIG = {
-            "org.openedx.ai_extensions.orchestration.requested.v1": {
-                "ai-orchestration-requests": {
-                    "group_id": "ai-extensions-orchestrator",
-                    "enabled": True,
-                }
-            }
-        }
+        consumer_config = getattr(settings, 'EVENT_BUS_CONSUMER_CONFIG', {})
+        event_type = "org.openedx.ai_extensions.orchestration.requested.v1"
+        topic = "ai-orchestration-requests"
+        consumer_config.setdefault(event_type, {}).setdefault(topic, {
+            "group_id": "ai-extensions-orchestrator",
+            "enabled": True,
+        })
+        settings.EVENT_BUS_CONSUMER_CONFIG = consumer_config
