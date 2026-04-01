@@ -123,3 +123,17 @@ def plugin_settings(settings):
             settings.EVENT_TRACKING_BACKENDS_ALLOWED_XAPI_EVENTS,
             settings.EVENT_TRACKING_BACKENDS_ALLOWED_CALIPER_EVENTS,
         ))
+
+    if (hasattr(settings, 'AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER') and
+            settings.AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER):
+        if not getattr(settings, 'EVENT_BUS_CONSUMER', None):
+            settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
+
+        consumer_config = getattr(settings, 'EVENT_BUS_CONSUMER_CONFIG', {})
+        event_type = "org.openedx.ai_extensions.orchestration.requested.v1"
+        topic = "ai-orchestration-requests"
+        consumer_config.setdefault(event_type, {}).setdefault(topic, {
+            "group_id": "ai-extensions-orchestrator",
+            "enabled": True,
+        })
+        settings.EVENT_BUS_CONSUMER_CONFIG = consumer_config
