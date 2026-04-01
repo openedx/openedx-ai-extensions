@@ -124,13 +124,14 @@ def plugin_settings(settings):
             settings.EVENT_TRACKING_BACKENDS_ALLOWED_CALIPER_EVENTS,
         ))
 
-    settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
+    if hasattr(settings, 'AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER') and settings.AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER:
+        settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
 
-    settings.EVENT_BUS_CONSUMER_CONFIG = {
-        "org.openedx.ai_extensions.orchestration.requested.v1": {
-            "ai-orchestration-requests": {
-                "group_id": "ai-extensions-orchestrator",
-                "enabled": True,
+        settings.EVENT_BUS_CONSUMER_CONFIG = {
+            "org.openedx.ai_extensions.orchestration.requested.v1": {
+                "ai-orchestration-requests": {
+                    "group_id": "ai-extensions-orchestrator",
+                    "enabled": True,
+                }
             }
         }
-    }
