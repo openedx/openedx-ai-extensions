@@ -38,6 +38,12 @@ def handle_ai_orchestration_requested(sender, ai_orchestration_request, **kwargs
         }
 
         workflow = AIWorkflowScope.get_profile(**context)
+        if workflow is None:
+            log.error(
+                "TEST No workflow profile found for orchestration request. Context: %s",
+                context,
+            )
+            return
         log.info("Found workflow profile for orchestration request. Context: %s", context)
         result = workflow.execute(
             user_input=ai_orchestration_request.user_input,
