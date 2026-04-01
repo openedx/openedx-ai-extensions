@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 @receiver(AI_ORCHESTRATION_REQUESTED)
-def handle_ai_orchestration_requested(_sender, ai_orchestration_request, **kwargs):
+def handle_ai_orchestration_requested(sender, ai_orchestration_request, **kwargs):  # pylint: disable=unused-argument
     """
     Triggered when any app publishes AI_ORCHESTRATION_REQUESTED.
 
