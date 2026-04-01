@@ -124,7 +124,8 @@ def plugin_settings(settings):
             settings.EVENT_TRACKING_BACKENDS_ALLOWED_CALIPER_EVENTS,
         ))
 
-    if hasattr(settings, 'AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER') and settings.AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER:
+    if (hasattr(settings, 'AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER') and
+            settings.AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER):
         if not getattr(settings, 'EVENT_BUS_CONSUMER', None):
             settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
 

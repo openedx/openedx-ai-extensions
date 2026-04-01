@@ -8,7 +8,6 @@ from openedx_events.tooling import OpenEdxPublicSignal
 
 from openedx_ai_extensions.events.data import AIOrchestrationRequestData
 
-
 AI_ORCHESTRATION_REQUESTED = OpenEdxPublicSignal(
     event_type="org.openedx.ai_extensions.orchestration.requested.v1",
     data={
