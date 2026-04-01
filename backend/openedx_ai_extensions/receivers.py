@@ -3,7 +3,6 @@ Django signal receivers for openedx-ai-extensions.
 This is the entry point that bridges the event bus → orchestrator.
 """
 import logging
-import profile
 
 from django.dispatch import receiver
 
