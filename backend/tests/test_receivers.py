@@ -52,7 +52,7 @@ def _make_request(**kwargs):
 def _call_handler(request_data):
     """Call the receiver directly, bypassing send_robust signal dispatch."""
     handle_ai_orchestration_requested(
-        sender=None,
+        None,
         ai_orchestration_request=request_data,
     )
 
