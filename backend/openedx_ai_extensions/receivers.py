@@ -39,13 +39,13 @@ def handle_ai_orchestration_requested(sender, ai_orchestration_request, **kwargs
         }
 
         workflow = AIWorkflowScope.get_profile(**context)
-        log.info(f"TEST Found workflow profile for orchestration request: {workflow}")
+        log.info("Found workflow profile for orchestration request. Context: %s", context)
         result = workflow.execute(
             user_input=ai_orchestration_request.user_input,
             action=ai_orchestration_request.action,
             user=user,
             running_context=context,
         )
-        log.info(f"TEST Successfully ran orchestrator for workflow with result: {result}")
-    except Exception as e:
-        log.exception(f"TEST Error running orchestrator for workflow: {e}")
+        log.info("Successfully ran orchestrator for workflow. Context: %s", context)
+    except Exception:
+        log.exception("Error running orchestrator for workflow")
