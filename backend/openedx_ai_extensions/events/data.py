@@ -15,5 +15,5 @@ class AIOrchestrationRequestData:
     course_id = attr.ib(type=str, default=None)
     location_id = attr.ib(type=str, default=None)
     ui_slot_selector_id = attr.ib(type=str, default=None)
-    user_input = attr.ib(type=dict, default={})
+    user_input = attr.ib(type=dict, factory=dict)
     action = attr.ib(type=str, default="run")
