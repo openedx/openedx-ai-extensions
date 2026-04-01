@@ -215,6 +215,7 @@ kombu==5.6.1
     # via celery
 litellm==1.80.16
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/base.in
 markupsafe==3.0.3
     # via jinja2
@@ -227,7 +228,9 @@ openai==2.15.0
 openedx-atlas==0.7.0
     # via -r requirements/base.in
 openedx-events==10.5.0
-    # via event-tracking
+    # via
+    #   -r requirements/base.in
+    #   event-tracking
 openedx-filters==2.1.0
     # via edx-event-routing-backends
 packaging==25.0

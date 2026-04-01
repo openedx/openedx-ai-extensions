@@ -35,6 +35,7 @@ class OpenedxAIExtensionsConfig(AppConfig):
         # Import the transformers module to trigger the @register decorators
         # Import the tasks module to trigger the registration
         from openedx_ai_extensions import tasks  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
+        import openedx_ai_extensions.receivers  # noqa: F401
         from openedx_ai_extensions.xapi import \
             transformers  # noqa: F401 pylint: disable=unused-import,import-outside-toplevel
 
