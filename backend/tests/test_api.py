@@ -705,4 +705,4 @@ def test_workflow_config_view_invalid_context_json_unit(
     response = view(request)
 
     # Should return error status for invalid JSON
-    assert response.status_code == 500
+    assert response.status_code == 400

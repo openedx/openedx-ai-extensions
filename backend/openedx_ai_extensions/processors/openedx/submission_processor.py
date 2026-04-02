@@ -158,32 +158,28 @@ class SubmissionProcessor:
         Returns:
             dict: Contains 'response' (JSON string of new messages) and 'metadata' (has_more flag)
         """
-        try:
-            # Ensure current_messages_count is an integer
-            if isinstance(current_messages_count, str):
-                try:
-                    current_messages_count = int(current_messages_count)
-                except (ValueError, TypeError):
-                    current_messages_count = 0
+        # Ensure current_messages_count is an integer
+        if isinstance(current_messages_count, str):
+            try:
+                current_messages_count = int(current_messages_count)
+            except (ValueError, TypeError):
+                current_messages_count = 0
 
-            new_messages, has_more = self._process_messages(
-                current_messages_count=current_messages_count
-            )
+        new_messages, has_more = self._process_messages(
+            current_messages_count=current_messages_count
+        )
 
-            return {
-                "response": json.dumps(
-                    {
-                        "messages": new_messages,
-                        "metadata": {
-                            "has_more": has_more,
-                            "new_count": len(new_messages),
-                        },
-                    }
-                ),
-            }
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error retrieving previous messages: {e}")
-            return {"error": f"Failed to load previous messages: {str(e)}"}
+        return {
+            "response": json.dumps(
+                {
+                    "messages": new_messages,
+                    "metadata": {
+                        "has_more": has_more,
+                        "new_count": len(new_messages),
+                    },
+                }
+            ),
+        }
 
     def update_chat_submission(self, messages):
         """
