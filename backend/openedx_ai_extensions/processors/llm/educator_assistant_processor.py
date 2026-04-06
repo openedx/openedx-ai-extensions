@@ -57,7 +57,7 @@ class EducatorAssistantProcessor(LitellmProcessor):
 
         return {
             "response": content,
-            "tokens_used": response.usage.total_tokens if response.usage else 0,
+            "usage": response.usage if response.usage else 0,
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }
@@ -80,12 +80,11 @@ class EducatorAssistantProcessor(LitellmProcessor):
 
         result = self._call_completion_api(prompt)
 
-        tokens_used = result.get("tokens_used", 0)
         response = json.loads(result['response'])
 
         return {
             "response": response,
-            "tokens_used": tokens_used,
+            "usage": result.get("usage", 0),
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }
@@ -104,15 +103,13 @@ class EducatorAssistantProcessor(LitellmProcessor):
         for key, value in input_data.items():
             placeholder = f"{{{{{key.upper()}}}}}"
             prompt = prompt.replace(placeholder, str(value))
-        logger.info(f"Refinement prompt after placeholder replacement: {prompt}")
 
         result = self._call_completion_api(prompt)
 
-        tokens_used = result.get("tokens_used", 0)
         response = json.loads(result['response'])
         return {
             "response": response,
-            "tokens_used": tokens_used,
+            "usage": result.get("usage", 0),
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }
