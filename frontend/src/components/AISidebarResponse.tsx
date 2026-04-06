@@ -537,7 +537,7 @@ const AISidebarResponse = ({
       }
     } catch (err) {
       logError('[AISidebarResponse] Follow-up error:', err);
-      const userFriendlyError = formatErrorMessage(err);
+      const userFriendlyError = formatErrorMessage(err, intl);
       // Add error message to chat
       setChatMessages(prev => [...prev, {
         type: 'error',

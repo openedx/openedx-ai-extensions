@@ -34,38 +34,33 @@ class EducatorAssistantProcessor(LitellmProcessor):
         General method to call LiteLLM completion API
         Handles configuration and returns standardized response
         """
-        try:
-            # Build completion parameters
-            completion_params = {
-                "messages": [
-                    {"role": "system", "content": self.custom_prompt or system_role},
-                ],
-            }
+        # Build completion parameters
+        completion_params = {
+            "messages": [
+                {"role": "system", "content": self.custom_prompt or system_role},
+            ],
+        }
 
-            completion_params = adapt_to_provider(
-                provider=self.provider,
-                params=completion_params,
-                has_user_input=False,
-                user_session=self.user_session,
-            )
+        completion_params = adapt_to_provider(
+            provider=self.provider,
+            params=completion_params,
+            has_user_input=False,
+            user_session=self.user_session,
+        )
 
-            # Add optional parameters only if configured
-            if self.extra_params:
-                completion_params.update(self.extra_params)
+        # Add optional parameters only if configured
+        if self.extra_params:
+            completion_params.update(self.extra_params)
 
-            response = completion(**completion_params)
-            content = response.choices[0].message.content
+        response = completion(**completion_params)
+        content = response.choices[0].message.content
 
-            return {
-                "response": content,
-                "usage": response.usage if response.usage else None,
-                "model_used": self.extra_params.get("model", "unknown"),
-                "status": "success",
-            }
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error calling LiteLLM: {e}")
-            return {"error": f"AI processing failed: {str(e)}"}
+        return {
+            "response": content,
+            "usage": response.usage if response.usage else 0,
+            "model_used": self.extra_params.get("model", "unknown"),
+            "status": "success",
+        }
 
     def generate_quiz_questions(self, input_data):
         """Generate quiz questions based on the content provided"""
@@ -75,29 +70,21 @@ class EducatorAssistantProcessor(LitellmProcessor):
             / "prompts"
             / "default_generate_quiz_questions.txt"
         )
-        try:
-            with open(prompt_file_path, "r") as f:
-                prompt = f.read()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error loading prompt template: {e}")
-            return {"error": "Failed to load prompt template."}
+        with open(prompt_file_path, "r") as f:
+            prompt = f.read()
 
         input_data['context'] = self.context
         for key, value in input_data.items():
             placeholder = f"{{{{{key.upper()}}}}}"
             prompt = prompt.replace(placeholder, str(value))
 
-        try:
-            result = self._call_completion_api(prompt)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error calling LiteLLM: {e}")
-            return {"error": f"AI processing failed: {str(e)}"}
+        result = self._call_completion_api(prompt)
 
         response = json.loads(result['response'])
 
         return {
             "response": response,
-            "usage": result.get("usage", None),
+            "usage": result.get("usage", 0),
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }
@@ -109,28 +96,20 @@ class EducatorAssistantProcessor(LitellmProcessor):
             / "prompts"
             / "default_refine_quiz_question.txt"
         )
-        try:
-            with open(prompt_file_path, "r") as f:
-                prompt = f.read()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error loading refinement prompt template: {e}")
-            return {"error": "Failed to load refinement prompt template."}
+        with open(prompt_file_path, "r") as f:
+            prompt = f.read()
 
         input_data['context'] = self.context
         for key, value in input_data.items():
             placeholder = f"{{{{{key.upper()}}}}}"
             prompt = prompt.replace(placeholder, str(value))
 
-        try:
-            result = self._call_completion_api(prompt)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error calling LiteLLM during refinement: {e}")
-            return {"error": f"AI processing failed: {str(e)}"}
+        result = self._call_completion_api(prompt)
 
         response = json.loads(result['response'])
         return {
             "response": response,
-            "usage": result.get("usage", None),
+            "usage": result.get("usage", 0),
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }

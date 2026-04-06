@@ -9,6 +9,7 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from litellm.exceptions import BadRequestError
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
@@ -392,12 +393,8 @@ def test_chat_error_handling(
     Test API error handling in chat (non-streaming).
     """
     mock_responses.side_effect = Exception("API connection failed")
-
-    result = llm_processor.process(context="Ctx", input_data="Hi", chat_history=[])
-
-    assert "error" in result
-    assert "AI processing failed" in result["error"]
-    assert "API connection failed" in result["error"]
+    with pytest.raises(Exception):
+        llm_processor.process(context="Ctx", input_data="Hi", chat_history=[])
 
 
 @pytest.mark.django_db
@@ -426,7 +423,7 @@ def test_completion_error_handling_stream(
 
     # Should yield content then the error message
     assert results[0] == b"Start"
-    assert b"[AI Error: Stream cut off]" in results[1]
+    assert b'"error_in_stream": true' in results[1]
 
 
 # ============================================================================
@@ -1418,6 +1415,112 @@ def test_yield_threaded_stream_recursive_tool_call(
         assert history[1]["name"] == "roll_dice"
 
         mock_responses.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.completion")
+def test_llm_processor_streaming_error_marker(mock_completion, workflow_scope, user):
+    """Test that LLMProcessor yields an error marker when an exception occurs during streaming."""
+    processor_config = {
+        "LLMProcessor": {
+            "provider": "default",
+            "stream": True,
+            "prompt": "Test prompt",
+        }
+    }
+
+    session = AIWorkflowSession.objects.create(
+        user=user,
+        scope=workflow_scope,
+        profile=workflow_scope.profile,
+        course_id=workflow_scope.course_id,
+    )
+
+    processor = LLMProcessor(processor_config, session)
+
+    # Mock completion to return a generator that raises an exception
+    class MockStreamResponse:
+        """Mock stream response."""
+        def __iter__(self):
+            chunk = Mock()
+            chunk.choices = [Mock(delta=Mock(content="Partial response"))]
+            yield chunk
+            raise RuntimeError("Streaming failed midway")
+
+    mock_completion.return_value = MockStreamResponse()
+
+    # Execute streaming
+    result = processor.process(input_data="test input")
+
+    chunks = list(result)
+    assert b"Partial response" in chunks
+
+    # Check for error marker in the last chunks
+    error_marker_found = False
+    for chunk in chunks:
+        if b"error_in_stream" in chunk:
+            error_marker_found = True
+            marker_str = chunk.decode("utf-8").strip("|")
+            data = json.loads(marker_str)
+            assert data["error_in_stream"] is True
+            assert data["code"] == "streaming_failed"
+
+    assert error_marker_found
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
+def test_llm_processor_lost_thread_retry(mock_responses, workflow_scope, user):
+    """Test that LLMProcessor retries with full history if previous response ID is not found."""
+    processor_config = {
+        "LLMProcessor": {
+            "provider": "default",
+            "stream": False,
+            "prompt": "Test prompt",
+            "function": "chat_with_context",
+        }
+    }
+
+    session = AIWorkflowSession.objects.create(
+        user=user,
+        scope=workflow_scope,
+        profile=workflow_scope.profile,
+        course_id=workflow_scope.course_id,
+        remote_response_id="lost-id",
+    )
+
+    processor = LLMProcessor(processor_config, session)
+
+    # Mock responses to fail first time and succeed second time
+    mock_error = BadRequestError("Previous response not found", model="gpt-4", llm_provider="openai")
+    mock_error.code = "previous_response_not_found"
+
+    mock_success = Mock()
+    mock_success.id = "new-id"
+    item = Mock()
+    item.type = "message"
+    content_item = Mock()
+    content_item.type = "output_text"
+    content_item.text = "Success response"
+    item.content = [content_item]
+    mock_success.output = [item]
+    mock_success.usage = Mock(total_tokens=10)
+
+    mock_responses.side_effect = [mock_error, mock_success]
+
+    result = processor.process(input_data="test input")
+
+    assert result["response"] == "Success response"
+    assert session.remote_response_id == "new-id"  # Should have been updated with new ID
+    assert mock_responses.call_count == 2
+
+    # Verify first call had the lost ID
+    args, kwargs = mock_responses.call_args_list[0]
+    assert kwargs["previous_response_id"] == "lost-id"
+
+    # Verify second call did NOT have the lost ID
+    args, kwargs = mock_responses.call_args_list[1]
+    assert "previous_response_id" not in kwargs or kwargs["previous_response_id"] is None
 
 
 # ============================================================================
