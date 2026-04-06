@@ -69,6 +69,8 @@ class BaseOrchestrator:
             "profile_name": self.profile.slug,
             "location_id": str(self.location_id) if self.location_id else "",
         }
+        if self.user and hasattr(self.user, "username") and self.user.username:
+            event_data["username"] = self.user.username
         if usage:
             event_data["usage"] = self._convert_usage_to_json_serializable(usage)
 

@@ -107,7 +107,7 @@ class FlashCardsOrchestrator(ScopedSessionOrchestrator):
                 'status': 'LLMProcessor error'
             }
 
-        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_result.get('usage', None))
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_processor.get_usage())
 
         response_obj = llm_result.get('response')
         cards = self._get_structured_cards(response_obj)

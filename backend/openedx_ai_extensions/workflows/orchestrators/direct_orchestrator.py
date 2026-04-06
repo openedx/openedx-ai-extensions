@@ -27,6 +27,19 @@ class DirectLLMResponse(BaseOrchestrator):
     Does a single call to an LLM and gives a response.
     """
 
+    def _stream_and_emit(self, generator, llm_processor):
+        """Yield all chunks from the generator, then emit the completed event."""
+        try:
+            yield from generator
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error in stream wrapper: {e}")
+            yield f"\n[Error processing stream: {e}]".encode("utf-8")
+        finally:
+            try:
+                self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_processor.get_usage())
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error(f"Failed to emit workflow event after stream: {e}")
+
     def run(self, input_data):
         """
         Executes the content fetching, LLM processing, and handles streaming
@@ -58,8 +71,7 @@ class DirectLLMResponse(BaseOrchestrator):
 
         # --- 4. Handle Streaming Response (Generator) ---
         if is_generator(llm_result):
-            # If the LLM returns a generator, return its directly.
-            return llm_result
+            return self._stream_and_emit(llm_result, llm_processor)
 
         # --- 5. Handle LLM Error (Non-Streaming) ---
         if llm_result and 'error' in llm_result:
@@ -70,7 +82,7 @@ class DirectLLMResponse(BaseOrchestrator):
             }
 
         # 6. Emit completed event for one-shot workflow
-        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_result.get('usage', None))
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_processor.get_usage())
 
         # --- 7. Return Structured Non-Streaming Result ---
         # If execution reaches this point, we have a successful, non-streaming result (Dict).
@@ -180,6 +192,9 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         metadata['collection_name'] = collection_name
         self.session.metadata = metadata
         self.session.save(update_fields=["metadata"])
+
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_result.get("usage", None))
+
         return {
             'status': 'completed',
             'response': {

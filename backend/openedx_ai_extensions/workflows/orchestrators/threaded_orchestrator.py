@@ -56,7 +56,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
     def _stream_and_save_history(self, generator, input_data,  # pylint: disable=too-many-positional-arguments
                                  submission_processor, llm_processor,
-                                 initial_system_msgs=None):
+                                 initial_system_msgs=None, is_first_interaction=False):
         """
         Yields chunks to the view while accumulating text to save to DB
         once the stream finishes.
@@ -106,10 +106,14 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             # Re-inject system messages if this was a new thread (and not OpenAI)
             if llm_processor.get_provider() != "openai" and initial_system_msgs:
                 for msg in initial_system_msgs:
-                    messages.insert(0, {"role": msg["role"], "content": msg["content"]})
+                    messages.insert(0, {"role": msg["role"], "conte{}nt": msg["content"]})
 
             try:
                 submission_processor.update_chat_submission(messages)
+                if is_first_interaction:
+                    self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED, usage=llm_processor.get_usage())
+                else:
+                    self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED, usage=llm_processor.get_usage())
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error(f"Failed to save chat history after stream: {e}")
 
@@ -164,7 +168,8 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
                 input_data=input_data,
                 submission_processor=submission_processor,
                 llm_processor=llm_processor,
-                initial_system_msgs=None
+                initial_system_msgs=None,
+                is_first_interaction=is_first_interaction,
             )
 
         # --- BRANCH B: Handle Non-Streaming (Standard) ---
@@ -185,9 +190,9 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # Emit appropriate event based on interaction state
         if is_first_interaction:
-            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED, usage=llm_result.get("usage", None))
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED, usage=llm_processor.get_usage())
         else:
-            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED, usage=llm_result.get("usage", None))
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED, usage=llm_processor.get_usage())
 
         # 4. Return result
         return {

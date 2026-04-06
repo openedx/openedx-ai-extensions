@@ -370,6 +370,7 @@ def test_direct_llm_response_orchestrator_success(
     mock_llm.process.return_value = {
         "response": "This is a summary",
     }
+    mock_llm.get_usage.return_value = None
     mock_llm_processor_class.return_value = mock_llm
 
     # Mock the workflow to have location_id and action attributes
@@ -461,6 +462,7 @@ def test_threaded_llm_response_orchestrator_new_session(
     mock_responses.process.return_value = {
         "response": "AI chat response",
     }
+    mock_responses.get_usage.return_value = None
     mock_responses_processor_class.return_value = mock_responses
 
     # Mock SubmissionProcessor

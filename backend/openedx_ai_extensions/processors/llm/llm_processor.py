@@ -60,12 +60,9 @@ class LLMProcessor(LitellmProcessor):
 
     def _handle_streaming_completion(self, response):
         """Stream with chunk buffering (more natural UI speed)."""
-        total_tokens = None
         try:
             for chunk in response:
-                if hasattr(chunk, "usage") and chunk.usage:
-                    total_tokens = chunk.usage.total_tokens
-
+                self._set_token_usage(chunk)
                 content = chunk.choices[0].delta.content or ""
                 if content:
                     yield content.encode('utf-8')
@@ -79,21 +76,15 @@ class LLMProcessor(LitellmProcessor):
                 "message": STREAMING_FAILED_MESSAGE
             })
             yield f"||{error_marker}||".encode("utf-8")
-            return
-
-        # Log tokens at end
-        if total_tokens is not None:
-            logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
-        else:
-            logger.info("[LLM STREAM] Tokens used: unknown (model did not report)")
 
     def _handle_non_streaming_completion(self, response):
         """Handles the non-streaming logic, returning a response dict."""
         content = response.choices[0].message.content
+        self._set_token_usage(response)
 
         return {
             "response": content,
-            "usage": response.usage if response.usage else None,
+            "usage": self.usage,
             "model_used": self.provider,
             "status": "success",
         }
@@ -189,7 +180,7 @@ class LLMProcessor(LitellmProcessor):
 
             result = {
                 "response": content,
-                "usage": response.usage if response.usage else None,
+                "usage": self.usage,
                 "model_used": self.extra_params.get("model", "unknown"),
                 "status": "success",
             }
@@ -228,6 +219,9 @@ class LLMProcessor(LitellmProcessor):
         }
         if self.caching_enabled:
             params["caching"] = True
+
+        if self.stream:
+            params["stream_options"] = {"include_usage": True}
 
         if self.context:
             params["messages"].append(
@@ -317,6 +311,7 @@ class LLMProcessor(LitellmProcessor):
         tool_calls_buffer = {}
 
         for chunk in response:
+            self._set_token_usage(chunk)
             delta = chunk.choices[0].delta
             if delta.content:
                 yield chunk
@@ -338,15 +333,29 @@ class LLMProcessor(LitellmProcessor):
     # Responses API streaming helpers
     # -------------------------------------------------------------------------
 
-    @staticmethod
-    def _get_chunk_token_usage(chunk) -> "int | None":
-        """Extract total token count from a Responses API streaming chunk, if present."""
-        chunk_response = getattr(chunk, "response", None)
+    def _set_token_usage(self, response) -> "int | None":
+        """Extract total token count from the response and save to self.usage for event emission."""
+
+        usage = None
+        chunk_response = getattr(response, "response", None)
         if chunk_response and getattr(chunk_response, "usage", None):
-            return chunk_response.usage.total_tokens
-        if getattr(chunk, "usage", None):
-            return chunk.usage.total_tokens
-        return None
+            usage = chunk_response.usage
+        if getattr(response, "usage", None):
+            usage = response.usage
+
+        if usage is None:
+            return
+
+        try:
+            if self.usage is not None:
+                self.usage.total_tokens += usage.total_tokens
+                self.usage.prompt_tokens += usage.prompt_tokens
+                self.usage.completion_tokens += usage.completion_tokens
+            else:
+                self.usage = usage
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Error updating token usage: {e}")
+            self.usage = usage  # Fallback to latest usage if accumulation fails
 
     def _persist_response_id(self, chunk) -> None:
         """Save the response ID carried by *chunk* to the user session, if present."""
@@ -383,10 +392,9 @@ class LLMProcessor(LitellmProcessor):
         completed tool calls by executing them and recursing via _responses_with_tools.
         Parallel to _handle_streaming_tool_calls for the Completion API.
         """
-        total_tokens = None
         try:
             for chunk in response:
-                total_tokens = self._get_chunk_token_usage(chunk) or total_tokens
+                self._set_token_usage(chunk)
                 self._persist_response_id(chunk)
 
                 if hasattr(chunk, "delta") and chunk.delta and chunk.delta != "{}":
@@ -414,9 +422,6 @@ class LLMProcessor(LitellmProcessor):
             })
             yield f"||{error_marker}||"
             return
-
-        if total_tokens is not None:
-            logger.info(f"[LLM STREAM] Tokens used: {total_tokens}")
 
     def _responses_with_tools(self, tool_calls, params):
         """Handle tool calls recursively until no more tool calls are present."""
@@ -703,7 +708,7 @@ class LLMProcessor(LitellmProcessor):
 
         return {
             "response": response,
-            "usage": result.get("usage", None),
+            "usage": self.usage,
             "model_used": self.extra_params.get("model", "unknown"),
             "status": "success",
         }
