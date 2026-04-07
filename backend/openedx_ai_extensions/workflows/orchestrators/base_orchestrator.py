@@ -56,19 +56,18 @@ class BaseOrchestrator:
                 serializable_usage[key] = str(value)
         return serializable_usage
 
-    def _emit_workflow_event(self, event_name: str, usage=None) -> None:
+    def _emit_workflow_event(self, event_name: str) -> None:
         """
         Emit an xAPI event for this workflow.
 
-        If ``usage`` is not provided, it is automatically fetched from
-        ``self.llm_processor.get_usage()`` when a processor has been set.
+        Usage data is automatically fetched from ``self.llm_processor.get_usage()``
+        when a processor has been set on the orchestrator.
 
         Args:
             event_name: The event name constant (e.g., EVENT_NAME_WORKFLOW_COMPLETED)
-            usage: Optional usage data to include. Defaults to the value returned
-                by ``self.llm_processor.get_usage()`` if a processor is set.
         """
-        if usage is None and self.llm_processor is not None:
+        usage = None
+        if self.llm_processor is not None:
             usage = self.llm_processor.get_usage()
         event_data = {
             "workflow_id": str(self.workflow.id),
