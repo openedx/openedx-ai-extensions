@@ -370,6 +370,7 @@ def test_direct_llm_response_orchestrator_success(
     mock_llm.process.return_value = {
         "response": "This is a summary",
     }
+    mock_llm.get_usage.return_value = None
     mock_llm_processor_class.return_value = mock_llm
 
     # Mock the workflow to have location_id and action attributes
@@ -438,6 +439,92 @@ def test_direct_llm_response_orchestrator_llm_error(
 
 
 @pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.logger")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.LLMProcessor")
+def test_stream_and_emit_generator_exception(
+    mock_llm_processor_class,
+    mock_openedx_processor_class,
+    mock_logger,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that _stream_and_emit catches exceptions raised by the generator,
+    yields an encoded error chunk, and still emits the workflow event.
+    """
+    def broken_generator():
+        yield b"partial"
+        raise RuntimeError("stream blew up")
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"location_id": "unit-123"}
+    mock_openedx_processor_class.return_value = mock_openedx
+
+    mock_llm = Mock()
+    mock_llm.process.return_value = broken_generator()
+    mock_llm.get_usage.return_value = None
+    mock_llm_processor_class.return_value = mock_llm
+
+    workflow_scope.location_id = None
+    workflow_scope.action = "test_action"
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user, context=context)
+
+    with patch.object(orchestrator, "_emit_workflow_event") as mock_emit:
+        chunks = list(orchestrator.run({}))
+
+    full = b"".join(chunks).decode("utf-8")
+    assert "partial" in full
+    assert "Error processing stream" in full
+    assert "stream blew up" in full
+    mock_logger.error.assert_called()
+    mock_emit.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.logger")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.OpenEdXProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.direct_orchestrator.LLMProcessor")
+def test_stream_and_emit_emit_exception(
+    mock_llm_processor_class,
+    mock_openedx_processor_class,
+    mock_logger,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
+):
+    """
+    Test that _stream_and_emit swallows exceptions raised by _emit_workflow_event
+    inside the finally block, while the stream chunks are still yielded normally.
+    """
+    def clean_generator():
+        yield b"hello"
+        yield b" world"
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {"location_id": "unit-123"}
+    mock_openedx_processor_class.return_value = mock_openedx
+
+    mock_llm = Mock()
+    mock_llm.process.return_value = clean_generator()
+    mock_llm.get_usage.return_value = None
+    mock_llm_processor_class.return_value = mock_llm
+
+    workflow_scope.location_id = None
+    workflow_scope.action = "test_action"
+    context = {"location_id": None, "course_id": workflow_scope.course_id}
+    orchestrator = DirectLLMResponse(workflow=workflow_scope, user=user, context=context)
+
+    with patch.object(orchestrator, "_emit_workflow_event", side_effect=Exception("event bus down")):
+        chunks = list(orchestrator.run({}))
+
+    full = b"".join(chunks).decode("utf-8")
+    assert full == "hello world"
+    mock_logger.error.assert_called()
+    assert "event bus down" in str(mock_logger.error.call_args)
+
+
+@pytest.mark.django_db
 @patch("openedx_ai_extensions.workflows.orchestrators.threaded_orchestrator.OpenEdXProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.threaded_orchestrator.LLMProcessor")
 @patch("openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator.SubmissionProcessor")
@@ -461,6 +548,7 @@ def test_threaded_llm_response_orchestrator_new_session(
     mock_responses.process.return_value = {
         "response": "AI chat response",
     }
+    mock_responses.get_usage.return_value = None
     mock_responses_processor_class.return_value = mock_responses
 
     # Mock SubmissionProcessor

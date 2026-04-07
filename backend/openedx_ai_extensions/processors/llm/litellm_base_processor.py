@@ -20,6 +20,7 @@ class LitellmProcessor:
         self.config = config.get(self.__class__.__name__, {})
         self.user_session = user_session
         self.extra_params = extra_params or {}
+        self.usage = None
 
         provider_spec = self.config.get("provider", "default")
         self.config_profile = provider_spec
@@ -115,3 +116,7 @@ class LitellmProcessor:
     def get_provider(self):
         """Return the configured provider"""
         return self.provider
+
+    def get_usage(self):
+        """Return usage data if available"""
+        return self.usage

@@ -100,6 +100,7 @@ def test_emit_workflow_event(mock_tracker, mock_workflow, mock_user):  # pylint:
         "course_id": "course-1",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "loc-1",
+        "user_id": mock_user.id,
     })
 
 
@@ -116,8 +117,10 @@ def test_emit_workflow_event_with_usage(
     context = {"location_id": "loc-1", "course_id": "course-1"}
     orchestrator = BaseOrchestrator(workflow=mock_workflow, user=mock_user, context=context)
 
-    usage = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
-    orchestrator._emit_workflow_event("TEST_EVENT", usage=usage)  # pylint: disable=protected-access
+    mock_processor = MagicMock()
+    mock_processor.get_usage.return_value = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
+    orchestrator.llm_processor = mock_processor
+    orchestrator._emit_workflow_event("TEST_EVENT")  # pylint: disable=protected-access
 
     mock_tracker.emit.assert_called_once_with("TEST_EVENT", {
         "workflow_id": str(mock_workflow.id),
@@ -125,6 +128,7 @@ def test_emit_workflow_event_with_usage(
         "course_id": "course-1",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "loc-1",
+        "user_id": mock_user.id,
         "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
     })
 
@@ -150,7 +154,10 @@ def test_emit_workflow_event_with_pydantic_usage(
         "total_tokens": 20,
     }
 
-    orchestrator._emit_workflow_event("TEST_EVENT", usage=mock_usage)  # pylint: disable=protected-access
+    mock_processor = MagicMock()
+    mock_processor.get_usage.return_value = mock_usage
+    orchestrator.llm_processor = mock_processor
+    orchestrator._emit_workflow_event("TEST_EVENT")  # pylint: disable=protected-access
 
     call_args = mock_tracker.emit.call_args
     assert call_args[0][1]["usage"] == {
@@ -180,6 +187,7 @@ def test_emit_workflow_event_without_location_id(
         "course_id": "course-1",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "",
+        "user_id": mock_user.id,
     })
 
 
@@ -223,6 +231,7 @@ def test_emit_workflow_event_no_course_id(
         "course_id": "",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "loc-1",
+        "user_id": mock_user.id,
     })
 
 
@@ -248,7 +257,10 @@ def test_emit_workflow_event_with_pydantic_v1_usage(
         "total_tokens": 20,
     }
 
-    orchestrator._emit_workflow_event("TEST_EVENT", usage=mock_usage)  # pylint: disable=protected-access
+    mock_processor = MagicMock()
+    mock_processor.get_usage.return_value = mock_usage
+    orchestrator.llm_processor = mock_processor
+    orchestrator._emit_workflow_event("TEST_EVENT")  # pylint: disable=protected-access
 
     call_args = mock_tracker.emit.call_args
     assert call_args[0][1]["usage"] == {
@@ -277,7 +289,10 @@ def test_emit_workflow_event_with_custom_object_usage(
             self.completion_tokens = 15
             self.total_tokens = 20
 
-    orchestrator._emit_workflow_event("TEST_EVENT", usage=CustomUsage())  # pylint: disable=protected-access
+    mock_processor = MagicMock()
+    mock_processor.get_usage.return_value = CustomUsage()
+    orchestrator.llm_processor = mock_processor
+    orchestrator._emit_workflow_event("TEST_EVENT")  # pylint: disable=protected-access
 
     call_args = mock_tracker.emit.call_args
     assert call_args[0][1]["usage"] == {
@@ -304,8 +319,10 @@ def test_emit_workflow_event_with_non_serializable_usage_value(
         def __str__(self):
             return "Non-Serializable Object"
 
-    usage = {"custom_field": NonSerializable()}
-    orchestrator._emit_workflow_event("TEST_EVENT", usage=usage)  # pylint: disable=protected-access
+    mock_processor = MagicMock()
+    mock_processor.get_usage.return_value = {"custom_field": NonSerializable()}
+    orchestrator.llm_processor = mock_processor
+    orchestrator._emit_workflow_event("TEST_EVENT")  # pylint: disable=protected-access
 
     call_args = mock_tracker.emit.call_args
     assert call_args[0][1]["usage"] == {"custom_field": "Non-Serializable Object"}

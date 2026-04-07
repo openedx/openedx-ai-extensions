@@ -91,12 +91,12 @@ class FlashCardsOrchestrator(ScopedSessionOrchestrator):
             input_data['existing_cards'] = existing_cards_str
 
         with open(self._schema_path, 'r', encoding='utf-8') as f:
-            llm_processor = LLMProcessor(
+            self.llm_processor = LLMProcessor(
                 config=self.profile.processor_config,
                 extra_params={"response_format": json.load(f)}
             )
         self._set_status_message("Generating flashcards with LLM...")
-        llm_result = llm_processor.process(
+        llm_result = self.llm_processor.process(
             context=llm_input_content,
             input_data=input_data,
         )
@@ -107,7 +107,7 @@ class FlashCardsOrchestrator(ScopedSessionOrchestrator):
                 'status': 'LLMProcessor error'
             }
 
-        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_result.get('usage', None))
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
 
         response_obj = llm_result.get('response')
         cards = self._get_structured_cards(response_obj)

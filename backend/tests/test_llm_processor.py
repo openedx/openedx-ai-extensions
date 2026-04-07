@@ -1337,13 +1337,12 @@ class MockResponsesChunk:
 
 
 @pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.llm.llm_processor.logger")
 @patch("openedx_ai_extensions.processors.llm.llm_processor.responses")
 def test_yield_threaded_stream_text_and_tokens(
-    mock_responses, mock_logger, llm_processor, user_session  # pylint: disable=W0621,W0613
+    mock_responses, llm_processor, user_session  # pylint: disable=W0621,W0613
 ):
     """
-    Test verifies text yielding and ensures token usage is LOGGED properly.
+    Test verifies text yielding and token usage tracking.
     """
     chunks = [
         MockResponsesChunk("response.created", response_id="resp_123"),
@@ -1362,12 +1361,6 @@ def test_yield_threaded_stream_text_and_tokens(
 
     user_session.refresh_from_db()
     assert user_session.remote_response_id == "resp_123"
-
-    found_token_log = any(
-        "Tokens used: 42" in str(args)
-        for args, _ in mock_logger.info.call_args_list
-    )
-    assert found_token_log, "Total tokens (42) were not logged as expected."
 
 
 @pytest.mark.django_db

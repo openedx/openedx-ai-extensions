@@ -324,6 +324,7 @@ def test_educator_orchestrator_run_no_library_id_stores_questions(
             "problems": problems,
         },
     }
+    mock_llm.get_usage.return_value = None
     mock_llm_class.return_value = mock_llm
 
     result = educator_orchestrator.run({"num_questions": 1})
