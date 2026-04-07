@@ -74,6 +74,29 @@ def plugin_settings(settings):
         settings.AI_EXTENSIONS_MAX_CONTEXT_MESSAGES = 3
 
     # -------------------------
+    # Caching
+    # -------------------------
+    # Toggle LLM-level response caching (identical prompt+model pairs served
+    # from cache).  Set AI_EXTENSIONS_ENABLE_LLM_CACHE = True to activate,
+    # then configure the backend via AI_EXTENSIONS_LLM_CACHE.
+    #
+    # Supported types mirror LiteLLM: "redis", "redis-semantic", "s3",
+    # "disk", "in-memory".
+    #
+    # Example for Redis:
+    #   AI_EXTENSIONS_ENABLE_LLM_CACHE = True
+    #   AI_EXTENSIONS_LLM_CACHE = {
+    #       "type": "redis",
+    #       "host": "localhost",
+    #       "port": 6379,
+    #       "ttl": 259200,  # 72 hours
+    #   }
+    if not hasattr(settings, "AI_EXTENSIONS_ENABLE_LLM_CACHE"):
+        settings.AI_EXTENSIONS_ENABLE_LLM_CACHE = False
+    if not hasattr(settings, "AI_EXTENSIONS_LLM_CACHE"):
+        settings.AI_EXTENSIONS_LLM_CACHE = {}
+
+    # -------------------------
     # Default field filters
     # -------------------------
     if not hasattr(settings, "AI_EXTENSIONS_FIELD_FILTERS"):
@@ -100,3 +123,17 @@ def plugin_settings(settings):
             settings.EVENT_TRACKING_BACKENDS_ALLOWED_XAPI_EVENTS,
             settings.EVENT_TRACKING_BACKENDS_ALLOWED_CALIPER_EVENTS,
         ))
+
+    if (hasattr(settings, 'AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER') and
+            settings.AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER):
+        if not getattr(settings, 'EVENT_BUS_CONSUMER', None):
+            settings.EVENT_BUS_CONSUMER = "edx_event_bus_redis.RedisEventConsumer"
+
+        consumer_config = getattr(settings, 'EVENT_BUS_CONSUMER_CONFIG', {})
+        event_type = "org.openedx.ai_extensions.orchestration.requested.v1"
+        topic = "ai-orchestration-requests"
+        consumer_config.setdefault(event_type, {}).setdefault(topic, {
+            "group_id": "ai-extensions-orchestrator",
+            "enabled": True,
+        })
+        settings.EVENT_BUS_CONSUMER_CONFIG = consumer_config

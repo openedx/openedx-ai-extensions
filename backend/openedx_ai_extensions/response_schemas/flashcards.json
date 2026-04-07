@@ -1,0 +1,41 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "FlashcardGeneration",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "cards": {
+          "type": "array",
+          "description": "The list of flashcards generated from the course content.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A unique identifier for the flashcard (e.g., 'card-1', 'card-2'). Must be unique within the set."
+              },
+              "question": {
+                "type": "string",
+                "description": "The front of the flashcard. A clear, concise question or prompt derived from the course content."
+              },
+              "answer": {
+                "type": "string",
+                "description": "The back of the flashcard. The correct and complete answer to the question. Can include brief explanations."
+              }
+            },
+            "required": [
+              "id",
+              "question",
+              "answer"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["cards"],
+      "additionalProperties": false
+    }
+  }
+}

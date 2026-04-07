@@ -1,7 +1,6 @@
 """
 AI Workflow models for managing flexible AI workflow execution
 """
-import functools
 import logging
 import re
 from typing import Any, Optional
@@ -12,8 +11,6 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
-from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
 from django.utils.functional import cached_property
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 
@@ -247,7 +244,6 @@ class AIWorkflowScope(models.Model):
         self._action = value
 
     @classmethod
-    @functools.lru_cache(maxsize=128)
     def get_profile(cls, course_id=None, location_id=None, ui_slot_selector_id=None):
         """
         Resolve the best-matching AIWorkflowScope for the given context.
@@ -312,30 +308,22 @@ class AIWorkflowScope(models.Model):
 
         Returns: Dictionary with execution results
         """
+        # Load the orchestrator for this workflow
+        orchestrator = BaseOrchestrator.get_orchestrator(
+            workflow=self,
+            user=user,
+            context=running_context,
+        )
 
-        try:
-            # Load the orchestrator for this workflow
-            orchestrator = BaseOrchestrator.get_orchestrator(
-                workflow=self,
-                user=user,
-                context=running_context,
+        self.action = action
+
+        if not hasattr(orchestrator, action):
+            raise NotImplementedError(
+                f"Orchestrator '{self.profile.orchestrator_class}' does not implement action '{action}'"
             )
+        result = getattr(orchestrator, action)(user_input)
 
-            self.action = action
-
-            if not hasattr(orchestrator, action):
-                raise NotImplementedError(
-                    f"Orchestrator '{self.profile.orchestrator_class}' does not implement action '{action}'"
-                )
-            result = getattr(orchestrator, action)(user_input)
-
-            return result
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return {
-                "error": f"Workflow execution failed: {str(e)}",
-                "status": "error",
-            }
+        return result
 
     def clean(self):
         """Validate the scope before saving."""
@@ -583,16 +571,3 @@ class AIWorkflowSession(models.Model):
             combined.insert(insert_at, entry)
 
         return combined
-
-
-# Signal handlers for cache invalidation
-@receiver(post_save, sender=AIWorkflowScope)
-@receiver(post_delete, sender=AIWorkflowScope)
-@receiver(post_save, sender=AIWorkflowProfile)
-@receiver(post_delete, sender=AIWorkflowProfile)
-def clear_workflow_cache(**kwargs):
-    """
-    Clear get_profile LRU cache when AIWorkflowScope or AIWorkflowProfile objects change.
-    This ensures the cache stays fresh when workflow configurations are modified.
-    """
-    AIWorkflowScope.get_profile.cache_clear()

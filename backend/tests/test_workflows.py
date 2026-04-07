@@ -50,7 +50,7 @@ def workflow_profile(db):  # pylint: disable=unused-argument
     profile = AIWorkflowProfile.objects.create(
         slug="test-summarize",
         description="Test summarization workflow",
-        base_filepath="base/default.json",
+        base_filepath="base/summary.json",
         content_patch='{}'
     )
     return profile
@@ -154,21 +154,20 @@ def test_workflow_scope_execute(workflow_scope, user):  # pylint: disable=redefi
     # Update profile to use MockResponse orchestrator via content_patch
     workflow_scope.profile.content_patch = '{"orchestrator_class": "MockResponse"}'
     workflow_scope.profile.save()
-    # Clear cached config
+
     if hasattr(workflow_scope.profile, '_config'):
         del workflow_scope.profile._config
 
-    # Mock the orchestrator
-    with patch("openedx_ai_extensions.workflows.orchestrators.mock_orchestrator.MockResponse") as mock_orch:
-        mock_instance = Mock()
-        mock_instance.run = Mock(return_value={"status": "completed", "response": "Test"})
-        mock_orch.return_value = mock_instance
+    target = "openedx_ai_extensions.workflows.orchestrators.mock_orchestrator.MockResponse.run"
+    with patch(target) as mock_run:
+        mock_run.return_value = {"status": "completed", "response": "Test"}
 
         running_context = {"location_id": None, "course_id": workflow_scope.course_id}
         result = workflow_scope.execute("test input", "run", user, running_context)
 
         # Should return result or error
         assert "status" in result
+        mock_run.assert_called_once()
 
 
 # ============================================================================
@@ -370,8 +369,6 @@ def test_direct_llm_response_orchestrator_success(
     mock_llm = Mock()
     mock_llm.process.return_value = {
         "response": "This is a summary",
-        "tokens_used": 150,
-        "model_used": "gpt-3.5-turbo",
     }
     mock_llm_processor_class.return_value = mock_llm
 
@@ -384,7 +381,6 @@ def test_direct_llm_response_orchestrator_success(
 
     assert result["status"] == "completed"
     assert result["response"] == "This is a summary"
-    assert result["metadata"]["tokens_used"] == 150
 
 
 @pytest.mark.django_db
@@ -464,8 +460,6 @@ def test_threaded_llm_response_orchestrator_new_session(
     mock_responses = Mock()
     mock_responses.process.return_value = {
         "response": "AI chat response",
-        "tokens_used": 200,
-        "model_used": "gpt-4",
     }
     mock_responses_processor_class.return_value = mock_responses
 
@@ -605,8 +599,8 @@ def test_threaded_llm_response_orchestrator_history_error(
     orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
     result = orchestrator.run(None)
 
-    assert "error" in result
-    assert result["status"] == "SubmissionProcessor error"
+    assert result["response"] == "No response available"
+    assert result["status"] == "completed"
 
 
 @pytest.mark.django_db
@@ -631,7 +625,16 @@ def test_session_based_orchestrator_get_run_status(
     context = {"location_id": None, "course_id": workflow_scope.course_id}
     orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
 
-    # Test 1: Processing status (default)
+    # Test 1: Idle status (default — no task submitted yet)
+    result = orchestrator.get_run_status({})
+    assert result["status"] == "idle"
+
+    # Test 1b: Processing status
+    orchestrator.session.metadata = {
+        "task_status": "processing",
+        "task_status_message": "AI workflow is running",
+    }
+    orchestrator.session.save()
     result = orchestrator.get_run_status({})
     assert result["status"] == "processing"
     assert result["message"] == "AI workflow is running"
@@ -665,3 +668,101 @@ def test_session_based_orchestrator_get_run_status(
     result = orchestrator.get_run_status({})
     assert result["status"] == "timeout"
     assert result["error"] == "Task exceeded time limit"
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.threaded_orchestrator.LLMProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator.SubmissionProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.threaded_orchestrator.OpenEdXProcessor")
+def test_threaded_orchestrator_handles_error_marker(
+    mock_openedx_processor_class,
+    mock_submission_processor_class,
+    mock_llm_processor_class,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
+):
+    """Test that ThreadedLLMResponse handles the error marker from a streaming response."""
+    # Mock LLMProcessor to return a generator with an error marker
+    mock_llm = Mock()
+
+    def mock_generator(*args, **kwargs):
+        yield b"Partial response"
+        yield (
+            b'||{"error_in_stream": true, "code": "streaming_failed", "message": "The AI service encountered '
+            b'an error while generating the response. Please try again."}||'
+        )
+    mock_llm.process.return_value = mock_generator()
+    mock_llm_processor_class.return_value = mock_llm
+
+    # Mock other processors
+    mock_submission = Mock()
+    mock_submission.get_full_message_history.return_value = []
+    mock_submission_processor_class.return_value = mock_submission
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {}
+    mock_openedx_processor_class.return_value = mock_openedx
+
+    context = {"course_id": workflow_scope.course_id}
+    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
+
+    # Execute orchestrator
+    result = orchestrator.run(input_data={"user_input": "test"})
+
+    # Consume generator to trigger history saving
+    chunks = list(result)
+    assert b"Partial response" in chunks
+
+    # Verify history saving
+    mock_submission.update_chat_submission.assert_called_once()
+    messages = mock_submission.update_chat_submission.call_args[0][0]
+    final_response = next(m["content"] for m in messages if m["role"] == "assistant")
+    assert "The AI service encountered an error" in final_response
+
+
+@pytest.mark.django_db
+@patch("openedx_ai_extensions.workflows.orchestrators.threaded_orchestrator.LLMProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator.SubmissionProcessor")
+@patch("openedx_ai_extensions.workflows.orchestrators.threaded_orchestrator.OpenEdXProcessor")
+def test_threaded_orchestrator_handles_invalid_error_marker_fallback(
+    mock_openedx_processor_class,
+    mock_submission_processor_class,
+    mock_llm_processor_class,
+    workflow_scope,  # pylint: disable=redefined-outer-name
+    user,  # pylint: disable=redefined-outer-name
+):
+    """Test that ThreadedLLMResponse handles invalid JSON in error marker correctly."""
+    # Mock LLMProcessor to return a generator with an invalid error marker
+    mock_llm = Mock()
+
+    def mock_generator(*args, **kwargs):
+        yield b"Partial response"
+        yield b'||{"invalid_json": true||'
+    mock_llm.process.return_value = mock_generator()
+    mock_llm_processor_class.return_value = mock_llm
+
+    # Mock other processors
+    mock_submission = Mock()
+    mock_submission.get_full_message_history.return_value = []
+    mock_submission_processor_class.return_value = mock_submission
+
+    mock_openedx = Mock()
+    mock_openedx.process.return_value = {}
+    mock_openedx_processor_class.return_value = mock_openedx
+
+    context = {"course_id": workflow_scope.course_id}
+    orchestrator = ThreadedLLMResponse(workflow=workflow_scope, user=user, context=context)
+
+    # Execute orchestrator
+    result = orchestrator.run(input_data={"user_input": "test"})
+
+    # Consume generator
+    chunks = list(result)
+    assert b"Partial response" in chunks
+    assert b'||{"invalid_json": true||' in chunks
+
+    # Verify history saving - should include the invalid marker as is
+    mock_submission.update_chat_submission.assert_called_once()
+    messages = mock_submission.update_chat_submission.call_args[0][0]
+    final_response = next(m["content"] for m in messages if m["role"] == "assistant")
+    assert '||{"invalid_json": true||' in final_response

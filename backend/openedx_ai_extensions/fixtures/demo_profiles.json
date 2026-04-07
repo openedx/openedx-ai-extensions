@@ -1,0 +1,155 @@
+[
+  {
+    "model": "openedx_ai_extensions.prompttemplate",
+    "pk": "c1000001-0001-4000-c001-000000000001",
+    "fields": {
+      "slug": "summarize-unit-bullets",
+      "body": "You are a helpful educational assistant. Summarize the following course content in a clear, concise way. Use bullet points for key concepts and keep the summary under 300 words.",
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "openedx_ai_extensions.aiworkflowprofile",
+    "pk": "a1000001-0001-4000-a001-000000000001",
+    "fields": {
+      "slug": "demo-flashcards",
+      "description": "Flashcards profile for demo course. Generates flashcards from unit content.",
+      "base_filepath": "experimental/flashcards.json",
+      "content_patch": "{\n  // -----------------------------------------------\n  // Flashcards demo profile\n  // Generates flashcards from the current unit content.\n  // Uses the provider configured in AI_EXTENSIONS settings.\n  // To override per-profile, uncomment the options block below.\n  // -----------------------------------------------\n  // \"processor_config\": {\n  //   \"LLMProcessor\": {\n  //     \"options\": {\n  //       \"API_KEY\": \"your-api-key-here\",\n  //     },\n  //   },\n  // },\n}"
+    }
+  },
+  {
+    "model": "openedx_ai_extensions.aiworkflowscope",
+    "pk": "b1000001-0001-4000-b001-000000000001",
+    "fields": {
+      "location_regex": ".*78b75020d3894fdfa8b4994f97275294",
+      "course_id": "course-v1:openedx+01+2025",
+      "service_variant": "lms",
+      "profile": "a1000001-0001-4000-a001-000000000001",
+      "enabled": true,
+      "ui_slot_selector_id": "ai-assist-button",
+      "specificity_index": 7
+    }
+  },
+
+  {
+    "model": "openedx_ai_extensions.aiworkflowprofile",
+    "pk": "a1000001-0001-4000-a001-000000000002",
+    "fields": {
+      "slug": "demo-box-chat-summary",
+      "description": "Box chat profile with a custom prompt asking for a summary. Uses DirectLLMResponse with streaming.",
+      "base_filepath": "base/summary.json",
+      "content_patch": "{\n  // -----------------------------------------------\n  // Box chat with custom summary prompt\n  // Overrides the default summary prompt with a more explicit one.\n  // Uses the provider key from AI_EXTENSIONS settings.\n  // -----------------------------------------------\n  \"processor_config\": {\n    \"LLMProcessor\": {\n      \"prompt_template\": \"summarize-unit-bullets\",\n      \"cache\": true,\n    },\n  },\n  \"actuator_config\": {\n    \"UIComponents\": {\n      \"request\": {\n        \"config\": {\n          \"buttonText\": \"Summarize this unit\",\n          \"customMessage\": \"Get a concise summary of this content\",\n        },\n      },\n      \"response\": {\n        \"config\": {\n          \"customMessage\": \"Here is your summary\",\n        },\n      },\n    },\n  },\n}"
+    }
+  },
+  {
+    "model": "openedx_ai_extensions.aiworkflowscope",
+    "pk": "b1000001-0001-4000-b001-000000000002",
+    "fields": {
+      "location_regex": ".*2a1f276a2b964eb6b137ed56abfe9052",
+      "course_id": "course-v1:openedx+01+2025",
+      "service_variant": "lms",
+      "profile": "a1000001-0001-4000-a001-000000000002",
+      "enabled": true,
+      "ui_slot_selector_id": "ai-assist-button",
+      "specificity_index": 7
+    }
+  },
+
+  {
+    "model": "openedx_ai_extensions.aiworkflowprofile",
+    "pk": "a1000001-0001-4000-a001-000000000003",
+    "fields": {
+      "slug": "demo-chat-functions",
+      "description": "Chat with function calling. Includes tools like get_context and get_location_content. Custom UI texts.",
+      "base_filepath": "examples/openai/chat_functions.json",
+      "content_patch": "{\n  // -----------------------------------------------\n  // Chat with functions demo\n  // Enables function calling (tools) for richer interactions.\n  // Custom UI component texts. Uses provider key from settings.\n  // -----------------------------------------------\n  \"actuator_config\": {\n    \"UIComponents\": {\n      \"request\": {\n        \"config\": {\n          // Customized button and message for the functions chat\n          \"buttonText\": \"Ask AI (with tools)\",\n          \"customMessage\": \"Chat with an AI that can look up course content and more\",\n        },\n      },\n      \"response\": {\n        \"config\": {\n          \"customMessage\": \"AI assistant (function calling enabled)\",\n        },\n      },\n    },\n  },\n}"
+    }
+  },
+  {
+    "model": "openedx_ai_extensions.aiworkflowscope",
+    "pk": "b1000001-0001-4000-b001-000000000003",
+    "fields": {
+      "location_regex": ".*619390d971ba4e6e8b150417e3730d7e",
+      "course_id": "course-v1:openedx+01+2025",
+      "service_variant": "lms",
+      "profile": "a1000001-0001-4000-a001-000000000003",
+      "enabled": true,
+      "ui_slot_selector_id": "ai-assist-button",
+      "specificity_index": 7
+    }
+  },
+
+  {
+    "model": "openedx_ai_extensions.aiworkflowprofile",
+    "pk": "a1000001-0001-4000-a001-000000000004",
+    "fields": {
+      "slug": "demo-chat-streaming",
+      "description": "Streaming chat profile. Custom prompt and UI texts. Uses ThreadedLLMResponse orchestrator.",
+      "base_filepath": "examples/openai/chat.json",
+      "content_patch": "{\n  // -----------------------------------------------\n  // Streaming chat demo\n  // Threaded conversation with streaming responses.\n  // Custom prompt and UI texts. Uses provider key from settings.\n  // -----------------------------------------------\n  \"processor_config\": {\n    \"LLMProcessor\": {\n      // Custom system-level prompt for the streaming chat\n      \"prompt\": \"You are a knowledgeable teaching assistant for this online course. Answer questions clearly and concisely. When referencing course material, be specific about which section you are referring to. Always encourage the student to explore the topic further.\",\n    },\n  },\n  \"actuator_config\": {\n    \"UIComponents\": {\n      \"request\": {\n        \"config\": {\n          // Custom button and welcome text\n          \"buttonText\": \"Chat with AI tutor\",\n          \"customMessage\": \"Start a conversation with your AI teaching assistant\",\n        },\n      },\n      \"response\": {\n        \"config\": {\n          \"customMessage\": \"AI Tutor is typing...\",\n        },\n      },\n    },\n  },\n}"
+    }
+  },
+  {
+    "model": "openedx_ai_extensions.aiworkflowscope",
+    "pk": "b1000001-0001-4000-b001-000000000004",
+    "fields": {
+      "location_regex": ".*30b3cb3f372a493589a9632c472550a7",
+      "course_id": "course-v1:openedx+01+2025",
+      "service_variant": "lms",
+      "profile": "a1000001-0001-4000-a001-000000000004",
+      "enabled": true,
+      "ui_slot_selector_id": "ai-assist-button",
+      "specificity_index": 7
+    }
+  },
+
+  {
+    "model": "openedx_ai_extensions.aiworkflowprofile",
+    "pk": "a1000001-0001-4000-a001-000000000005",
+    "fields": {
+      "slug": "demo-educator-assistant",
+      "description": "Educator assistant for Studio (CMS). Generates quiz questions from unit content. Custom UI texts. No location filter.",
+      "base_filepath": "base/library_questions_assistant.json",
+      "content_patch": "{\n  // -----------------------------------------------\n  // Educator assistant in Studio\n  // Helps course authors generate quiz questions.\n  // Custom UI texts, no location restriction.\n  // Uses provider key from AI_EXTENSIONS settings.\n  // -----------------------------------------------\n  \"actuator_config\": {\n    \"UIComponents\": {\n      \"request\": {\n        \"config\": {\n          // Customized educator-facing text\n          \"titleText\": \"Quiz Generator\",\n          \"buttonText\": \"Generate Questions\",\n          \"customMessage\": \"Use AI to create multiple-choice questions from this unit content\",\n        },\n      },\n      \"response\": {\n        \"config\": {\n          \"titleText\": \"Quiz Generator\",\n          \"customMessage\": \"Questions generated successfully\",\n          \"hyperlinkText\": \"Go to library >\",\n        },\n      },\n    },\n  },\n}"
+    }
+  },
+  {
+    "model": "openedx_ai_extensions.aiworkflowscope",
+    "pk": "b1000001-0001-4000-b001-000000000005",
+    "fields": {
+      "location_regex": null,
+      "course_id": null,
+      "service_variant": "cms",
+      "profile": "a1000001-0001-4000-a001-000000000005",
+      "enabled": true,
+      "ui_slot_selector_id": "ai-assist-button-course-outline-sidebar",
+      "specificity_index": 1
+    }
+  },
+
+  {
+    "model": "openedx_ai_extensions.aiworkflowprofile",
+    "pk": "a1000001-0001-4000-a001-000000000006",
+    "fields": {
+      "slug": "demo-mocked-streaming",
+      "description": "Mocked streaming profile for UI testing without a real LLM call. No API key needed.",
+      "base_filepath": "base/mocked_llm_streaming.json",
+      "content_patch": "{\n  // -----------------------------------------------\n  // Mocked streaming response\n  // For UI/integration testing without a live LLM.\n  // No API key needed — mock orchestrator skips the LLM call.\n  // -----------------------------------------------\n  \"actuator_config\": {\n    \"UIComponents\": {\n      \"request\": {\n        \"config\": {\n          \"buttonText\": \"Test streaming\",\n          \"customMessage\": \"Simulated streaming response (no LLM)\",\n        },\n      },\n      \"response\": {\n        \"config\": {\n          \"customMessage\": \"Mock streaming in progress...\",\n        },\n      },\n    },\n  },\n}"
+    }
+  },
+  {
+    "model": "openedx_ai_extensions.aiworkflowscope",
+    "pk": "b1000001-0001-4000-b001-000000000006",
+    "fields": {
+      "location_regex": ".*a3ada3c77ab74014aa620f3c494e5558",
+      "course_id": "course-v1:openedx+01+2025",
+      "service_variant": "lms",
+      "profile": "a1000001-0001-4000-a001-000000000006",
+      "enabled": true,
+      "ui_slot_selector_id": "ai-assist-button",
+      "specificity_index": 7
+    }
+  }
+]

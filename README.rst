@@ -111,7 +111,63 @@ Usage
 Setting Up Development Environment
 ===================================
 
-TBD when the tutor plugin PR is merged.
+For automated or non-interactive environments, configure the plugin via Tutor's ``config.yml`` and build the images.
+
+1. **Configure the Extension**:
+   Add the repository and AI provider settings to your Tutor ``config.yml``:
+
+   .. code-block:: yaml
+
+      AI_EXTENSIONS:
+        <your-config-name>:
+          API_KEY: "your-api-key"
+          MODEL: "openai/gpt-4o-mini"
+
+2. **Enable and Build**:
+   Enable the plugin and rebuild the Open edX images to bake in the dependencies:
+
+   .. code-block:: bash
+
+      tutor plugins enable openedx-ai-extensions
+      tutor images build openedx
+      tutor dev launch
+
+3. **Initialize Database**:
+   Run migrations as a one-time setup step:
+
+   .. code-block:: bash
+
+      tutor dev exec lms python manage.py lms migrate openedx_ai_extensions
+
+Loading Demo Fixtures
+---------------------
+
+A set of demo fixtures is included to quickly populate the database with example
+AI workflow profiles and scopes. These cover several common configurations:
+flashcards, box chat with summary, chat with function calling, streaming chat,
+educator assistant, and mocked streaming.
+
+Load them with::
+
+    tutor dev exec lms python manage.py lms loaddata demo_profiles
+
+.. important::
+
+   The fixtures do **not** include inline API keys — they rely on the global
+   provider configuration in your Tutor ``config.yml`` (the ``AI_EXTENSIONS``
+   block). Make sure you have configured at least one provider with a valid key
+   before using the profiles that call a real LLM.
+
+   If you need a per-profile API key override instead, edit the profile's
+   ``content_patch`` in the Django admin and add an ``options`` block::
+
+       "processor_config": {
+         "LLMProcessor": {
+           "options": {
+             "API_KEY": "your-api-key-here",
+           },
+         },
+       }
 
 
 Code Standards

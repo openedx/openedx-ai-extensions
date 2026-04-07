@@ -382,6 +382,7 @@ kombu==5.6.1
     #   celery
 litellm==1.80.16
     # via
+    #   -c requirements/constraints.txt
     #   -r requirements/quality.txt
 lxml[html-clean]==5.3.2
     # via

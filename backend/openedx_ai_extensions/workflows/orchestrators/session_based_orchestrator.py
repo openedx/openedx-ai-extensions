@@ -42,9 +42,11 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
         session = AIWorkflowSession.objects.select_related('scope', 'profile', 'user').get(id=session_id)
 
         # 2. Build context from session
+        metadata = session.metadata or {}
+        location_id = metadata.get('location_id') or session.location_id
         context = {
             'course_id': str(session.course_id) if session.course_id is not None else None,
-            'location_id': str(session.location_id) if session.location_id is not None else None,
+            'location_id': str(location_id) if location_id is not None else None,
         }
 
         # 3. Resolve and instantiate orchestrator via centralized factory
@@ -74,6 +76,10 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
         result = orchestrator_method(**params)
 
         # 6. Update session metadata with result
+        # Re-fetch from DB to pick up any metadata changes the orchestrator method
+        # saved during execution (e.g. question_slots, collection_name), so we
+        # don't overwrite them with the stale in-memory copy.
+        session.refresh_from_db(fields=['metadata'])
         session.metadata['task_result'] = result
         session.metadata['task_status'] = 'completed'
         session.save(update_fields=['metadata'])
@@ -129,6 +135,14 @@ class SessionBasedOrchestrator(BaseOrchestrator):
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
 
+    def _set_status_message(self, message):
+        """
+        Write an intermediate status message to session metadata so pollers
+        can surface step-level progress while the task is running.
+        """
+        self.session.metadata['task_status_message'] = message
+        self.session.save(update_fields=['metadata'])
+
     def run_async(self, input_data):
         """
         Launch async task to execute the run method.
@@ -143,6 +157,7 @@ class SessionBasedOrchestrator(BaseOrchestrator):
         self.session.metadata['task_status'] = 'processing'
         self.session.metadata.pop('task_result', None)
         self.session.metadata.pop('task_error', None)
+        self.session.metadata.pop('task_status_message', None)
         self.session.save()
 
         task = _execute_orchestrator_async.delay(
@@ -167,7 +182,7 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             dict: Status information including task result if completed
         """
         metadata = self.session.metadata or {}
-        task_status = metadata.get('task_status', 'processing')
+        task_status = metadata.get('task_status', 'idle')
 
         if task_status == 'completed':
             return metadata.get('task_result', {
@@ -184,8 +199,66 @@ class SessionBasedOrchestrator(BaseOrchestrator):
                 'status': 'timeout',
                 'error': metadata.get('task_error', 'Task exceeded time limit')
             }
-        else:
+        elif task_status == 'processing':
             return {
                 'status': 'processing',
-                'message': 'AI workflow is running'
+                'message': metadata.get('task_status_message', 'AI workflow is running'),
             }
+        else:
+            # 'idle' or any unknown status — no task has been started yet
+            return {
+                'status': 'idle',
+            }
+
+
+class ScopedSessionOrchestrator(SessionBasedOrchestrator):  # pylint: disable=abstract-method
+    """
+    Orchestrator that follows the scope's location specificity for sessions.
+
+    Intentionally skips ``SessionBasedOrchestrator.__init__`` to avoid creating
+    a location-specific session; instead creates a course-scoped session
+    shared across locations.
+    """
+
+    def __init__(self, workflow, user, context):  # pylint: disable=super-init-not-called
+        BaseOrchestrator.__init__(self, workflow, user, context)  # pylint: disable=non-parent-init-called
+        self.session, _ = AIWorkflowSession.objects.get_or_create(
+            user=self.user,
+            scope=self.workflow,
+            profile=self.workflow.profile,
+            course_id=self.course_id,
+        )
+
+    def run_async(self, input_data):
+        """
+        Launch async task for scoped sessions.
+
+        Unlike the parent implementation, this does **not** write
+        ``location_id`` to the session row (which has no location_id in its
+        unique-together lookup).  Instead the current location is persisted
+        in ``metadata['location_id']`` so the Celery task can recover it
+        without risking an integrity-error collision with any pre-existing
+        location-scoped session.
+        """
+        self.session.course_id = self.course_id
+        self.session.metadata = self.session.metadata or {}
+        self.session.metadata['task_status'] = 'processing'
+        self.session.metadata['location_id'] = self.location_id
+        self.session.metadata.pop('task_result', None)
+        self.session.metadata.pop('task_error', None)
+        self.session.metadata.pop('task_status_message', None)
+        self.session.save()
+
+        task = _execute_orchestrator_async.delay(
+            session_id=self.session.id,
+            action='run',
+            params={
+                "input_data": input_data,
+            }
+        )
+
+        return {
+            'status': 'processing',
+            'task_id': task.id,
+            'message': 'AI workflow has started'
+        }

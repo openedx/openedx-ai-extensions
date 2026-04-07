@@ -4,13 +4,22 @@ Provider-specific quirks and adaptations for different LLM providers.
 
 
 # TODO: refactor this module to make it more extensible for future providers
-def adapt_to_provider(provider, params, has_user_input=True, user_session=None, input_data=None):
+def adapt_to_provider(
+        provider, params, *, has_user_input=True, user_session=None,
+        input_data=None):
     """
     Apply provider-specific modifications to API call parameters.
 
     This function centralizes all provider-specific logic that was previously
     scattered throughout the codebase (e.g., OpenAI-specific threading,
     Anthropic's requirement for user messages).
+
+    For non-OpenAI providers that are streaming with Responses API params
+    (i.e. ``input`` key present), the parameters are automatically converted
+    to Completion API format (``messages``) because LiteLLM's Responses API
+    streaming translation does not surface tool-call events correctly for
+    those providers.  Callers can check for the ``"messages"`` key in the
+    returned dict to decide whether to use the Completion API path.
 
     Args:
         provider (str): The LLM provider name (e.g., 'openai', 'anthropic')
@@ -46,6 +55,14 @@ def adapt_to_provider(provider, params, has_user_input=True, user_session=None, 
                     params["input"].append({"role": "user", "content": user_prompt})
                 elif "messages" in params:
                     params["messages"].append({"role": "user", "content": user_prompt})
+
+    if provider != "openai" and params.get("stream") and "input" in params:
+        # Non-OpenAI providers: convert Responses API shape → Completion API
+        # shape so that completion() / _completion_with_tools() can be called
+        # directly, ensuring tool-call events are visible during streaming.
+        params["messages"] = params.pop("input")
+        for key in ("previous_response_id", "store", "truncation"):
+            params.pop(key, None)
 
     return params
 

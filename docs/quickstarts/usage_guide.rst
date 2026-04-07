@@ -115,7 +115,7 @@ Creating the Profile
 2. Configure the profile:
 
    - **Slug**: Enter a descriptive identifier (e.g., ``studio-library-assistant``)
-   - **Base filepath**: Select ``base.library_questions_assistant``
+   - **Base filepath**: Select ``base.library_questions_creator``
 
 3. Click :guilabel:`Save and continue editing`
 

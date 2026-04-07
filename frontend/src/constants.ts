@@ -24,6 +24,8 @@ export const WORKFLOW_ACTIONS = {
   CANCEL_RUN: 'cancel_run',
   CLEAR_SESSION: 'clear_session',
   LAZY_LOAD_CHAT_HISTORY: 'lazy_load_chat_history',
+  REGENERATE_QUESTION: 'regenerate_question',
+  SAVE: 'save',
 } as const;
 
 export type WorkflowActionType = typeof WORKFLOW_ACTIONS[keyof typeof WORKFLOW_ACTIONS];

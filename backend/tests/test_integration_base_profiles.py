@@ -311,121 +311,144 @@ def test_mocked_streaming_profile_integration(
 
 
 # ============================================================================
-# Base Profile: library_questions_assistant.json
+# Base Profile: library_questions_creator.json (iterative two-phase flow)
 # ============================================================================
 
 
 @pytest.mark.django_db
-def test_library_questions_assistant_profile_integration(
+def test_library_questions_creator_profile_integration(
     api_client, user, course_key, location_id  # pylint: disable=redefined-outer-name,unused-argument
 ):
     """
-    Test complete flow for library_questions_assistant.json profile.
-    Uses EducatorAssistantOrchestrator - requires mocking AI and library operations.
-    Works in CMS (Studio) service variant.
+    Test the two-phase iterative flow for library_questions_creator.json:
+    Phase 1 — run without library_id → questions stored in session
+    Phase 2 — save with library_id + questions → collection URL returned
     """
-    # Create profile and scope for CMS
     profile = AIWorkflowProfile.objects.create(
-        slug="test-library-questions",
-        description="Library questions assistant workflow test",
-        base_filepath="base/library_questions_assistant.json",
+        slug="test-library-questions-creator",
+        description="Iterative question creator workflow test",
+        base_filepath="base/library_questions_creator.json",
         content_patch='{}'
     )
 
     AIWorkflowScope.objects.create(
         location_regex=".*test_unit.*",
         course_id=course_key,
-        service_variant="cms",  # This profile is for Studio (CMS)
+        service_variant="cms",
         profile=profile,
         enabled=True,
-        ui_slot_selector_id="test-slot",
+        ui_slot_selector_id="test-creator-slot",
     )
 
-    # Authenticate
     api_client.login(username="testuser", password="password123")
 
-    # Step 1: GET /config (need to mock SERVICE_VARIANT to be cms)
     config_url = reverse("openedx_ai_extensions:api:v1:aiext_ui_config")
     context = json.dumps({
         "courseId": str(course_key),
         "locationId": str(location_id),
-        "uiSlotSelectorId": "test-slot",
+        "uiSlotSelectorId": "test-creator-slot",
     })
 
+    # ---- Phase 0: verify profile config is returned correctly ----
     with patch("openedx_ai_extensions.workflows.models.settings.SERVICE_VARIANT", "cms"):
         config_response = api_client.get(config_url, {"context": context})
 
-        assert config_response.status_code == 200
-        config_data = config_response.json()
-        assert "ui_components" in config_data
-        assert config_data["ui_components"]["request"]["component"] == "AIEducatorLibraryAssistComponent"
-        assert config_data["ui_components"]["response"]["component"] == "AIEducatorLibraryResponseComponent"
+    assert config_response.status_code == 200
+    config_data = config_response.json()
+    assert config_data["ui_components"]["request"]["component"] == "LibraryProblemCreator"
+    assert config_data["ui_components"]["response"]["component"] == "LibraryProblemCreatorResponse"
 
-        # Step 2: POST /workflows - Mock AI and library processor
-        workflows_url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
+    workflows_url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
+    query_string = urlencode({"context": context})
 
-        # Mock LLM response for quiz generation
-        mock_llm_response = {
-            "response": {
-                "collection": "AI Generated Quiz Questions",
-                "items": [
-                    {
-                        "question": "What is Python?",
-                        "options": ["A snake", "A programming language", "A tool", "A framework"],
-                        "correct_answer": 1
-                    },
-                    {
-                        "question": "What is Django?",
-                        "options": ["A database", "A web framework", "A language", "An editor"],
-                        "correct_answer": 1
-                    }
-                ]
-            },
-            "tokens_used": 200,
-            "model_used": "gpt-4"
+    problems = [
+        {
+            "display_name": "Q1",
+            "question_html": "What is Django?",
+            "problem_type": "multiplechoiceresponse",
+            "choices": [
+                {"text": "A web framework", "is_correct": True, "feedback": ""},
+                {"text": "A database", "is_correct": False, "feedback": ""},
+            ],
+            "answer_value": "",
+            "tolerance": "",
+            "explanation": "Django is a Python web framework.",
+            "demand_hints": [],
+        }
+    ]
+
+    mock_llm_response = {
+        "response": {
+            "collection_name": "Django Quiz",
+            "problems": problems,
+        },
+    }
+
+    educator_path = (
+        "openedx_ai_extensions.processors.llm.educator_assistant_processor."
+        "EducatorAssistantProcessor.process"
+    )
+    openedx_path = (
+        "openedx_ai_extensions.processors.openedx.openedx_processor."
+        "OpenEdXProcessor.process"
+    )
+    library_path = (
+        "openedx_ai_extensions.processors.openedx.content_libraries_processor."
+        "ContentLibraryProcessor.create_collection_and_add_items"
+    )
+
+    # ---- Phase 1: run without library_id → questions stored, no library call ----
+    with patch("openedx_ai_extensions.workflows.models.settings.SERVICE_VARIANT", "cms"), \
+         patch(educator_path) as mock_educator, \
+         patch(openedx_path) as mock_openedx, \
+         patch(library_path) as mock_library:
+
+        mock_educator.return_value = mock_llm_response
+        mock_openedx.return_value = "Course content"
+
+        phase1_payload = {
+            "action": "run",
+            "user_input": {"num_questions": 1}
+            # Note: no library_id here
         }
 
-        educator_path = (
-            "openedx_ai_extensions.processors.llm.educator_assistant_processor."
-            "EducatorAssistantProcessor.process"
-        )
-        openedx_path = (
-            "openedx_ai_extensions.processors.openedx.openedx_processor."
-            "OpenEdXProcessor.process"
-        )
-        library_path = (
-            "openedx_ai_extensions.processors.openedx.content_libraries_processor."
-            "ContentLibraryProcessor.create_collection_and_add_items"
+        phase1_response = api_client.post(
+            f"{workflows_url}?{query_string}",
+            data=json.dumps(phase1_payload),
+            content_type="application/json"
         )
 
-        with patch(educator_path) as mock_educator, \
-             patch(openedx_path) as mock_openedx, \
-             patch(library_path) as mock_library:
+        assert phase1_response.status_code == 200
+        phase1_data = phase1_response.json()
+        assert phase1_data["status"] == "completed"
+        assert "question_slots" in phase1_data["response"]
+        assert phase1_data["response"]["collection_name"] == "Django Quiz"
+        # Library must NOT have been called in phase 1
+        mock_library.assert_not_called()
 
-            mock_educator.return_value = mock_llm_response
-            mock_openedx.return_value = "Sample course unit content for quiz generation"
-            mock_library.return_value = "collection-v1:test-collection-key"
+    # ---- Phase 2: save with library_id + questions → collection URL ----
+    with patch("openedx_ai_extensions.workflows.models.settings.SERVICE_VARIANT", "cms"), \
+         patch(library_path) as mock_library2:
 
-            workflow_payload = {
-                "action": "run",
-                "user_input": {
-                    "library_id": "lib:test:library-123",
-                    "num_questions": 5
-                }
+        mock_library2.return_value = "creator-collection-key"
+
+        phase2_payload = {
+            "action": "save",
+            "user_input": {
+                "library_id": "lib:test:creator-lib",
+                "questions": problems,
             }
+        }
 
-            query_string = urlencode({"context": context})
-            workflow_response = api_client.post(
-                f"{workflows_url}?{query_string}",
-                data=json.dumps(workflow_payload),
-                content_type="application/json"
-            )
+        phase2_response = api_client.post(
+            f"{workflows_url}?{query_string}",
+            data=json.dumps(phase2_payload),
+            content_type="application/json"
+        )
 
-            assert workflow_response.status_code == 200
-            response_data = workflow_response.json()
-            assert response_data["status"] == "completed"
-            assert "response" in response_data
-            assert "collection" in response_data["response"]
-            assert mock_educator.called
-            assert mock_openedx.called
-            assert mock_library.called
+        assert phase2_response.status_code == 200
+        phase2_data = phase2_response.json()
+        assert phase2_data["status"] == "completed"
+        assert "lib:test:creator-lib" in phase2_data["response"]
+        assert "creator-collection-key" in phase2_data["response"]
+        mock_library2.assert_called_once()

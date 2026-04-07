@@ -1,0 +1,37 @@
+/*
+Iterative AI Question Creator for Studio.
+Authors review, edit, regenerate and discard questions before saving to a library.
+Works only in studio UI and over the CMS service_variant.
+*/
+{
+  "orchestrator_class": "EducatorAssistantOrchestrator",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_location_content"
+    },
+    "EducatorAssistantProcessor": {
+      "function": "generate_quiz_questions",
+      "provider": "default"
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "LibraryProblemCreator",
+        "config": {
+          "titleText": "AI Question Builder",
+          "preloadPreviousSession": true
+        }
+      },
+      "response": {
+        "component": "LibraryProblemCreatorResponse",
+        "config": {
+          "titleText": "AI Question Builder",
+          "customMessage": "Questions saved to your Content Library.",
+          "hyperlinkText": "View collection"
+        }
+      }
+    }
+  },
+  "schema_version": "1.0"
+}

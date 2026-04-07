@@ -24,11 +24,17 @@ import {
   AIRequestComponent,
   AIResponseComponent,
   AISidebarResponse,
-  AIEducatorLibraryAssistComponent,
-  AIEducatorLibraryResponseComponent,
 } from './components';
+import {
+  LibraryProblemCreator,
+  LibraryProblemCreatorResponse,
+} from './library-problem-creator';
+import {
+  FlashcardCreator,
+  FlashcardStudyResponse,
+} from './flashcard-study';
 import { PluginConfiguration } from './types';
-import { WORKFLOW_ACTIONS, NO_RESPONSE_MSG } from './constants';
+import { WORKFLOW_ACTIONS, WorkflowActionType, NO_RESPONSE_MSG } from './constants';
 
 import messages from './messages';
 
@@ -38,8 +44,10 @@ import messages from './messages';
   ['AIRequestComponent', AIRequestComponent],
   ['AIResponseComponent', AIResponseComponent],
   ['AISidebarResponse', AISidebarResponse],
-  ['AIEducatorLibraryAssistComponent', AIEducatorLibraryAssistComponent],
-  ['AIEducatorLibraryResponseComponent', AIEducatorLibraryResponseComponent],
+  ['LibraryProblemCreator', LibraryProblemCreator],
+  ['LibraryProblemCreatorResponse', LibraryProblemCreatorResponse],
+  ['FlashcardCreator', FlashcardCreator],
+  ['FlashcardStudyResponse', FlashcardStudyResponse],
 ].forEach(([id, component]) => registerEntry(
   REGISTRY_NAMES.COMPONENTS,
   { id: id as string, component: component as React.ComponentType<any> },
@@ -215,7 +223,7 @@ const ConfigurableAIAssistance = ({
    * Handle AI assistant request
    * Accepts optional params from child components to support custom actions and user input.
    */
-  const handleAskAI = useCallback(async (params: { userInput?: any; action?: string } = {}) => {
+  const handleAskAI = useCallback(async (params: { userInput?: any; action?: WorkflowActionType } = {}) => {
     const { userInput = null, action = WORKFLOW_ACTIONS.RUN } = params;
     const isAsync = action === WORKFLOW_ACTIONS.RUN_ASYNC;
 
@@ -284,13 +292,15 @@ const ConfigurableAIAssistance = ({
       setHasAsked(true);
     } catch (err) {
       logError('[ConfigurableAIAssistance] AI Assistant Error:', err);
-      const userFriendlyError = formatErrorMessage(err);
+      const userFriendlyError = formatErrorMessage(err, intl);
       setError(userFriendlyError);
+      // Ensure we mark that we've tried to ask, so partial response remains visible if it was a stream error
+      setHasAsked(true);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [additionalProps, id]);
+  }, [additionalProps, id, intl]);
 
   const handleOpenSidebar = useCallback(() => {
     setOpenSidebarSignal((prev) => prev + 1);

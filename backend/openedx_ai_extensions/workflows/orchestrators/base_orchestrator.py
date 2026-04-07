@@ -19,21 +19,68 @@ class BaseOrchestrator:
         self.location_id = context.get("location_id", None)
         self.course_id = context.get("course_id", None)
 
-    def _emit_workflow_event(self, event_name: str) -> None:
+    def _convert_usage_to_json_serializable(self, usage) -> dict:
+        """
+        Convert usage data to a JSON-serializable format.
+
+        This is necessary because usage data may contain complex objects
+        (e.g. litellm Usage Pydantic models) that cannot be directly
+        serialized to JSON when included in xAPI event data. This method
+        first normalizes the input to a plain dict, then ensures every
+        value is JSON-serializable.
+
+        Args:
+            usage: A dictionary or Pydantic model containing usage data.
+
+        Returns:
+            A new dictionary with all values converted to JSON-serializable formats.
+        """
+        if isinstance(usage, dict):
+            usage_dict = usage
+        elif hasattr(usage, "model_dump"):
+            # Pydantic v2 models (e.g. litellm Usage)
+            usage_dict = usage.model_dump()
+        elif hasattr(usage, "dict"):
+            # Pydantic v1 models
+            usage_dict = usage.dict()
+        else:
+            usage_dict = vars(usage)
+
+        serializable_usage = {}
+        for key, value in usage_dict.items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                serializable_usage[key] = value
+            else:
+                # For non-serializable types, convert to string representation
+                serializable_usage[key] = str(value)
+        return serializable_usage
+
+    def _emit_workflow_event(self, event_name: str, usage: dict = None) -> None:
         """
         Emit an xAPI event for this workflow.
 
         Args:
             event_name: The event name constant (e.g., EVENT_NAME_WORKFLOW_COMPLETED)
         """
-
-        tracker.emit(event_name, {
+        event_data = {
             "workflow_id": str(self.workflow.id),
             "action": self.workflow.action,
-            "course_id": str(self.course_id),
+            "course_id": str(self.course_id) if self.course_id else "",
             "profile_name": self.profile.slug,
-            "location_id": str(self.location_id),
-        })
+            "location_id": str(self.location_id) if self.location_id else "",
+        }
+        if usage:
+            event_data["usage"] = self._convert_usage_to_json_serializable(usage)
+
+        tracking_context = {}
+        if self.course_id:
+            tracking_context["course_id"] = str(self.course_id)
+
+        if tracking_context:
+            with tracker.get_tracker().context("ai_workflow", tracking_context):
+                tracker.emit(event_name, event_data)
+        else:
+            tracker.emit(event_name, event_data)
 
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")

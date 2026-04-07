@@ -495,24 +495,6 @@ def test_get_previous_messages_no_more_messages(
     assert metadata["new_count"] == 0
 
 
-@pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
-def test_get_previous_messages_handles_exception(
-    mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
-):
-    """
-    Test that get_previous_messages handles exceptions gracefully.
-    """
-    # Mock an exception when getting submissions
-    mock_submissions_api.get_submissions.side_effect = Exception("Database error")
-
-    result = submission_processor.get_previous_messages(current_messages_count=2)
-
-    # Should return error response
-    assert "error" in result
-    assert "Failed to load previous messages" in result["error"]
-
-
 # ============================================================================
 # SubmissionProcessor.update_chat_submission() Tests
 # ============================================================================
@@ -546,9 +528,11 @@ def test_update_chat_submission_creates_new_submission(
     mock_submissions_api.create_submission.assert_called_once()
     call_args = mock_submissions_api.create_submission.call_args
     assert call_args[1]["student_item_dict"] == processor.student_item_dict
-    assert call_args[1]["attempt_number"] == 1
 
-    # Verify answer contains the messages
+    # attempt_number should NOT be passed (auto-incremented by the API)
+    assert "attempt_number" not in call_args[1]
+
+    # Verify answer contains the messages without metadata
     answer = json.loads(call_args[1]["answer"])
     assert len(answer) == 2
     assert answer[0]["role"] == "user"
@@ -561,23 +545,13 @@ def test_update_chat_submission_creates_new_submission(
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
-def test_update_chat_submission_tracks_previous_submissions(
+def test_update_chat_submission_does_not_track_previous_ids(
     mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
 ):
     """
-    Test that update_chat_submission tracks previous submission IDs.
+    Test that update_chat_submission does NOT embed previous_submission_ids
+    metadata.  History is now tracked via attempt_number.
     """
-    # Mock existing submission with messages
-    existing_messages = [
-        {"role": "user", "content": "Old message"},
-        {"role": "assistant", "content": "Old response"}
-    ]
-
-    mock_submissions_api.get_submission_and_student.return_value = {
-        "uuid": "test-submission-uuid-123",
-        "answer": existing_messages
-    }
-
     mock_submissions_api.create_submission.return_value = {"uuid": "new-submission-uuid"}
 
     new_messages = [
@@ -587,65 +561,15 @@ def test_update_chat_submission_tracks_previous_submissions(
 
     submission_processor.update_chat_submission(new_messages)
 
-    # Verify create_submission was called
     call_args = mock_submissions_api.create_submission.call_args
     answer = json.loads(call_args[1]["answer"])
 
-    # Should contain messages and metadata
-    assert len(answer) == 3  # 2 messages + 1 metadata
-    assert answer[0]["role"] == "user"
-    assert answer[1]["role"] == "assistant"
+    # Should contain only the two messages — no _metadata entry
+    assert len(answer) == 2
+    assert all("_metadata" not in msg for msg in answer)
 
-    # Check metadata tracks previous submission
-    metadata = answer[2]
-    assert metadata.get("_metadata") is True
-    assert "test-submission-uuid-123" in metadata["previous_submission_ids"]
-
-
-@pytest.mark.django_db
-@patch("openedx_ai_extensions.processors.openedx.submission_processor.submissions_api")
-def test_update_chat_submission_preserves_previous_submission_chain(
-    mock_submissions_api, submission_processor  # pylint: disable=redefined-outer-name
-):
-    """
-    Test that update_chat_submission preserves chain of previous submission IDs.
-    """
-    # Mock existing submission that already has metadata
-    existing_messages = [
-        {"role": "user", "content": "Message"},
-        {"role": "assistant", "content": "Response"},
-        {
-            "_metadata": True,
-            "previous_submission_ids": ["oldest-submission-uuid", "older-submission-uuid"]
-        }
-    ]
-
-    mock_submissions_api.get_submission_and_student.return_value = {
-        "uuid": "test-submission-uuid-123",
-        "answer": existing_messages
-    }
-
-    mock_submissions_api.create_submission.return_value = {"uuid": "newest-submission-uuid"}
-
-    new_messages = [
-        {"role": "user", "content": "New message"},
-        {"role": "assistant", "content": "New response"}
-    ]
-
-    submission_processor.update_chat_submission(new_messages)
-
-    # Verify create_submission was called
-    call_args = mock_submissions_api.create_submission.call_args
-    answer = json.loads(call_args[1]["answer"])
-
-    # Check metadata preserves the chain
-    metadata = answer[-1]
-    assert metadata.get("_metadata") is True
-    assert "oldest-submission-uuid" in metadata["previous_submission_ids"]
-    assert "older-submission-uuid" in metadata["previous_submission_ids"]
-    assert "test-submission-uuid-123" in metadata["previous_submission_ids"]
-    # Should have 3 previous submission IDs in the chain
-    assert len(metadata["previous_submission_ids"]) == 3
+    # get_submission_and_student should NOT have been called
+    mock_submissions_api.get_submission_and_student.assert_not_called()
 
 
 # ============================================================================
@@ -670,7 +594,6 @@ def test_update_submission_creates_submission(
     mock_submissions_api.create_submission.assert_called_once_with(
         student_item_dict=submission_processor.student_item_dict,
         answer=json.dumps(data),
-        attempt_number=1
     )
 
     # Verify session was updated with new submission ID

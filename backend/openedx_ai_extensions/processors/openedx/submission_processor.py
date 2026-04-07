@@ -65,25 +65,16 @@ class SubmissionProcessor:
         for submission in reversed(submissions):
             submission_messages = json.loads(submission["answer"])
             timestamp = str(submission.get("created_at") or submission.get("submitted_at") or "")
-            # Remove metadata if present
             if submission_messages and isinstance(submission_messages, list):
-                submission_messages_copy = submission_messages.copy()
-                if (
-                    submission_messages_copy
-                    and isinstance(submission_messages_copy[-1], dict)
-                    and submission_messages_copy[-1].get("_metadata")
-                ):
-                    submission_messages_copy.pop()
                 # Remove system messages if present
                 submission_messages_copy = [
-                    msg for msg in submission_messages_copy if msg.get("role") != "system"
+                    msg for msg in submission_messages if isinstance(msg, dict) and msg.get("role") != "system"
                 ]
                 submission_uuid = submission.get("uuid", "")
                 for msg in submission_messages_copy:
-                    if isinstance(msg, dict):
-                        msg["timestamp"] = timestamp
-                        if include_submission_id:
-                            msg["submission_id"] = submission_uuid
+                    msg["timestamp"] = timestamp
+                    if include_submission_id:
+                        msg["submission_id"] = submission_uuid
                 # Extend to maintain chronological order (oldest to newest)
                 all_messages.extend(submission_messages_copy)
 
@@ -167,86 +158,49 @@ class SubmissionProcessor:
         Returns:
             dict: Contains 'response' (JSON string of new messages) and 'metadata' (has_more flag)
         """
-        try:
-            # Ensure current_messages_count is an integer
-            if isinstance(current_messages_count, str):
-                try:
-                    current_messages_count = int(current_messages_count)
-                except (ValueError, TypeError):
-                    current_messages_count = 0
+        # Ensure current_messages_count is an integer
+        if isinstance(current_messages_count, str):
+            try:
+                current_messages_count = int(current_messages_count)
+            except (ValueError, TypeError):
+                current_messages_count = 0
 
-            new_messages, has_more = self._process_messages(
-                current_messages_count=current_messages_count
-            )
+        new_messages, has_more = self._process_messages(
+            current_messages_count=current_messages_count
+        )
 
-            return {
-                "response": json.dumps(
-                    {
-                        "messages": new_messages,
-                        "metadata": {
-                            "has_more": has_more,
-                            "new_count": len(new_messages),
-                        },
-                    }
-                ),
-            }
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Error retrieving previous messages: {e}")
-            return {"error": f"Failed to load previous messages: {str(e)}"}
+        return {
+            "response": json.dumps(
+                {
+                    "messages": new_messages,
+                    "metadata": {
+                        "has_more": has_more,
+                        "new_count": len(new_messages),
+                    },
+                }
+            ),
+        }
 
     def update_chat_submission(self, messages):
         """
-        Update the submission with the LLM response.
-        Truncates message history to keep only the most recent messages while
-        preserving references to previous submission IDs.
+        Create a new immutable Submission record for this interaction.
+
+        Each call stores the provided messages (prompt + AI response) as a new
+        Submission.  History is tracked implicitly via ``attempt_number``, which
+        the Submissions API auto-increments for the same ``student_item``.
         """
-
-        previous_submission_ids = []
-
-        if self.user_session.local_submission_id:
-            submission = submissions_api.get_submission_and_student(
-                self.user_session.local_submission_id
-            )
-
-            # Store current submission ID as previous
-            previous_submission_ids.append(self.user_session.local_submission_id)
-
-            # Get existing messages and any previously tracked submission IDs
-            existing_messages = submission["answer"]
-
-            # Extract metadata if it exists (for tracking previous submission IDs)
-            if existing_messages and isinstance(existing_messages, list):
-                # Check if the last item is metadata
-                if (
-                    existing_messages
-                    and isinstance(existing_messages[-1], dict)
-                    and existing_messages[-1].get("_metadata")
-                ):
-                    metadata = existing_messages.pop()
-                    previous_submission_ids = (
-                        metadata.get("previous_submission_ids", [])
-                        + previous_submission_ids
-                    )
-
-        # Add metadata to track previous submission IDs
-        if previous_submission_ids:
-            messages.append(
-                {
-                    "_metadata": True,
-                    "previous_submission_ids": previous_submission_ids,
-                }
-            )
-
         self.update_submission(messages)
 
     def update_submission(self, data):
         """
-        Update the submission with provided data.
+        Create a new Submission record with the provided data.
+
+        ``attempt_number`` is intentionally omitted so the Submissions API
+        auto-increments it for the given ``student_item``.
         """
         submission = submissions_api.create_submission(
             student_item_dict=self.student_item_dict,
             answer=json.dumps(data),
-            attempt_number=1,
         )
         self.user_session.local_submission_id = submission["uuid"]
         self.user_session.save()
@@ -267,10 +221,19 @@ class SubmissionProcessor:
         """
         if self.user_session.local_submission_id:
             messages, _ = self._process_messages(use_max_context=False)
+            cleaned = []
             for msg in messages:
                 if isinstance(msg, dict):
                     msg.pop("timestamp", None)
-            return messages
+                    # Only validate content for role-based messages (user/assistant/system).
+                    # Function call/output items use other fields (type, call_id, etc.) and
+                    # legitimately have no content field — never filter those out.
+                    if "role" in msg:
+                        content = msg.get("content")
+                        if not isinstance(content, str) or not content:
+                            continue
+                cleaned.append(msg)
+            return cleaned
         else:
             return None
 
