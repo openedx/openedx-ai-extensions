@@ -100,7 +100,7 @@ def test_emit_workflow_event(mock_tracker, mock_workflow, mock_user):  # pylint:
         "course_id": "course-1",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "loc-1",
-        "username": "testuser2",
+        "user_id": mock_user.id,
     })
 
 
@@ -126,7 +126,7 @@ def test_emit_workflow_event_with_usage(
         "course_id": "course-1",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "loc-1",
-        "username": "testuser2",
+        "user_id": mock_user.id,
         "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
     })
 
@@ -182,7 +182,7 @@ def test_emit_workflow_event_without_location_id(
         "course_id": "course-1",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "",
-        "username": "testuser2",
+        "user_id": mock_user.id,
     })
 
 
@@ -226,7 +226,7 @@ def test_emit_workflow_event_no_course_id(
         "course_id": "",
         "profile_name": mock_workflow.profile.slug,
         "location_id": "loc-1",
-        "username": "testuser2",
+        "user_id": mock_user.id,
     })
 
 

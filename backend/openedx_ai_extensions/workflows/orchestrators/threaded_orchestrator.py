@@ -55,7 +55,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         }
 
     def _stream_and_save_history(self, generator, input_data,  # pylint: disable=too-many-positional-arguments
-                                 submission_processor, llm_processor,
+                                 submission_processor,
                                  initial_system_msgs=None, is_first_interaction=False):
         """
         Yields chunks to the view while accumulating text to save to DB
@@ -104,16 +104,16 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
                 messages.insert(0, {"role": "user", "content": user_text})
 
             # Re-inject system messages if this was a new thread (and not OpenAI)
-            if llm_processor.get_provider() != "openai" and initial_system_msgs:
+            if self.llm_processor.get_provider() != "openai" and initial_system_msgs:
                 for msg in initial_system_msgs:
                     messages.insert(0, {"role": msg["role"], "conte{}nt": msg["content"]})
 
             try:
                 submission_processor.update_chat_submission(messages)
                 if is_first_interaction:
-                    self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED, usage=llm_processor.get_usage())
+                    self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED)
                 else:
-                    self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED, usage=llm_processor.get_usage())
+                    self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error(f"Failed to save chat history after stream: {e}")
 
@@ -146,7 +146,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         content_result = openedx_processor.process()
 
         # 3. Process with LLM processor
-        llm_processor = LLMProcessor(self.profile.processor_config, self.session)
+        self.llm_processor = LLMProcessor(self.profile.processor_config, self.session)
 
         # Only fetch history if we don't have a remote thread ID.
         # This reduces DB + JSON overhead on every request.
@@ -157,7 +157,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             chat_history = submission_processor.get_full_message_history() or []
 
         # Call the processor
-        llm_result = llm_processor.process(
+        llm_result = self.llm_processor.process(
             context=str(content_result), input_data=input_data, chat_history=chat_history
         )
 
@@ -167,7 +167,6 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
                 generator=llm_result,
                 input_data=input_data,
                 submission_processor=submission_processor,
-                llm_processor=llm_processor,
                 initial_system_msgs=None,
                 is_first_interaction=is_first_interaction,
             )
@@ -190,9 +189,9 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # Emit appropriate event based on interaction state
         if is_first_interaction:
-            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED, usage=llm_processor.get_usage())
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INITIALIZED)
         else:
-            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED, usage=llm_processor.get_usage())
+            self._emit_workflow_event(EVENT_NAME_WORKFLOW_INTERACTED)
 
         # 4. Return result
         return {

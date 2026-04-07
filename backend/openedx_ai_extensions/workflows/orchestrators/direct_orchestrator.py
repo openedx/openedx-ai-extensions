@@ -27,7 +27,7 @@ class DirectLLMResponse(BaseOrchestrator):
     Does a single call to an LLM and gives a response.
     """
 
-    def _stream_and_emit(self, generator, llm_processor):
+    def _stream_and_emit(self, generator):
         """Yield all chunks from the generator, then emit the completed event."""
         try:
             yield from generator
@@ -36,7 +36,7 @@ class DirectLLMResponse(BaseOrchestrator):
             yield f"\n[Error processing stream: {e}]".encode("utf-8")
         finally:
             try:
-                self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_processor.get_usage())
+                self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error(f"Failed to emit workflow event after stream: {e}")
 
@@ -66,12 +66,12 @@ class DirectLLMResponse(BaseOrchestrator):
         llm_input_content = str(content_result)
 
         # --- 2. Process with LLM processor ---
-        llm_processor = LLMProcessor(self.profile.processor_config)
-        llm_result = llm_processor.process(context=llm_input_content)
+        self.llm_processor = LLMProcessor(self.profile.processor_config)
+        llm_result = self.llm_processor.process(context=llm_input_content)
 
         # --- 4. Handle Streaming Response (Generator) ---
         if is_generator(llm_result):
-            return self._stream_and_emit(llm_result, llm_processor)
+            return self._stream_and_emit(llm_result)
 
         # --- 5. Handle LLM Error (Non-Streaming) ---
         if llm_result and 'error' in llm_result:
@@ -82,7 +82,7 @@ class DirectLLMResponse(BaseOrchestrator):
             }
 
         # 6. Emit completed event for one-shot workflow
-        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_processor.get_usage())
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
 
         # --- 7. Return Structured Non-Streaming Result ---
         # If execution reaches this point, we have a successful, non-streaming result (Dict).
@@ -133,13 +133,17 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
     def _run_llm_processor(self, content_result, input_data):
         """Run the LLM processor to generate quiz questions."""
         with open(self._schema_path, 'r', encoding='utf-8') as f:
-            llm_processor = EducatorAssistantProcessor(
+            self.llm_processor = EducatorAssistantProcessor(
                 config=self.profile.processor_config,
                 user=self.user,
                 context=content_result,
                 extra_params={"response_format": json.load(f)}
             )
-        return llm_processor.process(input_data=input_data)
+        result = self.llm_processor.process(input_data=input_data)
+        # EducatorAssistantProcessor returns usage in the result dict rather than
+        # accumulating it on self.usage, so we sync it here for auto-lookup.
+        self.llm_processor.usage = result.get("usage") or None
+        return result
 
     def get_current_session_response(self, _):
         """
@@ -193,7 +197,7 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
         self.session.metadata = metadata
         self.session.save(update_fields=["metadata"])
 
-        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED, usage=llm_result.get("usage", None))
+        self._emit_workflow_event(EVENT_NAME_WORKFLOW_COMPLETED)
 
         return {
             'status': 'completed',

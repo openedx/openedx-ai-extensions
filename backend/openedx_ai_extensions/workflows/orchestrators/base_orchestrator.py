@@ -18,6 +18,7 @@ class BaseOrchestrator:
         self.profile = workflow.profile
         self.location_id = context.get("location_id", None)
         self.course_id = context.get("course_id", None)
+        self.llm_processor = None
 
     def _convert_usage_to_json_serializable(self, usage) -> dict:
         """
@@ -55,13 +56,20 @@ class BaseOrchestrator:
                 serializable_usage[key] = str(value)
         return serializable_usage
 
-    def _emit_workflow_event(self, event_name: str, usage: dict = None) -> None:
+    def _emit_workflow_event(self, event_name: str, usage=None) -> None:
         """
         Emit an xAPI event for this workflow.
 
+        If ``usage`` is not provided, it is automatically fetched from
+        ``self.llm_processor.get_usage()`` when a processor has been set.
+
         Args:
             event_name: The event name constant (e.g., EVENT_NAME_WORKFLOW_COMPLETED)
+            usage: Optional usage data to include. Defaults to the value returned
+                by ``self.llm_processor.get_usage()`` if a processor is set.
         """
+        if usage is None and self.llm_processor is not None:
+            usage = self.llm_processor.get_usage()
         event_data = {
             "workflow_id": str(self.workflow.id),
             "action": self.workflow.action,
@@ -69,8 +77,8 @@ class BaseOrchestrator:
             "profile_name": self.profile.slug,
             "location_id": str(self.location_id) if self.location_id else "",
         }
-        if self.user and hasattr(self.user, "username") and self.user.username:
-            event_data["username"] = self.user.username
+        if self.user and hasattr(self.user, "id") and self.user.id:
+            event_data["user_id"] = self.user.id
         if usage:
             event_data["usage"] = self._convert_usage_to_json_serializable(usage)
 
