@@ -64,18 +64,21 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
             )
             raise
 
-        # 4. Validate action exists
+        # 4. Set the runtime action so xAPI events carry the correct action name
+        orchestrator.workflow.action = action
+
+        # 5. Validate action exists
         if not hasattr(orchestrator, action):
             error_msg = f"Orchestrator '{orchestrator_name}' does not have method '{action}'"
             logger.error(f"Task {task_id}: {error_msg}")
             raise AttributeError(error_msg)
 
-        # 5. Call the action method with params
+        # 6. Call the action method with params
         orchestrator_method = getattr(orchestrator, action)
         logger.info(f"Task {task_id}: Executing {orchestrator_name}.{action} for session {session_id}")
         result = orchestrator_method(**params)
 
-        # 6. Update session metadata with result
+        # 7. Update session metadata with result
         # Re-fetch from DB to pick up any metadata changes the orchestrator method
         # saved during execution (e.g. question_slots, collection_name), so we
         # don't overwrite them with the stale in-memory copy.
