@@ -50,7 +50,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             }
 
         return {
-            "response": result.get("response", "{}"),
+            "response": result.get("response") or "{}",
             "status": "completed",
         }
 
@@ -132,7 +132,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
         if has_previous_session and not input_data:
             history_result = submission_processor.process(context=context)
             return {
-                "response": history_result.get("response", "No response available"),
+                "response": history_result.get("response") or "No response available",
                 "status": "completed",
             }
 
@@ -173,7 +173,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # --- BRANCH B: Handle Non-Streaming (Standard) ---
         messages = [
-            {"role": "assistant", "content": llm_result.get("response", "")},
+            {"role": "assistant", "content": llm_result.get("response") or ""},
         ]
         user_text = normalize_input_to_text(input_data)
         if user_text:
@@ -195,6 +195,6 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
 
         # 4. Return result
         return {
-            "response": llm_result.get("response", "No response available"),
+            "response": llm_result.get("response") or "No response available",
             "status": "completed",
         }
