@@ -75,6 +75,30 @@ columns:
   type: String
   verbose_name: Workflow Action
 - advanced_data_type: null
+  column_name: course_run
+  description: "Course Run (e.g. 2026)"
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Course Run
+- advanced_data_type: null
+  column_name: course_name
+  description: "Course Name"
+  expression: null
+  extra: {}
+  filterable: true
+  groupby: true
+  is_active: true
+  is_dttm: false
+  python_date_format: null
+  type: String
+  verbose_name: Course Name
+- advanced_data_type: null
   column_name: course_key
   description: "Course key (e.g. course-v1:org+course+run)"
   expression: null
@@ -208,9 +232,9 @@ metrics:
   expression: countIf(verb = 'initialized')
   extra:
     warning_markdown: ''
-  metric_name: sessions_initialized
+  metric_name: initialized
   metric_type: null
-  verbose_name: Sessions Initialized
+  verbose_name: Initialized
   warning_text: null
 - currency: null
   d3format: null
@@ -218,9 +242,9 @@ metrics:
   expression: countIf(verb = 'interacted')
   extra:
     warning_markdown: ''
-  metric_name: interactions
+  metric_name: interacted
   metric_type: null
-  verbose_name: Interactions
+  verbose_name: Interacted
   warning_text: null
 - currency: null
   d3format: null
@@ -228,9 +252,9 @@ metrics:
   expression: countIf(verb = 'completed')
   extra:
     warning_markdown: ''
-  metric_name: completions
+  metric_name: completed
   metric_type: null
-  verbose_name: Completions
+  verbose_name: Completed
   warning_text: null
 - currency: null
   d3format: null
@@ -262,36 +286,6 @@ metrics:
   metric_type: null
   verbose_name: Total Tokens
   warning_text: null
-- currency: null
-  d3format: null
-  description: Average tokens per AI workflow interaction
-  expression: AVG(total_tokens)
-  extra:
-    warning_markdown: ''
-  metric_name: avg_tokens_per_interaction
-  metric_type: null
-  verbose_name: Avg Tokens per Interaction
-  warning_text: null
-- currency: USD
-  d3format: ',.4f'
-  description: Total estimated LLM cost in USD across all events
-  expression: SUM(llm_cost)
-  extra:
-    warning_markdown: ''
-  metric_name: total_llm_cost
-  metric_type: null
-  verbose_name: Total LLM Cost (USD)
-  warning_text: null
-- currency: USD
-  d3format: ',.6f'
-  description: Average estimated LLM cost per interaction in USD
-  expression: AVG(llm_cost)
-  extra:
-    warning_markdown: ''
-  metric_name: avg_llm_cost
-  metric_type: null
-  verbose_name: Avg LLM Cost (USD)
-  warning_text: null
 normalize_columns: true
 offset: 0
 params: null
@@ -305,14 +299,17 @@ sql: |-
       splitByChar('/', verb_id)[-1] AS verb,
       JSON_VALUE(event, '$.object.definition.name.en') AS workflow_name,
       JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-workflow-action"') AS workflow_action,
-      course_key,
-      org,
+      xapi.course_key,
+      course_info.course_run,
+      course_info.course_name,
+      xapi.org,
       JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/location-id"') AS location_id,
       nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".prompt_tokens') AS Nullable(Int64)), 0) AS prompt_tokens,
       nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".completion_tokens') AS Nullable(Int64)), 0) AS completion_tokens,
       nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".total_tokens') AS Nullable(Int64)), 0) AS total_tokens,
       nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".cost') AS Nullable(Float64)), 0) AS llm_cost
-  FROM {{ ASPECTS_XAPI_DATABASE }}.xapi_events_all_parsed
+  FROM {{ ASPECTS_XAPI_DATABASE }}.xapi_events_all_parsed xapi
+  LEFT JOIN {{ ASPECTS_EVENT_SINK_DATABASE }}.dim_course_names course_info ON course_info.course_key = xapi.course_key
   WHERE
       JSON_VALUE(event, '$.object.definition.type') = 'https://w3id.org/xapi/openedx/activity/ai-workflow'
 table_name: fact_ai_workflow_interactions

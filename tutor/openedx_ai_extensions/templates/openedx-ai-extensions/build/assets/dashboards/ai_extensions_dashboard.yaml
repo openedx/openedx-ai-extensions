@@ -1,0 +1,624 @@
+_file_name: ai_extensions_dashboard.yaml
+dashboard_title: AI Extensions Dashboard
+description: None
+css: ''
+slug: ai-extensions-dashboard-en
+certified_by: ''
+certification_details: ''
+published: true
+uuid: bcb741a1-a100-51f7-803c-6a3b607eb047
+position:
+  CHART-Gt5nAQK0ayaUH7Fbkmg_v:
+    children: []
+    id: CHART-Gt5nAQK0ayaUH7Fbkmg_v
+    meta:
+      chartId: 178
+      height: 50
+      sliceName: Daily Token Consumption Trend
+      uuid: b13ccb0b-c3fe-4d04-9970-ee2c8c97ae3f
+      width: 8
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    - ROW-nOOhGmVEDZwJSQteTsd9h
+    type: CHART
+  CHART-NF_oqW5oeMDOgE4lps2EM:
+    children: []
+    id: CHART-NF_oqW5oeMDOgE4lps2EM
+    meta:
+      chartId: 186
+      height: 50
+      sliceName: Unique Users By Course
+      uuid: 990ad1ba-ca60-4ac6-9dba-84545e50c5f8
+      width: 8
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    - ROW-UMKNuBBQNEIC85KitKi-h
+    type: CHART
+  CHART-_hsHhvyXVFKv9MYsS7yJ3:
+    children: []
+    id: CHART-_hsHhvyXVFKv9MYsS7yJ3
+    meta:
+      chartId: 183
+      height: 50
+      sliceName: Unique Users
+      uuid: 3f2e2d1c-4b5a-6e7f-8a9b-0c1d2e3f4a5b
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    - ROW-UMKNuBBQNEIC85KitKi-h
+    type: CHART
+  CHART-bS-rnvmCdTQSQnH_DVj6O:
+    children: []
+    id: CHART-bS-rnvmCdTQSQnH_DVj6O
+    meta:
+      chartId: 189
+      height: 22
+      sliceName: General AI Status
+      sliceNameOverride: Course Information
+      uuid: f4461ee2-17cc-4805-9fcc-3228a5407b4b
+      width: 10
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-qDVwqO3bi4
+    type: CHART
+  CHART-iH1dkHmjBt3sBqyCVWdG3:
+    children: []
+    id: CHART-iH1dkHmjBt3sBqyCVWdG3
+    meta:
+      chartId: 188
+      height: 50
+      sliceName: Events Count
+      uuid: 8af3b266-8a15-4858-9ec4-6ee9670b5f74
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-BIUNO628Hbf73-diDpKzo
+    type: CHART
+  CHART-p2kENrU2tXbDxw6IiLJt0:
+    children: []
+    id: CHART-p2kENrU2tXbDxw6IiLJt0
+    meta:
+      chartId: 187
+      height: 50
+      sliceName: Event Count By Location
+      uuid: df65ebda-8628-476d-b638-5fe7c3137fcd
+      width: 8
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-BIUNO628Hbf73-diDpKzo
+    type: CHART
+  CHART-pJeUdC7kziHmr8SYQq5nJ:
+    children: []
+    id: CHART-pJeUdC7kziHmr8SYQq5nJ
+    meta:
+      chartId: 184
+      height: 50
+      sliceName: Total Tokens By Course
+      uuid: 3f2e2d1c-4b5a-6e7f-8a9b-0c1d2e3f4a5b
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    - ROW-nOOhGmVEDZwJSQteTsd9h
+    type: CHART
+  CHART-tx3ltU68evzQh0ygEGsl-:
+    children: []
+    id: CHART-tx3ltU68evzQh0ygEGsl-
+    meta:
+      chartId: 185
+      height: 22
+      sliceName: Unique Users Using AI
+      uuid: e6c379e3-4e52-4cf2-aea3-fa56040ea38c
+      width: 2
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-qDVwqO3bi4
+    type: CHART
+  DASHBOARD_VERSION_KEY: v2
+  GRID_ID:
+    children:
+    - ROW-qDVwqO3bi4
+    - TABS-UDkdlBRw4n
+    id: GRID_ID
+    parents:
+    - ROOT_ID
+    type: GRID
+  HEADER_ID:
+    id: HEADER_ID
+    meta:
+      text: AI Extensions Dashboard
+    type: HEADER
+  ROOT_ID:
+    children:
+    - GRID_ID
+    id: ROOT_ID
+    type: ROOT
+  ROW-BIUNO628Hbf73-diDpKzo:
+    children:
+    - CHART-iH1dkHmjBt3sBqyCVWdG3
+    - CHART-p2kENrU2tXbDxw6IiLJt0
+    id: ROW-BIUNO628Hbf73-diDpKzo
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    type: ROW
+  ROW-UMKNuBBQNEIC85KitKi-h:
+    children:
+    - CHART-_hsHhvyXVFKv9MYsS7yJ3
+    - CHART-NF_oqW5oeMDOgE4lps2EM
+    id: ROW-UMKNuBBQNEIC85KitKi-h
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    type: ROW
+  ROW-nOOhGmVEDZwJSQteTsd9h:
+    children:
+    - CHART-pJeUdC7kziHmr8SYQq5nJ
+    - CHART-Gt5nAQK0ayaUH7Fbkmg_v
+    id: ROW-nOOhGmVEDZwJSQteTsd9h
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    type: ROW
+  ROW-qDVwqO3bi4:
+    children:
+    - CHART-tx3ltU68evzQh0ygEGsl-
+    - CHART-bS-rnvmCdTQSQnH_DVj6O
+    id: ROW-qDVwqO3bi4
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  TAB-WCTW979bVMfJtdcl2kRKH:
+    children:
+    - ROW-UMKNuBBQNEIC85KitKi-h
+    id: TAB-WCTW979bVMfJtdcl2kRKH
+    meta:
+      defaultText: Tab title
+      placeholder: Tab title
+      text: Users
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    type: TAB
+  TAB-a_ASLiELfNiWNHjDQkwnE:
+    children:
+    - ROW-nOOhGmVEDZwJSQteTsd9h
+    id: TAB-a_ASLiELfNiWNHjDQkwnE
+    meta:
+      defaultText: Tab title
+      placeholder: Tab title
+      text: Usage
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    type: TAB
+  TAB-jYaU5R8dHfDveRzAZ6ezW:
+    children:
+    - ROW-BIUNO628Hbf73-diDpKzo
+    id: TAB-jYaU5R8dHfDveRzAZ6ezW
+    meta:
+      defaultText: Tab title
+      placeholder: Tab title
+      text: Location
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    type: TAB
+  TABS-UDkdlBRw4n:
+    children:
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    id: TABS-UDkdlBRw4n
+    meta: {}
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: TABS
+metadata:
+  chart_configuration:
+    '178':
+      id: 178
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 183
+        - 184
+        - 185
+        - 186
+        - 187
+        - 188
+        - 189
+    '183':
+      id: 183
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 184
+        - 185
+        - 186
+        - 187
+        - 188
+        - 189
+    '184':
+      id: 184
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 183
+        - 185
+        - 186
+        - 187
+        - 188
+        - 189
+    '186':
+      id: 186
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 183
+        - 184
+        - 185
+        - 187
+        - 188
+        - 189
+    '187':
+      id: 187
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 183
+        - 184
+        - 185
+        - 186
+        - 188
+        - 189
+    '188':
+      id: 188
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 183
+        - 184
+        - 185
+        - 186
+        - 187
+        - 189
+    '189':
+      id: 189
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 183
+        - 184
+        - 185
+        - 186
+        - 187
+        - 188
+  color_scheme: supersetColors
+  cross_filters_enabled: true
+  expanded_slices: {}
+  global_chart_configuration:
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    chartsInScope:
+    - 178
+    - 183
+    - 184
+    - 185
+    - 186
+    - 187
+    - 188
+    - 189
+  label_colors: {}
+  native_filter_configuration:
+  - cascadeParentIds:
+    - NATIVE_FILTER-IfS-Rd0ZS
+    chartsInScope:
+    - 11
+    - 81
+    - 169
+    - 193
+    - 217
+    - 220
+    - 337
+    - 405
+    - 409
+    - 423
+    - 451
+    - 487
+    - 736
+    - 769
+    - 1019
+    - 1039
+    - 1115
+    controlValues:
+      defaultToFirstItem: false
+      enableEmptyFilter: false
+      inverseSelection: false
+      multiSelect: false
+      searchAllOptions: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_select
+    id: NATIVE_FILTER-QrTlO4wBf
+    name: Organization
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - column:
+        name: org
+      datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  - cascadeParentIds:
+    - NATIVE_FILTER-QrTlO4wBf
+    chartsInScope:
+    - 11
+    - 81
+    - 169
+    - 193
+    - 217
+    - 220
+    - 337
+    - 405
+    - 409
+    - 423
+    - 451
+    - 487
+    - 736
+    - 769
+    - 1019
+    - 1039
+    - 1115
+    controlValues:
+      defaultToFirstItem: true
+      enableEmptyFilter: false
+      inverseSelection: false
+      multiSelect: false
+      searchAllOptions: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_select
+    id: NATIVE_FILTER-IfS-Rd0ZS
+    name: Course Name
+    requiredFirst: true
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - column:
+        name: course_name
+      datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  - cascadeParentIds:
+    - NATIVE_FILTER-QrTlO4wBf
+    - NATIVE_FILTER-IfS-Rd0ZS
+    chartsInScope:
+    - 2
+    - 9
+    - 10
+    - 11
+    - 17
+    - 21
+    - 29
+    - 30
+    - 34
+    - 38
+    - 39
+    - 41
+    - 42
+    - 53
+    - 57
+    - 60
+    - 64
+    controlValues:
+      defaultToFirstItem: false
+      enableEmptyFilter: false
+      inverseSelection: false
+      multiSelect: false
+      searchAllOptions: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_select
+    id: NATIVE_FILTER-w863AfFgi
+    name: Course Run
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - column:
+        name: course_run
+      datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  - chartsInScope: []
+    description: ''
+    id: NATIVE_FILTER_DIVIDER-HAScs3d7P
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope: []
+    title: Time filters
+    type: DIVIDER
+  - cascadeParentIds: []
+    chartsInScope:
+    - 30
+    - 41
+    - 62
+    - 63
+    - 83
+    - 86
+    - 87
+    - 90
+    - 92
+    - 95
+    - 100
+    - 238
+    controlValues:
+      enableEmptyFilter: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_time
+    id: NATIVE_FILTER-T8dy9gl7K
+    name: Date
+    scope:
+      excluded:
+      - 116
+      - 80
+      - 75
+      - 113
+      rootPath:
+      - TAB-4ptSkqs5MS
+      - TAB-_Ey4nPhFr
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - {}
+    type: NATIVE_FILTER
+  - cascadeParentIds: []
+    chartsInScope:
+    - 30
+    - 62
+    - 90
+    - 100
+    - 104
+    - 238
+    controlValues:
+      enableEmptyFilter: false
+    defaultDataMask:
+      extraFormData:
+        time_grain_sqla: P1M
+      filterState:
+        label: Month
+        value:
+        - P1M
+    description: ''
+    filterType: filter_timegrain
+    id: NATIVE_FILTER-uPaSvFul8
+    name: Time Grain
+    scope:
+      excluded:
+      - 161
+      - 62
+      - 116
+      - 80
+      - 75
+      - 113
+      - 166
+      - 88
+      - 108
+      - 23
+      rootPath:
+      - TAB-4ptSkqs5MS
+      - TAB-_Ey4nPhFr
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    targets:
+    - datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  refresh_frequency: 0
+  timed_refresh_immune_slices: []
+  shared_label_colors:
+    total_tokens: '#1FA8C9'
+    total_tokens_sum: '#454E7C'
+    demo-educator-assistant: '#1FA8C9'
+    demo-flashcards: '#454E7C'
+    demo-box-chat-summary: '#5AC189'
+    chat_functions: '#FF7F44'
+    chat: '#666666'
+    demo-mocked-streaming: '#E04355'
+    unique_actors: '#1FA8C9'
+    Count: '#1FA8C9'
+  color_scheme_domain: []
+  default_filters: '{}'
+version: 1.0.0
