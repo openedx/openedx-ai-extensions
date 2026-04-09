@@ -1,0 +1,77 @@
+_file_name: event_count_by_location.yaml
+slice_name: Event Count By Location
+description: null
+certified_by: null
+certification_details: null
+viz_type: table
+params:
+  datasource: 92__table
+  viz_type: table
+  slice_id: 187
+  query_mode: aggregate
+  groupby:
+  - course_key
+  - location_id
+  temporal_columns_lookup:
+    emission_time: true
+    emission_date: true
+  metrics:
+  - expressionType: SIMPLE
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: workflow_name
+      description: Name of the AI workflow profile (e.g. chat_with_anthropic, openai_threads)
+      expression: null
+      filterable: true
+      groupby: true
+      id: 919
+      is_certified: false
+      is_dttm: false
+      python_date_format: null
+      type: String
+      type_generic: 1
+      verbose_name: Workflow Name
+      warning_markdown: null
+    aggregate: COUNT
+    sqlExpression: null
+    datasourceWarning: false
+    hasCustomLabel: true
+    label: Event Count
+    optionName: metric_k5moli8k2b_c8n6xmdwztu
+  all_columns: []
+  percent_metrics: []
+  adhoc_filters:
+  - clause: WHERE
+    comparator: No filter
+    expressionType: SIMPLE
+    operator: TEMPORAL_RANGE
+    subject: emission_time
+  order_by_cols: []
+  row_limit: 1000
+  order_desc: true
+  table_timestamp_format: smart_date
+  allow_render_html: true
+  show_cell_bars: true
+  color_pn: true
+  comparison_color_scheme: Green
+  comparison_type: values
+  extra_form_data: {}
+  dashboards: []
+query_context: '{"datasource":{"id":92,"type":"table"},"force":false,"queries":[{"filters":[{"col":"emission_time","op":"TEMPORAL_RANGE","val":"No
+  filter"}],"extras":{"having":"","where":""},"applied_time_extras":{},"columns":["course_key","location_id"],"metrics":[{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"workflow_name","description":"Name
+  of the AI workflow profile (e.g. chat_with_anthropic, openai_threads)","expression":null,"filterable":true,"groupby":true,"id":919,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"String","type_generic":1,"verbose_name":"Workflow
+  Name","warning_markdown":null},"aggregate":"COUNT","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":true,"label":"Event
+  Count","optionName":"metric_k5moli8k2b_c8n6xmdwztu"}],"orderby":[[{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"workflow_name","description":"Name
+  of the AI workflow profile (e.g. chat_with_anthropic, openai_threads)","expression":null,"filterable":true,"groupby":true,"id":919,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"String","type_generic":1,"verbose_name":"Workflow
+  Name","warning_markdown":null},"aggregate":"COUNT","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":true,"label":"Event
+  Count","optionName":"metric_k5moli8k2b_c8n6xmdwztu"},false]],"annotation_layers":[],"row_limit":1000,"series_limit":0,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"post_processing":[],"time_offsets":[]}],"form_data":{"datasource":"92__table","viz_type":"table","slice_id":187,"query_mode":"aggregate","groupby":["course_key","location_id"],"temporal_columns_lookup":{"emission_time":true,"emission_date":true},"metrics":[{"expressionType":"SIMPLE","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"workflow_name","description":"Name
+  of the AI workflow profile (e.g. chat_with_anthropic, openai_threads)","expression":null,"filterable":true,"groupby":true,"id":919,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"String","type_generic":1,"verbose_name":"Workflow
+  Name","warning_markdown":null},"aggregate":"COUNT","sqlExpression":null,"datasourceWarning":false,"hasCustomLabel":true,"label":"Event
+  Count","optionName":"metric_k5moli8k2b_c8n6xmdwztu"}],"all_columns":[],"percent_metrics":[],"adhoc_filters":[{"clause":"WHERE","comparator":"No
+  filter","expressionType":"SIMPLE","operator":"TEMPORAL_RANGE","subject":"emission_time"}],"order_by_cols":[],"row_limit":1000,"order_desc":true,"table_timestamp_format":"smart_date","allow_render_html":true,"show_cell_bars":true,"color_pn":true,"comparison_color_scheme":"Green","comparison_type":"values","extra_form_data":{},"dashboards":[],"force":false,"result_format":"json","result_type":"full"},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: df65ebda-8628-476d-b638-5fe7c3137fcd
+version: 1.0.0
+dataset_uuid: a7c3e8f1-5b2d-4e9a-8f1c-3d7e5a9b2c4f

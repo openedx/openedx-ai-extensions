@@ -56,6 +56,25 @@ for path in glob(str(importlib_resources.files("openedx_ai_extensions") / "patch
 
 
 ########################
+# Template rendering
+# Required for superset-extra-assets (datasets, charts, dashboards)
+########################
+
+hooks.Filters.ENV_TEMPLATE_ROOTS.add_items(
+    [
+        str(importlib_resources.files("openedx_ai_extensions") / "templates"),
+    ]
+)
+
+hooks.Filters.ENV_TEMPLATE_TARGETS.add_items(
+    [
+        ("openedx-ai-extensions/build", "plugins"),
+        ("openedx-ai-extensions/build/assets", "plugins"),
+    ],
+)
+
+
+########################
 # UI Slot configurations
 ########################
 

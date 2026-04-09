@@ -1,0 +1,94 @@
+_file_name: daily_token_consumption_trend.yaml
+uuid: b13ccb0b-c3fe-4d04-9970-ee2c8c97ae3f
+dataset_uuid: a7c3e8f1-5b2d-4e9a-8f1c-3d7e5a9b2c4f
+slice_name: Daily Token Consumption Trend
+description: null
+certified_by: null
+certification_details: null
+viz_type: echarts_timeseries_line
+params:
+  datasource: 92__table
+  viz_type: echarts_timeseries_line
+  slice_id: 178
+  x_axis: emission_date
+  time_grain_sqla: P1D
+  metrics:
+  - aggregate: SUM
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: total_tokens
+      description: Total tokens used (prompt + completion)
+      expression: null
+      filterable: true
+      groupby: false
+      id: 927
+      is_certified: false
+      is_dttm: false
+      python_date_format: null
+      type: Nullable(Int64)
+      type_generic: 0
+      verbose_name: Total Tokens
+      warning_markdown: null
+    datasourceWarning: false
+    expressionType: SIMPLE
+    hasCustomLabel: true
+    label: Total Tokens
+    optionName: metric_qv3jyw4lu7_h9abbkf2v8u
+    sqlExpression: null
+  groupby:
+  - workflow_name
+  contributionMode: null
+  adhoc_filters:
+  - clause: WHERE
+    comparator: No filter
+    expressionType: SIMPLE
+    operator: TEMPORAL_RANGE
+    subject: emission_time
+  - clause: WHERE
+    comparator: No filter
+    expressionType: SIMPLE
+    operator: TEMPORAL_RANGE
+    subject: emission_date
+  row_limit: 10000
+  truncate_metric: true
+  show_empty_columns: true
+  comparison_type: values
+  annotation_layers: []
+  forecastPeriods: 10
+  forecastInterval: 0.8
+  x_axis_title_margin: 15
+  y_axis_title_margin: 15
+  y_axis_title_position: Left
+  sort_series_type: sum
+  color_scheme: supersetColors
+  seriesType: line
+  zoomable: true
+  show_legend: true
+  legendType: scroll
+  legendOrientation: top
+  x_axis_time_format: smart_date
+  rich_tooltip: true
+  tooltipTimeFormat: smart_date
+  y_axis_format: SMART_NUMBER
+  truncateXAxis: true
+  extra_form_data: {}
+  dashboards: []
+query_context: '{"datasource":{"id":92,"type":"table"},"force":false,"queries":[{"filters":[{"col":"emission_time","op":"TEMPORAL_RANGE","val":"No
+  filter"},{"col":"emission_date","op":"TEMPORAL_RANGE","val":"No filter"}],"extras":{"time_grain_sqla":"P1D","having":"","where":""},"applied_time_extras":{},"columns":[{"timeGrain":"P1D","columnType":"BASE_AXIS","sqlExpression":"emission_date","label":"emission_date","expressionType":"SQL"},"workflow_name"],"metrics":[{"aggregate":"SUM","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"total_tokens","description":"Total
+  tokens used (prompt + completion)","expression":null,"filterable":true,"groupby":false,"id":927,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"Nullable(Int64)","type_generic":0,"verbose_name":"Total
+  Tokens","warning_markdown":null},"datasourceWarning":false,"expressionType":"SIMPLE","hasCustomLabel":true,"label":"Total
+  Tokens","optionName":"metric_qv3jyw4lu7_h9abbkf2v8u","sqlExpression":null}],"orderby":[[{"aggregate":"SUM","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"total_tokens","description":"Total
+  tokens used (prompt + completion)","expression":null,"filterable":true,"groupby":false,"id":927,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"Nullable(Int64)","type_generic":0,"verbose_name":"Total
+  Tokens","warning_markdown":null},"datasourceWarning":false,"expressionType":"SIMPLE","hasCustomLabel":true,"label":"Total
+  Tokens","optionName":"metric_qv3jyw4lu7_h9abbkf2v8u","sqlExpression":null},false]],"annotation_layers":[],"row_limit":10000,"series_columns":["workflow_name"],"series_limit":0,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"time_offsets":[],"post_processing":[{"operation":"pivot","options":{"index":["emission_date"],"columns":["workflow_name"],"aggregates":{"Total
+  Tokens":{"operator":"mean"}},"drop_missing_columns":false}},{"operation":"rename","options":{"columns":{"Total
+  Tokens":null},"level":0,"inplace":true}},{"operation":"flatten"}]}],"form_data":{"datasource":"92__table","viz_type":"echarts_timeseries_line","slice_id":178,"x_axis":"emission_date","time_grain_sqla":"P1D","metrics":[{"aggregate":"SUM","column":{"advanced_data_type":null,"certification_details":null,"certified_by":null,"column_name":"total_tokens","description":"Total
+  tokens used (prompt + completion)","expression":null,"filterable":true,"groupby":false,"id":927,"is_certified":false,"is_dttm":false,"python_date_format":null,"type":"Nullable(Int64)","type_generic":0,"verbose_name":"Total
+  Tokens","warning_markdown":null},"datasourceWarning":false,"expressionType":"SIMPLE","hasCustomLabel":true,"label":"Total
+  Tokens","optionName":"metric_qv3jyw4lu7_h9abbkf2v8u","sqlExpression":null}],"groupby":["workflow_name"],"contributionMode":null,"adhoc_filters":[{"clause":"WHERE","comparator":"No
+  filter","expressionType":"SIMPLE","operator":"TEMPORAL_RANGE","subject":"emission_time"},{"clause":"WHERE","comparator":"No
+  filter","expressionType":"SIMPLE","operator":"TEMPORAL_RANGE","subject":"emission_date"}],"row_limit":10000,"truncate_metric":true,"show_empty_columns":true,"comparison_type":"values","annotation_layers":[],"forecastPeriods":10,"forecastInterval":0.8,"x_axis_title_margin":15,"y_axis_title_margin":15,"y_axis_title_position":"Left","sort_series_type":"sum","color_scheme":"supersetColors","seriesType":"line","zoomable":true,"show_legend":true,"legendType":"scroll","legendOrientation":"top","x_axis_time_format":"smart_date","rich_tooltip":true,"tooltipTimeFormat":"smart_date","y_axis_format":"SMART_NUMBER","truncateXAxis":true,"extra_form_data":{},"dashboards":[],"force":false,"result_format":"json","result_type":"full"},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+version: 1.0.0

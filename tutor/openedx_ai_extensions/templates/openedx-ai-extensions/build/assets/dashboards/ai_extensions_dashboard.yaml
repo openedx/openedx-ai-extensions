@@ -1,0 +1,687 @@
+_file_name: ai_extensions_dashboard.yaml
+dashboard_title: AI Extensions Dashboard
+description: None
+css: ''
+slug: ai-extensions-dashboard-en-en
+certified_by: ''
+certification_details: ''
+published: true
+uuid: 45c008bb-4fca-559c-bbb6-e942b286ce4c
+position:
+  CHART-Gt5nAQK0ayaUH7Fbkmg_v:
+    children: []
+    id: CHART-Gt5nAQK0ayaUH7Fbkmg_v
+    meta:
+      chartId: 178
+      height: 50
+      sliceName: Daily Token Consumption Trend
+      uuid: b13ccb0b-c3fe-4d04-9970-ee2c8c97ae3f
+      width: 8
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    - ROW-nOOhGmVEDZwJSQteTsd9h
+    type: CHART
+  CHART-NF_oqW5oeMDOgE4lps2EM:
+    children: []
+    id: CHART-NF_oqW5oeMDOgE4lps2EM
+    meta:
+      chartId: 212
+      height: 50
+      sliceName: Unique Users By Course
+      uuid: 990ad1ba-ca60-4ac6-9dba-84545e50c5f8
+      width: 8
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    - ROW-UMKNuBBQNEIC85KitKi-h
+    type: CHART
+  CHART-_hsHhvyXVFKv9MYsS7yJ3:
+    children: []
+    id: CHART-_hsHhvyXVFKv9MYsS7yJ3
+    meta:
+      chartId: 184
+      height: 50
+      sliceName: Unique Users
+      uuid: 3f2e2d1c-4b5a-6e7f-8a9b-0c1d2e3f4a5b
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    - ROW-UMKNuBBQNEIC85KitKi-h
+    type: CHART
+  CHART-bS-rnvmCdTQSQnH_DVj6O:
+    children: []
+    id: CHART-bS-rnvmCdTQSQnH_DVj6O
+    meta:
+      chartId: 206
+      height: 22
+      sliceName: General AI Status
+      sliceNameOverride: Course Information
+      uuid: f4461ee2-17cc-4805-9fcc-3228a5407b4b
+      width: 10
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-qDVwqO3bi4
+    type: CHART
+  CHART-fDk3-pUFJLj3tLHgxx80L:
+    children: []
+    id: CHART-fDk3-pUFJLj3tLHgxx80L
+    meta:
+      chartId: 214
+      height: 23
+      sliceName: Event Count By Workflow
+      uuid: 5b6c7d8e-9f0a-1b2c-3d4e-5f6a7b8c9d0e
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-Z9619zO-2paN0QHfgAKMO
+    - COLUMN-_mXTKp2FR0Q4IWEUqsIJ2
+    - ROW-msoPQPyDi6ZE8Wf3n7JqZ
+    type: CHART
+  CHART-iH1dkHmjBt3sBqyCVWdG3:
+    children: []
+    id: CHART-iH1dkHmjBt3sBqyCVWdG3
+    meta:
+      chartId: 207
+      height: 50
+      sliceName: Events Count
+      uuid: 8af3b266-8a15-4858-9ec4-6ee9670b5f74
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-Z9619zO-2paN0QHfgAKMO
+    - COLUMN-A3rIRck_MTk_RUgtUNyXX
+    type: CHART
+  CHART-p2kENrU2tXbDxw6IiLJt0:
+    children: []
+    id: CHART-p2kENrU2tXbDxw6IiLJt0
+    meta:
+      chartId: 205
+      height: 51
+      sliceName: Event Count By Location
+      uuid: df65ebda-8628-476d-b638-5fe7c3137fcd
+      width: 8
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-Z9619zO-2paN0QHfgAKMO
+    - COLUMN-_mXTKp2FR0Q4IWEUqsIJ2
+    - ROW-gGYDRfrs4TAeAsRmwEXQD
+    type: CHART
+  CHART-pJeUdC7kziHmr8SYQq5nJ:
+    children: []
+    id: CHART-pJeUdC7kziHmr8SYQq5nJ
+    meta:
+      chartId: 184
+      height: 50
+      sliceName: Total Tokens By Course
+      uuid: 3f2e2d1c-4b5a-6e7f-8a9b-0c1d2e3f4a5b
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    - ROW-nOOhGmVEDZwJSQteTsd9h
+    type: CHART
+  CHART-tx3ltU68evzQh0ygEGsl-:
+    children: []
+    id: CHART-tx3ltU68evzQh0ygEGsl-
+    meta:
+      chartId: 208
+      height: 22
+      sliceName: Unique Users Using AI
+      uuid: e6c379e3-4e52-4cf2-aea3-fa56040ea38c
+      width: 2
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-qDVwqO3bi4
+    type: CHART
+  COLUMN-A3rIRck_MTk_RUgtUNyXX:
+    children:
+    - CHART-iH1dkHmjBt3sBqyCVWdG3
+    id: COLUMN-A3rIRck_MTk_RUgtUNyXX
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-Z9619zO-2paN0QHfgAKMO
+    type: COLUMN
+  COLUMN-_mXTKp2FR0Q4IWEUqsIJ2:
+    children:
+    - ROW-gGYDRfrs4TAeAsRmwEXQD
+    id: COLUMN-_mXTKp2FR0Q4IWEUqsIJ2
+    meta:
+      background: BACKGROUND_TRANSPARENT
+      width: 8
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-Z9619zO-2paN0QHfgAKMO
+    type: COLUMN
+  DASHBOARD_VERSION_KEY: v2
+  GRID_ID:
+    children:
+    - ROW-qDVwqO3bi4
+    - TABS-UDkdlBRw4n
+    id: GRID_ID
+    parents:
+    - ROOT_ID
+    type: GRID
+  HEADER_ID:
+    id: HEADER_ID
+    meta:
+      text: AI Extensions Dashboard
+    type: HEADER
+  ROOT_ID:
+    children:
+    - GRID_ID
+    id: ROOT_ID
+    type: ROOT
+  ROW-UMKNuBBQNEIC85KitKi-h:
+    children:
+    - CHART-_hsHhvyXVFKv9MYsS7yJ3
+    - CHART-NF_oqW5oeMDOgE4lps2EM
+    id: ROW-UMKNuBBQNEIC85KitKi-h
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    type: ROW
+  ROW-Z9619zO-2paN0QHfgAKMO:
+    children:
+    - COLUMN-A3rIRck_MTk_RUgtUNyXX
+    - COLUMN-_mXTKp2FR0Q4IWEUqsIJ2
+    id: ROW-Z9619zO-2paN0QHfgAKMO
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    type: ROW
+  ROW-gGYDRfrs4TAeAsRmwEXQD:
+    children:
+    - CHART-p2kENrU2tXbDxw6IiLJt0
+    id: ROW-gGYDRfrs4TAeAsRmwEXQD
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - ROW-Z9619zO-2paN0QHfgAKMO
+    - COLUMN-_mXTKp2FR0Q4IWEUqsIJ2
+    type: ROW
+  ROW-hn4AnrOjzhq0LQZ1np2nD:
+    children:
+    - CHART-fDk3-pUFJLj3tLHgxx80L
+    id: ROW-hn4AnrOjzhq0LQZ1np2nD
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    type: ROW
+  ROW-nOOhGmVEDZwJSQteTsd9h:
+    children:
+    - CHART-pJeUdC7kziHmr8SYQq5nJ
+    - CHART-Gt5nAQK0ayaUH7Fbkmg_v
+    id: ROW-nOOhGmVEDZwJSQteTsd9h
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    type: ROW
+  ROW-qDVwqO3bi4:
+    children:
+    - CHART-tx3ltU68evzQh0ygEGsl-
+    - CHART-bS-rnvmCdTQSQnH_DVj6O
+    id: ROW-qDVwqO3bi4
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  TAB-WCTW979bVMfJtdcl2kRKH:
+    children:
+    - ROW-UMKNuBBQNEIC85KitKi-h
+    id: TAB-WCTW979bVMfJtdcl2kRKH
+    meta:
+      defaultText: Tab title
+      placeholder: Tab title
+      text: Users
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    type: TAB
+  TAB-a_ASLiELfNiWNHjDQkwnE:
+    children:
+    - ROW-nOOhGmVEDZwJSQteTsd9h
+    id: TAB-a_ASLiELfNiWNHjDQkwnE
+    meta:
+      defaultText: Tab title
+      placeholder: Tab title
+      text: Usage
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    type: TAB
+  TAB-jYaU5R8dHfDveRzAZ6ezW:
+    children:
+    - ROW-Z9619zO-2paN0QHfgAKMO
+    - ROW-hn4AnrOjzhq0LQZ1np2nD
+    id: TAB-jYaU5R8dHfDveRzAZ6ezW
+    meta:
+      defaultText: Tab title
+      placeholder: Tab title
+      text: Location
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - TABS-UDkdlBRw4n
+    type: TAB
+  TABS-UDkdlBRw4n:
+    children:
+    - TAB-WCTW979bVMfJtdcl2kRKH
+    - TAB-jYaU5R8dHfDveRzAZ6ezW
+    - TAB-a_ASLiELfNiWNHjDQkwnE
+    id: TABS-UDkdlBRw4n
+    meta: {}
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: TABS
+metadata:
+  chart_configuration:
+    '178':
+      crossFilters:
+        chartsInScope:
+        - 184
+        - 205
+        - 206
+        - 207
+        - 208
+        - 212
+        - 214
+        scope: global
+      id: 178
+    '184':
+      crossFilters:
+        chartsInScope:
+        - 178
+        - 205
+        - 206
+        - 207
+        - 208
+        - 212
+        - 214
+        scope: global
+      id: 184
+    '205':
+      id: 205
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 184
+        - 206
+        - 207
+        - 208
+        - 212
+        - 214
+    '206':
+      id: 206
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 184
+        - 205
+        - 207
+        - 208
+        - 212
+        - 214
+    '207':
+      id: 207
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 184
+        - 205
+        - 206
+        - 208
+        - 212
+        - 214
+    '212':
+      id: 212
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 184
+        - 205
+        - 206
+        - 207
+        - 208
+        - 214
+    '214':
+      id: 214
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 178
+        - 184
+        - 205
+        - 206
+        - 207
+        - 208
+        - 212
+  color_scheme: supersetColors
+  color_scheme_domain: []
+  cross_filters_enabled: true
+  expanded_slices: {}
+  global_chart_configuration:
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    chartsInScope:
+    - 178
+    - 184
+    - 205
+    - 206
+    - 207
+    - 208
+    - 212
+    - 214
+  label_colors: {}
+  native_filter_configuration:
+  - cascadeParentIds:
+    - NATIVE_FILTER-IfS-Rd0ZS
+    chartsInScope:
+    - 11
+    - 81
+    - 169
+    - 193
+    - 217
+    - 220
+    - 337
+    - 405
+    - 409
+    - 423
+    - 451
+    - 487
+    - 736
+    - 769
+    - 1019
+    - 1039
+    - 1115
+    controlValues:
+      defaultToFirstItem: false
+      enableEmptyFilter: false
+      inverseSelection: false
+      multiSelect: false
+      searchAllOptions: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_select
+    id: NATIVE_FILTER-QrTlO4wBf
+    name: Organization
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - column:
+        name: org
+      datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  - cascadeParentIds:
+    - NATIVE_FILTER-QrTlO4wBf
+    chartsInScope:
+    - 11
+    - 81
+    - 169
+    - 193
+    - 217
+    - 220
+    - 337
+    - 405
+    - 409
+    - 423
+    - 451
+    - 487
+    - 736
+    - 769
+    - 1019
+    - 1039
+    - 1115
+    controlValues:
+      defaultToFirstItem: true
+      enableEmptyFilter: false
+      inverseSelection: false
+      multiSelect: false
+      searchAllOptions: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_select
+    id: NATIVE_FILTER-IfS-Rd0ZS
+    name: Course Name
+    requiredFirst: true
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - column:
+        name: course_name
+      datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  - cascadeParentIds:
+    - NATIVE_FILTER-QrTlO4wBf
+    - NATIVE_FILTER-IfS-Rd0ZS
+    chartsInScope:
+    - 2
+    - 9
+    - 10
+    - 11
+    - 17
+    - 21
+    - 29
+    - 30
+    - 34
+    - 38
+    - 39
+    - 41
+    - 42
+    - 53
+    - 57
+    - 60
+    - 64
+    controlValues:
+      defaultToFirstItem: false
+      enableEmptyFilter: false
+      inverseSelection: false
+      multiSelect: false
+      searchAllOptions: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_select
+    id: NATIVE_FILTER-w863AfFgi
+    name: Course Run
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - column:
+        name: course_run
+      datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  - chartsInScope: []
+    description: ''
+    id: NATIVE_FILTER_DIVIDER-HAScs3d7P
+    scope:
+      excluded: []
+      rootPath:
+      - ROOT_ID
+    tabsInScope: []
+    title: Time filters
+    type: DIVIDER
+  - cascadeParentIds: []
+    chartsInScope:
+    - 30
+    - 41
+    - 62
+    - 63
+    - 83
+    - 86
+    - 87
+    - 90
+    - 92
+    - 95
+    - 100
+    - 238
+    controlValues:
+      enableEmptyFilter: false
+    defaultDataMask:
+      extraFormData: {}
+      filterState: {}
+      ownState: {}
+    description: ''
+    filterType: filter_time
+    id: NATIVE_FILTER-T8dy9gl7K
+    name: Date
+    scope:
+      excluded: []
+      rootPath:
+      - TAB-4ptSkqs5MS
+      - TAB-_Ey4nPhFr
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-5Guk2p9fd
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    - TAB-vze5iq6jg
+    targets:
+    - {}
+    type: NATIVE_FILTER
+  - cascadeParentIds: []
+    chartsInScope:
+    - 30
+    - 62
+    - 90
+    - 100
+    - 104
+    - 238
+    controlValues:
+      enableEmptyFilter: false
+    defaultDataMask:
+      extraFormData:
+        time_grain_sqla: P1M
+      filterState:
+        label: Month
+        value:
+        - P1M
+    description: ''
+    filterType: filter_timegrain
+    id: NATIVE_FILTER-uPaSvFul8
+    name: Time Grain
+    scope:
+      excluded: []
+      rootPath:
+      - TAB-4ptSkqs5MS
+      - TAB-_Ey4nPhFr
+    tabsInScope:
+    - TAB-4ptSkqs5MS
+    - TAB-V5zNdxwhsP
+    - TAB-_Ey4nPhFr
+    - TAB-nqLFUR_Tg
+    targets:
+    - datasetUuid: 38488934-35ee-5404-9acc-7e67626ddfae
+    type: NATIVE_FILTER
+  refresh_frequency: 0
+  shared_label_colors:
+    Count: '#1FA8C9'
+    chat: '#666666'
+    chat_functions: '#FF7F44'
+    demo-box-chat-summary: '#5AC189'
+    demo-educator-assistant: '#1FA8C9'
+    demo-flashcards: '#454E7C'
+    demo-mocked-streaming: '#E04355'
+    total_tokens: '#1FA8C9'
+    total_tokens_sum: '#454E7C'
+    unique_actors: '#1FA8C9'
+  timed_refresh_immune_slices: []
+  default_filters: '{}'
+version: 1.0.0
+
