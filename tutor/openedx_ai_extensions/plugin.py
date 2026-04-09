@@ -69,8 +69,6 @@ hooks.Filters.ENV_TEMPLATE_ROOTS.add_items(
 hooks.Filters.ENV_TEMPLATE_TARGETS.add_items(
     [
         ("openedx-ai-extensions/build", "plugins"),
-        ("openedx-ai-extensions/build", "plugins"),
-        # Bake assets into the aspects-superset Docker image build context
         ("openedx-ai-extensions/build/assets", "plugins"),
     ],
 )
