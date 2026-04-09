@@ -289,7 +289,7 @@ metrics:
 normalize_columns: true
 offset: 0
 params: null
-schema: '{{ ASPECTS_XAPI_DATABASE }}'
+schema: '{{ ASPECTS_XAPI_DATABASE | default("xapi") }}'
 sql: |-
   SELECT
       event_id,
@@ -308,8 +308,8 @@ sql: |-
       nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".completion_tokens') AS Nullable(Int64)), 0) AS completion_tokens,
       nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".total_tokens') AS Nullable(Int64)), 0) AS total_tokens,
       nullIf(CAST(JSON_VALUE(event, '$.object.definition.extensions."https://w3id.org/xapi/openedx/extension/ai-usage".cost') AS Nullable(Float64)), 0) AS llm_cost
-  FROM {{ ASPECTS_XAPI_DATABASE }}.xapi_events_all_parsed xapi
-  LEFT JOIN {{ ASPECTS_EVENT_SINK_DATABASE }}.dim_course_names course_info ON course_info.course_key = xapi.course_key
+  FROM {{ ASPECTS_XAPI_DATABASE | default("xapi") }}.xapi_events_all_parsed xapi
+  LEFT JOIN {{ ASPECTS_EVENT_SINK_DATABASE | default("event_sink") }}.dim_course_names course_info ON course_info.course_key = xapi.course_key
   WHERE
       JSON_VALUE(event, '$.object.definition.type') = 'https://w3id.org/xapi/openedx/activity/ai-workflow'
 table_name: fact_ai_workflow_interactions
