@@ -52,14 +52,10 @@ class OpenEdXProcessor:
         "function": {
             "name": "get_location_content",
             "description": (
-                "Get published Open edX course content into an text format."
-                "This function reads the *actual published content* of a course unit (or other"
-                "course block) exactly as it is visible to the learner in the browser and"
-                "converts it into a structured format suitable for LLM processing."
-
-                "Use this function whenever an answer depends on the specific text, questions,"
-                "instructions, or structure of the course content the user is currently viewing."
-                "Do NOT rely on prior knowledge, assumptions, or summaries of the course."
+                "Get published Open edX course content. "
+                "This function reads the content of course unit(s) and "
+                "converts it into a structured format suitable for LLM processing. "
+                "Can retrieve just the current unit, units up to the current one, or the entire sequence."
             ),
             "parameters": {
                 "type": "object",
@@ -70,14 +66,23 @@ class OpenEdXProcessor:
                             "The string representation of the location ID, "
                             "if not provided uses the current location"
                         )
+                    },
+                    "retrieval_mode": {
+                        "type": "string",
+                        "enum": ["unit", "up_to_current_unit", "sequence"],
+                        "description": (
+                            "How much content to retrieve: "
+                            "'unit' (current only), 'up_to_current_unit' (sequence up to current), "
+                            "or 'sequence' (entire sequence)."
+                        )
                     }
                 },
                 "required": []
             }
         }
     })
-    def get_location_content(self, location_id=None):
-        """Extract unit content from Open edX modulestore"""
+    def get_location_content(self, location_id=None, retrieval_mode=None):
+        """Extract unit or sequence content from Open edX modulestore based on configuration"""
         try:
             # pylint: disable=import-error,import-outside-toplevel
             from xmodule.modulestore.django import modulestore
@@ -88,27 +93,59 @@ class OpenEdXProcessor:
 
             unit_key = UsageKey.from_string(location_id)
             store = modulestore()
-            unit = store.get_item(unit_key)
 
-            unit_info = {
-                "unit_id": str(unit.location),
-                "display_name": unit.display_name,
-                "category": unit.category,
-                "blocks": [],
-            }
+            # Get retrieval_mode from arg or config, default to 'unit'
+            retrieval_mode = retrieval_mode or self.config.get("retrieval_mode", "unit")
 
-            for child_key in getattr(unit, "children", []):
-                block_info = self._extract_block(store, child_key)
-                if block_info:
-                    unit_info["blocks"].append(block_info)
+            if retrieval_mode in ("sequence", "up_to_current_unit"):
+                parent_key = store.get_parent_location(unit_key)
+                if parent_key:
+                    sequence = store.get_item(parent_key)
+                    children = getattr(sequence, "children", [])
 
-            if char_limit:
-                self._truncate_unit_text(unit_info, char_limit)
+                    if retrieval_mode == "up_to_current_unit":
+                        # Find the index of the current unit in the sequence
+                        try:
+                            current_index = children.index(unit_key)
+                            children = children[:current_index + 1]
+                        except ValueError:
+                            # Fallback if the unit isn't found in the parent's children
+                            return self._get_unit_data(store, unit_key, char_limit)
 
-            return unit_info
+                    return {
+                        "sequence_id": str(sequence.location),
+                        "display_name": sequence.display_name,
+                        "retrieval_mode": retrieval_mode,
+                        "units": [
+                            self._get_unit_data(store, child_key, char_limit)
+                            for child_key in children
+                        ]
+                    }
+
+            return self._get_unit_data(store, unit_key, char_limit)
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             return {"error": f"Error accessing content: {str(exc)}"}
+
+    def _get_unit_data(self, store, unit_key, char_limit=None):
+        """Extract content for a single unit"""
+        unit = store.get_item(unit_key)
+        unit_info = {
+            "unit_id": str(unit.location),
+            "display_name": unit.display_name,
+            "category": unit.category,
+            "blocks": [],
+        }
+
+        for child_key in getattr(unit, "children", []):
+            block_info = self._extract_block(store, child_key)
+            if block_info:
+                unit_info["blocks"].append(block_info)
+
+        if char_limit:
+            self._truncate_unit_text(unit_info, char_limit)
+
+        return unit_info
 
     def _extract_block(self, store, block_key):
         """Helper to extract block info safely"""
