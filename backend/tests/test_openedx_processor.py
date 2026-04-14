@@ -45,9 +45,12 @@ def mock_keys():
     """
     with patch("openedx_ai_extensions.processors.openedx.openedx_processor.UsageKey") as mock_usage:
         with patch("openedx_ai_extensions.processors.openedx.openedx_processor.CourseLocator") as mock_course:
-            # Setup default return values for keys so they act like valid objects
-            mock_usage.from_string.return_value = MagicMock(name="UnitUsageKey")
-            mock_course.from_string.return_value = MagicMock(name="CourseKey")
+            class MockKey(str):
+                def make_usage_key(self, *args, **kwargs):
+                    return MockKey("mock-usage-key")
+
+            mock_usage.from_string.side_effect = MockKey
+            mock_course.from_string.side_effect = MockKey
             yield mock_usage, mock_course
 
 
@@ -98,6 +101,163 @@ def test_get_location_content_success(mock_edx_imports, mock_keys):
     assert result.get("display_name") == "Test Unit"
     assert len(result["blocks"]) == 1
     assert result["blocks"][0]["text"] == "Block Content"
+
+
+def test_get_location_content_sequence_mode_success(mock_edx_imports, mock_keys):
+    """Test successful sequence content extraction in sequence mode."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from xmodule.modulestore.django import modulestore
+
+    config = {"OpenEdXProcessor": {"retrieval_mode": "sequence"}}
+    test_processor = OpenEdXProcessor(processor_config=config)
+
+    mock_unit = MagicMock()
+    mock_unit.location = "unit-loc"
+    mock_unit.display_name = "Test Unit"
+    mock_unit.category = "vertical"
+    mock_unit.children = ["block-1"]
+
+    mock_sequence = MagicMock()
+    mock_sequence.location = "seq-loc"
+    mock_sequence.display_name = "Test Sequence"
+    mock_sequence.children = ["unit-loc", "unit-loc-2"]
+
+    mock_unit_2 = MagicMock()
+    mock_unit_2.location = "unit-loc-2"
+    mock_unit_2.display_name = "Test Unit 2"
+    mock_unit_2.category = "vertical"
+    mock_unit_2.children = ["block-2"]
+
+    mock_store = modulestore.return_value
+    mock_store.get_parent_location.return_value = "seq-loc"
+
+    # Configure get_item to return different items based on key
+    def get_item_side_effect(key):
+        if key == "seq-loc":
+            return mock_sequence
+        if key == "unit-loc-2":
+            return mock_unit_2
+        return mock_unit
+
+    mock_store.get_item.side_effect = get_item_side_effect
+
+    with patch.object(test_processor, '_extract_block') as mock_extract:
+        mock_extract.side_effect = [
+            {"text": "Unit 1 Block"},
+            {"text": "Unit 2 Block"}
+        ]
+        result = test_processor.get_location_content("unit-loc")
+
+    assert result.get("retrieval_mode") == "sequence"
+    assert result.get("display_name") == "Test Sequence"
+    assert len(result["units"]) == 2
+    assert result["units"][0]["display_name"] == "Test Unit"
+    assert result["units"][1]["display_name"] == "Test Unit 2"
+
+
+def test_get_location_content_up_to_current_unit_mode_success(mock_edx_imports, mock_keys):
+    """Test successful sequence content extraction in up_to_current_unit mode."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from xmodule.modulestore.django import modulestore
+
+    config = {"OpenEdXProcessor": {"retrieval_mode": "up_to_current_unit"}}
+    test_processor = OpenEdXProcessor(processor_config=config)
+
+    mock_unit = MagicMock()
+    mock_unit.location = "unit-loc"
+    mock_unit.display_name = "Test Unit"
+    mock_unit.category = "vertical"
+    mock_unit.children = ["block-1"]
+
+    mock_unit_2 = MagicMock()
+    mock_unit_2.location = "unit-loc-2"
+    mock_unit_2.display_name = "Test Unit 2"
+
+    mock_sequence = MagicMock()
+    mock_sequence.location = "seq-loc"
+    mock_sequence.display_name = "Test Sequence"
+    mock_sequence.children = ["unit-loc", "unit-loc-2", "unit-loc-3"]
+
+    mock_store = modulestore.return_value
+    mock_store.get_parent_location.return_value = "seq-loc"
+
+    def get_item_side_effect(key):
+        if key == "seq-loc":
+            return mock_sequence
+        if key == "unit-loc-2":
+            return mock_unit_2
+        return mock_unit
+
+    mock_store.get_item.side_effect = get_item_side_effect
+
+    with patch.object(test_processor, '_extract_block', return_value={"text": "Block Content"}):
+        # We search for unit-loc-2, so we expect unit-loc and unit-loc-2
+        result = test_processor.get_location_content("unit-loc-2")
+
+    assert result.get("retrieval_mode") == "up_to_current_unit"
+    assert len(result["units"]) == 2
+    assert result["units"][0]["display_name"] == "Test Unit"
+    assert result["units"][1]["display_name"] == "Test Unit 2"
+
+
+def test_get_location_content_retrieval_mode_from_argument(mock_edx_imports, mock_keys):
+    """Test that retrieval_mode from argument overrides config."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from xmodule.modulestore.django import modulestore
+
+    config = {"OpenEdXProcessor": {"retrieval_mode": "unit"}}
+    test_processor = OpenEdXProcessor(processor_config=config)
+
+    mock_unit = MagicMock()
+    mock_unit.location = "unit-loc"
+    mock_unit.display_name = "Test Unit"
+
+    mock_sequence = MagicMock()
+    mock_sequence.location = "seq-loc"
+    mock_sequence.display_name = "Test Sequence"
+    mock_sequence.children = ["unit-loc"]
+
+    mock_store = modulestore.return_value
+    mock_store.get_parent_location.return_value = "seq-loc"
+    mock_store.get_item.side_effect = lambda key: mock_sequence if key == "seq-loc" else mock_unit
+
+    with patch.object(test_processor, '_extract_block', return_value={"text": "Block Content"}):
+        # Override 'unit' config with 'sequence' argument
+        result = test_processor.get_location_content("unit-loc", retrieval_mode="sequence")
+
+    assert result.get("retrieval_mode") == "sequence"
+    assert "units" in result
+
+
+def test_get_location_content_sequence_mode_no_parent(mock_edx_imports, mock_keys):
+    """Test that sequence mode falls back to unit if no parent is found."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from xmodule.modulestore.django import modulestore
+
+    config = {"OpenEdXProcessor": {"retrieval_mode": "sequence"}}
+    test_processor = OpenEdXProcessor(processor_config=config)
+
+    mock_unit = MagicMock()
+    mock_unit.location = "unit-loc"
+    mock_unit.display_name = "Test Unit"
+    mock_unit.category = "vertical"
+    mock_unit.children = ["block-1"]
+
+    mock_store = modulestore.return_value
+    mock_store.get_parent_location.return_value = None
+    mock_store.get_item.return_value = mock_unit
+
+    with patch.object(test_processor, '_extract_block', return_value={"text": "Block Content"}):
+        result = test_processor.get_location_content("unit-loc")
+
+    # Should fall back to unit data
+    assert "units" not in result
+    assert result.get("display_name") == "Test Unit"
+    assert len(result["blocks"]) == 1
 
 
 def test_get_location_content_truncation(mock_edx_imports, mock_keys):

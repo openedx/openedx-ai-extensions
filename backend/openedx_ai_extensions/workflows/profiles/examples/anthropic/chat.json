@@ -5,7 +5,8 @@ Test experience. Ask claude to chat having given it the current unit context
   "orchestrator_class": "ThreadedLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_location_content"
+      "function": "get_location_content",
+      "retrieval_mode": "unit" // Options: unit, sequence, up_to_current_unit
     },
     "LLMProcessor": {
       "function": "chat_with_context",

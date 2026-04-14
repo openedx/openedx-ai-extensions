@@ -8,7 +8,8 @@ See: https://gist.github.com/felipemontoya/509495d3fbaa696fa2b684880a8388da
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_location_content"
+      "function": "get_location_content",
+      "retrieval_mode": "unit" // Options: unit, sequence, up_to_current_unit
     },
     "LLMProcessor": {
       "function": "summarize_content",
