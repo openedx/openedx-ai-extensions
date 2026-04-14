@@ -7,7 +7,8 @@ Works only in studio UI and over the CMS service_variant.
   "orchestrator_class": "EducatorAssistantOrchestrator",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_location_content"
+      "function": "get_location_content",
+      "retrieval_mode": "unit" // Options: unit, sequence, up_to_current_unit
     },
     "EducatorAssistantProcessor": {
       "function": "generate_quiz_questions",

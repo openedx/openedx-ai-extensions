@@ -7,7 +7,8 @@ have it explain in a different with this prompt.
   "orchestrator_class": "DirectLLMResponse",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_location_content"
+      "function": "get_location_content",
+      "retrieval_mode": "unit" // Options: unit, sequence, up_to_current_unit
     },
     "LLMProcessor": {
       "provider": "default",
