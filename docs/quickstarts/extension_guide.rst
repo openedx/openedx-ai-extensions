@@ -243,7 +243,7 @@ In your ``frontend/src/index.tsx`` (or your plugin's entry point):
 
 .. code-block:: tsx
 
-   import { registerComponents } from '@openedx/openedx-ai-extensions-ui';
+   import { registerComponents, REGISTRY_NAMES } from '@openedx/openedx-ai-extensions-ui';
    import MyRequestComponent from './components/MyRequestComponent';
    import MyIndependentTabComponent from './components/MyIndependentTabComponent';
 
@@ -253,7 +253,7 @@ In your ``frontend/src/index.tsx`` (or your plugin's entry point):
    });
 
    // Register a specialized entry (for example, a new tab in AI Settings).
-   registerComponents('settings', {
+   registerComponents(REGISTRY_NAMES.SETTINGS, {
      id: 'my-plugin-id',
      label: 'My AI Plugin',
      component: MyIndependentTabComponent,

@@ -288,6 +288,9 @@ To target multiple specific units, use the OR operator (``|``):
 
 This matches any unit with one of the three specified block IDs.
 
+.. note::
+   **Course ID is required** when using Location regex. Saving a scope with Location regex set but Course ID empty will fail with a validation error.
+
 .. warning::
    Location regex is a powerful but technical feature. Test your regex patterns carefully to ensure they match the intended units.
 
