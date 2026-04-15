@@ -82,6 +82,9 @@ Creating the Scope
    - **Course ID**: Leave empty (applies to all courses), or :ref:`target specific courses <target-specific-courses>`
    - **Location regex**: Leave empty (applies to all units), or :ref:`target specific units <target-specific-units>`
    - **Profile**: Select the profile you just created using the name you chose in the **Slug** field
+   - **UI slot selector ID**: Enter the ``id`` of the frontend widget that should render this workflow.
+     See :ref:`ui-slot-selector-id` for details.
+   - **Enabled**: Leave checked to activate the scope immediately
 
 3. Click :guilabel:`Save`
 
@@ -134,8 +137,11 @@ Creating the Scope
 
    - **Service variant**: Select ``CMS - Studio``
    - **Course ID**: Leave empty (applies to all courses in Studio), or :ref:`target specific courses <target-specific-courses>`
-   - **Location regex**: Leave empty - there is no targeting locations in the Studio context
+   - **Location regex**: Leave empty — location targeting is not used in the Studio context
    - **Profile**: Select the profile you just created
+   - **UI slot selector ID**: Enter the ``id`` of the frontend widget that should render this workflow.
+     See :ref:`ui-slot-selector-id` for details.
+   - **Enabled**: Leave checked to activate the scope immediately
 
 3. Click :guilabel:`Save`
 
@@ -149,6 +155,75 @@ Navigate to a course in Studio. You should see the AI assistant interface availa
 
 Advanced Configuration
 **********************
+
+.. _ui-slot-selector-id:
+
+Using the UI Slot Selector ID
+==============================
+
+The **UI Slot Selector ID** field controls which frontend widget renders a given scope.
+It does **not** refer to the Open edX UI slot (e.g. ``openedx.learning.unit.header.slot.v1``).
+It refers to the ``id`` property of the widget that is inserted into that slot via the
+plugin operations system:
+
+.. code-block:: javascript
+
+   op: PLUGIN_OPERATIONS.Insert,
+   widget: {
+     id: 'ai-assist-button',   // ← this is the UI Slot Selector ID
+     priority: 10,
+     type: DIRECT_PLUGIN,
+     RenderWidget: ConfigurableAIAssistance,
+   }
+
+Every widget sends its own ``id`` with each backend request. The backend only returns a
+scope whose **UI Slot Selector ID** exactly matches that value. This guarantees that each
+widget on the page receives its own independently configured workflow.
+
+Common widget IDs
+-----------------
+
+The most commonly used widget IDs are:
+
+.. code-block:: text
+
+   ai-assist-button                      ← LMS unit-level AI assistant
+   ai-assist-button-course-outline-sidebar  ← Studio course outline sidebar
+
+A less common one is ``ai-extensions-settings-card``. Additional IDs may be in use
+depending on your installation. The Django admin field auto-suggests all values it finds
+in existing scope records, so the available options grow as you configure more scopes.
+
+Wildcards (empty value)
+-----------------------
+
+If you leave **UI Slot Selector ID** empty, the scope will match *any* widget that does
+not find a more specific scope for its widget ID. This is a convenient shortcut for
+simple deployments, but it means any new widget you add later may unexpectedly receive
+the same workflow.
+
+For production deployments, always set an explicit **UI Slot Selector ID** so scope
+resolution is predictable.
+
+Scope resolution and specificity
+---------------------------------
+
+When multiple scopes could match a request, the backend selects the most *specific* one
+using a weighted score:
+
++--------------------+--------+
+| Field              | Weight |
++====================+========+
+| Location regex     | +4     |
++--------------------+--------+
+| Course ID          | +2     |
++--------------------+--------+
+| UI Slot Selector   | +1     |
++--------------------+--------+
+
+A scope with all three fields set outranks one that only sets two, and so on. The
+**Specificity index** column in the Django admin list view shows the computed score for
+each scope (read-only; updated automatically on save).
 
 .. _target-specific-courses:
 
@@ -212,6 +287,9 @@ To target multiple specific units, use the OR operator (``|``):
    .*(a3ada3c77ab74014aa620f3c494e5558|30b3cb3f372a493589a9632c472550a7|7f8e9d6c5b4a3210fedcba9876543210)
 
 This matches any unit with one of the three specified block IDs.
+
+.. note::
+   **Course ID is required** when using Location regex. Saving a scope with Location regex set but Course ID empty will fail with a validation error.
 
 .. warning::
    Location regex is a powerful but technical feature. Test your regex patterns carefully to ensure they match the intended units.
