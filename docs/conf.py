@@ -566,3 +566,5 @@ def setup(app):
     """Sphinx extension: run sphinx-apidoc."""
     event = 'builder-inited'
     app.connect(event, on_init)
+
+// Contributed via automated bounty system
