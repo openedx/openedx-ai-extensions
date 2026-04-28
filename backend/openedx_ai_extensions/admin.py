@@ -516,7 +516,7 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
                 session_data["remote_thread_error"] = str(e)
 
             try:
-                session_data["combined_thread"] = session.get_combined_thread()
+                session_data["combined_thread"] = session.get_debug_thread()
             except Exception as e:  # pylint: disable=broad-exception-caught
                 _logger.exception(
                     "Error building combined thread for session %s", session.id
