@@ -15,10 +15,10 @@ The plugin uses three main configuration concepts:
 
    .. code-block:: yaml
 
-         AI_EXTENSIONS:
-         provider:
-            API_KEY: "sk-proj-your-api-key"
-            MODEL: "provider/your-model"
+      AI_EXTENSIONS:
+        provider:
+          API_KEY: "sk-proj-your-api-key"
+          MODEL: "provider/your-model"
 
 **Profile**
    Defines the **what** - what the AI will be instructed to do and which information it will have access to.
@@ -29,9 +29,15 @@ The plugin uses three main configuration concepts:
      :alt: Profile configuration view showing base template and effective configuration
 
 **Scope**
-   Defines the **where** - the context in which an AI workflow will be visible and usable (LMS/CMS, specific course, location).
+   Defines the **where** - the context in which an AI workflow will be visible and usable (LMS/CMS, specific course, location, and frontend widget).
 
-   Example usage in Django Admin, where a *scope* is defined for a location (blank for all locations, or a :ref:`specific unit <target-specific-units>`) and resource (blank for all courses, or a :ref:`specific course key <target-specific-courses>`).
+   A scope has three matching dimensions:
+
+   - **UI Slot Selector ID**: The ``id`` of the frontend widget that should render the workflow (see :ref:`ui-slot-selector-id`).
+   - **Course ID**: Optionally limits the scope to a specific course.
+   - **Location regex**: Optionally limits the scope to specific units within a course.
+
+   Example usage in Django Admin, where a *scope* is defined with a widget ID, and optionally for a :ref:`specific course <target-specific-courses>` or :ref:`specific unit <target-specific-units>`.
 
    .. image:: /_static/screenshots/scope_create.png
       :alt: Create new scope interface
