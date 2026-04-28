@@ -190,7 +190,7 @@ The most commonly used widget IDs are:
    ai-assist-button                      ← LMS unit-level AI assistant
    ai-assist-button-course-outline-sidebar  ← Studio course outline sidebar
 
-A less common one is ``ai-extensions-settings-card``. Additional IDs may be in use
+A less common one is ``ai-extensions-settings-card``, which appears as a new card in the Pages & Resources view in Studio. Additional IDs may be in use
 depending on your installation. The Django admin field auto-suggests all values it finds
 in existing scope records, so the available options grow as you configure more scopes.
 
