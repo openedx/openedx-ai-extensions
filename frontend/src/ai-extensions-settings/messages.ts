@@ -57,7 +57,7 @@ const messages = defineMessages({
   },
   'openedx-ai-extensions.settings-modal.workflows.profiles.error': {
     id: 'openedx-ai-extensions.settings-modal.workflows.profiles.error',
-    defaultMessage: 'Failed to load profiles. Please try again.',
+    defaultMessage: 'Failed to load profiles. Please check your permissions and try again.',
     description: 'Error message shown when the profiles list request fails',
   },
   'openedx-ai-extensions.settings-modal.workflows.profiles.config-label': {

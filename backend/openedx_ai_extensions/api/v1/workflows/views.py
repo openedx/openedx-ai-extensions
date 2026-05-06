@@ -12,13 +12,15 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils.decorators import method_decorator
 from django.views import View
-from opaque_keys import InvalidKeyError
-from opaque_keys.edx.keys import CourseKey, UsageKey
 from rest_framework import status
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from openedx_ai_extensions.api.v1.workflows.permissions import (
+    CourseAdvancedSettingsPermission,
+    get_context_from_request,
+)
 from openedx_ai_extensions.decorators import handle_ai_errors
 from openedx_ai_extensions.models import PromptTemplate
 from openedx_ai_extensions.utils import is_generator
@@ -32,59 +34,6 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def get_context_from_request(request):
-    """
-    Extract and validate context from request query parameters.
-
-    Validates course_id and location_id formats using Open edX opaque_keys.
-    Returns a dict with snake_case keys.
-
-    Args:
-        request: Django request object with query parameters
-
-    Returns:
-        dict: Context with validated course_id and location_id in snake_case
-
-    Raises:
-        ValidationError: If course_id or location_id are invalid
-    """
-    if hasattr(request, "GET"):
-        context_str = request.GET.get("context", "{}")
-    else:
-        context_str = request.query_params.get("context", "{}")
-
-    try:
-        context = json.loads(context_str)
-    except json.JSONDecodeError as e:
-        raise ValidationError("Invalid JSON format in 'context' parameter.") from e
-    validated_context = {}
-
-    # Validate and convert courseId to course_id
-    course_id_raw = context.get("courseId") or context.get("course_id")
-    if course_id_raw:
-        try:
-            CourseKey.from_string(course_id_raw)
-            validated_context["course_id"] = course_id_raw
-        except InvalidKeyError as e:
-            raise ValidationError(f"Invalid course_id format: {course_id_raw}") from e
-
-    # Validate and convert locationId to location_id
-    location_id_raw = context.get("locationId") or context.get("location_id")
-    if location_id_raw:
-        try:
-            UsageKey.from_string(location_id_raw)
-            validated_context["location_id"] = location_id_raw
-        except InvalidKeyError as e:
-            raise ValidationError(f"Invalid location_id format: {location_id_raw}") from e
-
-    # Pass ui_slot_selector_id as-is (plain string, no special validation needed)
-    ui_slot_selector_id_raw = context.get("uiSlotSelectorId") or context.get("ui_slot_selector_id")
-    if ui_slot_selector_id_raw:
-        validated_context["ui_slot_selector_id"] = str(ui_slot_selector_id_raw)
-
-    return validated_context
 
 
 @method_decorator(login_required, name="dispatch")
@@ -186,10 +135,7 @@ class AIWorkflowProfilesListView(APIView):
     — the intended call pattern for the Studio settings panel.
     """
 
-    # TODO: elevate to course-staff permission once the edxapp_wrapper provides a
-    # has_course_author_access integration. Requires common.djangoapps.student.roles
-    # (edx-platform) which is not a standalone dependency of this plugin.
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CourseAdvancedSettingsPermission]
 
     def get(self, request):
         """
@@ -261,10 +207,7 @@ class PromptTemplateDetailView(APIView):
     ``GET /v1/prompts/<uuid>/``
     """
 
-    # Staff-only for now.
-    # TODO: replace with fine-grained openedx-authz permission (course-staff /
-    # content-author) once the openedx-authz integration is in place.
-    permission_classes = [IsAdminUser]
+    permission_classes = [CourseAdvancedSettingsPermission]
 
     def _get_template(self, identifier):
         """
