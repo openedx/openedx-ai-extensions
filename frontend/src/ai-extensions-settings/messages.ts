@@ -124,6 +124,40 @@ const messages = defineMessages({
     defaultMessage: 'Failed to save prompt. Please try again.',
     description: 'Error message shown when the save request fails',
   },
+
+  // Confirmation modal for saving a shared prompt template
+  'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-title': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-title',
+    defaultMessage: 'Save shared prompt?',
+    description: 'Title of the confirmation modal shown before saving a prompt used by multiple profiles',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-body': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-body',
+    defaultMessage: 'This prompt is used by {count, plural, one {1 profile} other {{count} profiles}}. Saving will affect all of them.',
+    description: 'Body of the confirmation modal shown before saving a shared prompt template',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-cancel': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-cancel',
+    defaultMessage: 'Cancel',
+    description: 'Cancel button label in the shared-prompt save confirmation modal',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-confirm': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-confirm',
+    defaultMessage: 'Save anyway',
+    description: 'Confirm button label in the shared-prompt save confirmation modal',
+  },
+
+  // Usage counts
+  'openedx-ai-extensions.settings-modal.workflows.prompt.usage-profiles': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.usage-profiles',
+    defaultMessage: 'Used by {count, plural, one {1 profile} other {{count} profiles}}',
+    description: 'Badge showing how many AI workflow profiles reference this prompt template',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.profile.usage-scopes': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.profile.usage-scopes',
+    defaultMessage: '{count, plural, one {1 scope} other {{count} scopes}}',
+    description: 'Badge showing how many scopes link to this AI workflow profile',
+  },
 });
 
 export default messages;

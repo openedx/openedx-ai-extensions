@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
-  Alert, Badge, Button, Form, OverlayTrigger, Spinner, Tooltip,
+  ActionRow, Alert, Badge, Button, Form, ModalDialog, OverlayTrigger, Spinner, Tooltip,
 } from '@openedx/paragon';
 import { AIWorkflowProfile, PluginContext, PromptTemplate } from '../../types';
 import {
@@ -71,10 +71,12 @@ const PromptView = ({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const isDirty = body !== baseline;
+  const isShared = (data.usage?.profileCount ?? 0) > 1;
 
-  const handleSave = async () => {
+  const doSave = async () => {
     setSaving(true);
     setSaveError(null);
     try {
@@ -86,6 +88,14 @@ const PromptView = ({
       setSaveError(intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.save-error']));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (isShared) {
+      setShowConfirm(true);
+    } else {
+      doSave();
     }
   };
 
@@ -127,6 +137,14 @@ const PromptView = ({
       {saveError && <Alert variant="danger" className="mb-2">{saveError}</Alert>}
 
       <div className="d-flex justify-content-end align-items-center" style={{ gap: '0.75rem' }}>
+        {data.usage !== undefined && (
+          <Badge variant={data.usage.profileCount > 1 ? 'warning' : 'light'}>
+            {intl.formatMessage(
+              messages['openedx-ai-extensions.settings-modal.workflows.prompt.usage-profiles'],
+              { count: data.usage.profileCount },
+            )}
+          </Badge>
+        )}
         {saved && <span className="small text-success">{intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.saved'])}</span>}
         <Button
           variant="primary"
@@ -139,6 +157,38 @@ const PromptView = ({
             : intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.save'])}
         </Button>
       </div>
+
+      <ModalDialog
+        title={intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-title'])}
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        hasCloseButton
+      >
+        <ModalDialog.Header>
+          <ModalDialog.Title>
+            {intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-title'])}
+          </ModalDialog.Title>
+        </ModalDialog.Header>
+        <ModalDialog.Body>
+          <p>
+            {intl.formatMessage(
+              messages['openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-body'],
+              { count: data.usage?.profileCount ?? 0 },
+            )}
+          </p>
+        </ModalDialog.Body>
+        <ModalDialog.Footer>
+          <ActionRow>
+            <ActionRow.Spacer />
+            <Button variant="tertiary" onClick={() => setShowConfirm(false)}>
+              {intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-cancel'])}
+            </Button>
+            <Button variant="primary" onClick={() => { setShowConfirm(false); doSave(); }}>
+              {intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.confirm-save-confirm'])}
+            </Button>
+          </ActionRow>
+        </ModalDialog.Footer>
+      </ModalDialog>
     </div>
   );
 };
@@ -357,7 +407,21 @@ const WorkflowsConfigTab = () => {
               flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column',
             }}
             >
-              {view === 'profile' && <JsonViewer content={configJson} />}
+              {view === 'profile' && (
+                <>
+                  <JsonViewer content={configJson} />
+                  {selected.usage !== undefined && (
+                    <div className="d-flex align-items-center px-4 py-2 border-top" style={{ flexShrink: 0, gap: '0.75rem' }}>
+                      <Badge variant="secondary">
+                        {intl.formatMessage(
+                          messages['openedx-ai-extensions.settings-modal.workflows.profile.usage-scopes'],
+                          { count: selected.usage.scopeCount },
+                        )}
+                      </Badge>
+                    </div>
+                  )}
+                </>
+              )}
               {view === 'scopes' && <JsonViewer content={scopesJson} />}
               {view === 'prompt' && renderPromptContent()}
             </div>

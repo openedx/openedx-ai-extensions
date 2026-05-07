@@ -49,6 +49,7 @@ export interface PromptTemplate {
   body: string;
   createdAt: string;
   updatedAt: string;
+  usage?: { profileCount: number };
 }
 
 export interface AIWorkflowScope {
@@ -67,6 +68,7 @@ export interface AIWorkflowProfile {
   description: string | null;
   effectiveConfig: Record<string, any>;
   scopes: AIWorkflowScope[];
+  usage?: { scopeCount: number };
 }
 
 export interface ProfilesListResponse {
