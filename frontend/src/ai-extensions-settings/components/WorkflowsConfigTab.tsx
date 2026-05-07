@@ -65,6 +65,7 @@ const PromptView = ({
   identifier: string;
   contextData: PluginContext;
 }) => {
+  const intl = useIntl();
   const [body, setBody] = useState(data.body);
   const [baseline, setBaseline] = useState(data.body);
   const [saving, setSaving] = useState(false);
@@ -82,7 +83,7 @@ const PromptView = ({
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      setSaveError('Failed to save prompt. Please try again.');
+      setSaveError(intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.save-error']));
     } finally {
       setSaving(false);
     }
@@ -103,17 +104,17 @@ const PromptView = ({
 
       <div className="d-flex mb-4 small" style={{ gap: '2rem' }}>
         <div>
-          <span className="text-muted mr-2">Created</span>
+          <span className="text-muted mr-2">{intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.created-label'])}</span>
           <RelativeDate dateStr={data.createdAt} />
         </div>
         <div>
-          <span className="text-muted mr-2">Updated</span>
+          <span className="text-muted mr-2">{intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.updated-label'])}</span>
           <RelativeDate dateStr={data.updatedAt} />
         </div>
       </div>
 
       <Form.Group className="mb-3">
-        <Form.Label>Prompt body</Form.Label>
+        <Form.Label>{intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.body-label'])}</Form.Label>
         <Form.Control
           as="textarea"
           rows={12}
@@ -126,14 +127,16 @@ const PromptView = ({
       {saveError && <Alert variant="danger" className="mb-2">{saveError}</Alert>}
 
       <div className="d-flex justify-content-end align-items-center" style={{ gap: '0.75rem' }}>
-        {saved && <span className="small text-success">Saved!</span>}
+        {saved && <span className="small text-success">{intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.saved'])}</span>}
         <Button
           variant="primary"
           size="sm"
           onClick={handleSave}
           disabled={saving || !isDirty}
         >
-          {saving ? <><Spinner animation="border" size="sm" className="mr-2" />Saving…</> : 'Save'}
+          {saving
+            ? <><Spinner animation="border" size="sm" className="mr-2" />{intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.saving'])}</>
+            : intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.save'])}
         </Button>
       </div>
     </div>
@@ -286,7 +289,7 @@ const WorkflowsConfigTab = () => {
       return (
         <div className="p-4 d-flex align-items-center">
           <Spinner animation="border" size="sm" />
-          <span className="ml-2">Loading prompt…</span>
+          <span className="ml-2">{intl.formatMessage(messages['openedx-ai-extensions.settings-modal.workflows.prompt.loading'])}</span>
         </div>
       );
     }
@@ -343,10 +346,9 @@ const WorkflowsConfigTab = () => {
                   size="sm"
                   variant={view === v ? 'primary' : 'tertiary'}
                   onClick={() => setView(v)}
-                  className="text-capitalize"
                   disabled={v === 'prompt' && !promptTemplate}
                 >
-                  {v}
+                  {intl.formatMessage(messages[`openedx-ai-extensions.settings-modal.workflows.view.${v}`])}
                 </Button>
               ))}
             </div>

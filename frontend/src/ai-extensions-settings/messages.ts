@@ -65,6 +65,65 @@ const messages = defineMessages({
     defaultMessage: 'Configuration',
     description: 'Label for the effective configuration section of a profile card',
   },
+
+  // Profile detail view tab labels
+  'openedx-ai-extensions.settings-modal.workflows.view.profile': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.view.profile',
+    defaultMessage: 'Profile',
+    description: 'Tab label for the profile configuration view',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.view.scopes': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.view.scopes',
+    defaultMessage: 'Scopes',
+    description: 'Tab label for the profile scopes view',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.view.prompt': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.view.prompt',
+    defaultMessage: 'Prompt',
+    description: 'Tab label for the prompt template editor view',
+  },
+
+  // Prompt template editor
+  'openedx-ai-extensions.settings-modal.workflows.prompt.loading': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.loading',
+    defaultMessage: 'Loading prompt…',
+    description: 'Loading message while fetching the prompt template',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.created-label': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.created-label',
+    defaultMessage: 'Created',
+    description: 'Label for the prompt template creation date',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.updated-label': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.updated-label',
+    defaultMessage: 'Updated',
+    description: 'Label for the prompt template last-updated date',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.body-label': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.body-label',
+    defaultMessage: 'Prompt body',
+    description: 'Label for the prompt body textarea',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.save': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.save',
+    defaultMessage: 'Save',
+    description: 'Label for the save button in the prompt editor',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.saving': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.saving',
+    defaultMessage: 'Saving…',
+    description: 'Label shown on the save button while the save request is in flight',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.saved': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.saved',
+    defaultMessage: 'Saved!',
+    description: 'Confirmation message shown briefly after a successful save',
+  },
+  'openedx-ai-extensions.settings-modal.workflows.prompt.save-error': {
+    id: 'openedx-ai-extensions.settings-modal.workflows.prompt.save-error',
+    defaultMessage: 'Failed to save prompt. Please try again.',
+    description: 'Error message shown when the save request fails',
+  },
 });
 
 export default messages;
