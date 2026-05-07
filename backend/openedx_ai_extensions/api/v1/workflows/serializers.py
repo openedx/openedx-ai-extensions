@@ -10,7 +10,6 @@ from rest_framework import serializers
 from openedx_ai_extensions.models import PromptTemplate
 from openedx_ai_extensions.workflows.models import AIWorkflowProfile
 
-
 # Keys whose values must never be exposed to the frontend.
 _SENSITIVE_KEYS = frozenset({
     "api_key",

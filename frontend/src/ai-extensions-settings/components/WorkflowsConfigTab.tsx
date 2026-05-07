@@ -7,7 +7,7 @@
  * to avoid duplicate @codemirror/state instances).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   ActionRow, Alert, Badge, Button, Form, ModalDialog, OverlayTrigger, Spinner, Tooltip,
@@ -252,7 +252,7 @@ const ProfileListItem = ({ profile, isSelected, onSelect }: ProfileListItemProps
 
 const WorkflowsConfigTab = () => {
   const intl = useIntl();
-  const contextData = prepareContextData({});
+  const contextData = useMemo(() => prepareContextData({}), []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<AIWorkflowProfile[]>([]);
@@ -283,7 +283,7 @@ const WorkflowsConfigTab = () => {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [intl]);
+  }, [intl, contextData]);
 
   useEffect(() => {
     if (view !== 'prompt' || !selected) { return undefined; }
@@ -303,7 +303,7 @@ const WorkflowsConfigTab = () => {
       });
 
     return () => controller.abort();
-  }, [view, selected, intl]);
+  }, [view, selected, intl, contextData]);
 
   if (loading) {
     return (
@@ -347,7 +347,9 @@ const WorkflowsConfigTab = () => {
       return <div className="p-4"><Alert variant="danger">{promptError}</Alert></div>;
     }
     if (promptData) {
-      return <PromptView key={promptData.id} data={promptData} identifier={promptTemplate!} contextData={contextData} />;
+      return (
+        <PromptView key={promptData.id} data={promptData} identifier={promptTemplate!} contextData={contextData} />
+      );
     }
     return null;
   };

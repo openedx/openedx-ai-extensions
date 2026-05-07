@@ -17,10 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from openedx_ai_extensions.api.v1.workflows.permissions import (
-    CourseStaffPermission,
-    get_context_from_request,
-)
+from openedx_ai_extensions.api.v1.workflows.permissions import CourseStaffPermission, get_context_from_request
 from openedx_ai_extensions.decorators import handle_ai_errors
 from openedx_ai_extensions.models import PromptTemplate
 from openedx_ai_extensions.utils import is_generator

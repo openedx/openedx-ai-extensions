@@ -29,8 +29,8 @@ export const fetchProfilesList = async ({
 };
 
 const getPromptUrl = (identifier: string): string => {
-  const base = getDefaultEndpoint('prompts' as any).replace(/\/$/, '');
-  return `${base}/${identifier}/`;
+  const base = getDefaultEndpoint(ENDPOINT_TYPES.PROMPTS);
+  return `${base}${identifier}/`;
 };
 
 export const fetchPromptTemplate = async ({

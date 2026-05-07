@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.urls import reverse
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
@@ -17,9 +18,14 @@ from rest_framework.test import APIClient, APIRequestFactory
 sys.modules["submissions"] = MagicMock()
 sys.modules["submissions.api"] = MagicMock()
 
+from openedx_ai_extensions.api.v1.workflows.permissions import (  # noqa: E402 pylint: disable=wrong-import-position
+    CourseStaffPermission,
+    get_context_from_request,
+)
 from openedx_ai_extensions.api.v1.workflows.serializers import (  # noqa: E402 pylint: disable=wrong-import-position
     AIWorkflowProfileListSerializer,
     AIWorkflowProfileSerializer,
+    AIWorkflowScopeSerializer,
     PromptTemplateSerializer,
     redact_sensitive_config,
 )
@@ -825,6 +831,7 @@ def test_profiles_list_api_keys_are_redacted(  # pylint: disable=redefined-outer
         "processor_config": {"LLMProcessor": {"options": {"api_key": "sk-secret-123"}}}
     }
     mock_profile.matched_scopes = []
+    mock_profile.aiworkflowscope_set.count.return_value = 0
     mock_list.return_value = [mock_profile]
 
     api_client.login(username="staffuser", password="password123")
@@ -1078,6 +1085,7 @@ def test_profiles_list_view_returns_200_unit(mock_list, staff_user):  # pylint: 
     mock_profile.description = "Mock"
     mock_profile.config = {}
     mock_profile.matched_scopes = []
+    mock_profile.aiworkflowscope_set.count.return_value = 0
     mock_list.return_value = [mock_profile]
 
     factory = APIRequestFactory()
@@ -1321,3 +1329,81 @@ def test_prompt_template_serializer_read_only(prompt_template):  # pylint: disab
         serializer.create({})
     with pytest.raises(NotImplementedError):
         serializer.update(prompt_template, {})
+
+
+# ============================================================================
+# AIWorkflowScopeSerializer — read-only guard
+# ============================================================================
+
+def test_scope_serializer_create_not_implemented():
+    """AIWorkflowScopeSerializer.create raises NotImplementedError."""
+    with pytest.raises(NotImplementedError):
+        AIWorkflowScopeSerializer().create({})
+
+
+def test_scope_serializer_update_not_implemented():
+    """AIWorkflowScopeSerializer.update raises NotImplementedError."""
+    with pytest.raises(NotImplementedError):
+        AIWorkflowScopeSerializer().update(None, {})
+
+
+# ============================================================================
+# get_context_from_request — uncovered branches
+# ============================================================================
+
+def test_get_context_from_request_invalid_location_id():
+    """Invalid locationId format raises ValidationError."""
+    mock_request = Mock()
+    mock_request.GET = {"context": json.dumps({"locationId": "not-a-valid-block-key"})}
+    with pytest.raises(DjangoValidationError):
+        get_context_from_request(mock_request)
+
+
+def test_get_context_from_request_uses_query_params_when_no_get():
+    """Falls back to request.query_params when request has no .GET attribute."""
+    mock_request = Mock(spec=["query_params"])
+    mock_request.query_params = {"context": "{}"}
+    result = get_context_from_request(mock_request)
+    assert not result
+
+
+# ============================================================================
+# CourseStaffPermission — non-staff paths
+# ============================================================================
+
+@pytest.mark.django_db
+def test_course_staff_permission_denied_invalid_context(user):  # pylint: disable=redefined-outer-name
+    """Non-staff user with unparseable course_id is denied without raising."""
+    permission = CourseStaffPermission()
+    mock_request = Mock()
+    mock_request.user = user
+    mock_request.GET = {"context": json.dumps({"courseId": "not-a-valid-key"})}
+    assert permission.has_permission(mock_request, None) is False
+
+
+@pytest.mark.django_db
+def test_course_staff_permission_delegates_to_backend(user, course_key):  # pylint: disable=redefined-outer-name
+    """Non-staff user with valid course_id reaches permission_is_course_staff (test backend → False)."""
+    permission = CourseStaffPermission()
+    mock_request = Mock()
+    mock_request.user = user
+    mock_request.GET = {"context": json.dumps({"courseId": str(course_key)})}
+    assert permission.has_permission(mock_request, None) is False
+
+
+# ============================================================================
+# AIWorkflowProfilesListView — unexpected-error path (500)
+# ============================================================================
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("staff_user")
+@patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.list_profiles_for_context")
+def test_profiles_list_view_unexpected_error(mock_list, api_client, course_key):  # pylint: disable=redefined-outer-name
+    """Unhandled exception inside the view returns 500 with status='error'."""
+    mock_list.side_effect = RuntimeError("unexpected boom")
+    api_client.login(username="staffuser", password="password123")
+    url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
+    context = json.dumps({"courseId": str(course_key)})
+    response = api_client.get(url, {"context": context})
+    assert response.status_code == 500
+    assert response.json()["status"] == "error"
