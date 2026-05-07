@@ -35,22 +35,36 @@ const getPromptUrl = (identifier: string): string => {
 
 export const fetchPromptTemplate = async ({
   identifier,
+  contextData,
   signal = null,
 }: {
   identifier: string;
+  contextData?: PluginContext;
   signal?: AbortSignal | null;
 }): Promise<PromptTemplate> => {
-  const response = await getAuthenticatedHttpClient().get(getPromptUrl(identifier), { signal });
+  const params = new URLSearchParams();
+  if (contextData) {
+    params.append('context', JSON.stringify(contextData));
+  }
+  const url = `${getPromptUrl(identifier)}?${params.toString()}`;
+  const response = await getAuthenticatedHttpClient().get(url, { signal });
   return camelCaseObject(response.data) as PromptTemplate;
 };
 
 export const savePromptTemplate = async ({
   identifier,
   body,
+  contextData,
 }: {
   identifier: string;
   body: string;
+  contextData?: PluginContext;
 }): Promise<PromptTemplate> => {
-  const response = await getAuthenticatedHttpClient().patch(getPromptUrl(identifier), { body });
+  const params = new URLSearchParams();
+  if (contextData) {
+    params.append('context', JSON.stringify(contextData));
+  }
+  const url = `${getPromptUrl(identifier)}?${params.toString()}`;
+  const response = await getAuthenticatedHttpClient().patch(url, { body });
   return camelCaseObject(response.data) as PromptTemplate;
 };

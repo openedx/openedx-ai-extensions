@@ -12,7 +12,7 @@ import { useIntl } from '@edx/frontend-platform/i18n';
 import {
   Alert, Badge, Button, Form, OverlayTrigger, Spinner, Tooltip,
 } from '@openedx/paragon';
-import { AIWorkflowProfile, PromptTemplate } from '../../types';
+import { AIWorkflowProfile, PluginContext, PromptTemplate } from '../../types';
 import {
   fetchProfilesList, fetchPromptTemplate, savePromptTemplate,
 } from '../../services/profilesService';
@@ -55,7 +55,15 @@ const RelativeDate = ({ dateStr }: { dateStr: string }) => {
 };
 
 /** Structured editor for a PromptTemplate. */
-const PromptView = ({ data, identifier }: { data: PromptTemplate; identifier: string }) => {
+const PromptView = ({
+  data,
+  identifier,
+  contextData,
+}: {
+  data: PromptTemplate;
+  identifier: string;
+  contextData: PluginContext;
+}) => {
   const [body, setBody] = useState(data.body);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -67,7 +75,7 @@ const PromptView = ({ data, identifier }: { data: PromptTemplate; identifier: st
     setSaving(true);
     setSaveError(null);
     try {
-      await savePromptTemplate({ identifier, body });
+      await savePromptTemplate({ identifier, body, contextData });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -188,6 +196,7 @@ const ProfileListItem = ({ profile, isSelected, onSelect }: ProfileListItemProps
 
 const WorkflowsConfigTab = () => {
   const intl = useIntl();
+  const contextData = prepareContextData({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<AIWorkflowProfile[]>([]);
@@ -206,7 +215,7 @@ const WorkflowsConfigTab = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchProfilesList({ contextData: prepareContextData({}), signal: controller.signal })
+    fetchProfilesList({ contextData, signal: controller.signal })
       .then((data) => {
         setProfiles(data.profiles);
         if (data.profiles.length > 0) { setSelected(data.profiles[0]); }
@@ -229,7 +238,7 @@ const WorkflowsConfigTab = () => {
     setPromptLoading(true);
     setPromptError(null);
 
-    fetchPromptTemplate({ identifier, signal: controller.signal })
+    fetchPromptTemplate({ identifier, contextData, signal: controller.signal })
       .then((data) => { setPromptData(data); setPromptLoading(false); })
       .catch((err) => {
         if (err?.name === 'CanceledError' || err?.name === 'AbortError') { return; }
@@ -282,7 +291,7 @@ const WorkflowsConfigTab = () => {
       return <div className="p-4"><Alert variant="danger">{promptError}</Alert></div>;
     }
     if (promptData) {
-      return <PromptView data={promptData} identifier={promptTemplate!} />;
+      return <PromptView data={promptData} identifier={promptTemplate!} contextData={contextData} />;
     }
     return null;
   };
