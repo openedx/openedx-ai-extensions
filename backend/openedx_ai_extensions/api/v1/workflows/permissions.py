@@ -3,18 +3,16 @@ DRF permission classes and shared request utilities for AI Workflows API.
 """
 
 import json
+import logging
 
 from django.core.exceptions import ValidationError
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from rest_framework.permissions import BasePermission
 
-try:
-    from openedx_authz import api as authz_api
-except ImportError:
-    authz_api = None
+from openedx_ai_extensions.edxapp_wrapper.student_module import permission_is_course_staff
 
-_COURSE_ADVANCED_SETTINGS_ACTION = "courses.manage_advanced_settings"
+logger = logging.getLogger(__name__)
 
 
 def get_context_from_request(request):
@@ -70,50 +68,34 @@ def get_context_from_request(request):
     return validated_context
 
 
-class CourseAdvancedSettingsPermission(BasePermission):
+class CourseStaffPermission(BasePermission):
     """
     Restricts access to users who are authorised to manage advanced settings
-    for a course — roughly equivalent to the course instructor/admin role.
+    for a course.
 
-    This permission is intentionally written to be forward-compatible with the
-    openedx-authz RBAC system introduced in Ulmo. The behaviour differs by
-    platform, but the intent is the same on both:
-
-    * **Teak and earlier** (openedx-authz not installed): falls back to
-      Django's ``is_staff`` flag, which is the coarsest available gate on
-      platforms that do not yet ship openedx-authz.
-
-    * **Ulmo and later** (openedx-authz installed): enforces
-      ``courses.manage_advanced_settings`` via the Casbin policy engine,
-      scoped to the course identified by the ``context`` query param.
-      Staff and superusers are always allowed regardless of policy.
-      Requests without a valid ``course_id`` in context are denied.
+    * Staff and superusers are always allowed.
+    * Otherwise, requires a valid ``course_id`` in the ``context`` query param
+      and delegates to the configured ``STUDENT_MODULE_BACKEND`` to check
+      whether the user holds a course-level staff or instructor role.
     """
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        user = request.user
+
+        if not user or not user.is_authenticated:
             return False
 
-        if authz_api is None:
-            return bool(request.user.is_staff)
-
-        if request.user.is_staff or request.user.is_superuser:
+        if user.is_staff or user.is_superuser:
             return True
 
         try:
             context = get_context_from_request(request)
-        except ValidationError:
+        except ValidationError as e:
+            logger.debug("CourseStaffPermission denied — invalid context: %s", e)
             return False
 
         course_id = context.get("course_id")
         if not course_id:
             return False
 
-        try:
-            return authz_api.is_user_allowed(
-                request.user.username,
-                _COURSE_ADVANCED_SETTINGS_ACTION,
-                course_id,
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            return False
+        return permission_is_course_staff(user, course_id)

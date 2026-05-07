@@ -738,12 +738,12 @@ def test_profiles_list_requires_authentication(api_client):  # pylint: disable=r
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 def test_profiles_list_happy_path(api_client, course_key):  # pylint: disable=redefined-outer-name
     """
     Two scopes with different slots pointing to two distinct profiles are both returned.
     """
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
 
     profile_a = AIWorkflowProfile.objects.create(
@@ -788,12 +788,12 @@ def test_profiles_list_happy_path(api_client, course_key):  # pylint: disable=re
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 def test_profiles_list_no_matches(api_client):  # pylint: disable=redefined-outer-name
     """
     Unknown course returns an empty list without errors.
     """
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
 
     context = json.dumps({"courseId": "course-v1:Unknown+X+NoSuchCourse"})
@@ -806,7 +806,7 @@ def test_profiles_list_no_matches(api_client):  # pylint: disable=redefined-oute
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 @patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.list_profiles_for_context")
 def test_profiles_list_api_keys_are_redacted(  # pylint: disable=redefined-outer-name
     mock_list, api_client, course_key
@@ -827,7 +827,7 @@ def test_profiles_list_api_keys_are_redacted(  # pylint: disable=redefined-outer
     mock_profile.matched_scopes = []
     mock_list.return_value = [mock_profile]
 
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
     context = json.dumps({"courseId": str(course_key), "uiSlotSelectorId": "slot-redact"})
     response = api_client.get(url, {"context": context})
@@ -842,12 +842,12 @@ def test_profiles_list_api_keys_are_redacted(  # pylint: disable=redefined-outer
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 def test_profiles_list_deduplication(api_client, course_key):  # pylint: disable=redefined-outer-name
     """
     Two scopes pointing to the same profile return only one profile entry.
     """
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
 
     profile = AIWorkflowProfile.objects.create(
@@ -876,12 +876,12 @@ def test_profiles_list_deduplication(api_client, course_key):  # pylint: disable
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 def test_profiles_list_filtered_by_ui_slot(api_client, course_key):  # pylint: disable=redefined-outer-name
     """
     When uiSlotSelectorId is provided, only profiles for that slot are returned.
     """
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
 
     profile_a = AIWorkflowProfile.objects.create(
@@ -909,14 +909,14 @@ def test_profiles_list_filtered_by_ui_slot(api_client, course_key):  # pylint: d
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 def test_profiles_list_no_slot_returns_all(api_client, course_key):  # pylint: disable=redefined-outer-name
     """
     When no uiSlotSelectorId is provided, all profiles for the course are returned
     regardless of their individual slot assignments. This is the intended call
     pattern for the Studio settings panel.
     """
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
 
     profile_a = AIWorkflowProfile.objects.create(
@@ -945,12 +945,12 @@ def test_profiles_list_no_slot_returns_all(api_client, course_key):  # pylint: d
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 def test_profiles_list_invalid_course_id(api_client):  # pylint: disable=redefined-outer-name
     """
     Malformed courseId returns HTTP 400 with an error key.
     """
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
 
     context = json.dumps({"courseId": "not-a-valid-course-key"})
@@ -962,12 +962,12 @@ def test_profiles_list_invalid_course_id(api_client):  # pylint: disable=redefin
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("user")
+@pytest.mark.usefixtures("staff_user")
 def test_profiles_list_no_context_param(api_client):  # pylint: disable=redefined-outer-name
     """
     Missing context param is treated as empty context — no crash, returns empty list.
     """
-    api_client.login(username="testuser", password="password123")
+    api_client.login(username="staffuser", password="password123")
     url = reverse("openedx_ai_extensions:api:v1:aiext_profiles_list")
 
     response = api_client.get(url)
@@ -1068,7 +1068,7 @@ def test_profile_list_serializer_handles_none_config():
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.list_profiles_for_context")
-def test_profiles_list_view_returns_200_unit(mock_list, user):  # pylint: disable=redefined-outer-name
+def test_profiles_list_view_returns_200_unit(mock_list, staff_user):  # pylint: disable=redefined-outer-name
     """
     AIWorkflowProfilesListView returns 200 with correct shape (unit test).
     """
@@ -1082,7 +1082,7 @@ def test_profiles_list_view_returns_200_unit(mock_list, user):  # pylint: disabl
 
     factory = APIRequestFactory()
     request = factory.get("/openedx-ai-extensions/v1/profiles/", {"context": "{}"})
-    request.user = user
+    request.user = staff_user
 
     view = AIWorkflowProfilesListView.as_view()
     response = view(request)
@@ -1097,7 +1097,7 @@ def test_profiles_list_view_returns_200_unit(mock_list, user):  # pylint: disabl
 
 @pytest.mark.django_db
 @patch("openedx_ai_extensions.api.v1.workflows.views.AIWorkflowScope.list_profiles_for_context")
-def test_profiles_list_view_invalid_context_json_unit(mock_list, user):  # pylint: disable=redefined-outer-name
+def test_profiles_list_view_invalid_context_json_unit(mock_list, staff_user):  # pylint: disable=redefined-outer-name
     """
     AIWorkflowProfilesListView returns 500 for invalid JSON context (unit test).
     """
@@ -1107,13 +1107,13 @@ def test_profiles_list_view_invalid_context_json_unit(mock_list, user):  # pylin
     request = factory.get(
         "/openedx-ai-extensions/v1/profiles/", {"context": "invalid json{"}
     )
-    request.user = user
+    request.user = staff_user
 
     view = AIWorkflowProfilesListView.as_view()
     response = view(request)
     response.render()
 
-    assert response.status_code == 500
+    assert response.status_code == 400
 
 
 # ============================================================================

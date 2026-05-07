@@ -23,7 +23,9 @@ sys.modules['openedx.core.djangoapps.content_libraries'] = mock_content_librarie
 # pylint: disable=wrong-import-position
 # These imports must come after mocking the openedx module
 from openedx_ai_extensions.edxapp_wrapper import content_libraries_module  # noqa: E402
+from openedx_ai_extensions.edxapp_wrapper import student_module  # noqa: E402
 from openedx_ai_extensions.edxapp_wrapper.backends import content_libraries_module_t_v1  # noqa: E402
+from openedx_ai_extensions.edxapp_wrapper.backends import student_module_test  # noqa: E402
 
 # pylint: enable=wrong-import-position
 
@@ -91,3 +93,41 @@ class TestContentLibrariesModuleBackend:
         # The function simply returns the imported module, so as long as it returns something
         # and doesn't raise an exception, it's working correctly
         assert result is not None
+
+
+class TestStudentModuleWrapper:
+    """
+    Test the student_module wrapper and its test backend.
+    """
+
+    @override_settings(
+        STUDENT_MODULE_BACKEND="openedx_ai_extensions.edxapp_wrapper.backends.student_module_test"
+    )
+    def test_permission_is_course_staff_delegates_to_backend(self):
+        """
+        Wrapper calls the backend function and returns its result.
+        """
+        with patch('openedx_ai_extensions.edxapp_wrapper.student_module.import_module') as mock_import:
+            mock_backend = MagicMock()
+            mock_backend.permission_is_course_staff.return_value = True
+            mock_import.return_value = mock_backend
+
+            result = student_module.permission_is_course_staff(
+                MagicMock(), "course-v1:edX+Demo+2024"
+            )
+
+            mock_import.assert_called_once_with(settings.STUDENT_MODULE_BACKEND)
+            mock_backend.permission_is_course_staff.assert_called_once()
+            assert result is True
+
+    @override_settings(
+        STUDENT_MODULE_BACKEND="openedx_ai_extensions.edxapp_wrapper.backends.student_module_test"
+    )
+    def test_test_backend_always_denies(self):
+        """
+        The test backend returns False for any user/course combination.
+        """
+        result = student_module_test.permission_is_course_staff(
+            MagicMock(), "course-v1:edX+Demo+2024"
+        )
+        assert result is False

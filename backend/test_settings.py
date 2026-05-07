@@ -149,3 +149,7 @@ SERVICE_VARIANT = "lms"
 # Only using the LMS context for simplicity
 # Third parameter is the settings_type which should match the keys in settings_config
 add_plugins(__name__, PLUGIN_CONTEXTS[0], "test")
+
+# Override the student module backend with a null implementation that never
+# imports common.djangoapps, which is not available outside edx-platform.
+STUDENT_MODULE_BACKEND = "openedx_ai_extensions.edxapp_wrapper.backends.student_module_test"

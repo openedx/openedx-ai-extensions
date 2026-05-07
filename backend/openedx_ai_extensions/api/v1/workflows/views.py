@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from openedx_ai_extensions.api.v1.workflows.permissions import (
-    CourseAdvancedSettingsPermission,
+    CourseStaffPermission,
     get_context_from_request,
 )
 from openedx_ai_extensions.decorators import handle_ai_errors
@@ -135,7 +135,7 @@ class AIWorkflowProfilesListView(APIView):
     — the intended call pattern for the Studio settings panel.
     """
 
-    permission_classes = [CourseAdvancedSettingsPermission]
+    permission_classes = [CourseStaffPermission]
 
     def get(self, request):
         """
@@ -207,7 +207,7 @@ class PromptTemplateDetailView(APIView):
     ``GET /v1/prompts/<uuid>/``
     """
 
-    permission_classes = [CourseAdvancedSettingsPermission]
+    permission_classes = [CourseStaffPermission]
 
     def _get_template(self, identifier):
         """
