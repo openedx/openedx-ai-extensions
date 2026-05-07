@@ -36,6 +36,7 @@ const getPromptTemplate = (effectiveConfig: Record<string, any>): string | null 
 
 /** Relative time label with full date on hover. */
 const RelativeDate = ({ dateStr }: { dateStr: string }) => {
+  const intl = useIntl();
   const date = new Date(dateStr);
   const diffMs = Date.now() - date.getTime();
   const diffSeconds = Math.round(diffMs / 1000);
@@ -44,8 +45,8 @@ const RelativeDate = ({ dateStr }: { dateStr: string }) => {
   let unit: Intl.RelativeTimeFormatUnit;
   if (diffSeconds < 60) { value = -diffSeconds; unit = 'second'; } else if (diffSeconds < 3600) { value = -Math.round(diffSeconds / 60); unit = 'minute'; } else if (diffSeconds < 86400) { value = -Math.round(diffSeconds / 3600); unit = 'hour'; } else if (diffSeconds < 2592000) { value = -Math.round(diffSeconds / 86400); unit = 'day'; } else if (diffSeconds < 31536000) { value = -Math.round(diffSeconds / 2592000); unit = 'month'; } else { value = -Math.round(diffSeconds / 31536000); unit = 'year'; }
 
-  const relative = new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(value, unit);
-  const full = date.toLocaleString();
+  const relative = new Intl.RelativeTimeFormat(intl.locale, { numeric: 'auto' }).format(value, unit);
+  const full = date.toLocaleString(intl.locale);
 
   return (
     <OverlayTrigger placement="top" overlay={<Tooltip id={`date-${dateStr}`}>{full}</Tooltip>}>
@@ -65,17 +66,19 @@ const PromptView = ({
   contextData: PluginContext;
 }) => {
   const [body, setBody] = useState(data.body);
+  const [baseline, setBaseline] = useState(data.body);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const isDirty = body !== data.body;
+  const isDirty = body !== baseline;
 
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
     try {
       await savePromptTemplate({ identifier, body, contextData });
+      setBaseline(body);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -291,7 +294,7 @@ const WorkflowsConfigTab = () => {
       return <div className="p-4"><Alert variant="danger">{promptError}</Alert></div>;
     }
     if (promptData) {
-      return <PromptView data={promptData} identifier={promptTemplate!} contextData={contextData} />;
+      return <PromptView key={promptData.id} data={promptData} identifier={promptTemplate!} contextData={contextData} />;
     }
     return null;
   };

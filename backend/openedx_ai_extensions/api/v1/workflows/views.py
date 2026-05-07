@@ -225,7 +225,7 @@ class PromptTemplateDetailView(APIView):
             pass
         try:
             return PromptTemplate.objects.get(id=identifier)
-        except (PromptTemplate.DoesNotExist, Exception):  # pylint: disable=broad-exception-caught
+        except (PromptTemplate.DoesNotExist, ValueError, ValidationError):
             return None
 
     def get(self, request, identifier):
