@@ -42,7 +42,6 @@ def get_context_from_request(request):
         raise ValidationError("Invalid JSON format in 'context' parameter.") from e
     validated_context = {}
 
-    # Validate and convert courseId to course_id
     course_id_raw = context.get("courseId") or context.get("course_id")
     if course_id_raw:
         try:
@@ -51,7 +50,6 @@ def get_context_from_request(request):
         except InvalidKeyError as e:
             raise ValidationError(f"Invalid course_id format: {course_id_raw}") from e
 
-    # Validate and convert locationId to location_id
     location_id_raw = context.get("locationId") or context.get("location_id")
     if location_id_raw:
         try:
@@ -60,7 +58,6 @@ def get_context_from_request(request):
         except InvalidKeyError as e:
             raise ValidationError(f"Invalid location_id format: {location_id_raw}") from e
 
-    # Pass ui_slot_selector_id as-is (plain string, no special validation needed)
     ui_slot_selector_id_raw = context.get("uiSlotSelectorId") or context.get("ui_slot_selector_id")
     if ui_slot_selector_id_raw:
         validated_context["ui_slot_selector_id"] = str(ui_slot_selector_id_raw)
