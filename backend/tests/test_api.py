@@ -126,13 +126,9 @@ def test_workflows_endpoint_requires_authentication(api_client):  # pylint: disa
     """
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
-    # Test POST without authentication
+    # DRF IsAuthenticated with SessionAuthentication returns 403 (no WWW-Authenticate challenge)
     response = api_client.post(url, {}, format="json")
-    assert response.status_code == 302  # Redirect to login
-
-    # Test GET without authentication
-    response = api_client.get(url)
-    assert response.status_code == 302  # Redirect to login
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db

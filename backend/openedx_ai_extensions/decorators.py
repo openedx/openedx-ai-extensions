@@ -12,6 +12,7 @@ from litellm.exceptions import (
     APIConnectionError,
     AuthenticationError,
     ContextWindowExceededError,
+    NotFoundError,
     RateLimitError,
     ServiceUnavailableError,
     Timeout,
@@ -26,6 +27,11 @@ EXCEPTION_MAP = {
     AuthenticationError: {
         "code": "invalid_api_key",
         "message": "The AI service is currently unavailable due to an authentication error.",
+        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+    },
+    NotFoundError: {
+        "code": "llm_config_error",
+        "message": "The AI service is misconfigured. Please check the LLM settings.",
         "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
     },
     RateLimitError: {
