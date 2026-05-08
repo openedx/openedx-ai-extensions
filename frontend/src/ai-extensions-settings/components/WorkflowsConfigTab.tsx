@@ -163,6 +163,7 @@ const PromptView = ({
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         hasCloseButton
+        isOverflowVisible={false}
       >
         <ModalDialog.Header>
           <ModalDialog.Title>
