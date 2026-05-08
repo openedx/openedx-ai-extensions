@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.urls import reverse
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
+from rest_framework.exceptions import ParseError
 from rest_framework.test import APIClient, APIRequestFactory
 
 # Mock the submissions module before any imports that depend on it
@@ -33,6 +34,7 @@ from openedx_ai_extensions.api.v1.workflows.views import (  # noqa: E402 pylint:
     AIWorkflowProfilesListView,
     AIWorkflowProfileView,
 )
+from openedx_ai_extensions.decorators import handle_ai_errors  # noqa: E402 pylint: disable=wrong-import-position
 from openedx_ai_extensions.models import PromptTemplate  # noqa: E402 pylint: disable=wrong-import-position
 from openedx_ai_extensions.workflows.models import (  # noqa: E402 pylint: disable=wrong-import-position
     AIWorkflowProfile,
@@ -137,13 +139,9 @@ def test_workflows_endpoint_requires_authentication(api_client):  # pylint: disa
     """
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
 
-    # Test POST without authentication
+    # DRF IsAuthenticated with SessionAuthentication returns 403 (no WWW-Authenticate challenge)
     response = api_client.post(url, {}, format="json")
-    assert response.status_code == 302  # Redirect to login
-
-    # Test GET without authentication
-    response = api_client.get(url)
-    assert response.status_code == 302  # Redirect to login
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db
@@ -434,8 +432,8 @@ def test_workflows_post_with_invalid_json(api_client):  # pylint: disable=redefi
         url, data="invalid json", content_type="application/json"
     )
 
-    # Should return 400 or 500 for invalid JSON
-    assert response.status_code in [400, 500]
+    # ParseError is now mapped to 400 via handle_ai_errors
+    assert response.status_code == 400
     data = response.json()
     assert "error" in data
 
@@ -1407,3 +1405,21 @@ def test_profiles_list_view_unexpected_error(mock_list, api_client, course_key):
     response = api_client.get(url, {"context": context})
     assert response.status_code == 500
     assert response.json()["status"] == "error"
+
+
+# ============================================================================
+# Unit Tests - handle_ai_errors decorator
+# ============================================================================
+
+
+def test_handle_ai_errors_maps_parse_error_to_400():
+    """DRF ParseError (malformed JSON body) is mapped to HTTP 400, not 500."""
+    @handle_ai_errors
+    def fake_view(request):
+        raise ParseError("bad json")
+
+    response = fake_view(Mock())
+    assert response.status_code == 400
+    data = json.loads(response.content)
+    assert data["error"]["code"] == "parse_error"
+    assert data["status"] == "error"
