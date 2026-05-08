@@ -54,6 +54,9 @@ def plugin_settings(settings):
     settings.CONTENT_LIBRARIES_MODULE_BACKEND = (
         "openedx_ai_extensions.edxapp_wrapper.backends.content_libraries_module_t_v1"
     )
+    settings.STUDENT_MODULE_BACKEND = (
+        "openedx_ai_extensions.edxapp_wrapper.backends.student_module_t_v1"
+    )
 
     # -------------------------
     # Settings based config router

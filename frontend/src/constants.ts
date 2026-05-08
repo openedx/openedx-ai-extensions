@@ -11,6 +11,8 @@ export const DEFAULT_CHUNK_RATE_LIMIT_MS = 50;
 export const ENDPOINT_TYPES = {
   WORKFLOWS: 'workflows',
   PROFILE: 'profile',
+  LIST_PROFILES: 'profiles',
+  PROMPTS: 'prompts',
 } as const;
 
 export type EndpointType = typeof ENDPOINT_TYPES[keyof typeof ENDPOINT_TYPES];
