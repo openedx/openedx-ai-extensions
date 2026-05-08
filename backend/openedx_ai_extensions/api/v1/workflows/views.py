@@ -7,11 +7,9 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils.decorators import method_decorator
-from django.views import View
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from rest_framework import status
@@ -81,27 +79,22 @@ def get_context_from_request(request):
     return validated_context
 
 
-@method_decorator(login_required, name="dispatch")
-@method_decorator(handle_ai_errors, name="dispatch")
-class AIGenericWorkflowView(View):
+class AIGenericWorkflowView(APIView):
     """
     AI Workflow API endpoint
     """
 
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(handle_ai_errors)
     def post(self, request):
         """Common handler for GET and POST requests"""
 
         context = get_context_from_request(request)
         workflow_profile = AIWorkflowScope.get_profile(**context)
 
-        request_body = {}
-        if request.body:
-            try:
-                request_body = json.loads(request.body.decode("utf-8"))
-            except json.JSONDecodeError as e:
-                raise ValidationError("Invalid JSON format in request body.") from e
-        action = request_body.get("action", "")
-        user_input = request_body.get("user_input", {})
+        action = request.data.get("action", "")
+        user_input = request.data.get("user_input", {})
 
         result = workflow_profile.execute(
             user_input=user_input,

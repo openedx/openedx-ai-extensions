@@ -102,7 +102,11 @@ def _execute_orchestrator_async(task_self, session_id, action, params=None):
         raise
 
     except Exception as e:
-        logger.error(f"Task {task_id}: Error executing {action} for session {session_id}: {str(e)}")
+        logger.error(
+            "Task %s: Error executing %s for session %s: %s",
+            task_id, action, session_id, str(e),
+            exc_info=True,
+        )
         session.metadata['task_status'] = 'error'
         session.metadata['task_error'] = str(e)
         session.save(update_fields=['metadata'])
