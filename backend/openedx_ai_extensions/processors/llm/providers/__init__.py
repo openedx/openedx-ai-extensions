@@ -13,6 +13,15 @@ _PROVIDER_CAPABILITIES = {
         # _call_responses_wrapper (skips saving remote_response_id for providers without it).
         "server_side_thread_id",
     },
+    "anthropic": {
+        # Provider supports prompt caching via cache_control on content blocks. Cached
+        # prefixes are reused at ~10% of normal input token cost for a 5-minute window.
+        # Without this, every request pays full price for system context and history.
+        # Two breakpoints per request: last system message (stable course context) and last
+        # user message (becomes the lookback target for the next turn). See ADR 0010.
+        # Affects: adapt_to_provider (_apply_multi_turn_cache).
+        "multi_turn_cache",
+    },
 }
 
 
@@ -81,7 +90,49 @@ def adapt_to_provider(
         for key in ("previous_response_id", "store", "truncation"):
             params.pop(key, None)
 
+    if provider_supports(provider, "multi_turn_cache"):
+        key = "messages" if "messages" in params else "input"
+        if key in params:
+            params[key] = _apply_multi_turn_cache(params[key])
+
     return params
+
+
+def _apply_multi_turn_cache(messages):
+    """
+    Add Anthropic style cache_control breakpoints to the last system and last user messages.
+
+    Two breakpoints are sufficient for any conversation length:
+    - Last system message: stable across all turns (course context never changes).
+    - Last user message: becomes the lookback target for the next turn. The 20-block
+      lookback window finds the previous turn's cache entry within 2 steps (one
+      assistant + one user block), so no additional breakpoints are needed regardless
+      of conversation length.
+
+    History is always stored as plain strings (get_full_message_history filters out
+    non-string content), so this transformation is request-only and never persisted.
+    """
+    last_system_idx = None
+    last_user_idx = None
+    for i, msg in enumerate(messages):
+        role = msg.get("role")
+        if role == "system":
+            last_system_idx = i
+        elif role == "user":
+            last_user_idx = i
+
+    result = list(messages)
+    for idx in (last_system_idx, last_user_idx):
+        if idx is None:
+            continue
+        msg = result[idx]
+        content = msg.get("content", "")
+        if isinstance(content, str):
+            result[idx] = {
+                **msg,
+                "content": [{"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}],
+            }
+    return result
 
 
 def after_tool_call_adaptations(provider, params, data=None):
