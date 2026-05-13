@@ -12,9 +12,16 @@ from litellm.exceptions import BadRequestError
 
 from openedx_ai_extensions.functions.decorators import AVAILABLE_TOOLS
 from openedx_ai_extensions.processors.llm.litellm_base_processor import LitellmProcessor
-from openedx_ai_extensions.processors.llm.providers import adapt_to_provider, after_tool_call_adaptations
+from openedx_ai_extensions.processors.llm.providers import (
+    adapt_to_provider,
+    after_tool_call_adaptations,
+    provider_supports,
+)
 from openedx_ai_extensions.processors.llm.tool_executor import ToolExecutor
-from openedx_ai_extensions.utils import STREAMING_FAILED_MESSAGE, normalize_input_to_text
+from openedx_ai_extensions.utils import (
+    STREAMING_FAILED_MESSAGE,
+    normalize_input_to_text,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -173,8 +180,7 @@ class LLMProcessor(LitellmProcessor):
             response_id = getattr(response, "id", None)
             content = self._extract_response_content(response=response)
 
-            # Update session with response ID for threading
-            if response_id:
+            if response_id and provider_supports(self.provider, "server_side_thread_id"):
                 self.user_session.remote_response_id = response_id
                 self.user_session.save()
 

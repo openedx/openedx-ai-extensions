@@ -106,7 +106,7 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
             # Re-inject system messages if this was a new thread (and not OpenAI)
             if self.llm_processor.get_provider() != "openai" and initial_system_msgs:
                 for msg in initial_system_msgs:
-                    messages.insert(0, {"role": msg["role"], "conte{}nt": msg["content"]})
+                    messages.insert(0, {"role": msg["role"], "content": msg["content"]})
 
             try:
                 submission_processor.update_chat_submission(messages)

@@ -2,6 +2,24 @@
 Provider-specific quirks and adaptations for different LLM providers.
 """
 
+_PROVIDER_CAPABILITIES = {
+    "openai": {
+        # Provider stores conversation history server-side and returns a response ID.
+        # Subsequent turns send only the new user message + that ID; the provider
+        # reconstructs context itself. Without this, full history is fetched from local
+        # storage and sent on every request.
+        # Affects: adapt_to_provider (sets previous_response_id, replaces input with new
+        # user message only), after_tool_call_adaptations (persists new response ID),
+        # _call_responses_wrapper (skips saving remote_response_id for providers without it).
+        "server_side_thread_id",
+    },
+}
+
+
+def provider_supports(provider, capability):
+    """Return True if the given provider supports the named capability."""
+    return capability in _PROVIDER_CAPABILITIES.get(provider, set())
+
 
 # TODO: refactor this module to make it more extensible for future providers
 def adapt_to_provider(
@@ -31,8 +49,7 @@ def adapt_to_provider(
     Returns:
         dict: Modified parameters with provider-specific adaptations applied
     """
-    if provider == "openai":
-        # OpenAI supports threading via previous_response_id
+    if provider_supports(provider, "server_side_thread_id"):
         if user_session and user_session.remote_response_id and input_data:
             params["previous_response_id"] = user_session.remote_response_id
             if "input" in params:
@@ -56,7 +73,7 @@ def adapt_to_provider(
                 elif "messages" in params:
                     params["messages"].append({"role": "user", "content": user_prompt})
 
-    if provider != "openai" and params.get("stream") and "input" in params:
+    if not provider_supports(provider, "server_side_thread_id") and params.get("stream") and "input" in params:
         # Non-OpenAI providers: convert Responses API shape → Completion API
         # shape so that completion() / _completion_with_tools() can be called
         # directly, ensuring tool-call events are visible during streaming.
@@ -80,7 +97,7 @@ def after_tool_call_adaptations(provider, params, data=None):
     Returns:
         dict: Modified parameters with provider-specific adaptations applied
     """
-    if provider == "openai":
+    if provider_supports(provider, "server_side_thread_id"):
         if data and hasattr(data, "id"):
             params["previous_response_id"] = data.id
 
