@@ -10,6 +10,19 @@ from submissions import api as submissions_api
 
 logger = logging.getLogger(__name__)
 
+# Filter constants for _process_messages / get_full_message_history.
+# Pass a subset (or frozenset()) to control what gets excluded from results.
+#
+#   FILTER_SYSTEM            — exclude messages with role == "system"
+#   FILTER_NON_STRING_CONTENT — exclude role-based messages whose content is
+#                               not a plain non-empty string (e.g. block-format
+#                               content from cache transforms, tool outputs)
+#
+FILTER_SYSTEM = "system"
+FILTER_NON_STRING_CONTENT = "non_string_content"
+
+_DEFAULT_FILTERS = frozenset({FILTER_SYSTEM, FILTER_NON_STRING_CONTENT})
+
 
 class SubmissionProcessor:
     """Handles OpenEdX submission operations for chat history and persistence"""
@@ -44,6 +57,7 @@ class SubmissionProcessor:
         current_messages_count=0,
         use_max_context=True,
         include_submission_id=False,
+        filters=_DEFAULT_FILTERS,
     ):
         """
         Retrieve messages from submissions.
@@ -52,6 +66,9 @@ class SubmissionProcessor:
 
         Args:
             current_messages_count: Number of messages already loaded in the frontend
+            filters: Set of FILTER_* constants controlling which messages are excluded.
+                     Defaults to _DEFAULT_FILTERS (excludes system messages and
+                     non-string content). Pass frozenset() to return everything.
 
         Returns:
             tuple: (new_messages, has_more) where new_messages is a list of messages
@@ -66,10 +83,17 @@ class SubmissionProcessor:
             submission_messages = json.loads(submission["answer"])
             timestamp = str(submission.get("created_at") or submission.get("submitted_at") or "")
             if submission_messages and isinstance(submission_messages, list):
-                # Remove system messages if present
-                submission_messages_copy = [
-                    msg for msg in submission_messages if isinstance(msg, dict) and msg.get("role") != "system"
-                ]
+                submission_messages_copy = []
+                for msg in submission_messages:
+                    if not isinstance(msg, dict):
+                        continue
+                    if FILTER_SYSTEM in filters and msg.get("role") == "system":
+                        continue
+                    if FILTER_NON_STRING_CONTENT in filters and "role" in msg:
+                        content = msg.get("content")
+                        if not isinstance(content, str) or not content:
+                            continue
+                    submission_messages_copy.append(msg)
                 submission_uuid = submission.get("uuid", "")
                 for msg in submission_messages_copy:
                     msg["timestamp"] = timestamp
@@ -215,27 +239,25 @@ class SubmissionProcessor:
             )
         return None
 
-    def get_full_message_history(self):
+    def get_full_message_history(self, filters=_DEFAULT_FILTERS):
         """
         Retrieve the full message history for the current submission.
+
+        Args:
+            filters: Set of FILTER_* constants passed through to _process_messages.
+                     Default behaviour (FILTER_SYSTEM + FILTER_NON_STRING_CONTENT)
+                     returns only user/assistant messages with plain string content,
+                     which is what the LLM input path requires.
+                     Pass frozenset() to retrieve everything stored (system messages,
+                     function calls, block-format content) for debug/admin views.
         """
         if self.user_session.local_submission_id:
-            messages, _ = self._process_messages(use_max_context=False)
-            cleaned = []
+            messages, _ = self._process_messages(use_max_context=False, filters=filters)
             for msg in messages:
                 if isinstance(msg, dict):
                     msg.pop("timestamp", None)
-                    # Only validate content for role-based messages (user/assistant/system).
-                    # Function call/output items use other fields (type, call_id, etc.) and
-                    # legitimately have no content field — never filter those out.
-                    if "role" in msg:
-                        content = msg.get("content")
-                        if not isinstance(content, str) or not content:
-                            continue
-                cleaned.append(msg)
-            return cleaned
-        else:
-            return None
+            return messages
+        return None
 
     def get_full_thread(self):
         """
@@ -273,7 +295,7 @@ class SubmissionProcessor:
         }
         try:
             messages, _ = self._process_messages(
-                use_max_context=False, include_submission_id=True
+                use_max_context=False, include_submission_id=True, filters=frozenset()
             )
             # Sort by timestamp to guarantee chronological order
             messages.sort(key=lambda m: m.get("timestamp", ""))

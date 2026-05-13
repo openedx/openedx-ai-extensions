@@ -7,6 +7,7 @@ import logging
 import re
 
 from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
+from openedx_ai_extensions.processors.llm.providers import provider_supports
 from openedx_ai_extensions.utils import STREAMING_FAILED_MESSAGE, is_generator, normalize_input_to_text
 from openedx_ai_extensions.xapi.constants import EVENT_NAME_WORKFLOW_INITIALIZED, EVENT_NAME_WORKFLOW_INTERACTED
 
@@ -104,7 +105,8 @@ class ThreadedLLMResponse(SessionBasedOrchestrator):
                 messages.insert(0, {"role": "user", "content": user_text})
 
             # Re-inject system messages if this was a new thread (and not OpenAI)
-            if self.llm_processor.get_provider() != "openai" and initial_system_msgs:
+            provider = self.llm_processor.get_provider()
+            if not provider_supports(provider, "server_side_thread_id") and initial_system_msgs:
                 for msg in initial_system_msgs:
                     messages.insert(0, {"role": msg["role"], "content": msg["content"]})
 

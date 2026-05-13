@@ -1,6 +1,9 @@
 """
 Provider-specific quirks and adaptations for different LLM providers.
 """
+import logging
+
+logger = logging.getLogger(__name__)
 
 _PROVIDER_CAPABILITIES = {
     "openai": {
@@ -132,6 +135,12 @@ def _apply_multi_turn_cache(messages):
                 **msg,
                 "content": [{"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}],
             }
+        else:
+            logger.warning(
+                "multi_turn_cache: skipping cache_control on role=%r message at index %d "
+                "— content is %s, not a plain string. Cache breakpoint will be missing for this turn.",
+                msg.get("role"), idx, type(content).__name__,
+            )
     return result
 
 

@@ -18,10 +18,7 @@ from openedx_ai_extensions.processors.llm.providers import (
     provider_supports,
 )
 from openedx_ai_extensions.processors.llm.tool_executor import ToolExecutor
-from openedx_ai_extensions.utils import (
-    STREAMING_FAILED_MESSAGE,
-    normalize_input_to_text,
-)
+from openedx_ai_extensions.utils import STREAMING_FAILED_MESSAGE, normalize_input_to_text
 
 logger = logging.getLogger(__name__)
 
