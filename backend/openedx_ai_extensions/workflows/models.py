@@ -481,6 +481,8 @@ class AIWorkflowSession(models.Model):
         help_text="ID of the last response sent to the user",
     )
     metadata = models.JSONField(default=dict, help_text="Additional session metadata")
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         unique_together = ("user", "scope", "profile", "course_id", "location_id")

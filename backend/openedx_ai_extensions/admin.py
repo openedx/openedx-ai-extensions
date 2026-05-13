@@ -356,14 +356,17 @@ class AIWorkflowSessionAdmin(admin.ModelAdmin):
     Admin interface for managing AI Workflow Sessions.
     """
 
-    list_display = ("user", "course_id", "profile_slug", "location_id")
+    list_display = ("user", "course_id", "profile_slug", "location_id", "created_at", "updated_at")
     search_fields = ("user__username", "course_id", "location_id", "profile__slug")
+    list_filter = ("created_at",)
+    date_hierarchy = "created_at"
     list_select_related = ("user", "profile")
     readonly_fields = (
         "user_link", "scope_link", "profile_link",
         "course_id", "location_id",
         "local_submission_id_link", "remote_response_id",
         "debug_link", "metadata_pretty",
+        "created_at", "updated_at",
     )
     exclude = ("user", "scope", "profile", "local_submission_id", "metadata")
     actions = ["debug_thread"]
