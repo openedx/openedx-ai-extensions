@@ -1,0 +1,65 @@
+name: Bump version and changelog
+on:
+  workflow_dispatch
+
+jobs:
+  bumpversion:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Get next version
+        id: tag_version
+        uses: python-semantic-release/python-semantic-release@350c48fcb3ffcdfd2e0a235206bc2ecea6b69df0 # v10.5.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          push: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Create bumpversion
+        if: steps.tag_version.outputs.version
+        id: bumpversion
+        run: |
+          pip install bump2version
+          bump2version --new-version ${{ steps.tag_version.outputs.version }} setup.cfg
+      - name: Update Changelog
+        if: steps.tag_version.outputs.version
+        uses: stefanzweifel/changelog-updater-action@a938690fad7edf25368f37e43a1ed1b34303eb36 # v1.12.0
+        with:
+          latest-version: ${{ steps.tag_version.outputs.tag }}
+          release-notes: ${{ steps.tag_version.outputs.release_notes }}
+      - name: Push branch
+        if: steps.tag_version.outputs.version
+        run: |
+          branch_name="bot/${{ steps.tag_version.outputs.tag }}"
+          git fetch --prune origin
+          if git show-ref --quiet refs/remotes/origin/$branch_name; then
+            git push --delete origin $branch_name
+          fi
+          git checkout -b $branch_name || git checkout $branch_name
+          git push origin $branch_name
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@98357b18bf14b5342f975ff684046ec3b2a07725 # v8
+        with:
+          token: ${{ secrets.AI_EXTENSIONS_GITHUB_TOKEN }}
+          title: "chore: preparing release ${{ steps.tag_version.outputs.version }}"
+          commit-message: "chore: preparing release ${{ steps.tag_version.outputs.version }}"
+          branch: "bot/${{ steps.tag_version.outputs.tag }}"
+          base: main
+          body: |
+            Automated version bump for release ${{ steps.tag_version.outputs.version }}.
+
+            This pull request was automatically generated. It includes the following changes:
+
+            - Version: ${{ steps.tag_version.outputs.tag }}
+            - Previous version: v${{ steps.tag_version.outputs.previous_version }}
+
+            ${{ steps.tag_version.outputs.changelog }}
+
+            No code changes are included in this pull request. The purpose of this PR is to trigger a version bump for the project.
+
+            Once the pull request is merged, a new GitHub release will be created with the updated version.
