@@ -1,0 +1,44 @@
+/*
+Blank profile template. Use this as a starting point for new profiles.
+Copy this file, rename it, fill in the required fields, and configure
+the processors and UI components for your workflow.
+*/
+{
+  // The orchestrator class controls how processors are chained.
+  // Use a short name (e.g. "DirectLLMResponse") for built-in orchestrators,
+  // or a full dotted path for custom ones.
+  "orchestrator_class": "set.here",
+
+  "processor_config": {
+    // OpenEdXProcessor retrieves course content for the LLM.
+    // Remove this section if your workflow does not need course content.
+    "OpenEdXProcessor": {
+      "function": "", // e.g. "get_location_content"
+    },
+    // LLMProcessor sends content to the language model and returns a response.
+    "LLMProcessor": {
+      "function": "", // e.g. "summarize_content", "generate_quiz_questions"
+      "provider": "", // e.g. "default", "openai", "anthropic"
+    }
+  },
+
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "", // e.g. "AIRequestComponent", "LibraryProblemCreator"
+        "config": {
+          "buttonText": "",
+          "customMessage": ""
+        }
+      },
+      "response": {
+        "component": "", // e.g. "AIResponseComponent", "LibraryProblemCreatorResponse"
+        "config": {
+          "customMessage": ""
+        }
+      }
+    }
+  },
+
+  "schema_version": "1.0"
+}
