@@ -5,28 +5,28 @@
 
 {% block content %}
 <style>
-  .debug-session { margin-bottom: 2em; border: 1px solid #ddd; border-radius: 4px; }
-  .debug-session-header { background: #f8f8f8; padding: 12px 16px; border-bottom: 1px solid #ddd; }
-  .debug-session-header h3 { margin: 0 0 8px 0; }
-  .debug-session-header .meta { color: #666; font-size: 0.9em; }
+  .debug-session { margin-bottom: 2em; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+  .debug-session-header { background: #f0f0f0; padding: 12px 16px; border-bottom: 1px solid #ccc; }
+  .debug-session-header h3 { margin: 0 0 8px 0; color: #000; }
+  .debug-session-header .meta { color: #333; font-size: 0.9em; }
   .debug-session-header .meta span { margin-right: 16px; }
-  .debug-thread { padding: 16px; }
-  .debug-msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; max-width: 80%; }
-  .debug-msg.user { background: #e3f2fd; margin-left: auto; }
-  .debug-msg.assistant { background: #f5f5f5; }
-  .debug-msg.system { background: #fff8e1; border-left: 3px solid #ffc107; font-size: 0.85em; }
-  .debug-msg.reasoning { background: #f3e5f5; border-left: 3px solid #9c27b0; font-size: 0.85em; font-style: italic; }
-  .debug-msg.tool_call { background: #e8f5e9; border-left: 3px solid #4caf50; font-size: 0.85em; font-family: monospace; }
-  .debug-msg.error { background: #ffebee; border-left: 3px solid #d32f2f; }
-  .debug-msg.unknown { background: #eceff1; border-left: 3px solid #90a4ae; }
-  .debug-msg .role { font-weight: bold; font-size: 0.8em; text-transform: uppercase; color: #555; margin-bottom: 4px; }
-  .debug-msg .content { white-space: pre-wrap; word-break: break-word; }
-  .debug-msg .msg-meta { font-size: 0.75em; color: #999; margin-top: 4px; }
-  .debug-error { color: #d32f2f; padding: 16px; }
-  .debug-empty { color: #999; padding: 16px; font-style: italic; }
+  .debug-thread { padding: 16px; background: #fff; }
+  .debug-msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; max-width: 85%; border: 1px solid transparent; color: #000; }
+  .debug-msg.user { background: #e3f2fd; margin-left: auto; border-color: #bbdefb; color: #0d47a1; }
+  .debug-msg.assistant { background: #f5f5f5; border-color: #e0e0e0; color: #212121; }
+  .debug-msg.system { background: #fffde7; border-left: 4px solid #fbc02d; border-right: 1px solid #fff59d; border-top: 1px solid #fff59d; border-bottom: 1px solid #fff59d; font-size: 0.85em; color: #333; }
+  .debug-msg.reasoning { background: #f3e5f5; border-left: 4px solid #9c27b0; border-right: 1px solid #e1bee7; border-top: 1px solid #e1bee7; border-bottom: 1px solid #e1bee7; font-size: 0.85em; font-style: italic; color: #4a148c; }
+  .debug-msg.tool_call { background: #e8f5e9; border-left: 4px solid #4caf50; border-right: 1px solid #c8e6c9; border-top: 1px solid #c8e6c9; border-bottom: 1px solid #c8e6c9; font-size: 0.85em; font-family: monospace; color: #1b5e20; }
+  .debug-msg.error { background: #ffebee; border-left: 4px solid #d32f2f; border-right: 1px solid #ffcdd2; border-top: 1px solid #ffcdd2; border-bottom: 1px solid #ffcdd2; color: #b71c1c; }
+  .debug-msg.unknown { background: #eceff1; border-left: 4px solid #90a4ae; border-right: 1px solid #cfd8dc; border-top: 1px solid #cfd8dc; border-bottom: 1px solid #cfd8dc; color: #263238; }
+  .debug-msg .role { font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: inherit; opacity: 0.8; margin-bottom: 6px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 2px; }
+  .debug-msg .content { white-space: pre-wrap; word-break: break-word; font-size: 1em; line-height: 1.4; }
+  .debug-msg .msg-meta { font-size: 0.75em; color: inherit; opacity: 0.6; margin-top: 8px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; }
+  .debug-error { color: #d32f2f; padding: 16px; background: #fff5f5; border-bottom: 1px solid #ffcdd2; }
+  .debug-empty { color: #666; padding: 16px; font-style: italic; }
   .debug-json-toggle { margin: 16px 0; }
-  .debug-json { display: none; background: #f5f5f5; padding: 16px; border-radius: 4px; overflow-x: auto; }
-  .debug-json pre { margin: 0; font-size: 0.85em; }
+  .debug-json { display: none; background: #f8f9fa; padding: 16px; border: 1px solid #ddd; border-radius: 4px; overflow-x: auto; }
+  .debug-json pre { margin: 0; font-size: 0.85em; color: #333; }
 </style>
 
 <h2>Debug Thread</h2>
