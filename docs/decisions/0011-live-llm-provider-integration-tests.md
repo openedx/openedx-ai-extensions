@@ -12,9 +12,9 @@ The existing test suite exercises every layer of the plugin — orchestrators, p
 - A structured-output contract (`response_format` / JSON schema) that the LLM silently ignores or returns in an unexpected shape.
 - Thread-based context not surviving across turns on the provider's side.
 - Responses that are syntactically correct but semantically unrelated to the question asked.
-- Silent failures in error-recovery paths (e.g. stale thread IDs, unguarded `json.loads` calls) that only trigger under real API conditions.
+- Silent failures in error-recovery paths (e.g. stale thread IDs) that only trigger under real API conditions.
 
-These failure modes only surface against a real network call. A lightweight integration suite that runs on demand (not in every CI push) closes this gap without bloating the regular test runtime.
+These failure modes only surface against a real network call. A lightweight integration suite that runs on every merge to main closes this gap: failures are caught before a release rather than discovered in production, without the cost of running on every push.
 
 ## Decision
 
@@ -43,29 +43,27 @@ backend/
 
 **`tests/integration/conftest.py`** — Declares `PROVIDERS` (the parametrised list of provider slugs and their required env-var names), `skip_if_no_key` (runtime skip helper), `create_profile_and_scope` (creates `AIWorkflowProfile` + `AIWorkflowScope` with provider slug injected via `content_patch`), and shared fixtures (`course_key`, `location_id`, `live_user`, `live_api_client`).
 
-The `integration_test_settings.py` targets `openai/gpt-4o-mini` and `anthropic/claude-haiku-3-5` — cheap, fast models appropriate for integration checks.
+The `integration_test_settings.py` targets the current provider defaults for each configured provider. These model references should be reviewed and updated on a regular cadence (approximately monthly or bimonthly) to stay aligned with what is actually deployed in production.
 
 ### Key design choices
 
-**Automatic skip when keys are absent.** Parametrised tests call `skip_if_no_key` as their first statement; provider-specific tests use `@pytest.mark.skipif` evaluated at collection time. Both produce a clean skip rather than a failure in keyless environments.
+**Run trigger.** The integration suite runs on every merge to the main branch via CI, not on every push. This catches provider-side breakage before a release while keeping per-push CI fast. A failed integration run opens a new PR to fix; it does not block day-to-day development.
+
+**Operational requirement: valid API keys with budget.** The CI environment must have `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` set with accounts that have sufficient token budget. Maintaining these credentials (rotation, budget monitoring) is an administrative responsibility alongside the technical test suite. Parametrised tests skip automatically at runtime when a key is absent, so the suite degrades gracefully rather than failing when a key is missing.
 
 **Provider override via `content_patch`.** Rather than creating new profile JSON templates on disk, each test injects the desired provider slug and any extra options into an existing base profile using the RFC 7386 merge-patch mechanism already supported by `AIWorkflowProfile`. This keeps test infrastructure thin and exercises the same config-merge path used in production.
 
 **Bad credentials injected the same way.** Fault-tolerance tests override `options.api_key` or `options.model` via the same `content_patch` / `extra_llm_patch` mechanism, confirming that invalid configuration is surfaced as an error rather than silently producing a `completed` response.
 
-**OpenEdX content is mocked; LLM call is real.** `OpenEdXProcessor` is patched to return a fixed string so tests do not depend on a running LMS. Only the LiteLLM network call is live, isolating the variable under test to the provider response.
+**OpenEdX content is mocked; LLM call is real.** `OpenEdXProcessor` is patched to return a fixed string so tests do not depend on a running LMS or a Tutor deployment. Only the LiteLLM network call is live, isolating the variable under test to the provider response.
 
-**Thread and context tests bypass the API layer.** Tests that validate multi-turn behaviour instantiate `LLMProcessor` directly with a `MagicMock` session object. This avoids entanglement with `SubmissionProcessor`, which requires the submissions Django app. The mock session records attribute assignments (`remote_response_id`) so assertions can be made on them directly.
+**Thread and context tests: consider installing SubmissionProcessor.** The current approach instantiates `LLMProcessor` directly with a `MagicMock` session to avoid entanglement with `SubmissionProcessor`. However, `SubmissionProcessor` is a library and can be installed in the CI environment. Installing it would allow tests to exercise the full production code path, including the session-persistence layer, without requiring a running LMS. This should be evaluated when wiring the suite into CI.
 
-**`EducatorAssistantProcessor` called directly.** Educator tests instantiate `EducatorAssistantProcessor` with the schema loaded from `response_schemas/educator_quiz_questions.json` passed as `extra_params["response_format"]`, mirroring the production call path in `EducatorAssistantOrchestrator`. This avoids session and submission-processor complexity while exercising the real unguarded `json.loads` at line 83.
-
-**`json.loads` interception.** Test AA patches `json.loads` inside the processor module to capture the raw LLM string before the processor consumes it. The captured string is independently validated, so the test fails with a clear message if the LLM ever returns non-JSON — a failure mode that would otherwise crash the processor with an unhandled `JSONDecodeError`.
-
-**LLM-as-judge for semantic validation.** Tests F, AF, AG, and AH use a second LLM call as an evaluator: the primary response is fed back to the same provider with a strict system prompt that returns a JSON verdict (`yes` / `no`). This detects responses that are structurally valid but semantically incorrect.
+**LLM-as-judge for semantic validation.** Tests F, AF, AG, and AH use a second LLM call as an evaluator: the primary response is fed back to the same provider with a strict system prompt that returns a JSON verdict (`yes` / `no`). The judge model should be a reasoning-focused model (e.g. `claude-opus-4-8`) rather than a speed-optimised model, since accuracy of judgement matters more than latency for this role.
 
 **`live_llm` pytest marker.** All tests carry `@pytest.mark.live_llm`, declared in `tox.ini`. The normal suite excludes them with `-m "not live_llm"`; the integration suite selects only them with `-m live_llm`.
 
-**Separate Makefile target.** `make test-integration` sets `DJANGO_SETTINGS_MODULE=integration_test_settings` inline and runs only `tests/integration/` with the `live_llm` marker. `make test` is unchanged.
+**Separate Makefile target.** `make test-integration` sets `DJANGO_SETTINGS_MODULE=integration_test_settings` inline and runs only `tests/integration/` with the `live_llm` marker. `make test` is unchanged. The exact invocation will evolve once the suite is wired into GitHub Actions CI.
 
 ### Test matrix
 
@@ -78,7 +76,7 @@ The `integration_test_settings.py` targets `openai/gpt-4o-mini` and `anthropic/c
 | C | `test_response_format_json_schema` | OpenAI, Anthropic | Response parses as valid JSON; required key `answer` is present and is a string |
 | D | `test_threaded_stores_remote_response_id` | OpenAI only | `session.remote_response_id` is non-empty after the first `chat_with_context` call |
 | E | `test_threaded_context_maintained_openai` | OpenAI only | A fact planted in turn one is recalled correctly in turn two of the same server-side thread |
-| F | `test_llm_judge_response_relevance` | OpenAI, Anthropic | LLM-as-judge returns `yes` confirming the response is topically consistent with the source content |
+| F | `test_llm_judge_response_relevance` | OpenAI, Anthropic | LLM-as-judge (reasoning model) returns `yes` confirming the response is topically consistent with the source content |
 
 #### Fault tolerance (`test_fault_tolerance.py`)
 
@@ -93,17 +91,17 @@ The `integration_test_settings.py` targets `openai/gpt-4o-mini` and `anthropic/c
 |---|-----------|-----------|-------------------|-------------|
 | K | `test_streaming_handles_empty_delta_chunks` | OpenAI, Anthropic | No crash; no error marker in accumulated bytes | `content = chunk.choices[0].delta.content or ""` yields empty bytes silently |
 | L | `test_streaming_long_response_arrives_completely` | OpenAI, Anthropic | All chunks arrive; final text >200 chars; no error marker | No check that stream fully drains before closing |
-| M | `test_streaming_with_response_format_openai` / `test_streaming_with_response_format_anthropic_clean_outcome` | OpenAI / Anthropic | Valid streamable output OR clean rejection; no 500 crash | OpenAI does not support streaming + strict JSON schema in all model variants; Anthropic rejects it outright |
+| M | `test_streaming_with_response_format_*` | OpenAI / Anthropic | Valid streamable output OR clean rejection; no 500 crash | Streaming + strict JSON schema is unsupported in some provider/model combinations; this incompatibility should also be enforced at the code level by mapping it in `_PROVIDER_CAPABILITIES` so the plugin rejects the combination before calling the provider |
 | AI | `test_healthy_stream_has_no_error_marker` | OpenAI, Anthropic | `"error_in_stream"` substring NOT in accumulated bytes | `\|\|{...}\|\|` error marker injected on streaming failure; must not appear in healthy call |
 
 #### Thread / context management (`test_threading.py`)
 
 | # | Test name | Providers | What is validated | Risk caught |
 |---|-----------|-----------|-------------------|-------------|
-| N | `test_stale_thread_id_triggers_recovery` | OpenAI only | `previous_response_not_found` caught; stale ID replaced; valid response returned | Recovery hole in `threaded_orchestrator.py:153-159`; stale `remote_response_id` not auto-cleared |
+| N | `test_stale_thread_id_triggers_recovery` | OpenAI only | `previous_response_not_found` caught; stale ID replaced; valid response returned | Recovery hole in `threaded_orchestrator.py:153-159`; stale `remote_response_id` not auto-cleared. OpenAI's thread-retention limit should be investigated so the recovery path is also triggered on a known-expired ID, not only a fabricated one. Gemini stores interactions for 55 days on the paid tier — a similar limit likely exists for OpenAI. |
 | O | `test_conversation_clean_after_stale_thread_recovery` | OpenAI only | Second turn succeeds; response is grounded in current content | Recursive retry in `_call_responses_wrapper` has no max-retry guard |
 | P | `test_three_turn_context_chain` | OpenAI only | Fact from turn 1 recalled correctly in turn 3 despite neutral turn 2 | Only 2-turn context was previously tested |
-| Q | `test_anthropic_cache_hit_on_second_call` | Anthropic only | Second call's `usage.cache_read_input_tokens > 0` with large context | `multi_turn_cache` path in `providers/__init__.py`; no test that cache actually fires |
+| Q | `test_anthropic_cache_hit_on_second_call` | Anthropic only | Second call's `usage.cache_read_input_tokens > 0` with large context | `multi_turn_cache` path in `providers/__init__.py`; no test that cache actually fires. Feasibility to be confirmed during implementation — may be left out if impractical. |
 | R | `test_anthropic_cache_short_prompt_no_crash` | Anthropic only | No crash; valid response returned when prompt is below Anthropic's 1024-token cache minimum | Anthropic silently rejects cache for prompts <1024 tokens |
 
 #### Response format depth (`test_response_format.py`)
@@ -112,22 +110,22 @@ The `integration_test_settings.py` targets `openai/gpt-4o-mini` and `anthropic/c
 |---|-----------|-----------|-------------------|-------------|
 | S | `test_response_format_no_extra_keys` | OpenAI, Anthropic | Parsed response has EXACTLY the declared keys; no extras | Schema declared but enforcement depends on model compliance |
 | T | `test_response_format_required_array_non_empty` | OpenAI, Anthropic | Returned array has ≥ 1 element | `educator_quiz_questions.json` has no `minItems`; LLM can return `[]` silently |
-| V | `test_anthropic_streaming_with_strict_schema_no_crash` | Anthropic only | Clean error or graceful fallback; not a 500 crash | Anthropic does not support structured output + streaming in all API versions |
+| V | `test_anthropic_streaming_with_strict_schema_no_crash` | Anthropic only | Clean error or graceful fallback; not a 500 crash | Anthropic does not support structured output + streaming in all API versions; longer term this combination should be blocked in `_PROVIDER_CAPABILITIES` |
 
 #### Token usage tracking (`test_token_usage.py`)
 
 | # | Test name | Providers | What is validated | Risk caught |
 |---|-----------|-----------|-------------------|-------------|
-| W | `test_usage_populated_after_non_streaming_call` | OpenAI, Anthropic | `usage` dict present; `total_tokens > 0`; `prompt_tokens` and `completion_tokens` both set | `self.usage = None` initial; only set if response carries usage; never validated downstream |
-| X | `test_usage_populated_after_streaming_call` | OpenAI, Anthropic | After stream drains, `processor.get_usage()` returns non-None with `total_tokens > 0` | Final chunk carries usage only if `stream_options: {include_usage: true}` is sent |
-| Y | `test_usage_with_tools_enabled_openai` | OpenAI only | `usage.total_tokens > 0` when tools schema is included in the prompt | Tool-call tokens may be omitted from usage in some providers |
+| W | `test_usage_populated_after_non_streaming_call` | OpenAI, Anthropic | `usage` dict present; `total_tokens > 0`; `prompt_tokens` and `completion_tokens` both set | `self.usage = None` initial; only set if response carries usage. Note: the plugin makes no public promises about token count values — consider whether this coverage is better placed in unit tests. |
+| X | `test_usage_populated_after_streaming_call` | OpenAI, Anthropic | After stream drains, `processor.get_usage()` returns non-None with `total_tokens > 0` | Final chunk carries usage only if `stream_options: {include_usage: true}` is sent. See W note above. |
+| Y | `test_usage_with_tools_enabled_openai` | OpenAI only | `usage.total_tokens > 0` when tools schema is included in the prompt | Tool-call tokens may be omitted from usage in some providers. See W note above. |
 
 #### EducatorAssistant & structured outputs (`test_educator_assistant.py`)
 
 | # | Test name | Providers | What is validated | Risk caught |
 |---|-----------|-----------|-------------------|-------------|
 | Z | `test_quiz_generation_returns_non_empty_problems` | OpenAI, Anthropic | `problems` list has ≥ 1 item; each item has all required fields (`display_name`, `question_html`, `problem_type`, `choices`); `collection_name` non-empty | No `minItems` constraint in `educator_quiz_questions.json`; LLM can return `[]` silently |
-| AA | `test_quiz_generation_response_is_valid_json` | OpenAI, Anthropic | Raw LLM string captured before `json.loads`; independently verified as valid JSON | `json.loads` unguarded at `educator_assistant_processor.py:83` — any malformed LLM response crashes quiz generation in production |
+| AA | `test_quiz_generation_response_is_valid_json` | OpenAI, Anthropic | Processor completes with `status=success`; response is a parsed dict with `collection_name` present; any `JSONDecodeError` from the unguarded call surfaces naturally as a test failure | `json.loads` unguarded at `educator_assistant_processor.py:83`; schema we control constrains LLM to valid JSON via structured outputs |
 
 #### Tool-call round-trips (`test_tool_calls.py`)
 
@@ -144,12 +142,17 @@ The `integration_test_settings.py` targets `openai/gpt-4o-mini` and `anthropic/c
 | AG | `test_response_does_not_hallucinate_beyond_content` | OpenAI, Anthropic | "Does the response contain only information from the provided content?" → yes | No grounding check; models confabulate on fictional/narrow content |
 | AH | `test_response_not_truncated_mid_list` | OpenAI, Anthropic | "Does the response mention all five steps?" → yes | `MAX_TOKENS=500` cap may cut responses mid-sentence |
 
+### Future providers
+
+Gemini supports server-side conversation threading via `previous_interaction_id`, with interactions stored for 55 days on the paid tier and 1 day on the free tier. When Gemini is added to `_PROVIDER_CAPABILITIES` as a `server_side_thread_id` provider, the threading tests (D, E, N, O, P) should be extended to cover it, and the stale-thread recovery test (N) should account for its 55-day expiry window.
+
 ## Consequences
 
-- Any developer with valid API keys can run `make test-integration` from the `backend/` directory and get immediate feedback on provider compatibility.
-- CI pipelines that do not have API keys continue to run `make test` without disruption; live tests are automatically skipped.
+- Any developer with valid API keys can run `make test-integration` from the `backend/` directory and get immediate feedback on provider compatibility. The exact CI invocation will be defined when the suite is wired into GitHub Actions.
+- The CI environment must have `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` set with sufficient token budget; maintaining these credentials is an ongoing administrative responsibility.
 - Adding a new LLM provider to the integration suite requires only a new entry in `PROVIDERS` (in `conftest.py`) and a matching key in `integration_test_settings.py`. No new test functions are needed for the parametrised cases; only thread-specific tests (D, E, N, O, P) may need provider-specific variants.
-- Live tests consume real API credits on every run. Test models are chosen to minimise cost; the `MAX_TOKENS` cap is set conservatively at 500 tokens.
-- The LLM-as-judge pattern (tests F, AF, AG, AH) is probabilistic: a judge model could theoretically return `no` for a correct response. The judge prompt and content are designed to minimise ambiguity, but occasional flakiness on semantically borderline responses should be expected and investigated case by case rather than treated as a systematic failure.
+- Live tests consume real API credits on every run. Test models should match the production provider defaults; LLM-as-judge tests should use a reasoning-focused model. Both categories should be reviewed on a regular cadence.
+- The LLM-as-judge pattern (tests F, AF, AG, AH) is optimised for quality, not speed — using a reasoning model for judgement is intentional. Occasional flakiness on semantically borderline responses should be investigated case by case.
 - Fault-tolerance tests (G, H) assert on error surfacing rather than on a specific HTTP status code, because the exception propagation path depends on the DRF view's error handler. This makes the assertions robust to future view refactors.
-- The Anthropic cache test (Q) requires a large enough context to exceed the provider's 1024-token minimum for cache activation. If the prompt is too short, the test will report `cache_read_input_tokens = 0` without failing, indicating the cache threshold was not met rather than a bug in the integration.
+- The Anthropic cache test (Q) requires a large enough context to exceed the provider's 1024-token minimum for cache activation. Feasibility will be confirmed during implementation; if impractical, it will be left out.
+- The token-usage tests (W, X, Y) cover behaviour the plugin makes no public promises about. If they prove difficult to maintain or add noise to the integration run, they should be moved to unit tests instead.
