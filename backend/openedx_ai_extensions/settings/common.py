@@ -140,3 +140,10 @@ def plugin_settings(settings):
             "enabled": True,
         })
         settings.EVENT_BUS_CONSUMER_CONFIG = consumer_config
+
+    if hasattr(settings, "AI_EXTENSIONS"):
+        configs = getattr(settings, "AI_EXTENSIONS", {})
+        if "openai" in configs and "model" not in configs["openai"]:
+            configs["openai"]["model"] = "openai/gpt-4.1-mini"
+        if "anthropic" in configs and "model" not in configs["anthropic"]:
+            configs["anthropic"]["model"] = "claude-3-haiku-20240307"
