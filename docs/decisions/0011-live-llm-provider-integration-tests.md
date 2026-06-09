@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -28,7 +28,7 @@ backend/
 └── tests/integration/
     ├── __init__.py
     ├── conftest.py
-    ├── test_live_llm_providers.py     # A–F   happy-path baseline
+    ├── test_live_llm_providers.py     # A, C, D, E  happy-path baseline
     ├── test_fault_tolerance.py        # G, H   API rejections
     ├── test_streaming_edge_cases.py   # K, L, M, AI  streaming edge cases
     ├── test_threading.py              # N, O, P, Q, R  thread management
@@ -41,7 +41,7 @@ backend/
 
 **`integration_test_settings.py`** — A Django settings module that inherits `test_settings` and overrides `AI_EXTENSIONS` with provider entries backed by environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`). Only activated when running the integration suite; `make test` continues to use `test_settings`.
 
-**`tests/integration/conftest.py`** — Declares `PROVIDERS` (the parametrised list of provider slugs and their required env-var names), `skip_if_no_key` (runtime skip helper), `create_profile_and_scope` (creates `AIWorkflowProfile` + `AIWorkflowScope` with provider slug injected via `content_patch`), and shared fixtures (`course_key`, `location_id`, `live_user`, `live_api_client`).
+**`tests/integration/conftest.py`** — Declares `PROVIDERS` (the parametrised list of provider slugs and their required env-var names), `skip_if_no_key` (runtime skip helper), `create_profile_and_scope` (creates `AIWorkflowProfile` + `AIWorkflowScope` with provider slug injected via `content_patch`), `create_live_session` (creates a real `AIWorkflowSession` DB row for threading tests), `judge()` (shared LLM-as-judge helper used by semantic quality tests), and shared fixtures (`course_key`, `location_id`, `live_user`, `live_api_client`).
 
 The `integration_test_settings.py` targets the current provider defaults for each configured provider. These model references should be reviewed and updated on a regular cadence (approximately monthly or bimonthly) to stay aligned with what is actually deployed in production.
 
@@ -57,9 +57,9 @@ The `integration_test_settings.py` targets the current provider defaults for eac
 
 **OpenEdX content is mocked; LLM call is real.** `OpenEdXProcessor` is patched to return a fixed string so tests do not depend on a running LMS or a Tutor deployment. Only the LiteLLM network call is live, isolating the variable under test to the provider response.
 
-**Thread and context tests: consider installing SubmissionProcessor.** The current approach instantiates `LLMProcessor` directly with a `MagicMock` session to avoid entanglement with `SubmissionProcessor`. However, `SubmissionProcessor` is a library and can be installed in the CI environment. Installing it would allow tests to exercise the full production code path, including the session-persistence layer, without requiring a running LMS. This should be evaluated when wiring the suite into CI.
+**Thread and context tests use real DB sessions.** Tests N, O, and P use `create_live_session`, which creates real `AIWorkflowSession` rows so that `session.save()` exercises the actual persistence layer. Test D (`test_threaded_stores_remote_response_id`) still uses `MagicMock` because it only checks that the attribute is set, not that it survives a round-trip to the database. `SubmissionProcessor` is not required by these tests.
 
-**LLM-as-judge for semantic validation.** Tests F, AF, AG, and AH use a second LLM call as an evaluator: the primary response is fed back to the same provider with a strict system prompt that returns a JSON verdict (`yes` / `no`). The judge model should be a reasoning-focused model (e.g. `claude-opus-4-8`) rather than a speed-optimised model, since accuracy of judgement matters more than latency for this role.
+**LLM-as-judge for semantic validation.** Tests AF, AG, and AH use a second LLM call as an evaluator: the primary response is fed back with a strict system prompt that returns a JSON verdict (`yes` / `no`).
 
 **`live_llm` pytest marker.** All tests carry `@pytest.mark.live_llm`, declared in `tox.ini`. The normal suite excludes them with `-m "not live_llm"`; the integration suite selects only them with `-m live_llm`.
 
@@ -72,11 +72,11 @@ The `integration_test_settings.py` targets the current provider defaults for eac
 | # | Test name | Providers | What is validated |
 |---|-----------|-----------|-------------------|
 | A | `test_provider_returns_non_empty_response` | OpenAI, Anthropic | Status is `completed`; response string has more than 10 characters |
-| B | `test_streaming_yields_content` | OpenAI, Anthropic | Response content type is `text/plain`; accumulated streaming bytes exceed 20 characters |
 | C | `test_response_format_json_schema` | OpenAI, Anthropic | Response parses as valid JSON; required key `answer` is present and is a string |
-| D | `test_threaded_stores_remote_response_id` | OpenAI only | `session.remote_response_id` is non-empty after the first `chat_with_context` call |
-| E | `test_threaded_context_maintained_openai` | OpenAI only | A fact planted in turn one is recalled correctly in turn two of the same server-side thread |
-| F | `test_llm_judge_response_relevance` | OpenAI, Anthropic | LLM-as-judge (reasoning model) returns `yes` confirming the response is topically consistent with the source content |
+| D | `test_threaded_stores_remote_response_id` | OpenAI only | `session.remote_response_id` is non-empty after the first `chat_with_context` call (uses `MagicMock` session) |
+| E | `test_threaded_context_maintained_openai` | OpenAI only | Turn 0 initialises the remote thread (system messages only). Turn 1 plants a fact via `previous_response_id`; turn 2 recalls it. Uses a real DB session via `create_live_session`. |
+
+Tests B (`test_streaming_yields_content`) and F (`test_llm_judge_response_relevance`) were removed: B is superseded by the deeper test L in `test_streaming_edge_cases.py`; F is superseded by the more specific hallucination and grounding checks in `test_semantic_quality.py`.
 
 #### Fault tolerance (`test_fault_tolerance.py`)
 
@@ -98,9 +98,9 @@ The `integration_test_settings.py` targets the current provider defaults for eac
 
 | # | Test name | Providers | What is validated | Risk caught |
 |---|-----------|-----------|-------------------|-------------|
-| N | `test_stale_thread_id_triggers_recovery` | OpenAI only | `previous_response_not_found` caught; stale ID replaced; valid response returned | Recovery hole in `threaded_orchestrator.py:153-159`; stale `remote_response_id` not auto-cleared. OpenAI's thread-retention limit should be investigated so the recovery path is also triggered on a known-expired ID, not only a fabricated one. Gemini stores interactions for 55 days on the paid tier — a similar limit likely exists for OpenAI. |
+| N | `test_stale_thread_id_triggers_recovery` | OpenAI only | `previous_response_not_found` caught; stale ID replaced; valid response returned | `_call_responses_wrapper` checked `e.code` for the error string, but litellm sets `e.code = None` (passes `body=None` to parent constructor), so the check never matched and the exception was re-raised. Fixed to check `str(e)` which includes the full provider JSON. |
 | O | `test_conversation_clean_after_stale_thread_recovery` | OpenAI only | Second turn succeeds; response is grounded in current content | Recursive retry in `_call_responses_wrapper` has no max-retry guard |
-| P | `test_three_turn_context_chain` | OpenAI only | Fact from turn 1 recalled correctly in turn 3 despite neutral turn 2 | Only 2-turn context was previously tested |
+| P | `test_three_turn_context_chain` | OpenAI only | Fact planted in turn 1 recalled correctly in turn 3 despite neutral turn 2. Turn 0 initialises the remote thread (system messages only); turns 1–3 chain via `previous_response_id`. | User input on the first call is not sent to OpenAI under the current design (only system messages are sent on thread initialisation); a turn 0 is required before planting the memorable fact. |
 | Q | `test_anthropic_cache_hit_on_second_call` | Anthropic only | Second call's `usage.cache_read_input_tokens > 0` with large context | `multi_turn_cache` path in `providers/__init__.py`; no test that cache actually fires. Feasibility to be confirmed during implementation — may be left out if impractical. |
 | R | `test_anthropic_cache_short_prompt_no_crash` | Anthropic only | No crash; valid response returned when prompt is below Anthropic's 1024-token cache minimum | Anthropic silently rejects cache for prompts <1024 tokens |
 
