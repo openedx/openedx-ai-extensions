@@ -146,4 +146,4 @@ def plugin_settings(settings):
         if "openai" in configs and "model" not in configs["openai"]:
             configs["openai"]["model"] = "openai/gpt-4.1-mini"
         if "anthropic" in configs and "model" not in configs["anthropic"]:
-            configs["anthropic"]["model"] = "claude-3-haiku-20240307"
+            configs["anthropic"]["model"] = "anthropic/claude-haiku-4-5"
