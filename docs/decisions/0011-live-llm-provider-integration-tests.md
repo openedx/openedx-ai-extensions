@@ -18,7 +18,7 @@ These failure modes only surface against a real network call. A lightweight inte
 
 ## Decision
 
-Introduce a separate layer of live integration tests, isolated from the normal suite, that send actual requests to each configured LLM provider (OpenAI, Anthropic) and assert on real responses.
+Introduce a separate layer of live integration tests, isolated from the normal suite, that send actual requests to each configured LLM provider (OpenAI, Anthropic, Gemini) and assert on real responses.
 
 ### Structure
 
@@ -73,10 +73,12 @@ The `integration_test_settings.py` targets the current provider defaults for eac
 |---|-----------|-----------|-------------------|
 | A | `test_provider_returns_non_empty_response` | OpenAI, Anthropic | Status is `completed`; response string has more than 10 characters |
 | C | `test_response_format_json_schema` | OpenAI, Anthropic | Response parses as valid JSON; required key `answer` is present and is a string |
-| D | `test_threaded_stores_remote_response_id` | OpenAI only | `session.remote_response_id` is non-empty after the first `chat_with_context` call (uses `MagicMock` session) |
-| E | `test_threaded_context_maintained_openai` | OpenAI only | Turn 0 initialises the remote thread (system messages only). Turn 1 plants a fact via `previous_response_id`; turn 2 recalls it. Uses a real DB session via `create_live_session`. |
+| D | `test_threaded_stores_remote_response_id` | OpenAI, Gemini | `session.remote_response_id` is non-empty after the first `chat_with_context` call (uses `MagicMock` session) |
+| E | `test_threaded_context_maintained_openai` | OpenAI, Gemini | Turn 0 initialises the remote thread (system messages only). Turn 1 plants a fact via `previous_response_id`; turn 2 recalls it. Uses a real DB session via `create_live_session`. |
 
 Tests B (`test_streaming_yields_content`) and F (`test_llm_judge_response_relevance`) were removed: B is superseded by the deeper test L in `test_streaming_edge_cases.py`; F is superseded by the more specific hallucination and grounding checks in `test_semantic_quality.py`.
+
+Tests D and E are scoped to providers exposing a server-side thread/response ID (the `server_side_thread_id` capability in `_PROVIDER_CAPABILITIES`): OpenAI and Gemini. See *Gemini provider* below for Gemini-specific notes.
 
 #### Fault tolerance (`test_fault_tolerance.py`)
 
@@ -98,11 +100,13 @@ Tests B (`test_streaming_yields_content`) and F (`test_llm_judge_response_releva
 
 | # | Test name | Providers | What is validated | Risk caught |
 |---|-----------|-----------|-------------------|-------------|
-| N | `test_stale_thread_id_triggers_recovery` | OpenAI only | `previous_response_not_found` caught; stale ID replaced; valid response returned | `_call_responses_wrapper` checked `e.code` for the error string, but litellm sets `e.code = None` (passes `body=None` to parent constructor), so the check never matched and the exception was re-raised. Fixed to check `str(e)` which includes the full provider JSON. |
-| O | `test_conversation_clean_after_stale_thread_recovery` | OpenAI only | Second turn succeeds; response is grounded in current content | Recursive retry in `_call_responses_wrapper` has no max-retry guard |
-| P | `test_three_turn_context_chain` | OpenAI only | Fact planted in turn 1 recalled correctly in turn 3 despite neutral turn 2. Turn 0 initialises the remote thread (system messages only); turns 1–3 chain via `previous_response_id`. | User input on the first call is not sent to OpenAI under the current design (only system messages are sent on thread initialisation); a turn 0 is required before planting the memorable fact. |
+| N | `test_stale_thread_id_triggers_recovery` | OpenAI, Gemini | `previous_response_not_found` caught; stale ID replaced; valid response returned | `_call_responses_wrapper` checked `e.code` for the error string, but litellm sets `e.code = None` (passes `body=None` to parent constructor), so the check never matched and the exception was re-raised. Fixed to check `str(e)` which includes the full provider JSON. |
+| O | `test_conversation_clean_after_stale_thread_recovery` | OpenAI, Gemini | Second turn succeeds; response is grounded in current content | Recursive retry in `_call_responses_wrapper` has no max-retry guard |
+| P | `test_three_turn_context_chain` | OpenAI, Gemini | Fact planted in turn 1 recalled correctly in turn 3 despite neutral turn 2. Turn 0 initialises the remote thread (system messages only); turns 1–3 chain via `previous_response_id`. | User input on the first call is not sent to OpenAI under the current design (only system messages are sent on thread initialisation); a turn 0 is required before planting the memorable fact. |
 | Q | `test_anthropic_cache_hit_on_second_call` | Anthropic only | Second call's `usage.cache_read_input_tokens > 0` with large context | `multi_turn_cache` path in `providers/__init__.py`; no test that cache actually fires. Feasibility to be confirmed during implementation — may be left out if impractical. |
 | R | `test_anthropic_cache_short_prompt_no_crash` | Anthropic only | No crash; valid response returned when prompt is below Anthropic's 1024-token cache minimum | Anthropic silently rejects cache for prompts <1024 tokens |
+
+Tests N, O, and P are likewise scoped to `server_side_thread_id` providers (OpenAI and Gemini; see *Gemini provider*).
 
 #### Response format depth (`test_response_format.py`)
 
@@ -142,17 +146,21 @@ Tests B (`test_streaming_yields_content`) and F (`test_llm_judge_response_releva
 | AG | `test_response_does_not_hallucinate_beyond_content` | OpenAI, Anthropic | "Does the response contain only information from the provided content?" → yes | No grounding check; models confabulate on fictional/narrow content |
 | AH | `test_response_not_truncated_mid_list` | OpenAI, Anthropic | "Does the response mention all five steps?" → yes | `MAX_TOKENS=500` cap may cut responses mid-sentence |
 
-### Future providers
+Test AH feeds the LLM a fixed content fixture describing a five-step process (e.g. a numbered how-to with steps 1-5); the judge checks that the response covers all five, so a mid-list truncation is caught even if the prose up to that point looks complete.
 
-Gemini supports server-side conversation threading via `previous_interaction_id`, with interactions stored for 55 days on the paid tier and 1 day on the free tier. When Gemini is added to `_PROVIDER_CAPABILITIES` as a `server_side_thread_id` provider, the threading tests (D, E, N, O, P) should be extended to cover it, and the stale-thread recovery test (N) should account for its 55-day expiry window.
+Tests AF, AG, and AH are marked `@pytest.mark.xfail(strict=False)`: weaker-reasoning providers/models can fail the judge's yes/no check on otherwise-correct responses, and these tests must not stop the rest of the integration suite.
+
+### Gemini provider
+
+Gemini is included in `PROVIDERS` and `_PROVIDER_CAPABILITIES` as a `server_side_thread_id` provider, alongside OpenAI: it supports server-side conversation threading via `previous_interaction_id`, with interactions stored for 55 days on the paid tier and 1 day on the free tier. Tests D, E, N, O, and P run against Gemini accordingly, and the stale-thread recovery test (N) must account for its 55-day expiry window.
 
 ## Consequences
 
 - Any developer with valid API keys can run `make test-integration` from the `backend/` directory and get immediate feedback on provider compatibility. The exact CI invocation will be defined when the suite is wired into GitHub Actions.
-- The CI environment must have `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` set with sufficient token budget; maintaining these credentials is an ongoing administrative responsibility.
+- The CI environment must have `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `GEMINI_API_KEY` set with sufficient token budget; maintaining these credentials is an ongoing administrative responsibility.
 - Adding a new LLM provider to the integration suite requires only a new entry in `PROVIDERS` (in `conftest.py`) and a matching key in `integration_test_settings.py`. No new test functions are needed for the parametrised cases; only thread-specific tests (D, E, N, O, P) may need provider-specific variants.
 - Live tests consume real API credits on every run. Test models should match the production provider defaults; LLM-as-judge tests should use a reasoning-focused model. Both categories should be reviewed on a regular cadence.
-- The LLM-as-judge pattern (tests F, AF, AG, AH) is optimised for quality, not speed — using a reasoning model for judgement is intentional. Occasional flakiness on semantically borderline responses should be investigated case by case.
+- The LLM-as-judge pattern (tests AF, AG, AH) is optimised for quality, not speed — using a reasoning model for judgement is intentional. These tests depend on the target model adhering to a strict yes/no judge prompt and may fail for some provider/model combinations regardless of response quality. They are marked `xfail(strict=False)` so a provider with weaker reasoning cannot fail the whole integration run, until a more robust grounding/evaluation approach is implemented.
 - Fault-tolerance tests (G, H) assert on error surfacing rather than on a specific HTTP status code, because the exception propagation path depends on the DRF view's error handler. This makes the assertions robust to future view refactors.
 - The Anthropic cache test (Q) requires a large enough context to exceed the provider's 1024-token minimum for cache activation. Feasibility will be confirmed during implementation; if impractical, it will be left out.
 - The token-usage tests (W, X, Y) cover behaviour the plugin makes no public promises about. If they prove difficult to maintain or add noise to the integration run, they should be moved to unit tests instead.
