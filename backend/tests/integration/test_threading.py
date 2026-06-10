@@ -157,25 +157,19 @@ _LONG_SYSTEM_CONTEXT = (
     "Cloud computing emerged in the 2010s, shifting workloads to remote data centres. "
     "Today artificial intelligence, driven by GPUs and large language models, "
     "represents the next major inflection point in the history of computing technology. "
-) * 4  # Repeat to exceed Anthropic's 1024-token minimum for cache activation
+) * 24  # Repeat to exceed Anthropic's cache minimum for claude-haiku-4-5 (4096
+        # tokens — higher than older Haiku/Sonnet/Opus models, which use 1024-2048)
 
 
 @pytest.mark.live_llm
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "config 'cache: True' enables litellm semantic caching (Redis), not Anthropic prompt "
-        "caching. Anthropic prompt caching requires cache_control headers on messages, which "
-        "the processor does not yet add. cache_read_input_tokens will remain 0 until implemented."
-    ),
-)
 @pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="ANTHROPIC_API_KEY not set")
 def test_anthropic_cache_hit_on_second_call():
     """
-    When the same large system context is sent twice to Anthropic with
-    caching enabled, the second call's usage should report
-    cache_read_input_tokens > 0, confirming the cache prefix fired.
-    Anthropic requires > 1024 tokens in the cacheable prefix.
+    When the same large system context is sent twice to Anthropic, the
+    second call's usage should report cache_read_input_tokens > 0,
+    confirming the cache_control prefix written by the first call was
+    reused. claude-haiku-4-5's cache minimum is 4096 tokens;
+    _LONG_SYSTEM_CONTEXT comfortably exceeds it.
     """
     from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
 
@@ -184,7 +178,6 @@ def test_anthropic_cache_hit_on_second_call():
             "provider": "test_anthropic",
             "stream": False,
             "function": "summarize_content",
-            "cache": True,
         }
     }
 
@@ -199,11 +192,11 @@ def test_anthropic_cache_hit_on_second_call():
     assert r2.get("status") == "success", f"Second call failed: {r2}"
 
     usage = proc2.get_usage()
-    if usage is not None:
-        cache_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
-        assert cache_tokens > 0, (
-            f"Expected cache_read_input_tokens > 0 on second call. usage={usage}"
-        )
+    assert usage is not None, "Expected usage to be populated on second call"
+    cache_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+    assert cache_tokens > 0, (
+        f"Expected cache_read_input_tokens > 0 on second call. usage={usage}"
+    )
 
 
 _SHORT_CONTENT = "Python uses indentation to define code blocks."
@@ -213,9 +206,10 @@ _SHORT_CONTENT = "Python uses indentation to define code blocks."
 @pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="ANTHROPIC_API_KEY not set")
 def test_anthropic_cache_short_prompt_no_crash():
     """
-    Anthropic silently ignores cache_control for prompts below ~1024 tokens.
-    Enabling cache on a short prompt must not crash — a valid response is
-    returned with no error, even if no cache tokens are reported.
+    Anthropic silently ignores cache_control for prompts below the model's
+    minimum (4096 tokens for claude-haiku-4-5). Enabling cache on a short
+    prompt must not crash — a valid response is returned with no error,
+    even if no cache tokens are reported.
     """
     from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
 

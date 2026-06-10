@@ -46,6 +46,14 @@ _SPANISH_CONTENT = (
 @pytest.mark.live_llm
 @pytest.mark.django_db
 @pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "LLM-as-judge verdict depends on the target model's reasoning quality; "
+        "weaker-reasoning providers can fail this check on an otherwise-correct "
+        "response. Non-blocking per ADR 0011."
+    ),
+)
 def test_response_language_matches_content(
     provider_slug, env_var, live_api_client, course_key
 ):
@@ -87,6 +95,14 @@ _NARROW_CONTENT = (
 @pytest.mark.live_llm
 @pytest.mark.django_db
 @pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "LLM-as-judge verdict depends on the target model's reasoning quality; "
+        "weaker-reasoning providers can fail this check on an otherwise-correct "
+        "response. Non-blocking per ADR 0011."
+    ),
+)
 def test_response_does_not_hallucinate_beyond_content(
     provider_slug, env_var, live_api_client, course_key
 ):
@@ -131,6 +147,14 @@ _LIST_CONTENT = (
 @pytest.mark.live_llm
 @pytest.mark.django_db
 @pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "LLM-as-judge verdict depends on the target model's reasoning quality; "
+        "weaker-reasoning providers can fail this check on an otherwise-correct "
+        "response. Non-blocking per ADR 0011."
+    ),
+)
 def test_response_not_truncated_mid_list(
     provider_slug, env_var, live_api_client, course_key
 ):
