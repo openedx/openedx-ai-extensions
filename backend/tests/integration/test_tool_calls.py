@@ -18,7 +18,8 @@ DUMMY_CONTENT = (
 
 
 def _make_processor_with_tools(provider_slug, tools=None):
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    """Build an LLMProcessor configured with *provider_slug* and optional *tools*."""
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     config_entry = {
         "provider": provider_slug,
@@ -64,7 +65,7 @@ def test_unknown_tool_name_returns_error_string():
     LLM requests a tool that is not in AVAILABLE_TOOLS.
     No LLM call is made; no API key required.
     """
-    from openedx_ai_extensions.processors.llm.tool_executor import ToolExecutor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.tool_executor import ToolExecutor  # pylint: disable=C0415
 
     result = ToolExecutor.execute_tool(
         function_name="nonexistent_tool_invented_by_llm_xyz",
@@ -84,7 +85,7 @@ def test_empty_available_tools_does_not_crash(provider_slug, env_var):
     When AVAILABLE_TOOLS is empty (simulating a tool name the LLM hallucinated),
     the processor must still complete and produce a text response.
     """
-    from openedx_ai_extensions.processors.llm import llm_processor as _mod  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm import llm_processor as _mod  # pylint: disable=C0415
 
     skip_if_no_key(env_var)
 

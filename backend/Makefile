@@ -1,6 +1,6 @@
 .PHONY: clean clean_tox compile_translations coverage diff_cover docs dummy_translations \
         extract_translations fake_translations help pii_check pull_translations \
-        quality requirements selfcheck test test-all upgrade compile-requirements validate install_transifex_client
+        quality requirements selfcheck test test-integration test-all upgrade compile-requirements validate install_transifex_client
 
 .DEFAULT_GOAL := help
 
@@ -71,8 +71,11 @@ requirements: clean_tox piptools ## install development environment requirements
 	pip install -e .
 	pip install -r requirements/docs.txt
 
-test: clean ## run tests in the current virtualenv
-	pytest
+test: clean ## run tests in the current virtualenv (excludes live LLM tests)
+	pytest tests/ -m "not live_llm"
+
+test-integration: ## run live LLM provider integration tests (requires OPENAI_API_KEY / ANTHROPIC_API_KEY)
+	DJANGO_SETTINGS_MODULE=integration_test_settings pytest tests/integration/ -m live_llm -v
 
 diff_cover: test ## find diff lines that need test coverage
 	diff-cover coverage.xml

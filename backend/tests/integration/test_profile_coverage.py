@@ -36,6 +36,7 @@ _CONTEXT_JSON = json.dumps({
 
 
 def _post(client, user_input=None):
+    """POST to the workflow endpoint with the shared dummy context and content."""
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
     qs = urlencode({"context": _CONTEXT_JSON})
     body = json.dumps({"action": "run", "user_input": user_input or {}})

@@ -10,18 +10,17 @@ import sys
 from unittest.mock import MagicMock
 
 import litellm
-
 import pytest
 from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import BlockUsageLocator
 from rest_framework.test import APIClient
 
-
 for _mod in ("xmodule", "xmodule.modulestore", "xmodule.modulestore.django"):
     sys.modules.setdefault(_mod, MagicMock())
 
-import settings as _settings  # noqa: E402
+import settings as _settings  # noqa: E402  pylint: disable=wrong-import-position
+
 _settings.SERVICE_VARIANT = "lms"
 
 JUDGE_MODEL = "gpt-4.1-mini"
@@ -51,7 +50,7 @@ def judge(system_question, user_content):
         return raw.lower()
 
 
-from openedx_ai_extensions.workflows.models import (  # noqa: E402
+from openedx_ai_extensions.workflows.models import (  # noqa: E402  pylint: disable=wrong-import-position
     AIWorkflowProfile,
     AIWorkflowScope,
     AIWorkflowSession,
@@ -64,13 +63,14 @@ PROVIDERS = [
     pytest.param("test_anthropic", "ANTHROPIC_API_KEY", id="anthropic"),
 ]
 
+
 def skip_if_no_key(env_var: str) -> None:
     """Skip the calling test at runtime if *env_var* is not set."""
     if not os.environ.get(env_var):
         pytest.skip(f"{env_var} not set — skipping live LLM test")
 
 
-def create_profile_and_scope(
+def create_profile_and_scope(  # pylint: disable=redefined-outer-name
     provider_slug: str,
     course_key,
     base_filepath: str,
@@ -107,7 +107,7 @@ def create_profile_and_scope(
     return profile
 
 
-def create_live_session(user, course_key, *, remote_response_id=None) -> AIWorkflowSession:
+def create_live_session(user, course_key, *, remote_response_id=None) -> AIWorkflowSession:  # pylint: disable=W0621
     """
     Create a minimal AIWorkflowSession backed by real DB rows.
 
@@ -157,7 +157,7 @@ def live_user(db):  # pylint: disable=unused-argument
 
 
 @pytest.fixture
-def live_api_client(live_user):  # pylint: disable=redefined-outer-name
+def live_api_client(live_user):  # pylint: disable=redefined-outer-name,unused-argument
     client = APIClient()
     client.login(username="live_tester", password="livetest123")
     return client

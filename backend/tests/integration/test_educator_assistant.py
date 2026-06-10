@@ -33,7 +33,7 @@ _SCHEMA_PATH = (
 
 def _make_processor(provider_slug):
     """Instantiate EducatorAssistantProcessor with the given provider."""
-    from openedx_ai_extensions.processors.llm.educator_assistant_processor import (  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.educator_assistant_processor import (  # pylint: disable=C0415
         EducatorAssistantProcessor,
     )
 

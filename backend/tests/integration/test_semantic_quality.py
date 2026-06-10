@@ -24,7 +24,9 @@ CONTEXT_JSON = json.dumps({
     "uiSlotSelectorId": "live-test-slot",
 })
 
+
 def _post_workflow(client, provider_slug, course_key, content, *, slug_suffix):
+    """Run the workflow endpoint with *content* as the OpenEdX block content."""
     create_profile_and_scope(provider_slug, course_key, "base/summary.json", slug_suffix=slug_suffix)
     url = reverse("openedx_ai_extensions:api:v1:aiext_workflows")
     qs = urlencode({"context": CONTEXT_JSON})

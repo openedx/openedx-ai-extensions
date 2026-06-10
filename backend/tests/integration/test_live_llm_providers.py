@@ -15,7 +15,6 @@ from django.urls import reverse
 
 from .conftest import PROVIDERS, create_live_session, create_profile_and_scope, skip_if_no_key
 
-
 DUMMY_CONTENT = (
     "Python is a high-level interpreted programming language created by Guido van Rossum. "
     "It emphasises code readability using significant indentation. "
@@ -59,7 +58,6 @@ def test_provider_returns_non_empty_response(
     data = response.json()
     assert data.get("status") == "completed"
     assert len(data.get("response", "")) > 10
-
 
 
 _ANSWER_SCHEMA = {
@@ -110,7 +108,7 @@ def test_response_format_json_schema(
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 def test_threaded_stores_remote_response_id():
     """After first threaded call, OpenAI response ID is persisted on the session object."""
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     config = {
         "LLMProcessor": {
@@ -147,7 +145,7 @@ def test_threaded_context_maintained_openai(live_user, course_key):
     are the meaningful user turns: MANGO is planted in turn 1 (sent via
     previous_response_id) and recalled in turn 2.
     """
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     config = {
         "LLMProcessor": {
@@ -184,5 +182,3 @@ def test_threaded_context_maintained_openai(live_user, course_key):
     assert "mango" in response_text, (
         f"Expected 'mango' in second-turn response, got: {result2.get('response')}"
     )
-
-

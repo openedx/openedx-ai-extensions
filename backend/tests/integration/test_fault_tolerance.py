@@ -52,7 +52,7 @@ def _assert_error_surfaced(response):
             assert body.get("status") != "completed", (
                 f"Got unexpected status='completed': {body}"
             )
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             # Streaming path — drain and look for error signal
             content = b"".join(response.streaming_content).decode("utf-8")
             assert "error" in content.lower() or "error_in_stream" in content, (

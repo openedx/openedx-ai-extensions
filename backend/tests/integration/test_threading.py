@@ -38,7 +38,7 @@ def test_stale_thread_id_triggers_recovery(live_user, course_key):
     OpenAI thread, the processor must catch previous_response_not_found,
     clear the stale ID, start a fresh thread, and return a valid response.
     """
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     session = create_live_session(
         live_user, course_key,
@@ -68,7 +68,7 @@ def test_conversation_clean_after_stale_thread_recovery(live_user, course_key):
     After stale-thread recovery, a second call on the same session must
     succeed and produce a coherent response grounded in the provided content.
     """
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     session = create_live_session(
         live_user, course_key,
@@ -108,7 +108,7 @@ def test_three_turn_context_chain(live_user, course_key):
     a neutral turn 2 that does not reference it.  Verifies that the server-
     side thread correctly chains three consecutive turns.
     """
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     session = create_live_session(live_user, course_key)
 
@@ -157,8 +157,7 @@ _LONG_SYSTEM_CONTEXT = (
     "Cloud computing emerged in the 2010s, shifting workloads to remote data centres. "
     "Today artificial intelligence, driven by GPUs and large language models, "
     "represents the next major inflection point in the history of computing technology. "
-) * 24  # Repeat to exceed Anthropic's cache minimum for claude-haiku-4-5 (4096
-        # tokens — higher than older Haiku/Sonnet/Opus models, which use 1024-2048)
+) * 24  # Repeat to exceed Anthropic's cache minimum (4096 tokens for claude-haiku-4-5)
 
 
 @pytest.mark.live_llm
@@ -171,7 +170,7 @@ def test_anthropic_cache_hit_on_second_call():
     reused. claude-haiku-4-5's cache minimum is 4096 tokens;
     _LONG_SYSTEM_CONTEXT comfortably exceeds it.
     """
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     config = {
         "LLMProcessor": {
@@ -211,7 +210,7 @@ def test_anthropic_cache_short_prompt_no_crash():
     prompt must not crash — a valid response is returned with no error,
     even if no cache tokens are reported.
     """
-    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=import-outside-toplevel
+    from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor  # pylint: disable=C0415
 
     config = {
         "LLMProcessor": {

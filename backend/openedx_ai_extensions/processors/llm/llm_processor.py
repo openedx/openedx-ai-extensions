@@ -193,8 +193,10 @@ class LLMProcessor(LitellmProcessor):
                 result["system_messages"] = system_msgs
             return result
         except BadRequestError as e:
-            error_code = getattr(e, "code", str(e))
-            if "previous_response_not_found" in str(error_code):
+            if (
+                "previous_response_not_found" in str(e)
+                or getattr(e, "code", None) == "previous_response_not_found"
+            ):
                 logger.warning(
                     "Previous response ID '%s' not found. Clearing and retrying with full history fallback.",
                     self.user_session.remote_response_id if self.user_session else "Unknown"
@@ -260,22 +262,20 @@ class LLMProcessor(LitellmProcessor):
         for tool_call in tool_calls:
             function_name = tool_call.function.name
 
-            # Ensure tool exists
             if function_name not in AVAILABLE_TOOLS:
                 logger.error(f"Tool '{function_name}' requested by LLM but not available locally.")
-                continue
-
-            function_to_call = AVAILABLE_TOOLS[function_name]
-
-            try:
-                function_args = json.loads(tool_call.function.arguments)
-                function_response = function_to_call(**function_args)
-            except json.JSONDecodeError:
-                function_response = "Error: Invalid JSON arguments provided."
-                logger.error(f"Failed to parse JSON arguments for {function_name}")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                function_response = f"Error executing tool: {str(e)}"
-                logger.error(f"Error executing tool {function_name}: {e}")
+                function_response = f"Error: Tool '{function_name}' is not available."
+            else:
+                function_to_call = AVAILABLE_TOOLS[function_name]
+                try:
+                    function_args = json.loads(tool_call.function.arguments)
+                    function_response = function_to_call(**function_args)
+                except json.JSONDecodeError:
+                    function_response = "Error: Invalid JSON arguments provided."
+                    logger.error(f"Failed to parse JSON arguments for {function_name}")
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    function_response = f"Error executing tool: {str(e)}"
+                    logger.error(f"Error executing tool {function_name}: {e}")
 
             params["messages"].append(
                 {
@@ -296,7 +296,7 @@ class LLMProcessor(LitellmProcessor):
         # For non-streaming, check for tool calls and handle recursively
         new_tool_calls = response.choices[0].message.tool_calls
         if new_tool_calls:
-            params["messages"].append(response.choices[0].message)
+            params["messages"].append(response.choices[0].message.model_dump(exclude_none=True, exclude_unset=True))
             return self._completion_with_tools(new_tool_calls, params)
 
         return response
