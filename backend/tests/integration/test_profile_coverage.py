@@ -6,7 +6,7 @@ HTTP requests through the full orchestrator → processor → LLM chain.
 """
 
 import json
-import os
+from dataclasses import dataclass
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -66,25 +66,57 @@ def _create_educator_profile_and_scope(provider_slug, course_key):
     return profile
 
 
+@dataclass
+class ProfileCase:
+    """One profile to exercise via test_profile_returns_non_empty_response."""
+
+    provider_slug: str
+    env_var: str
+    base_filepath: str
+    slug_suffix: str
+    user_input: object
+    min_response_length: int
+
+
+PROFILE_CASES = [
+    pytest.param(
+        ProfileCase("test_openai", "OPENAI_API_KEY", "base/custom_prompt.json", "custom-prompt", None, 20),
+        id="openai-custom-prompt",
+    ),
+    pytest.param(
+        ProfileCase("test_anthropic", "ANTHROPIC_API_KEY", "base/custom_prompt.json", "custom-prompt", None, 20),
+        id="anthropic-custom-prompt",
+    ),
+    pytest.param(
+        ProfileCase("test_openai", "OPENAI_API_KEY", "examples/openai/box_hello.json", "box-hello", None, 10),
+        id="openai-box-hello",
+    ),
+    pytest.param(
+        ProfileCase(
+            "test_openai", "OPENAI_API_KEY", "examples/openai/chat.json", "chat",
+            "What is photosynthesis?", 10,
+        ),
+        id="openai-chat",
+    ),
+]
+
+
 @pytest.mark.live_llm
 @pytest.mark.django_db
-@pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
-def test_custom_prompt_profile_returns_rephrased_content(
-    provider_slug, env_var, live_api_client, course_key
-):
-    """
-    base/custom_prompt.json: call_with_custom_prompt via DirectLLMResponse
-    returns a non-empty completed response using the inline prompt from the profile.
-    """
-    skip_if_no_key(env_var)
+@pytest.mark.parametrize("case", PROFILE_CASES)
+def test_profile_returns_non_empty_response(case, live_api_client, course_key):
+    """Each listed profile returns a non-empty completed response via the full HTTP stack."""
+    skip_if_no_key(case.env_var)
     create_profile_and_scope(
-        provider_slug, course_key, "base/custom_prompt.json", slug_suffix="custom-prompt"
+        case.provider_slug, course_key, case.base_filepath, slug_suffix=case.slug_suffix
     )
-    response = _post(live_api_client)
+    response = _post(live_api_client, user_input=case.user_input)
     assert response.status_code == 200
     data = response.json()
     assert data.get("status") == "completed", f"Unexpected status: {data}"
-    assert len(data.get("response", "")) > 20, f"Response too short: {data.get('response')}"
+    assert len(data.get("response", "")) > case.min_response_length, (
+        f"Response too short: {data.get('response')}"
+    )
 
 
 @pytest.mark.live_llm
@@ -114,39 +146,3 @@ def test_library_creator_profile_returns_quiz_problems(
         problem = slot.get("versions", [{}])[0]
         missing = required - set(problem.keys())
         assert not missing, f"Slot {i} problem missing fields: {missing}"
-
-
-@pytest.mark.live_llm
-@pytest.mark.django_db
-@pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-def test_box_hello_profile_returns_greeting(live_api_client, course_key):
-    """
-    examples/openai/box_hello.json: greet_from_llm via DirectLLMResponse
-    returns a non-empty response.
-    """
-    create_profile_and_scope(
-        "test_openai", course_key, "examples/openai/box_hello.json", slug_suffix="box-hello"
-    )
-    response = _post(live_api_client)
-    assert response.status_code == 200
-    data = response.json()
-    assert data.get("status") == "completed", f"Unexpected status: {data}"
-    assert len(data.get("response", "")) > 10, f"Response too short: {data.get('response')}"
-
-
-@pytest.mark.live_llm
-@pytest.mark.django_db
-@pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-def test_chat_profile_non_streaming_returns_response(live_api_client, course_key):
-    """
-    examples/openai/chat.json: ThreadedLLMResponse via the full HTTP stack
-    (stream overridden to False) returns a non-empty completed response.
-    """
-    create_profile_and_scope(
-        "test_openai", course_key, "examples/openai/chat.json", slug_suffix="chat"
-    )
-    response = _post(live_api_client, user_input="What is photosynthesis?")
-    assert response.status_code == 200
-    data = response.json()
-    assert data.get("status") == "completed", f"Unexpected status: {data}"
-    assert len(data.get("response", "")) > 10, f"Response too short: {data.get('response')}"

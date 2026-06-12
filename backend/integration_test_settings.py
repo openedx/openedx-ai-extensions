@@ -12,18 +12,19 @@ Usage:
 
 import os
 
+from openedx_ai_extensions.settings.common import DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL
 from test_settings import *  # noqa: F401, F403
 
 AI_EXTENSIONS = {
     "test_openai": {
-        "MODEL": "openai/gpt-4.1-mini",
+        "MODEL": DEFAULT_OPENAI_MODEL,
         "API_KEY": os.environ.get("OPENAI_API_KEY", ""),
         "TIMEOUT": 30,
         "MAX_TOKENS": 2000,
         "TEMPERATURE": 0.3,
     },
     "test_anthropic": {
-        "MODEL": "anthropic/claude-haiku-4-5",
+        "MODEL": DEFAULT_ANTHROPIC_MODEL,
         "API_KEY": os.environ.get("ANTHROPIC_API_KEY", ""),
         "TIMEOUT": 30,
         "MAX_TOKENS": 2000,

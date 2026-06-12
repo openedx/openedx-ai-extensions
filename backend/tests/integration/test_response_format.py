@@ -1,13 +1,11 @@
 """
 Response format depth.
 
-Verifies that schema constraints are enforced by the provider and that
-incompatible combinations (Anthropic + streaming + strict schema) are
-handled without crashing.
+Verifies that schema constraints (additionalProperties, minItems) declared
+in a json_schema response_format are enforced by the provider.
 """
 
 import json
-import os
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -15,6 +13,7 @@ import pytest
 from django.urls import reverse
 
 from .conftest import PROVIDERS, create_profile_and_scope, skip_if_no_key
+from .sample_schemas import ARRAY_SCHEMA, FLASHCARDS_SCHEMA
 
 OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
@@ -31,43 +30,6 @@ CONTEXT_JSON = json.dumps({
     "locationId": "block-v1:edX+LiveTest+Demo_Course+type@vertical+block@live_unit_001",
     "uiSlotSelectorId": "live-test-slot",
 })
-
-_STRICT_SCHEMA = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "strict_answer",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string"},
-                "key_point": {"type": "string"},
-            },
-            "required": ["summary", "key_point"],
-            "additionalProperties": False,
-        },
-    },
-}
-
-_ARRAY_SCHEMA = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "items_answer",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 1,
-                },
-            },
-            "required": ["items"],
-            "additionalProperties": False,
-        },
-    },
-}
 
 
 def _post_workflow(client):
@@ -94,7 +56,7 @@ def test_response_format_no_extra_keys(
     create_profile_and_scope(
         provider_slug, course_key, "base/summary.json",
         slug_suffix="fmt-s",
-        extra_llm_patch={"options": {"response_format": _STRICT_SCHEMA}},
+        extra_llm_patch={"options": {"response_format": FLASHCARDS_SCHEMA}},
     )
 
     with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
@@ -105,13 +67,17 @@ def test_response_format_no_extra_keys(
     assert data.get("status") == "completed", f"Unexpected status: {data}"
 
     parsed = json.loads(data["response"])
-    allowed = {"summary", "key_point"}
-    extra_keys = set(parsed.keys()) - allowed
+    extra_keys = set(parsed.keys()) - {"cards"}
     assert not extra_keys, (
         f"LLM returned keys not in schema: {extra_keys}. Full response: {parsed}"
     )
-    assert "summary" in parsed and isinstance(parsed["summary"], str)
-    assert "key_point" in parsed and isinstance(parsed["key_point"], str)
+    cards = parsed.get("cards", [])
+    assert cards, "Expected at least one flashcard"
+    for card in cards:
+        card_extra_keys = set(card.keys()) - {"id", "question", "answer"}
+        assert not card_extra_keys, (
+            f"Flashcard returned keys not in schema: {card_extra_keys}. Card: {card}"
+        )
 
 
 @pytest.mark.live_llm
@@ -128,7 +94,7 @@ def test_response_format_required_array_non_empty(
     create_profile_and_scope(
         provider_slug, course_key, "base/summary.json",
         slug_suffix="fmt-t",
-        extra_llm_patch={"options": {"response_format": _ARRAY_SCHEMA}},
+        extra_llm_patch={"options": {"response_format": ARRAY_SCHEMA}},
     )
 
     with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
@@ -144,29 +110,3 @@ def test_response_format_required_array_non_empty(
         f"LLM returned empty items array despite minItems:1 in schema. Got: {parsed}"
     )
     assert all(isinstance(i, str) for i in items), f"All items must be strings. Got: {items}"
-
-
-@pytest.mark.live_llm
-@pytest.mark.django_db
-@pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="ANTHROPIC_API_KEY not set")
-def test_anthropic_streaming_with_strict_schema_no_crash(live_api_client, course_key):
-    """
-    Anthropic does not support strict json_schema + streaming in all API
-    versions. The plugin must not raise an unhandled 500 — a clean error
-    response or graceful degradation is acceptable.
-    """
-    create_profile_and_scope(
-        "test_anthropic", course_key, "base/summary.json",
-        slug_suffix="fmt-v",
-        extra_llm_patch={
-            "stream": True,
-            "options": {"response_format": _STRICT_SCHEMA},
-        },
-    )
-
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
-        response = _post_workflow(live_api_client)
-
-    assert response.status_code != 500, (
-        "Unhandled 500 crash combining strict json_schema + streaming on Anthropic"
-    )

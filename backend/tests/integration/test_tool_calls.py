@@ -10,11 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from .conftest import PROVIDERS, skip_if_no_key
-
-DUMMY_CONTENT = (
-    "Python is a high-level interpreted programming language. "
-    "It uses indentation for code blocks and supports multiple paradigms."
-)
+from .sample_content import DUMMY_CONTENT
 
 
 def _make_processor_with_tools(provider_slug, tools=None):
@@ -37,21 +33,27 @@ def _make_processor_with_tools(provider_slug, tools=None):
 @pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
 def test_tool_call_pipeline_completes(provider_slug, env_var):
     """
-    When tools are enabled, the call must complete without hanging or crashing.
-    The final response must be non-empty and usage must be populated.
-    Whether the LLM actually invokes a tool depends on prompt context; this
-    test asserts the full round-trip completes correctly.
+    A prompt that makes rolling dice an explicit requirement forces the LLM
+    to call the roll_dice tool. roll_dice is replaced with a mock so the
+    round-trip (LLM -> tool call -> tool result -> final response) is
+    verified by call count, instead of depending on the LLM's wording.
     """
+    from openedx_ai_extensions.processors.llm import llm_processor as _mod  # pylint: disable=C0415
+
     skip_if_no_key(env_var)
 
+    mock_roll_dice = MagicMock(return_value=[4])
     processor = _make_processor_with_tools(provider_slug)
-    result = processor.process(
-        context=DUMMY_CONTENT,
-        input_data="Summarize this content.",
-    )
+
+    with patch.object(_mod, "AVAILABLE_TOOLS", {"roll_dice": mock_roll_dice}):
+        result = processor.process(
+            context=DUMMY_CONTENT,
+            input_data="You must roll one six-sided die right now and tell me the result.",
+        )
 
     assert result.get("status") == "success", f"Processor failed: {result}"
     assert result.get("response"), "Expected non-empty response with tools enabled"
+    mock_roll_dice.assert_called()
 
     usage = processor.get_usage()
     assert usage is not None, "usage is None with tools enabled"

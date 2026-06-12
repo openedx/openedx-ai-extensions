@@ -9,7 +9,6 @@ import os
 import sys
 from unittest.mock import MagicMock
 
-import litellm
 import pytest
 from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
@@ -36,6 +35,23 @@ PROVIDERS = [
     pytest.param("test_openai", "OPENAI_API_KEY", id="openai"),
     pytest.param("test_anthropic", "ANTHROPIC_API_KEY", id="anthropic"),
 ]
+
+INVALID_CREDENTIALS = {
+    "test_openai": {
+        "bad_key": "sk-invalid-key-00000000000000000000000000000000",
+        "bad_model": "openai/gpt-nonexistent-model-2099",
+    },
+    "test_anthropic": {
+        "bad_key": (
+            "sk-ant-api03-invalid000000000000000000000000000000000000000000000000000000000000000000000000000AA"
+        ),
+        "bad_model": "anthropic/claude-nonexistent-model-2099",
+    },
+}
+
+LIVE_USER_USERNAME = "live_tester"
+LIVE_USER_EMAIL = "live_tester@example.com"
+LIVE_USER_PASSWORD = "livetest123"
 
 
 def skip_if_no_key(env_var: str) -> None:
@@ -124,14 +140,14 @@ def location_id(course_key):  # pylint: disable=redefined-outer-name
 @pytest.fixture
 def live_user(db):  # pylint: disable=unused-argument
     return User.objects.create_user(
-        username="live_tester",
-        email="live_tester@example.com",
-        password="livetest123",
+        username=LIVE_USER_USERNAME,
+        email=LIVE_USER_EMAIL,
+        password=LIVE_USER_PASSWORD,
     )
 
 
 @pytest.fixture
 def live_api_client(live_user):  # pylint: disable=redefined-outer-name,unused-argument
     client = APIClient()
-    client.login(username="live_tester", password="livetest123")
+    client.login(username=LIVE_USER_USERNAME, password=LIVE_USER_PASSWORD)
     return client

@@ -74,8 +74,11 @@ requirements: clean_tox piptools ## install development environment requirements
 test: clean ## run tests in the current virtualenv (excludes live LLM tests)
 	pytest tests/ -m "not live_llm"
 
-test-integration: ## run live LLM provider integration tests (requires OPENAI_API_KEY / ANTHROPIC_API_KEY)
-	DJANGO_SETTINGS_MODULE=integration_test_settings pytest tests/integration/ -m live_llm -v
+test-integration: ## run live LLM provider integration tests (requires OPENAI_API_KEY / ANTHROPIC_API_KEY). Usage: make test-integration [test_file.py[::test_name]]
+	DJANGO_SETTINGS_MODULE=integration_test_settings pytest tests/integration/$(filter-out $@,$(MAKECMDGOALS)) -m live_llm -v
+
+%:
+	@:
 
 diff_cover: test ## find diff lines that need test coverage
 	diff-cover coverage.xml

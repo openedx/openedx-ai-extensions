@@ -11,10 +11,16 @@ AI_EXTENSIONS:
   {%- if AI_EXTENSIONS_OPENAI_API_KEY is defined %}
   openai:
     API_KEY: "{{ AI_EXTENSIONS_OPENAI_API_KEY }}"
+    {%- if AI_EXTENSIONS_OPENAI_MODEL is defined %}
+    MODEL: "{{ AI_EXTENSIONS_OPENAI_MODEL }}"
+    {%- endif %}
   {%- endif %}
   {%- if AI_EXTENSIONS_ANTHROPIC_API_KEY is defined %}
   anthropic:
     API_KEY: "{{ AI_EXTENSIONS_ANTHROPIC_API_KEY }}"
+    {%- if AI_EXTENSIONS_ANTHROPIC_MODEL is defined %}
+    MODEL: "{{ AI_EXTENSIONS_ANTHROPIC_MODEL }}"
+    {%- endif %}
   {%- endif %}
 {% endif %}
 {%- if AI_EXTENSIONS_FIELD_FILTERS is defined %}

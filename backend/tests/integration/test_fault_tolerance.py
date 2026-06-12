@@ -12,15 +12,11 @@ from urllib.parse import urlencode
 import pytest
 from django.urls import reverse
 
-from .conftest import PROVIDERS, create_profile_and_scope, skip_if_no_key
+from .conftest import INVALID_CREDENTIALS, PROVIDERS, create_profile_and_scope, skip_if_no_key
+from .sample_content import SAMPLE_UNIT_CONTENT
 
 OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
-)
-
-DUMMY_CONTENT = (
-    "Python is a high-level interpreted programming language. "
-    "It uses indentation for code blocks and supports multiple paradigms."
 )
 
 CONTEXT_JSON = json.dumps({
@@ -76,11 +72,7 @@ def test_invalid_api_key_does_not_return_completed(
     """
     skip_if_no_key(env_var)
 
-    bad_key = (
-        "sk-invalid-key-00000000000000000000000000000000"
-        if provider_slug == "test_openai"
-        else "sk-ant-api03-invalid000000000000000000000000000000000000000000000000000000000000000000000000000AA"
-    )
+    bad_key = INVALID_CREDENTIALS[provider_slug]["bad_key"]
 
     create_profile_and_scope(
         provider_slug, course_key, "base/summary.json",
@@ -88,7 +80,7 @@ def test_invalid_api_key_does_not_return_completed(
         extra_llm_patch={"options": {"api_key": bad_key}},
     )
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = _post_workflow(live_api_client)
 
     _assert_error_surfaced(response)
@@ -106,11 +98,7 @@ def test_wrong_model_name_does_not_return_completed(
     """
     skip_if_no_key(env_var)
 
-    bad_model = (
-        "openai/gpt-nonexistent-model-2099"
-        if provider_slug == "test_openai"
-        else "anthropic/claude-nonexistent-model-2099"
-    )
+    bad_model = INVALID_CREDENTIALS[provider_slug]["bad_model"]
 
     create_profile_and_scope(
         provider_slug, course_key, "base/summary.json",
@@ -118,7 +106,7 @@ def test_wrong_model_name_does_not_return_completed(
         extra_llm_patch={"options": {"model": bad_model}},
     )
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = _post_workflow(live_api_client)
 
     _assert_error_surfaced(response)

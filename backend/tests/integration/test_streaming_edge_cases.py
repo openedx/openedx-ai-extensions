@@ -14,15 +14,11 @@ import pytest
 from django.urls import reverse
 
 from .conftest import PROVIDERS, create_profile_and_scope, skip_if_no_key
+from .sample_content import SAMPLE_UNIT_CONTENT
+from .sample_schemas import ANSWER_SCHEMA
 
 OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
-)
-
-DUMMY_CONTENT = (
-    "Python is a high-level interpreted programming language created by Guido van Rossum. "
-    "It emphasises code readability using significant indentation. "
-    "Python supports multiple programming paradigms and has a large standard library."
 )
 
 CONTEXT_JSON = json.dumps({
@@ -30,20 +26,6 @@ CONTEXT_JSON = json.dumps({
     "locationId": "block-v1:edX+LiveTest+Demo_Course+type@vertical+block@live_unit_001",
     "uiSlotSelectorId": "live-test-slot",
 })
-
-_ANSWER_SCHEMA = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "answer",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {"answer": {"type": "string"}},
-            "required": ["answer"],
-            "additionalProperties": False,
-        },
-    },
-}
 
 
 def _post_workflow(client):
@@ -77,7 +59,7 @@ def test_streaming_handles_empty_delta_chunks(
         extra_llm_patch={"stream": True},
     )
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = _post_workflow(live_api_client)
 
     assert response.status_code == 200
@@ -142,11 +124,11 @@ def test_streaming_with_response_format_openai(live_api_client, course_key):
         slug_suffix="stream-m-openai",
         extra_llm_patch={
             "stream": True,
-            "options": {"response_format": _ANSWER_SCHEMA},
+            "options": {"response_format": ANSWER_SCHEMA},
         },
     )
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = _post_workflow(live_api_client)
 
     assert response.status_code != 500, "Server crashed combining streaming + response_format"
@@ -166,11 +148,11 @@ def test_streaming_with_response_format_anthropic_clean_outcome(live_api_client,
         slug_suffix="stream-m-anthropic",
         extra_llm_patch={
             "stream": True,
-            "options": {"response_format": _ANSWER_SCHEMA},
+            "options": {"response_format": ANSWER_SCHEMA},
         },
     )
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = _post_workflow(live_api_client)
 
     assert response.status_code != 500, (
@@ -196,7 +178,7 @@ def test_healthy_stream_has_no_error_marker(
         extra_llm_patch={"stream": True},
     )
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = _post_workflow(live_api_client)
 
     assert response.status_code == 200

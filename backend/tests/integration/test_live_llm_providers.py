@@ -14,12 +14,8 @@ import pytest
 from django.urls import reverse
 
 from .conftest import PROVIDERS, create_live_session, create_profile_and_scope, skip_if_no_key
-
-DUMMY_CONTENT = (
-    "Python is a high-level interpreted programming language created by Guido van Rossum. "
-    "It emphasises code readability using significant indentation. "
-    "Python supports multiple programming paradigms and has a large standard library."
-)
+from .sample_content import DUMMY_CONTENT, SAMPLE_UNIT_CONTENT
+from .sample_schemas import ANSWER_SCHEMA
 
 OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
@@ -47,7 +43,7 @@ def test_provider_returns_non_empty_response(
     skip_if_no_key(env_var)
     create_profile_and_scope(provider_slug, course_key, "base/summary.json", slug_suffix="basic")
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = live_api_client.post(
             _workflows_url_with_context(),
             data=json.dumps({"action": "run", "user_input": {}}),
@@ -58,21 +54,6 @@ def test_provider_returns_non_empty_response(
     data = response.json()
     assert data.get("status") == "completed"
     assert len(data.get("response", "")) > 10
-
-
-_ANSWER_SCHEMA = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "answer",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {"answer": {"type": "string"}},
-            "required": ["answer"],
-            "additionalProperties": False,
-        },
-    },
-}
 
 
 @pytest.mark.live_llm
@@ -86,10 +67,10 @@ def test_response_format_json_schema(
     create_profile_and_scope(
         provider_slug, course_key, "base/summary.json",
         slug_suffix="json-schema",
-        extra_llm_patch={"options": {"response_format": _ANSWER_SCHEMA}},
+        extra_llm_patch={"options": {"response_format": ANSWER_SCHEMA}},
     )
 
-    with patch(OPENEDX_PATCH, return_value=DUMMY_CONTENT):
+    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
         response = live_api_client.post(
             _workflows_url_with_context(),
             data=json.dumps({"action": "run", "user_input": {}}),

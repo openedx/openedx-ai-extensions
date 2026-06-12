@@ -13,15 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from .conftest import PROVIDERS, skip_if_no_key
+from openedx_ai_extensions.workflows.template_utils import get_effective_config
 
-COURSE_CONTENT = (
-    "The water cycle describes the continuous movement of water within Earth. "
-    "It has four main stages: evaporation (water turns to vapour from heat), "
-    "condensation (vapour cools and forms clouds), precipitation (water falls as "
-    "rain or snow), and collection (water gathers in oceans, lakes, and rivers). "
-    "Energy from the sun drives the whole cycle."
-)
+from .conftest import PROVIDERS, skip_if_no_key
+from .sample_content import SAMPLE_UNIT_CONTENT
 
 _SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent.parent
@@ -32,39 +27,57 @@ _SCHEMA_PATH = (
 
 
 def _make_processor(provider_slug):
-    """Instantiate EducatorAssistantProcessor with the given provider."""
+    """
+    Instantiate EducatorAssistantProcessor from base/library_questions_creator.json,
+    patched to use the given provider in non-streaming mode.
+    """
     from openedx_ai_extensions.processors.llm.educator_assistant_processor import (  # pylint: disable=C0415
         EducatorAssistantProcessor,
     )
 
-    config = {
-        "EducatorAssistantProcessor": {
-            "provider": provider_slug,
-            "stream": False,
-            "function": "generate_quiz_questions",
+    content_patch = {
+        "processor_config": {
+            "EducatorAssistantProcessor": {"provider": provider_slug, "stream": False},
         }
     }
+    effective_config = get_effective_config("base/library_questions_creator.json", content_patch)
+
     with open(_SCHEMA_PATH, "r", encoding="utf-8") as f:
         schema = json.load(f)
 
     return EducatorAssistantProcessor(
-        config=config,
-        context=COURSE_CONTENT,
+        config=effective_config["processor_config"],
+        context=SAMPLE_UNIT_CONTENT,
         extra_params={"response_format": schema},
     )
 
 
+_quiz_results: dict[str, dict] = {}
+
+
+@pytest.fixture
+def quiz_result(provider_slug, env_var):
+    """
+    Run quiz generation once per provider and cache the result so both
+    structural checks below reuse the same LLM call (saves tokens & runtime).
+    """
+    skip_if_no_key(env_var)
+    if provider_slug not in _quiz_results:
+        processor = _make_processor(provider_slug)
+        _quiz_results[provider_slug] = processor.process(input_data={"num_questions": 2})
+    return _quiz_results[provider_slug]
+
+
 @pytest.mark.live_llm
 @pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
-def test_quiz_generation_returns_non_empty_problems(provider_slug, env_var):
+def test_quiz_generation_returns_non_empty_problems(  # pylint: disable=unused-argument
+    provider_slug, env_var, quiz_result  # pylint: disable=redefined-outer-name
+):
     """
     LLM must return at least one quiz problem with all required fields.
     Catches the missing minItems constraint in educator_quiz_questions.json.
     """
-    skip_if_no_key(env_var)
-
-    processor = _make_processor(provider_slug)
-    result = processor.process(input_data={"num_questions": 2})
+    result = quiz_result
 
     assert result.get("status") == "success", f"Processor failed: {result}"
 
@@ -85,16 +98,15 @@ def test_quiz_generation_returns_non_empty_problems(provider_slug, env_var):
 
 @pytest.mark.live_llm
 @pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
-def test_quiz_generation_response_is_valid_json(provider_slug, env_var):
+def test_quiz_generation_response_is_valid_json(  # pylint: disable=unused-argument
+    provider_slug, env_var, quiz_result  # pylint: disable=redefined-outer-name
+):
     """
     Processor must complete without JSONDecodeError and return a dict response.
     The schema we control constrains the LLM to valid JSON; an unguarded
     json.loads failure surfaces naturally as a test error.
     """
-    skip_if_no_key(env_var)
-
-    processor = _make_processor(provider_slug)
-    result = processor.process(input_data={"num_questions": 1})
+    result = quiz_result
 
     assert result.get("status") == "success", f"Processor failed: {result}"
     assert isinstance(result.get("response"), dict), (
