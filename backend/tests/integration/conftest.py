@@ -23,32 +23,6 @@ import settings as _settings  # noqa: E402  pylint: disable=wrong-import-positio
 
 _settings.SERVICE_VARIANT = "lms"
 
-JUDGE_MODEL = "anthropic/claude-opus-4-8"
-_JUDGE_BASE_SYSTEM = "You are a strict evaluator. Answer with valid JSON only, no extra text."
-
-
-def judge(system_question, user_content):
-    """
-    Call the judge LLM and return the 'verdict' value from its JSON response.
-
-    Uses JUDGE_MODEL with ANTHROPIC_API_KEY.  Returns the verdict string
-    lowercased, or the raw response lowercased if JSON parsing fails.
-    """
-    result = litellm.completion(
-        model=JUDGE_MODEL,
-        api_key=os.environ.get("ANTHROPIC_API_KEY"),
-        messages=[
-            {"role": "system", "content": f"{_JUDGE_BASE_SYSTEM} {system_question}"},
-            {"role": "user", "content": user_content},
-        ],
-        max_tokens=30,
-    )
-    raw = result.choices[0].message.content.strip()
-    try:
-        return json.loads(raw).get("verdict", "").lower()
-    except json.JSONDecodeError:
-        return raw.lower()
-
 
 from openedx_ai_extensions.workflows.models import (  # noqa: E402  pylint: disable=wrong-import-position
     AIWorkflowProfile,
