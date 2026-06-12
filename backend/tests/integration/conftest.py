@@ -23,7 +23,7 @@ import settings as _settings  # noqa: E402  pylint: disable=wrong-import-positio
 
 _settings.SERVICE_VARIANT = "lms"
 
-JUDGE_MODEL = "gpt-4.1-mini"
+JUDGE_MODEL = "anthropic/claude-opus-4-8"
 _JUDGE_BASE_SYSTEM = "You are a strict evaluator. Answer with valid JSON only, no extra text."
 
 
@@ -31,12 +31,12 @@ def judge(system_question, user_content):
     """
     Call the judge LLM and return the 'verdict' value from its JSON response.
 
-    Uses JUDGE_MODEL (OpenAI) with OPENAI_API_KEY.  Returns the verdict string
+    Uses JUDGE_MODEL with ANTHROPIC_API_KEY.  Returns the verdict string
     lowercased, or the raw response lowercased if JSON parsing fails.
     """
     result = litellm.completion(
         model=JUDGE_MODEL,
-        api_key=os.environ.get("OPENAI_API_KEY"),
+        api_key=os.environ.get("ANTHROPIC_API_KEY"),
         messages=[
             {"role": "system", "content": f"{_JUDGE_BASE_SYSTEM} {system_question}"},
             {"role": "user", "content": user_content},

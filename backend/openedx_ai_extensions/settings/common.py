@@ -143,7 +143,7 @@ def plugin_settings(settings):
 
     if hasattr(settings, "AI_EXTENSIONS"):
         configs = getattr(settings, "AI_EXTENSIONS", {})
-        if "openai" in configs and "model" not in configs["openai"]:
-            configs["openai"]["model"] = "openai/gpt-4.1-mini"
-        if "anthropic" in configs and "model" not in configs["anthropic"]:
-            configs["anthropic"]["model"] = "anthropic/claude-haiku-4-5"
+        if "openai" in configs and "MODEL" not in configs["openai"]:
+            configs["openai"]["MODEL"] = "openai/gpt-4.1-mini"
+        if "anthropic" in configs and "MODEL" not in configs["anthropic"]:
+            configs["anthropic"]["MODEL"] = "anthropic/claude-haiku-4-5"
