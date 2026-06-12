@@ -4,6 +4,8 @@ data_file = .coverage
 source=openedx_ai_extensions
 omit =
     test_settings.py
+    integration_test_settings.py
+    tests/integration/*
     */migrations/*
     *admin.py
     */static/*

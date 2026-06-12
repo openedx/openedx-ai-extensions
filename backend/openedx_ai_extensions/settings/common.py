@@ -12,6 +12,9 @@ from openedx_ai_extensions.xapi.constants import ALL_EVENTS
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_OPENAI_MODEL = "openai/gpt-4.1-mini"
+DEFAULT_ANTHROPIC_MODEL = "anthropic/claude-haiku-4-5"
+
 DEFAULT_FIELD_FILTERS = {
     "allowed_fields": [
         "name",
@@ -140,3 +143,10 @@ def plugin_settings(settings):
             "enabled": True,
         })
         settings.EVENT_BUS_CONSUMER_CONFIG = consumer_config
+
+    if hasattr(settings, "AI_EXTENSIONS"):
+        configs = getattr(settings, "AI_EXTENSIONS", {})
+        if "openai" in configs and "MODEL" not in configs["openai"]:
+            configs["openai"]["MODEL"] = DEFAULT_OPENAI_MODEL
+        if "anthropic" in configs and "MODEL" not in configs["anthropic"]:
+            configs["anthropic"]["MODEL"] = DEFAULT_ANTHROPIC_MODEL
