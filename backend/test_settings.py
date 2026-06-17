@@ -124,7 +124,6 @@ AI_EXTENSIONS = {
         "API_KEY": "test-api-key",
         "MODEL": "openai/gpt-3.5-turbo",
         "TIMEOUT": 30,
-        "TEMPERATURE": 0.7,
         "MAX_TOKENS": 1000,
     },
 }
