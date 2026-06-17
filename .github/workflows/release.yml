@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main'
+    concurrency:
+      group: ${{ github.workflow }}-release-${{ github.ref_name }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    outputs:
+      released: ${{ steps.release.outputs.released || 'false' }}
+      version: ${{ steps.release.outputs.version }}
+
+    steps:
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        ref: ${{ github.ref_name }}
+        fetch-depth: 0
+
+    - run: git reset --hard ${{ github.sha }}
+
+    - name: Python Semantic Release
+      id: release
+      uses: python-semantic-release/python-semantic-release@v10.5.3
+      with:
+        github_token: ${{ secrets.OPENEDX_SEMANTIC_RELEASE_GITHUB_TOKEN }}
+        git_committer_name: "github-actions"
+        git_committer_email: "github-actions@github.com"
+        changelog: "false"
+
+    - name: Publish | Upload to GitHub Release Assets
+      uses: python-semantic-release/publish-action@v10.5.3
+      if: steps.release.outputs.released == 'true'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ steps.release.outputs.tag }}
