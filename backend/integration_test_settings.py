@@ -21,13 +21,11 @@ AI_EXTENSIONS = {
         "API_KEY": os.environ.get("OPENAI_API_KEY", ""),
         "TIMEOUT": 30,
         "MAX_TOKENS": 2000,
-        "TEMPERATURE": 0.3,
     },
     "test_anthropic": {
         "MODEL": DEFAULT_ANTHROPIC_MODEL,
         "API_KEY": os.environ.get("ANTHROPIC_API_KEY", ""),
         "TIMEOUT": 30,
         "MAX_TOKENS": 2000,
-        "TEMPERATURE": 0.3,
     },
 }

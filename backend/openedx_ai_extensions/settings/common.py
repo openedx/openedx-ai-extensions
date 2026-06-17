@@ -12,7 +12,7 @@ from openedx_ai_extensions.xapi.constants import ALL_EVENTS
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_OPENAI_MODEL = "openai/gpt-4.1-mini"
+DEFAULT_OPENAI_MODEL = "openai/gpt-5.4-mini"
 DEFAULT_ANTHROPIC_MODEL = "anthropic/claude-haiku-4-5"
 
 DEFAULT_FIELD_FILTERS = {

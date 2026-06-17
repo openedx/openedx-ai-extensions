@@ -147,7 +147,7 @@ def test_threaded_context_maintained_openai(live_user, course_key):
     proc1 = LLMProcessor(config=config, user_session=session)
     result1 = proc1.process(
         context=DUMMY_CONTENT,
-        input_data="My secret word is MANGO. Just say 'Got it'.",
+        input_data="My word is MANGO. Repeat the word back if i ask you to recall it in the next turn.",
     )
     assert result1.get("response"), "Turn 1 must return a response"
     session.refresh_from_db()
@@ -156,7 +156,7 @@ def test_threaded_context_maintained_openai(live_user, course_key):
     proc2 = LLMProcessor(config=config, user_session=session)
     result2 = proc2.process(
         context=DUMMY_CONTENT,
-        input_data="What is my secret word?",
+        input_data="What is my word?",
     )
 
     response_text = (result2.get("response") or "").lower()
