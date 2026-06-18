@@ -6,27 +6,22 @@ on:
       - main
 
   workflow_dispatch:
+    inputs:
+      sha:
+        required: false
+        type: string
 
-  issue_comment:
-    types:
-      - created
+      ref:
+        required: false
+        type: string
+
+      repository:
+        required: false
+        type: string
 
 jobs:
   integration:
     name: Live LLM Integration Tests
-
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'issue_comment' &&
-        github.event.issue.pull_request &&
-        startsWith(github.event.comment.body, '/integration-test') &&
-        (
-          github.event.comment.author_association == 'MEMBER' ||
-          github.event.comment.author_association == 'OWNER'
-        )
-      )
 
     runs-on: ubuntu-latest
 
@@ -35,34 +30,19 @@ jobs:
         working-directory: ./backend
 
     steps:
-      - name: Get PR details
-        if: github.event_name == 'issue_comment'
-        id: pr
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      - name: Checkout PR commit
+        if: inputs.sha != ''
+        uses: actions/checkout@v4
         with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number
-            });
-
-            core.setOutput('head_ref', pr.data.head.ref);
-            core.setOutput('head_repo', pr.data.head.repo.full_name);
-
-      - name: Checkout PR branch
-        if: github.event_name == 'issue_comment'
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  #v4.3.1
-        with:
-          repository: ${{ steps.pr.outputs.head_repo }}
-          ref: ${{ steps.pr.outputs.head_ref }}
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.sha }}
 
       - name: Checkout repository
-        if: github.event_name != 'issue_comment'
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  #v4.3.1
+        if: inputs.sha == ''
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
