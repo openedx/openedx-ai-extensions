@@ -1247,8 +1247,9 @@ def test_completion_with_tools_unknown_tool_is_skipped(
     mock_completion, llm_processor  # pylint: disable=redefined-outer-name
 ):
     """
-    When a tool call references a function not in AVAILABLE_TOOLS the call is
-    silently skipped (logged) and completion proceeds without a tool message.
+    When a tool call references a function not in AVAILABLE_TOOLS, an error
+    tool message is appended (logged) so every tool_call_id still gets a
+    response, and completion proceeds normally.
     """
     mock_completion.return_value = Mock(
         choices=[Mock(message=Mock(content="done", tool_calls=None))],
@@ -1266,8 +1267,11 @@ def test_completion_with_tools_unknown_tool_is_skipped(
     # pylint: disable=protected-access
     response = llm_processor._completion_with_tools([unknown_call], params)
 
-    # No tool message should have been appended
-    assert all(m.get("role") != "tool" for m in params["messages"])
+    # An error tool message should have been appended for the unknown tool's call_id
+    tool_messages = [m for m in params["messages"] if m.get("role") == "tool"]
+    assert len(tool_messages) == 1
+    assert tool_messages[0]["tool_call_id"] == "call_x"
+    assert "not found" in tool_messages[0]["content"].lower()
     mock_completion.assert_called_once()
     assert response.choices[0].message.content == "done"
 

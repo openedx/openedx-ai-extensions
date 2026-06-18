@@ -263,19 +263,19 @@ class LLMProcessor(LitellmProcessor):
             # Ensure tool exists
             if function_name not in AVAILABLE_TOOLS:
                 logger.error(f"Tool '{function_name}' requested by LLM but not available locally.")
-                continue
+                function_response = f"Error: Tool '{function_name}' not found."
+            else:
+                function_to_call = AVAILABLE_TOOLS[function_name]
 
-            function_to_call = AVAILABLE_TOOLS[function_name]
-
-            try:
-                function_args = json.loads(tool_call.function.arguments)
-                function_response = function_to_call(**function_args)
-            except json.JSONDecodeError:
-                function_response = "Error: Invalid JSON arguments provided."
-                logger.error(f"Failed to parse JSON arguments for {function_name}")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                function_response = f"Error executing tool: {str(e)}"
-                logger.error(f"Error executing tool {function_name}: {e}")
+                try:
+                    function_args = json.loads(tool_call.function.arguments)
+                    function_response = function_to_call(**function_args)
+                except json.JSONDecodeError:
+                    function_response = "Error: Invalid JSON arguments provided."
+                    logger.error(f"Failed to parse JSON arguments for {function_name}")
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    function_response = f"Error executing tool: {str(e)}"
+                    logger.error(f"Error executing tool {function_name}: {e}")
 
             params["messages"].append(
                 {
