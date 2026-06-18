@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      checks: write
+      statuses: write
       contents: read
 
     defaults:
@@ -34,21 +34,19 @@ jobs:
         working-directory: ./backend
 
     steps:
-      - name: Create check run
+      - name: Set pending status
         if: inputs.sha != ''
-        id: check
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const { data: check } = await github.rest.checks.create({
+            await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              name: 'Live LLM Integration Tests',
-              head_sha: '${{ inputs.sha }}',
-              status: 'in_progress',
-              details_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+              sha: '${{ inputs.sha }}',
+              state: 'pending',
+              context: 'Live LLM Integration Tests',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
-            core.setOutput('check_id', check.id);
 
       - name: Checkout PR commit
         if: inputs.sha != ''
@@ -78,15 +76,16 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: make test-integration
 
-      - name: Complete check run
+      - name: Set final status
         if: always() && inputs.sha != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            await github.rest.checks.update({
+            await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              check_run_id: ${{ steps.check.outputs.check_id }},
-              status: 'completed',
-              conclusion: '${{ steps.tests.outcome }}' === 'success' ? 'success' : 'failure'
+              sha: '${{ inputs.sha }}',
+              state: '${{ steps.tests.outcome }}' === 'success' ? 'success' : 'failure',
+              context: 'Live LLM Integration Tests',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
