@@ -25,11 +25,31 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    permissions:
+      checks: write
+      contents: read
+
     defaults:
       run:
         working-directory: ./backend
 
     steps:
+      - name: Create check run
+        if: inputs.sha != ''
+        id: check
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data: check } = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Live LLM Integration Tests',
+              head_sha: '${{ inputs.sha }}',
+              status: 'in_progress',
+              details_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+            core.setOutput('check_id', check.id);
+
       - name: Checkout PR commit
         if: inputs.sha != ''
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  #v4.3.1
@@ -52,7 +72,21 @@ jobs:
           pip install -e .
 
       - name: Run integration tests
+        id: tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: make test-integration
+
+      - name: Complete check run
+        if: always() && inputs.sha != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: ${{ steps.check.outputs.check_id }},
+              status: 'completed',
+              conclusion: '${{ steps.tests.outcome }}' === 'success' ? 'success' : 'failure'
+            });
