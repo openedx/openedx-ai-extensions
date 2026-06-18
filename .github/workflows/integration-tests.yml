@@ -89,3 +89,11 @@ jobs:
               context: 'Live LLM Integration Tests',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
+
+      - name: Upload LLM judge log
+        if: always()
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: llm-judge-log
+          path: backend/logs/llm-judge.log
+          if-no-files-found: ignore
