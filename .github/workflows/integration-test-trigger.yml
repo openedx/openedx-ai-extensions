@@ -1,0 +1,55 @@
+name: Trigger Integration Tests
+
+on:
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  trigger:
+    if: |
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/integration-test') &&
+      (
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'OWNER'
+      )
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            core.setOutput('head_sha', pr.data.head.sha);
+            core.setOutput('head_ref', pr.data.head.ref);
+            core.setOutput('head_repo', pr.data.head.repo.full_name);
+
+      - name: Dispatch integration workflow
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'integration-tests.yml',
+              ref: 'main',
+              inputs: {
+                sha: '${{ steps.pr.outputs.head_sha }}',
+                ref: '${{ steps.pr.outputs.head_ref }}',
+                repository: '${{ steps.pr.outputs.head_repo }}'
+              }
+            });
