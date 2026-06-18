@@ -4,11 +4,14 @@ Fixtures and helpers for live LLM provider integration tests.
 Fixtures here are auto-loaded by pytest for all tests under tests/integration/.
 """
 
+import asyncio
 import json
+import logging
 import os
 import sys
 from unittest.mock import MagicMock
 
+import litellm
 import pytest
 from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
@@ -151,3 +154,23 @@ def live_api_client(live_user):  # pylint: disable=redefined-outer-name,unused-a
     client = APIClient()
     client.login(username=LIVE_USER_USERNAME, password=LIVE_USER_PASSWORD)
     return client
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _close_litellm_async_clients():
+    """
+    Close litellm's pooled httpx async clients while an event loop is alive,
+    and silence logging's own error reporting for what's left.
+
+    litellm registers an atexit hook (async_client_cleanup.py) that
+    unconditionally calls asyncio.get_event_loop() at interpreter shutdown,
+    after pytest's event loop and captured stdio are already gone. That hook
+    fires after every fixture/teardown has already run, so it can't be
+    avoided from here — only its noise can. logging.raiseExceptions = False
+    is Python's documented way to suppress "Logging error" cascades that
+    happen when a handler tries to write to an already-closed stream during
+    shutdown.
+    """
+    yield
+    asyncio.run(litellm.close_litellm_async_clients())
+    logging.raiseExceptions = False
