@@ -12,11 +12,13 @@ from litellm.exceptions import (
     APIConnectionError,
     AuthenticationError,
     ContextWindowExceededError,
+    NotFoundError,
     RateLimitError,
     ServiceUnavailableError,
     Timeout,
 )
 from rest_framework import status
+from rest_framework.exceptions import ParseError
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,11 @@ EXCEPTION_MAP = {
     AuthenticationError: {
         "code": "invalid_api_key",
         "message": "The AI service is currently unavailable due to an authentication error.",
+        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+    },
+    NotFoundError: {
+        "code": "llm_config_error",
+        "message": "The AI service is misconfigured. Please check the LLM settings.",
         "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
     },
     RateLimitError: {
@@ -46,6 +53,11 @@ EXCEPTION_MAP = {
     ValidationError: {
         "code": "validation_error",
         "message": "The provided input or configuration is invalid.",
+        "status": status.HTTP_400_BAD_REQUEST,
+    },
+    ParseError: {
+        "code": "parse_error",
+        "message": "The request body could not be parsed. Please check the JSON format.",
         "status": status.HTTP_400_BAD_REQUEST,
     },
 }
