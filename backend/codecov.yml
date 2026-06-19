@@ -3,10 +3,14 @@ coverage:
     project:
       default:
         enabled: yes
-        target: auto
+        # 1. Require overall coverage to stay above 95%
+        target: 95%
+        # 2. Prevent minor drops (like 0.01%) from failing the build
+        threshold: 0.05%
     patch:
       default:
         enabled: yes
+        # New code must be 100% covered
         target: 100%
 
 comment: false
