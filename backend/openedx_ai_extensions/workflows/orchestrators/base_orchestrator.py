@@ -94,6 +94,16 @@ class BaseOrchestrator:
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
 
+    def get_debug_messages(self) -> list:
+        """
+        Return a list of messages for debugging this orchestrator's execution.
+
+        Default implementation returns an empty list. Subclasses (especially
+        session-based ones) should override this to provide relevant
+        interaction history or state.
+        """
+        return []
+
     @classmethod
     def get_orchestrator(cls, *, workflow, user, context):
         """

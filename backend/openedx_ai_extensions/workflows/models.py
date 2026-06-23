@@ -652,3 +652,23 @@ class AIWorkflowSession(models.Model):
             combined.insert(insert_at, entry)
 
         return combined
+
+    def get_debug_thread(self):
+        """
+        Fetch the debug thread for this session by delegating to its orchestrator.
+
+        This allows different orchestrator types (threaded vs one-shot) to
+        provide their own relevant debug information.
+        """
+        context = {
+            "course_id": str(self.course_id) if self.course_id else None,
+            "location_id": str(self.location_id) if self.location_id else None,
+        }
+
+        orchestrator = BaseOrchestrator.get_orchestrator(
+            workflow=self.scope,
+            user=self.user,
+            context=context,
+        )
+
+        return orchestrator.get_debug_messages()
