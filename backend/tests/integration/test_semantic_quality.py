@@ -20,6 +20,13 @@ OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
 )
 
+# The "base/summary.json" profile drives every test below; this is the exact
+# system_role its summarize_content() processor sends to the primary LLM.
+_SUMMARIZE_INSTRUCTION = (
+    "You are an academic assistant which helps students briefly "
+    "summarize a unit of content of an online course."
+)
+
 CONTEXT_JSON = json.dumps({
     "courseId": "course-v1:edX+LiveTest+Demo_Course",
     "locationId": "block-v1:edX+LiveTest+Demo_Course+type@vertical+block@live_unit_001",
@@ -49,11 +56,22 @@ def _post_workflow(client, provider_slug, course_key, content, *, slug_suffix):
         )
 
 
-_SPANISH_CONTENT = (
-    "El ciclo del agua describe el movimiento continuo del agua en la Tierra. "
-    "Las etapas principales son la evaporación, la condensación, la precipitación "
-    "y la recolección. La energía solar impulsa todo el ciclo."
-)
+_SPANISH_CONTENT = json.dumps({
+    "unit_id": "block-v1:edX+LiveTest+Demo_Course+type@vertical+block@live_unit_001",
+    "display_name": "El ciclo del agua",
+    "category": "unit",
+    "blocks": [
+        {
+            "type": "html",
+            "text": (
+                "El ciclo del agua describe el movimiento continuo del agua en la "
+                "Tierra. Las etapas principales son la evaporación, la condensación, "
+                "la precipitación y la recolección. La energía solar impulsa todo "
+                "el ciclo."
+            ),
+        }
+    ],
+})
 
 
 @pytest.mark.live_llm
@@ -119,6 +137,45 @@ def test_response_does_not_hallucinate_beyond_content(
     assert verdict["verdict"] == "yes", (
         f"Judge detected hallucination ({verdict}).\n"
         f"Content: {_NARROW_CONTENT}\n"
+        f"Response: {llm_text[:300]}"
+    )
+
+
+_JUPITER_CONTENT = (
+    "Jupiter has four large moons known as the Galilean moons: Io, Europa, "
+    "Ganymede, and Callisto. They were first observed by Galileo Galilei in 1610. "
+    "Io is the most volcanically active body in the solar system."
+)
+
+
+@pytest.mark.live_llm
+@pytest.mark.django_db
+@pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
+@_XFAIL_JUDGE_REASONING
+def test_response_does_not_use_outside_knowledge_for_real_content(
+    provider_slug, env_var, live_api_client, course_key
+):
+    """
+    With real-world content the LLM likely has training knowledge about
+    (Jupiter's moons), the response must stick to what the CONTENT says and
+    not pull in related facts it knows but that aren't present here (e.g.
+    Saturn's moons, Venus's atmosphere). LLM-as-judge evaluates grounding.
+    """
+    skip_if_no_key(env_var)
+
+    response = _post_workflow(
+        live_api_client, provider_slug, course_key,
+        _JUPITER_CONTENT, slug_suffix="qual-ah2",
+    )
+    assert response.status_code == 200
+    llm_text = response.json().get("response", "")
+    assert llm_text, "Primary LLM returned empty response"
+
+    verdicts = Judge().ask([GROUNDING], content=_JUPITER_CONTENT, response=llm_text)
+    verdict = verdicts[GROUNDING.name]
+    assert verdict["verdict"] == "yes", (
+        f"Judge detected outside-knowledge contamination ({verdict}).\n"
+        f"Content: {_JUPITER_CONTENT}\n"
         f"Response: {llm_text[:300]}"
     )
 
@@ -192,7 +249,10 @@ def test_response_follows_instructions_and_tone(
     assert llm_text, "Primary LLM returned empty response"
 
     verdicts = Judge().ask(
-        [INSTRUCTION_FOLLOWING, TONE], content=_HISTORY_CONTENT, response=llm_text
+        [INSTRUCTION_FOLLOWING, TONE],
+        content=_HISTORY_CONTENT,
+        response=llm_text,
+        instruction=_SUMMARIZE_INSTRUCTION,
     )
     instruction_verdict = verdicts[INSTRUCTION_FOLLOWING.name]
     tone_verdict = verdicts[TONE.name]

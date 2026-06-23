@@ -17,6 +17,11 @@ import litellm
 
 logger = logging.getLogger(__name__)
 
+# Most capable model available, used so the judge outranks every provider it
+# evaluates (including the Anthropic targets, which run on lower-capacity
+# models like Haiku). Same-family judging (anthropic judging anthropic) can
+# still share blind spots or rate its own family's style favorably; revisit
+# if that bias shows up in practice.
 JUDGE_MODEL = "anthropic/claude-opus-4-8"
 JUDGE_API_KEY_ENV = "ANTHROPIC_API_KEY"
 
@@ -96,8 +101,10 @@ INSTRUCTION_FOLLOWING = JudgeQuestion(
 TONE = JudgeQuestion(
     name="tone",
     prompt=(
-        "Is the RESPONSE's tone appropriate for an educational context (not "
-        "condescending, not overly casual)? If not, describe the issue."
+        "Is the RESPONSE's tone consistent with the persona/tone implied by the "
+        "INSTRUCTION (if given), and otherwise appropriate for an educational "
+        "context (not condescending, not overly casual)? If no INSTRUCTION is "
+        "given, judge tone only on clear-cut cases. If not, describe the issue."
     ),
     schema=_question_schema(
         extra_properties={"issue": {"type": ["string", "null"]}},
@@ -136,15 +143,22 @@ CONCISENESS = JudgeQuestion(
 class Judge:
     """Evaluates an LLM response against one or more JudgeQuestions in one call."""
 
-    def __init__(self, model=JUDGE_MODEL, api_key_env=JUDGE_API_KEY_ENV, max_tokens=800):
+    def __init__(self, model=JUDGE_MODEL, api_key_env=JUDGE_API_KEY_ENV, max_tokens=2000):
         self.model = model
         self.api_key_env = api_key_env
         self.max_tokens = max_tokens
 
-    def ask(self, questions: list[JudgeQuestion], *, content: str, response: str) -> dict:
+    def ask(
+        self, questions: list[JudgeQuestion], *, content: str, response: str, instruction: str = ""
+    ) -> dict:
         """
-        Ask all *questions* about *response* (given source *content*) in a
-        single LLM call. Returns {question.name: {...fields per its schema}}.
+        Ask all *questions* about *response* (given source *content* and,
+        optionally, the *instruction* the primary LLM was given) in a single
+        LLM call. Returns {question.name: {...fields per its schema}}.
+
+        Pass *instruction* for questions like INSTRUCTION_FOLLOWING or
+        SAFETY_REFUSAL that judge whether the response did what was asked —
+        without it the judge can only infer the task from CONTENT alone.
         """
         combined_schema = {
             "type": "object",
@@ -153,13 +167,17 @@ class Judge:
             "additionalProperties": False,
         }
         questions_text = "\n".join(f"- {q.name}: {q.prompt}" for q in questions)
+        instruction_section = f"INSTRUCTION:\n{instruction}\n\n" if instruction else ""
 
         result = litellm.completion(
             model=self.model,
             api_key=os.environ.get(self.api_key_env),
             messages=[
                 {"role": "system", "content": f"{_BASE_SYSTEM}\n\n{questions_text}"},
-                {"role": "user", "content": f"CONTENT:\n{content}\n\nRESPONSE:\n{response}"},
+                {
+                    "role": "user",
+                    "content": f"{instruction_section}CONTENT:\n{content}\n\nRESPONSE:\n{response}",
+                },
             ],
             response_format={
                 "type": "json_schema",
@@ -176,6 +194,14 @@ class Judge:
         missing = [q.name for q in questions if q.name not in parsed]
         if missing:
             raise AssertionError(f"Judge response missing questions {missing}: {raw!r}")
+
+        for q in questions:
+            missing_fields = [f for f in q.schema["required"] if f not in parsed[q.name]]
+            if missing_fields:
+                raise AssertionError(
+                    f"Judge response for '{q.name}' missing required fields "
+                    f"{missing_fields}: {parsed[q.name]!r}"
+                )
 
         self._log_result(content, response, parsed)
         return parsed
