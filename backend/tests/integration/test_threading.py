@@ -4,8 +4,9 @@ without crashing, that the recovered conversation starts cleanly, that
 multi-turn context persists across three turns, and that Anthropic
 prompt caching fires (or at least does not crash) at various token sizes.
 
-Threading tests (N, O, P) use real AIWorkflowSession DB rows so that
-session.save() exercises the actual persistence layer rather than a mock.
+Every test in this file uses a real AIWorkflowSession DB row (via
+create_live_session) rather than a mock, so session.save() exercises the
+actual persistence layer.
 """
 
 import pytest
@@ -13,11 +14,7 @@ import pytest
 from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor
 
 from .conftest import PROVIDERS, create_live_session, skip_if_no_key, skip_unless_capability
-
-DUMMY_CONTENT = (
-    "Python is a high-level interpreted programming language. "
-    "It uses indentation for code blocks and supports multiple paradigms."
-)
+from .sample_content import DUMMY_CONTENT, LONG_SYSTEM_CONTEXT, SHORT_CONTENT
 
 ALREADY_EXPIRED_THREAD_ID = (
     "resp_bGl0ZWxsbTpjdXN0b21fbGxtX3Byb3ZpZGVyOm9wZW5haTttb2RlbF9pZDpOb25lO3Jlc3BvbnNlX2lkOnJlc3BfMDI5MTVhYjk4Mjc4"
@@ -86,7 +83,7 @@ def test_conversation_clean_after_stale_thread_recovery(live_user, course_key):
         context=DUMMY_CONTENT,
         input_data="My lucky number is 9142. Just say 'Got it'.",
     )
-    assert result1.get("response"), "Turn 1 must produce a response for test O to be meaningful"
+    assert result1.get("response"), "Turn 1 must produce a response for this test to be meaningful"
 
     # Turn 2 — same session, recovered thread
     session.refresh_from_db()
@@ -178,24 +175,6 @@ def test_three_turn_context_chain(provider_slug, env_var, live_user, course_key)
     )
 
 
-_LONG_SYSTEM_CONTEXT = (
-    "The history of computing spans several decades. "
-    "From vacuum tubes to transistors to integrated circuits, each era "
-    "brought dramatic improvements in speed, size, and cost. "
-    "ENIAC (1945) was the first general-purpose electronic computer, "
-    "weighing 30 tons and occupying an entire room. "
-    "The invention of the transistor in 1947 at Bell Labs was a watershed moment, "
-    "enabling miniaturisation that made personal computers possible. "
-    "Intel released the first commercial microprocessor, the 4004, in 1971. "
-    "The IBM PC in 1981 standardised the personal computer market. "
-    "Tim Berners-Lee invented the World Wide Web in 1989, transforming computing. "
-    "The rise of smartphones in the 2000s put computing in every pocket. "
-    "Cloud computing emerged in the 2010s, shifting workloads to remote data centres. "
-    "Today artificial intelligence, driven by GPUs and large language models, "
-    "represents the next major inflection point in the history of computing technology. "
-) * 24  # Repeat to exceed Anthropic's cache minimum (4096 tokens for claude-haiku-4-5)
-
-
 @pytest.mark.live_llm
 @pytest.mark.django_db
 @skip_unless_capability("multi_turn_cache")
@@ -205,7 +184,7 @@ def test_anthropic_cache_hit_on_second_call(live_user, course_key):
     second call's usage should report cache_read_input_tokens > 0,
     confirming the cache_control prefix written by the first call was
     reused. claude-haiku-4-5's cache minimum is 4096 tokens;
-    _LONG_SYSTEM_CONTEXT comfortably exceeds it.
+    LONG_SYSTEM_CONTEXT comfortably exceeds it.
 
     Uses a real AIWorkflowSession (like the other threading tests) rather
     than a MagicMock, so any session.save() call this code path makes is
@@ -223,13 +202,13 @@ def test_anthropic_cache_hit_on_second_call(live_user, course_key):
 
     # First call — warms the cache
     proc1 = LLMProcessor(config=config, user_session=session)
-    r1 = proc1.process(context=_LONG_SYSTEM_CONTEXT, input_data="Summarize this in one sentence.")
+    r1 = proc1.process(context=LONG_SYSTEM_CONTEXT, input_data="Summarize this in one sentence.")
     assert r1.get("status") == "success", f"First call failed: {r1}"
 
     # Second call — should hit the cache
     session.refresh_from_db()
     proc2 = LLMProcessor(config=config, user_session=session)
-    r2 = proc2.process(context=_LONG_SYSTEM_CONTEXT, input_data="Summarize this in one sentence.")
+    r2 = proc2.process(context=LONG_SYSTEM_CONTEXT, input_data="Summarize this in one sentence.")
     assert r2.get("status") == "success", f"Second call failed: {r2}"
 
     usage = proc2.get_usage()
@@ -238,9 +217,6 @@ def test_anthropic_cache_hit_on_second_call(live_user, course_key):
     assert cache_tokens > 0, (
         f"Expected cache_read_input_tokens > 0 on second call. usage={usage}"
     )
-
-
-_SHORT_CONTENT = "Python uses indentation to define code blocks."
 
 
 @pytest.mark.live_llm
@@ -270,7 +246,7 @@ def test_cache_short_prompt_no_crash(provider_slug, env_var, live_user, course_k
 
     session = create_live_session(live_user, course_key)
     processor = LLMProcessor(config=config, user_session=session)
-    result = processor.process(context=_SHORT_CONTENT, input_data="Summarize this.")
+    result = processor.process(context=SHORT_CONTENT, input_data="Summarize this.")
 
     assert result.get("status") == "success", (
         f"Short-prompt cache call failed: {result}"

@@ -65,12 +65,6 @@ def skip_if_no_key(env_var: str) -> None:
         pytest.skip(f"{env_var} not set — skipping live LLM test")
 
 
-PROVIDER_ENV_VARS = {
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-}
-
-
 def skip_unless_capability(capability: str):
     """
     Skip the test unless a provider supporting *capability* (per
@@ -79,8 +73,8 @@ def skip_unless_capability(capability: str):
     provider names in test code.
     """
     env_vars = [
-        env_var for provider, env_var in PROVIDER_ENV_VARS.items()
-        if provider_supports(provider, capability)
+        env_var for provider_slug, env_var in (p.values for p in PROVIDERS)
+        if provider_supports(provider_slug.removeprefix("test_"), capability)
     ]
     has_key = any(os.environ.get(env_var) for env_var in env_vars)
     return pytest.mark.skipif(
