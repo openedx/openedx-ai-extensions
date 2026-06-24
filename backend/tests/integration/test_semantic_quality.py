@@ -13,6 +13,8 @@ from urllib.parse import urlencode
 import pytest
 from django.urls import reverse
 
+from openedx_ai_extensions.processors.llm.llm_processor import LLMProcessor
+
 from .conftest import PROVIDERS, create_profile_and_scope, skip_if_no_key
 from .judge import COMPLETENESS, GROUNDING, INSTRUCTION_FOLLOWING, LANGUAGE_MATCH, TONE, Judge
 
@@ -20,12 +22,18 @@ OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
 )
 
-# The "base/summary.json" profile drives every test below; this is the exact
-# system_role its summarize_content() processor sends to the primary LLM.
-_SUMMARIZE_INSTRUCTION = (
-    "You are an academic assistant which helps students briefly "
-    "summarize a unit of content of an online course."
-)
+_ORIGINAL_CALL_COMPLETION_WRAPPER = LLMProcessor._call_completion_wrapper
+
+
+def _capturing_call_completion_wrapper(captured):
+    """Spy wrapper that records the system_role actually sent, then calls through."""
+
+    def spy(self, system_role):
+        captured.append(self.custom_prompt or system_role)
+        return _ORIGINAL_CALL_COMPLETION_WRAPPER(self, system_role)
+
+    return spy
+
 
 CONTEXT_JSON = json.dumps({
     "courseId": "course-v1:edX+LiveTest+Demo_Course",
@@ -240,19 +248,24 @@ def test_response_follows_instructions_and_tone(
     """
     skip_if_no_key(env_var)
 
-    response = _post_workflow(
-        live_api_client, provider_slug, course_key,
-        _HISTORY_CONTENT, slug_suffix="qual-ai",
-    )
+    captured_instruction = []
+    with patch.object(
+        LLMProcessor, "_call_completion_wrapper", _capturing_call_completion_wrapper(captured_instruction)
+    ):
+        response = _post_workflow(
+            live_api_client, provider_slug, course_key,
+            _HISTORY_CONTENT, slug_suffix="qual-ai",
+        )
     assert response.status_code == 200
     llm_text = response.json().get("response", "")
     assert llm_text, "Primary LLM returned empty response"
+    assert captured_instruction, "summarize_content's system_role was never captured"
 
     verdicts = Judge().ask(
         [INSTRUCTION_FOLLOWING, TONE],
         content=_HISTORY_CONTENT,
         response=llm_text,
-        instruction=_SUMMARIZE_INSTRUCTION,
+        instruction=captured_instruction[0],
     )
     instruction_verdict = verdicts[INSTRUCTION_FOLLOWING.name]
     tone_verdict = verdicts[TONE.name]
