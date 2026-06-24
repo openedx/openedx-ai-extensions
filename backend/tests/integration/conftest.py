@@ -26,6 +26,8 @@ import settings as _settings  # noqa: E402  pylint: disable=wrong-import-positio
 _settings.SERVICE_VARIANT = "lms"
 
 
+from openedx_ai_extensions.processors.llm.providers import \
+    provider_supports  # noqa: E402  pylint: disable=wrong-import-position
 from openedx_ai_extensions.workflows.models import (  # noqa: E402  pylint: disable=wrong-import-position
     AIWorkflowProfile,
     AIWorkflowScope,
@@ -61,6 +63,24 @@ def skip_if_no_key(env_var: str) -> None:
     """Skip the calling test at runtime if *env_var* is not set."""
     if not os.environ.get(env_var):
         pytest.skip(f"{env_var} not set — skipping live LLM test")
+
+
+def skip_unless_capability(capability: str):
+    """
+    Skip the test unless a provider supporting *capability* (per
+    _PROVIDER_CAPABILITIES) has its API key set, so capability/test
+    coverage stays driven by providers/__init__.py rather than duplicated
+    provider names in test code.
+    """
+    env_vars = [
+        env_var for provider_slug, env_var in (p.values for p in PROVIDERS)
+        if provider_supports(provider_slug.removeprefix("test_"), capability)
+    ]
+    has_key = any(os.environ.get(env_var) for env_var in env_vars)
+    return pytest.mark.skipif(
+        not has_key,
+        reason=f"No API key set for a provider supporting {capability!r} ({', '.join(env_vars)})",
+    )
 
 
 def create_profile_and_scope(  # pylint: disable=redefined-outer-name

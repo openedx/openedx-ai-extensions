@@ -124,8 +124,8 @@ class LLMProcessor(LitellmProcessor):
         params = {}
         params["stream"] = self.stream
 
+        user_text = normalize_input_to_text(self.input_data)
         if self.chat_history:
-            user_text = normalize_input_to_text(self.input_data)
             if user_text:
                 self.chat_history.append({"role": "user", "content": user_text})
             params["input"] = self.chat_history
@@ -135,6 +135,8 @@ class LLMProcessor(LitellmProcessor):
                 {"role": "system", "content": self.custom_prompt or system_role},
                 {"role": "system", "content": self.context},
             ]
+            if user_text:
+                params["input"].append({"role": "user", "content": user_text})
 
         # Add optional parameters only if configured
         params.update(self.extra_params)
