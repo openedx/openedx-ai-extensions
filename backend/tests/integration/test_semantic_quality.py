@@ -22,7 +22,7 @@ OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
 )
 
-_ORIGINAL_CALL_COMPLETION_WRAPPER = LLMProcessor._call_completion_wrapper
+_ORIGINAL_CALL_COMPLETION_WRAPPER = LLMProcessor._call_completion_wrapper  # pylint: disable=protected-access
 
 
 def _capturing_call_completion_wrapper(captured):
