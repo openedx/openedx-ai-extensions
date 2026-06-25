@@ -195,7 +195,7 @@ class LLMProcessor(LitellmProcessor):
                 result["system_messages"] = system_msgs
             return result
         except BadRequestError as e:
-            if "previous_response_not_found" in str(e):
+            if "previous_response_not_found" in str(getattr(e, "code", None) or str(e)):
                 logger.warning(
                     "Previous response ID '%s' not found. Clearing and retrying with full history fallback.",
                     self.user_session.remote_response_id if self.user_session else "Unknown"
