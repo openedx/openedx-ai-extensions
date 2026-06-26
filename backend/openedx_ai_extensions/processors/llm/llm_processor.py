@@ -22,6 +22,13 @@ from openedx_ai_extensions.utils import STREAMING_FAILED_MESSAGE, normalize_inpu
 
 logger = logging.getLogger(__name__)
 
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
+
+
+def load_prompt(name: str) -> str:
+    """Load a system prompt from openedx_ai_extensions/prompts/<name>.txt."""
+    return (_PROMPTS_DIR / f"{name}.txt").read_text(encoding="utf-8").strip()
+
 
 class LLMProcessor(LitellmProcessor):
     """
@@ -452,50 +459,8 @@ class LLMProcessor(LitellmProcessor):
         """
         Chat with context given from OpenEdx course content.
         Either initializes a new thread or continues an existing one.
-
-        Args:
-            context: Course content context
-            input_data: Optional input data to continue conversation
-
-        Returns:
-            dict: Response from the API
         """
-        system_role = """
-              - Role & Purpose
-                  You are an AI assistant embedded into an Open edX learning environment.
-                  Your purpose is to Provide helpful, accurate, and context-aware guidance
-                  to students as they navigate course content.
-
-              - Core Behaviors
-                  Always prioritize the course‑provided context as your primary source of truth.
-                  If the course does not contain enough information to answer accurately,
-                  state the limitation and offer a helpful alternative.
-                  Maintain clarity, accuracy, and educational value in every response.
-                  Adapt depth and complexity of explanations to the learner’s level when interacting with students.
-                  Avoid hallucinating facts or adding external content unless explicitly allowed.
-                  Default to concise responses (3–6 sentences maximum) unless
-                  the learner explicitly asks for a detailed explanation.
-                  Do not provide long summaries unless specifically requested.
-                  Prefer guided questioning over full explanations.
-                  Ask clarifying questions when the learner’s intent is ambiguous.
-                  Encourage learners to articulate their thinking before providing full answers.
-                  Expand only if the learner asks for more depth.
-
-              - Learner Assistance Mode
-                  When interacting with learners:
-                  Provide clear, supportive explanations.
-                  Prioritize information available within the course materials provided to you.
-                  When answering questions, reference the structure, explanations, and examples
-                  from the course context.
-                  Help learners navigate concepts without giving away answers during graded activities unless allowed.
-                  Use examples and analogies that are consistent with the course content.
-                  Encourage deeper understanding, critical thinking, and application.
-
-              - Safety & Limits
-                  Do not introduce contradictory or external authoritative information unless asked.
-                  When unsure, express uncertainty clearly.
-                  Avoid providing direct answers to graded assessment questions.
-            """
+        system_role = load_prompt("chat_with_context")
         params = self._build_response_api_params(system_role=system_role)
         if self.user_session and self.user_session.remote_response_id:
             return self._call_responses_wrapper(params=params, system_role=system_role)
@@ -503,29 +468,11 @@ class LLMProcessor(LitellmProcessor):
 
     def summarize_content(self):
         """Summarize content using LiteLLM"""
-        system_role = (
-            "You are an academic assistant which helps students briefly "
-            "summarize a unit of content of an online course."
-        )
-
-        result = self._call_completion_wrapper(system_role=system_role)
-        return result
+        return self._call_completion_wrapper(system_role=load_prompt("summarize_content"))
 
     def explain_like_five(self):
-        """
-        Explain content in very simple terms, like explaining to a 5-year-old
-        Short, simple language that anyone can understand
-        """
-        system_role = (
-            "You are a friendly teacher who explains things to young children. "
-            "Explain the content in very simple words, like you're talking to a 5-year-old. "
-            "Use short sentences, simple words, and make it fun and easy to understand. "
-            "Keep your explanation very brief - no more than 3-4 simple sentences."
-        )
-
-        result = self._call_completion_wrapper(system_role=system_role)
-
-        return result
+        """Explain content in very simple terms, like explaining to a 5-year-old."""
+        return self._call_completion_wrapper(system_role=load_prompt("explain_like_five"))
 
     def greet_from_llm(self):
         """Simple test to greet from the LLM and mention which model is being used."""

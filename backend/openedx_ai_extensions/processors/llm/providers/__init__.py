@@ -34,7 +34,7 @@ def provider_supports(provider, capability):
 
 
 # TODO: refactor this module to make it more extensible for future providers
-def adapt_to_provider(
+def adapt_to_provider(  # pylint: disable=unused-argument
         provider, params, *, has_user_input=True, user_session=None,
         input_data=None):
     """
@@ -68,22 +68,22 @@ def adapt_to_provider(
                 params["input"] = [{"role": "user", "content": input_data}]
 
     if provider == "anthropic":
-        # Anthropic requires at least one user message in the conversation
-        if not has_user_input:
-            # Check if there's already a user message
-            has_user_msg = any(
-                msg.get("role") == "user"
-                for msg in params.get("input", params.get("messages", []))
-            )
-
-            if not has_user_msg:
-                # Add a generic user message to satisfy Anthropic's requirements
-                user_prompt = "Please provide the requested information based on the context above."
-
-                if "input" in params:
-                    params["input"].append({"role": "user", "content": user_prompt})
-                elif "messages" in params:
-                    params["messages"].append({"role": "user", "content": user_prompt})
+        # Anthropic requires at least one user message in the conversation.
+        # Check unconditionally: input_data may be present but never added to the
+        # input list (e.g. initial chat_with_context call where _build_response_api_params
+        # only puts system messages in params["input"]).
+        msgs = params.get("input", params.get("messages", []))
+        has_user_msg = any(msg.get("role") == "user" for msg in msgs)
+        if not has_user_msg:
+            key = "input" if "input" in params else "messages"
+            if input_data:
+                user_content = input_data if isinstance(input_data, str) else str(input_data)
+                params[key].append({"role": "user", "content": user_content})
+            else:
+                params[key].append({
+                    "role": "user",
+                    "content": "Please provide the requested information based on the context above.",
+                })
 
     if not provider_supports(provider, "server_side_thread_id") and params.get("stream") and "input" in params:
         # Non-OpenAI providers: convert Responses API shape → Completion API

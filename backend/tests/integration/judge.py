@@ -30,9 +30,11 @@ JUDGE_API_KEY_ENV = "ANTHROPIC_API_KEY"
 
 _BASE_SYSTEM = (
     "You are a strict evaluator. For each question below, judge the RESPONSE "
-    "against the CONTENT it was given and the INSTRUCTION it was asked to "
-    "follow, and answer every question. Reply with valid JSON only, no extra "
-    "text, matching exactly the requested schema."
+    "against four legs: CONTENT (what the primary LLM was given), INSTRUCTION "
+    "(the authored system prompt / policy), USER INPUT (the learner's runtime "
+    "message, may be '(none)'), and RESPONSE (what the primary LLM produced). "
+    "Answer every question. Reply with valid JSON only, no extra text, matching "
+    "exactly the requested schema."
 )
 
 # Fields every question schema should start from: a yes/no verdict plus a
@@ -155,22 +157,22 @@ class Judge:
         self.max_tokens = max_tokens
 
     def ask(
-        self, questions: list[JudgeQuestion], *, content: str, instruction: str, response: str
+        self,
+        questions: list[JudgeQuestion],
+        *,
+        content: str,
+        instruction: str,
+        user_input: str = "",
+        response: str,
     ) -> dict:
         """
-        Ask all *questions* about the (content, instruction, response) triad in
-        a single LLM call. Returns {question.name: {...fields per its schema}}.
+        Ask all *questions* about the four-leg evaluation in a single LLM call.
+        Returns {question.name: {...fields per its schema}}.
 
-        The three legs are first-class and always sent to the judge:
-        - *content*: the CONTENT the primary LLM was given (the course context).
-        - *instruction*: the INSTRUCTION it was asked to follow about that
-          content (system prompt, custom prompt, or the learner's question).
-        - *response*: the RESPONSE it produced.
-
-        Pass the instruction even when it is the profile's default system role;
-        questions like INSTRUCTION_FOLLOWING, COMPLETENESS, CONCISENESS and
-        SAFETY_REFUSAL judge the response against what was actually asked, not
-        against the CONTENT alone.
+        - *content*: CONTENT the primary LLM was given (course context).
+        - *instruction*: INSTRUCTION it was asked to follow (authored system prompt / policy).
+        - *user_input*: USER INPUT — the learner's runtime message. Optional; defaults to "".
+        - *response*: RESPONSE the primary LLM produced.
         """
         combined_schema = {
             "type": "object",
@@ -179,6 +181,7 @@ class Judge:
             "additionalProperties": False,
         }
         questions_text = "\n".join(f"- {q.name}: {q.prompt}" for q in questions)
+        user_input_section = f"USER INPUT:\n{user_input}" if user_input else "USER INPUT:\n(none)"
 
         result = litellm.completion(
             model=self.model,
@@ -190,6 +193,7 @@ class Judge:
                     "content": (
                         f"INSTRUCTION:\n{instruction}\n\n"
                         f"CONTENT:\n{content}\n\n"
+                        f"{user_input_section}\n\n"
                         f"RESPONSE:\n{response}"
                     ),
                 },
@@ -218,15 +222,17 @@ class Judge:
                     f"{missing_fields}: {parsed[q.name]!r}"
                 )
 
-        self._log_result(content, instruction, response, parsed)
+        self._log_result(content, instruction, user_input, response, parsed)
         return parsed
 
-    def _log_result(self, content, instruction, response, parsed):
+    def _log_result(  # pylint: disable=too-many-positional-arguments
+            self, content, instruction, user_input, response, parsed):
         """Log the full judge exchange so CI can inspect it on failure (see --log-file)."""
         record = {
             "test": os.environ.get("PYTEST_CURRENT_TEST", ""),
             "content": content,
             "instruction": instruction,
+            "user_input": user_input or "(none)",
             "response": response,
             "verdicts": parsed,
         }
