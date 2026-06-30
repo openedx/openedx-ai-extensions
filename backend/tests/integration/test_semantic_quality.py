@@ -31,35 +31,6 @@ CONTEXT_JSON = json.dumps({
 
 _CHAT_INSTRUCTION = load_prompt("chat_with_context")
 
-# Modified chat_with_context: "ask clarifying questions" and "guided questioning" rules
-# removed so the model answers directly from content or states the limitation explicitly.
-_GROUNDED_CHAT_INSTRUCTION = (
-    "- Role & Purpose\n"
-    "    You are an AI assistant embedded into an Open edX learning environment.\n"
-    "    Your purpose is to provide helpful, accurate, and context-aware guidance\n"
-    "    to students as they navigate course content.\n\n"
-    "- Core Behaviors\n"
-    "    Always prioritize the course-provided context as your primary source of truth.\n"
-    "    If the course does not contain enough information to answer accurately,\n"
-    "    state the limitation clearly and directly — do not deflect or ask for clarification.\n"
-    "    Maintain clarity, accuracy, and educational value in every response.\n"
-    "    Adapt depth and complexity of explanations to the learner's level.\n"
-    "    Avoid hallucinating facts or adding external content unless explicitly allowed.\n\n"
-    "- Grounding Rule (highest priority)\n"
-    "    Answer only from the course content provided.\n"
-    "    Do not use outside knowledge, training data, or assumptions not in the content.\n"
-    "    If the content does not contain the answer, say so explicitly and directly.\n"
-    "    Never say you did not receive a question when the student's request is clear.\n\n"
-    "- Learner Assistance Mode\n"
-    "    Provide clear, supportive explanations.\n"
-    "    Prioritize information available within the course materials provided to you.\n"
-    "    When answering questions, reference the structure, explanations, and examples\n"
-    "    from the course context.\n\n"
-    "- Safety & Limits\n"
-    "    Do not introduce contradictory or external authoritative information unless asked.\n"
-    "    When unsure, express uncertainty clearly."
-)
-
 
 def _post_workflow(client, provider_slug, course_key, content, *, instruction, slug_suffix, user_input=""):
     """
@@ -188,7 +159,7 @@ def test_response_does_not_hallucinate_beyond_content(
 
     response = _post_workflow(
         live_api_client, provider_slug, course_key,
-        _NARROW_CONTENT, instruction=_GROUNDED_CHAT_INSTRUCTION,
+        _NARROW_CONTENT, instruction=_CHAT_INSTRUCTION,
         slug_suffix="qual-ag", user_input=_NARROW_USER_INPUT,
     )
     assert response.status_code == 200
@@ -197,7 +168,7 @@ def test_response_does_not_hallucinate_beyond_content(
 
     verdicts = Judge().ask(
         [GROUNDING], content=_NARROW_CONTENT,
-        instruction=_GROUNDED_CHAT_INSTRUCTION, user_input=_NARROW_USER_INPUT,
+        instruction=_CHAT_INSTRUCTION, user_input=_NARROW_USER_INPUT,
         response=llm_text,
     )
     verdict = verdicts[GROUNDING.name]
@@ -252,7 +223,7 @@ def test_response_does_not_use_outside_knowledge_for_real_content(
 
     response = _post_workflow(
         live_api_client, provider_slug, course_key,
-        _JUPITER_CONTENT, instruction=_GROUNDED_CHAT_INSTRUCTION,
+        _JUPITER_CONTENT, instruction=_CHAT_INSTRUCTION,
         slug_suffix="qual-ah2", user_input=_JUPITER_USER_INPUT,
     )
     assert response.status_code == 200
@@ -261,7 +232,7 @@ def test_response_does_not_use_outside_knowledge_for_real_content(
 
     verdicts = Judge().ask(
         [GROUNDING], content=_JUPITER_CONTENT,
-        instruction=_GROUNDED_CHAT_INSTRUCTION, user_input=_JUPITER_USER_INPUT,
+        instruction=_CHAT_INSTRUCTION, user_input=_JUPITER_USER_INPUT,
         response=llm_text,
     )
     verdict = verdicts[GROUNDING.name]
@@ -284,19 +255,35 @@ _LIST_CONTENT = json.dumps({
                 '<img src="https://example.com/banner.jpg" alt="Course Banner" />'
                 "<h1>Welcome to the Cooking Module</h1>"
                 '<p class="intro">In this unit you will learn how to follow a recipe.</p>'
-                '<div style="display:none"><!-- sponsored --></div>'
-                '<img src="https://example.com/cooking.png" alt="Cooking illustration" />'
-                "A complete recipe requires exactly five steps: "
+                "A complete recipe requires exactly five steps. "
                 "1. Gather ingredients. "
-                "2. Prepare the workspace. "
-                "3. Mix all components. "
-                "4. Cook at the right temperature. "
-                "5. Serve and enjoy."
-                '<footer><img src="https://example.com/logo.svg" />'
-                "<p>&copy; 2024 Course Platform</p></footer>"
+                "2. Prepare the workspace."
                 "</div>"
             ),
-        }
+        },
+        {
+            "type": "html",
+            "text": (
+                '<section class="module-body">'
+                '<img src="https://example.com/cooking.png" alt="Cooking illustration" />'
+                '<div style="display:none"><!-- sponsored --></div>'
+                "<p>Continuing from above:</p>"
+                "3. Mix all components."
+                "</section>"
+            ),
+        },
+        {
+            "type": "html",
+            "text": (
+                '<aside class="tips">'
+                '<img src="https://example.com/tip-icon.svg" alt="" />'
+                "<h2>Final steps</h2>"
+                "4. Cook at the right temperature. "
+                "5. Serve and enjoy."
+                "<footer><p>&copy; 2024 Course Platform</p></footer>"
+                "</aside>"
+            ),
+        },
     ],
 })
 
