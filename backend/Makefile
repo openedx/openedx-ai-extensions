@@ -69,7 +69,7 @@ requirements: clean_tox piptools ## install development environment requirements
 	pip-sync -q requirements/dev.txt requirements/private.*
 	# So that the plugin entrypoints are installed and loaded correctly.
 	pip install -e .
-	pip install -r requirements/docs.txt
+	pip install -r requirements/doc.txt
 
 test: clean ## run tests in the current virtualenv (excludes live LLM tests)
 	pytest tests/ -m "not live_llm"

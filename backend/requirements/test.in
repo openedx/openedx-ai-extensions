@@ -5,6 +5,7 @@
 
 pytest-cov                # pytest extension for code coverage statistics
 pytest-django             # pytest extension for better Django support
+pytest-rerunfailures      # rerun flaky tests (e.g. LLM-judge based tests)
 code-annotations          # provides commands used by the pii_check make target.
 edx-django-utils          # Open edX Django utilities, needed for plugin testing
 django_extensions         # Helpful dev commans including 'show_urls'

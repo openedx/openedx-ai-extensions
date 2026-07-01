@@ -354,6 +354,7 @@ packaging==25.0
     #   huggingface-hub
     #   kombu
     #   pytest
+    #   pytest-rerunfailures
 pbr==6.1.1
     # via
     #   -r requirements/base.txt
@@ -399,9 +400,12 @@ pytest==8.3.5
     # via
     #   pytest-cov
     #   pytest-django
+    #   pytest-rerunfailures
 pytest-cov==6.1.1
     # via -r requirements/test.in
 pytest-django==4.11.1
+    # via -r requirements/test.in
+pytest-rerunfailures==16.4
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via
