@@ -427,6 +427,7 @@ packaging==25.0
     #   kombu
     #   pyproject-api
     #   pytest
+    #   pytest-rerunfailures
     #   tox
 path==16.16.0
     # via edx-i18n-tools
@@ -527,9 +528,12 @@ pytest==8.3.5
     #   -r requirements/quality.txt
     #   pytest-cov
     #   pytest-django
+    #   pytest-rerunfailures
 pytest-cov==6.1.1
     # via -r requirements/quality.txt
 pytest-django==4.11.1
+    # via -r requirements/quality.txt
+pytest-rerunfailures==16.4
     # via -r requirements/quality.txt
 python-dateutil==2.9.0.post0
     # via

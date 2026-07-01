@@ -67,7 +67,7 @@ class DirectLLMResponse(BaseOrchestrator):
 
         # --- 2. Process with LLM processor ---
         self.llm_processor = LLMProcessor(self.profile.processor_config)
-        llm_result = self.llm_processor.process(context=llm_input_content)
+        llm_result = self.llm_processor.process(context=llm_input_content, input_data=input_data)
 
         # --- 4. Handle Streaming Response (Generator) ---
         if is_generator(llm_result):

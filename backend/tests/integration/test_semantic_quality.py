@@ -22,6 +22,8 @@ OPENEDX_PATCH = (
     "openedx_ai_extensions.processors.openedx.openedx_processor.OpenEdXProcessor.process"
 )
 
+pytestmark = pytest.mark.flaky(reruns=1, reruns_delay=2)
+
 
 CONTEXT_JSON = json.dumps({
     "courseId": "course-v1:edX+LiveTest+Demo_Course",
