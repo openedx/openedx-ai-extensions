@@ -1,0 +1,35 @@
+/*
+Reviews the whole course structure and metadata, then asks the LLM to
+propose content improvement suggestions per unit, each with a real
+navigable link back to that unit.
+*/
+{
+  "orchestrator_class": "openedx_ai_extensions.workflows.orchestrators.content_suggestions_orchestrator.ContentSuggestionsOrchestrator",
+  "processor_config": {
+    "OpenEdXProcessor": {
+      "function": "get_course_info",
+      "fields": ["title", "short_description", "overview", "outline"]
+    },
+    "LLMProcessor": {
+      "function": "suggest_content_improvements",
+      "provider": "default"
+    }
+  },
+  "actuator_config": {
+    "UIComponents": {
+      "request": {
+        "component": "ContentSuggestionsRequest",
+        "config": {
+          "buttonText": "Suggest improvements",
+          "customMessage": "Get AI suggestions to improve course content",
+          "preloadPreviousSession": true
+        }
+      },
+      "response": {
+        "component": "ContentSuggestionsResponse",
+        "config": {}
+      }
+    }
+  },
+  "schema_version": "1.0",
+}

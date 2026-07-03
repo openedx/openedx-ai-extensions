@@ -265,3 +265,39 @@ class ScopedSessionOrchestrator(SessionBasedOrchestrator):  # pylint: disable=ab
             'task_id': task.id,
             'message': 'AI workflow has started'
         }
+
+
+class CrossSlotSessionOrchestrator(ScopedSessionOrchestrator):  # pylint: disable=abstract-method
+    """
+    ScopedSessionOrchestrator variant whose session is shared not only across
+    locations, but across every UI slot (``AIWorkflowScope`` row) that points
+    at the same profile within a course.
+
+    Use this instead of ``ScopedSessionOrchestrator`` when one profile is
+    attached to multiple scopes (e.g. a course-outline sidebar widget and an
+    educator-tools widget) and authors should see one shared session no
+    matter which widget they used. ``ScopedSessionOrchestrator`` itself keeps
+    keying sessions on scope, since some workflows (e.g. flashcards) are
+    expected to keep a separate session per widget even when they share a
+    profile.
+
+    Looked up via filter().first() rather than get_or_create() because a
+    scope-keyed row for this same (user, profile, course_id) may already
+    exist from before this class was introduced — get_or_create would raise
+    MultipleObjectsReturned once a second scope creates its own row.
+    """
+
+    def __init__(self, workflow, user, context):  # pylint: disable=super-init-not-called
+        BaseOrchestrator.__init__(self, workflow, user, context)  # pylint: disable=non-parent-init-called
+        self.session = AIWorkflowSession.objects.filter(
+            user=self.user,
+            profile=self.workflow.profile,
+            course_id=self.course_id,
+        ).order_by("created_at").first()
+        if self.session is None:
+            self.session = AIWorkflowSession.objects.create(
+                user=self.user,
+                scope=self.workflow,
+                profile=self.workflow.profile,
+                course_id=self.course_id,
+            )
