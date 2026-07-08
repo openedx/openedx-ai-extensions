@@ -302,7 +302,6 @@ class OpenEdXProcessor:
                     chapter_key, "display_name"
                 ),
                 "category": self.define_category(category),
-                "location_id": str(chapter_key),
                 "subsections": [],
             }
 
@@ -319,7 +318,6 @@ class OpenEdXProcessor:
                         sequential_key, "display_name"
                     ),
                     "category": self.define_category(seq_category),
-                    "location_id": str(sequential_key),
                     "units": [],
                 }
 
@@ -336,7 +334,6 @@ class OpenEdXProcessor:
                             vertical_key, "display_name"
                         ),
                         "category": self.define_category(vert_category),
-                        "location_id": str(vertical_key),
                     }
 
                     sequential_info["units"].append(vertical_info)
