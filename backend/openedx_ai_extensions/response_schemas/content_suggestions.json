@@ -1,0 +1,80 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "ContentSuggestions",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "suggestions": {
+          "type": "array",
+          "description": "Units that would benefit from a content change, based on the provided course structure.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "unit_id": {
+                "type": "string",
+                "description": "The exact 'location_id' of the unit this suggestion applies to, copied verbatim from the provided course outline."
+              },
+              "unit_display_name": {
+                "type": "string",
+                "description": "The display name of the unit, copied from the provided course outline, for readability."
+              },
+              "type": {
+                "type": "string",
+                "enum": ["wording", "structure", "pedagogy", "accessibility"],
+                "description": "The category of improvement this suggestion addresses."
+              },
+              "priority": {
+                "type": "string",
+                "enum": ["high", "medium", "low"],
+                "description": "How important this suggestion is relative to others."
+              },
+              "title": {
+                "type": "string",
+                "description": "A short, action-oriented headline for this suggestion (e.g. 'Rename this unit', 'Add a worked example')."
+              },
+              "suggestion": {
+                "type": "string",
+                "description": "The full description of the suggestion, explaining what to change and why."
+              },
+              "proposed_change": {
+                "type": ["object", "null"],
+                "description": "A concrete, final, ready-to-use replacement text, ONLY when one genuinely applies. Must be null when the suggestion is open-ended (no specific replacement text to give).",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "enum": ["display_name", "content_html", "summary"],
+                    "description": "Which unit field this concrete change applies to."
+                  },
+                  "current": {
+                    "type": "string",
+                    "description": "The current value of that field, copied verbatim from the provided course data."
+                  },
+                  "suggested": {
+                    "type": "string",
+                    "description": "The proposed replacement value, ready to use as-is."
+                  }
+                },
+                "required": ["field", "current", "suggested"],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "unit_id",
+              "unit_display_name",
+              "type",
+              "priority",
+              "title",
+              "suggestion",
+              "proposed_change"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["suggestions"],
+      "additionalProperties": false
+    }
+  }
+}

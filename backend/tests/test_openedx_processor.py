@@ -290,6 +290,54 @@ def test_get_location_content_truncation(mock_edx_imports, mock_keys):
     assert len(result["blocks"][1]["text"]) == 5
 
 
+def test_get_location_content_with_course_id_returns_whole_course(mock_edx_imports, mock_keys):
+    """A course ID (not a usage key) returns the whole course's content tree."""
+    # pylint: disable=unused-argument
+    # pylint: disable=import-error, import-outside-toplevel
+    from xmodule.modulestore.django import modulestore
+
+    mock_unit = MagicMock()
+    mock_unit.location = "unit-loc"
+    mock_unit.display_name = "Unit 1"
+    mock_unit.category = "vertical"
+    mock_unit.children = []
+
+    mock_sequential = MagicMock()
+    mock_sequential.location = "seq-loc"
+    mock_sequential.display_name = "Subsection 1"
+    mock_sequential.category = "sequential"
+    mock_sequential.children = ["unit-key"]
+
+    mock_chapter = MagicMock()
+    mock_chapter.location = "chap-loc"
+    mock_chapter.display_name = "Section 1"
+    mock_chapter.category = "chapter"
+    mock_chapter.children = ["seq-key"]
+
+    mock_course = MagicMock()
+    mock_course.display_name = "Demo Course"
+    mock_course.children = ["chap-key"]
+
+    mock_store = modulestore.return_value
+    mock_store.get_course.return_value = mock_course
+    mock_store.get_item.side_effect = lambda key: {
+        "chap-key": mock_chapter,
+        "seq-key": mock_sequential,
+        "unit-key": mock_unit,
+    }[key]
+
+    result = OpenEdXProcessor().get_location_content(course_id="course-v1:edX+DemoX+Demo_Course")
+
+    assert result["course_id"] == "course-v1:edX+DemoX+Demo_Course"
+    assert result["display_name"] == "Demo Course"
+    section = result["sections"][0]
+    assert section["location_id"] == "chap-loc"
+    assert section["display_name"] == "Section 1"
+    subsection = section["subsections"][0]
+    assert subsection["location_id"] == "seq-loc"
+    assert subsection["units"][0]["unit_id"] == "unit-loc"
+
+
 def test_get_location_content_error_handling(mock_edx_imports, mock_keys):
     """Test that exceptions are caught and returned as errors."""
     # pylint: disable=unused-argument

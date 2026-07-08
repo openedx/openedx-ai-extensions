@@ -626,6 +626,34 @@ class LLMProcessor(LitellmProcessor):
                     items.append({"type": "reasoning", "role": "reasoning", "content": summary_text})
         return items
 
+    def suggest_content_improvements(self):
+        """
+        Suggest content improvements per unit based on course structure.
+
+        Accepts an optional `extra_instructions` string in input_data — author-provided
+        guidelines (e.g. "Always write in third person") that the LLM checks the course
+        content against, in addition to its own analysis.
+        """
+        prompt = load_prompt("suggest_content_improvements")
+        extra_instructions = (self.input_data or {}).get("extra_instructions") or ""
+        prompt = prompt.replace("{{EXTRA_INSTRUCTIONS}}", extra_instructions)
+
+        self.input_data = None
+
+        result = self._call_completion_wrapper(system_role=prompt)
+
+        if "error" in result:
+            return result
+
+        response = json.loads(result["response"])
+
+        return {
+            "response": response,
+            "usage": self.usage,
+            "model_used": self.extra_params.get("model", "unknown"),
+            "status": "success",
+        }
+
     def generate_flashcards(self):
         """Example method showing how to generate flashcards from content."""
         prompt_file_path = (
