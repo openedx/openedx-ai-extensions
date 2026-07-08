@@ -3,7 +3,6 @@ Tests for content_suggestions_orchestrator.
 """
 # pylint: disable=protected-access
 
-import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -284,7 +283,7 @@ def test_run_openedx_error(mock_openedx_class, orchestrator):  # pylint: disable
 @patch("openedx_ai_extensions.workflows.orchestrators.content_suggestions_orchestrator.LLMProcessor")
 def test_run_llm_error(mock_llm_class, mock_openedx_class, orchestrator):  # pylint: disable=redefined-outer-name
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"outline": json.dumps(build_outline())}
+    mock_openedx.process.return_value = {"sections": build_outline()}
     mock_openedx_class.return_value = mock_openedx
 
     mock_llm = Mock()
@@ -315,7 +314,7 @@ def test_run_success_enriches_and_persists_suggestions(
     mock_llm_class, mock_openedx_class, orchestrator,  # pylint: disable=redefined-outer-name
 ):
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"outline": json.dumps(build_outline())}
+    mock_openedx.process.return_value = {"sections": build_outline()}
     mock_openedx_class.return_value = mock_openedx
 
     raw_suggestions = [
@@ -351,7 +350,7 @@ def test_run_filters_response_to_current_unit_location(
     mock_llm_class, mock_openedx_class, workflow_scope, user, course_key,  # pylint: disable=redefined-outer-name
 ):
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"outline": json.dumps(build_outline())}
+    mock_openedx.process.return_value = {"sections": build_outline()}
     mock_openedx_class.return_value = mock_openedx
 
     raw_suggestions = [
@@ -377,7 +376,7 @@ def test_run_no_suggestions_key_defaults_to_empty_list(
     mock_llm_class, mock_openedx_class, orchestrator,  # pylint: disable=redefined-outer-name
 ):
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"outline": json.dumps(build_outline())}
+    mock_openedx.process.return_value = {"sections": build_outline()}
     mock_openedx_class.return_value = mock_openedx
 
     mock_llm = Mock()
@@ -399,7 +398,7 @@ def test_run_passes_json_schema_as_response_format(
     mock_llm_class, mock_openedx_class, orchestrator,  # pylint: disable=redefined-outer-name
 ):
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"outline": json.dumps(build_outline())}
+    mock_openedx.process.return_value = {"sections": build_outline()}
     mock_openedx_class.return_value = mock_openedx
 
     _mock_llm_success(mock_llm_class, [])
@@ -421,7 +420,7 @@ def test_run_reuses_stored_extra_instructions_when_not_provided(
     orchestrator.session.save(update_fields=["metadata"])
 
     mock_openedx = Mock()
-    mock_openedx.process.return_value = {"outline": json.dumps(build_outline())}
+    mock_openedx.process.return_value = {"sections": build_outline()}
     mock_openedx_class.return_value = mock_openedx
 
     _mock_llm_success(mock_llm_class, [])
@@ -558,7 +557,7 @@ def test_schema_path_points_to_content_suggestions_json(orchestrator):  # pylint
 
 
 # ===========================================================================
-# CrossSlotSessionOrchestrator sharing behavior (via ContentSuggestionsOrchestrator)
+# CourseSessionOrchestrator sharing behavior (via ContentSuggestionsOrchestrator)
 # ===========================================================================
 
 
@@ -604,7 +603,7 @@ def test_session_tolerates_pre_existing_duplicate_scope_rows(
 ):
     """
     If two scope-keyed session rows already exist for this (user, profile,
-    course_id) from before CrossSlotSessionOrchestrator existed, instantiating
+    course_id) from before CourseSessionOrchestrator existed, instantiating
     it must not raise MultipleObjectsReturned — it should deterministically
     pick one (the earliest created).
     """

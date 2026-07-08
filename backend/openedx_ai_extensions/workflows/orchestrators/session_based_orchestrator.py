@@ -267,7 +267,7 @@ class ScopedSessionOrchestrator(SessionBasedOrchestrator):  # pylint: disable=ab
         }
 
 
-class CrossSlotSessionOrchestrator(ScopedSessionOrchestrator):  # pylint: disable=abstract-method
+class CourseSessionOrchestrator(ScopedSessionOrchestrator):  # pylint: disable=abstract-method
     """
     ScopedSessionOrchestrator variant whose session is shared not only across
     locations, but across every UI slot (``AIWorkflowScope`` row) that points

@@ -1,14 +1,14 @@
 /*
-Reviews the whole course structure and metadata, then asks the LLM to
-propose content improvement suggestions per unit, each with a real
-navigable link back to that unit.
+Reviews the whole course's actual content (sections -> subsections -> units,
+including each unit's blocks), then asks the LLM to propose content
+improvement suggestions per unit, each with a real navigable link back to
+that unit.
 */
 {
   "orchestrator_class": "openedx_ai_extensions.workflows.orchestrators.content_suggestions_orchestrator.ContentSuggestionsOrchestrator",
   "processor_config": {
     "OpenEdXProcessor": {
-      "function": "get_course_info",
-      "fields": ["title", "short_description", "overview", "outline"]
+      "function": "get_location_content"
     },
     "LLMProcessor": {
       "function": "suggest_content_improvements",

@@ -55,7 +55,9 @@ class OpenEdXProcessor:
                 "Get published Open edX course content. "
                 "This function reads the content of course unit(s) and "
                 "converts it into a structured format suitable for LLM processing. "
-                "Can retrieve just the current unit, units up to the current one, or the entire sequence."
+                "Can retrieve just the current unit, units up to the current one, or the entire sequence. "
+                "When no location is available, a course ID can be given instead to retrieve the "
+                "content of the whole course (sections -> subsections -> units)."
             ),
             "parameters": {
                 "type": "object",
@@ -65,6 +67,13 @@ class OpenEdXProcessor:
                         "description": (
                             "The string representation of the location ID, "
                             "if not provided uses the current location"
+                        )
+                    },
+                    "course_id": {
+                        "type": "string",
+                        "description": (
+                            "The course ID. Only used when no location ID is available: "
+                            "returns the whole course's content. Defaults to the current course."
                         )
                     },
                     "retrieval_mode": {
@@ -81,8 +90,8 @@ class OpenEdXProcessor:
             }
         }
     })
-    def get_location_content(self, location_id=None, retrieval_mode=None):
-        """Extract unit or sequence content from Open edX modulestore based on configuration"""
+    def get_location_content(self, location_id=None, course_id=None, retrieval_mode=None):
+        """Extract unit, sequence or whole-course content from Open edX modulestore"""
         try:
             # pylint: disable=import-error,import-outside-toplevel
             from xmodule.modulestore.django import modulestore
@@ -90,9 +99,14 @@ class OpenEdXProcessor:
             # Get char_limit from config. Useful during development
             char_limit = self.config.get("char_limit", None)
             location_id = location_id or self.location_id
+            store = modulestore()
+
+            # No location at all: fall back to the whole course's content
+            if location_id is None:
+                course_key = CourseKey.from_string(course_id or self.course_id)
+                return self._get_course_content(store, course_key, char_limit)
 
             unit_key = UsageKey.from_string(location_id)
-            store = modulestore()
 
             # Get retrieval_mode from arg or config, default to 'unit'
             retrieval_mode = retrieval_mode or self.config.get("retrieval_mode", "unit")
@@ -126,6 +140,36 @@ class OpenEdXProcessor:
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             return {"error": f"Error accessing content: {str(exc)}"}
+
+    def _get_course_content(self, store, course_key, char_limit=None):
+        """Extract content for every unit in a course, keeping the outline structure."""
+        course = store.get_course(course_key)
+        sections = []
+        for chapter in (store.get_item(key) for key in getattr(course, "children", [])):
+            if chapter.category != "chapter":
+                continue
+            subsections = []
+            for sequential in (store.get_item(key) for key in getattr(chapter, "children", [])):
+                if sequential.category != "sequential":
+                    continue
+                subsections.append({
+                    "location_id": str(sequential.location),
+                    "display_name": sequential.display_name,
+                    "units": [
+                        self._get_unit_data(store, unit_key, char_limit)
+                        for unit_key in getattr(sequential, "children", [])
+                    ],
+                })
+            sections.append({
+                "location_id": str(chapter.location),
+                "display_name": chapter.display_name,
+                "subsections": subsections,
+            })
+        return {
+            "course_id": str(course_key),
+            "display_name": course.display_name,
+            "sections": sections,
+        }
 
     def _get_unit_data(self, store, unit_key, char_limit=None):
         """Extract content for a single unit"""

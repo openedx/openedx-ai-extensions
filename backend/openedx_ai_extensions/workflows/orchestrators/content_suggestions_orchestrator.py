@@ -9,16 +9,16 @@ from pathlib import Path
 from openedx_ai_extensions.processors import LLMProcessor, OpenEdXProcessor
 from openedx_ai_extensions.xapi.constants import EVENT_NAME_WORKFLOW_COMPLETED
 
-from .session_based_orchestrator import CrossSlotSessionOrchestrator
+from .session_based_orchestrator import CourseSessionOrchestrator
 
 logger = logging.getLogger(__name__)
 
 
-class ContentSuggestionsOrchestrator(CrossSlotSessionOrchestrator):
+class ContentSuggestionsOrchestrator(CourseSessionOrchestrator):
     """
-    Orchestrator that reviews a whole course's structure and metadata via
-    OpenEdXProcessor.get_course_info, then asks an LLM to propose content
-    improvement suggestions per unit.
+    Orchestrator that reviews a whole course's actual content via
+    OpenEdXProcessor.get_location_content (called with the course ID), then
+    asks an LLM to propose content improvement suggestions per unit.
 
     The full suggestion list (with section/subsection/unit ancestry) is
     always persisted course-wide in the session. What gets *returned* to a
@@ -37,22 +37,22 @@ class ContentSuggestionsOrchestrator(CrossSlotSessionOrchestrator):
         )
 
     @staticmethod
-    def _build_ancestry_map(outline):
+    def _build_ancestry_map(sections):
         """
-        Walk the course outline (list of chapters -> subsections -> units) and
-        return {unit_id: {section_id, section_display_name, subsection_id,
+        Walk the course content tree (list of sections -> subsections -> units)
+        and return {unit_id: {section_id, section_display_name, subsection_id,
         subsection_display_name}} so suggestions can carry full ancestry
         without trusting the LLM to know or repeat it correctly.
         """
         ancestry = {}
-        for chapter in outline or []:
+        for chapter in sections or []:
             section_id = chapter.get('location_id')
             section_name = chapter.get('display_name')
             for subsection in chapter.get('subsections', []) or []:
                 subsection_id = subsection.get('location_id')
                 subsection_name = subsection.get('display_name')
                 for unit in subsection.get('units', []) or []:
-                    unit_id = unit.get('location_id')
+                    unit_id = unit.get('location_id') or unit.get('unit_id')
                     if not unit_id:
                         continue
                     ancestry[unit_id] = {
@@ -120,8 +120,9 @@ class ContentSuggestionsOrchestrator(CrossSlotSessionOrchestrator):
 
     def run(self, input_data):
         """
-        Fetch course structure and ask the LLM for content improvement
-        suggestions, then return the subset relevant to self.location_id.
+        Fetch the whole course's content and ask the LLM for content
+        improvement suggestions, then return the subset relevant to
+        self.location_id.
         """
 
         openedx_processor = OpenEdXProcessor(
@@ -137,8 +138,7 @@ class ContentSuggestionsOrchestrator(CrossSlotSessionOrchestrator):
                 'status': 'OpenEdXProcessor error'
             }
 
-        outline = json.loads(content_result.get('outline') or '[]')
-        ancestry_map = self._build_ancestry_map(outline)
+        ancestry_map = self._build_ancestry_map(content_result.get('sections'))
         known_location_ids = self._known_location_ids(ancestry_map)
 
         llm_input_content = str(content_result)
