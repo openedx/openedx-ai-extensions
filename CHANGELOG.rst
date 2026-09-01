@@ -16,6 +16,15 @@ Unreleased
 
 *
 
+2.6.0 – 2026-09-01
+**********************************************
+
+Changed
+=======
+
+* Relaxed the ``tutor`` and ``tutor-mfe`` upper bounds from ``<22`` to ``<23`` to
+  support Open edX Verawood (tutor 22 / tutor-mfe 22).
+
 1.0.0 – 2025-12-24
 **********************************************
 
