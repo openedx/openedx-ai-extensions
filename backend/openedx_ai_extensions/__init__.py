@@ -2,4 +2,4 @@
 A experimental plugin for Open edX designed to explore AI extensibility.
 """
 
-__version__ = "2.5.1"
+__version__ = "2.10.0"
