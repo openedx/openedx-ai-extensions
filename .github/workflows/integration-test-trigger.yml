@@ -40,16 +40,40 @@ jobs:
 
       - name: Dispatch integration workflow
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          HEAD_REPO: ${{ steps.pr.outputs.head_repo }}
         with:
           script: |
+            const { HEAD_SHA, HEAD_REF, HEAD_REPO } = process.env;
+
+            // The dispatched run always checks out the PR's code, but the workflow
+            // DEFINITION comes from whichever ref is dispatched here — so with
+            // ref 'main', a change to integration-tests.yml itself (a new secret in
+            // env:, a new step) cannot be exercised until after it is merged.
+            //
+            // A workflow can only be dispatched from a ref that exists in THIS
+            // repository, so a fork's branch is not addressable. Same-repo PRs
+            // therefore run their own copy of integration-tests.yml; fork PRs keep
+            // running main's copy, which also keeps a fork from choosing for itself
+            // which secrets enter the job environment.
+            const sameRepo = HEAD_REPO === `${context.repo.owner}/${context.repo.repo}`;
+
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'integration-tests.yml',
-              ref: 'main',
+              ref: sameRepo ? HEAD_REF : 'main',
               inputs: {
-                sha: '${{ steps.pr.outputs.head_sha }}',
-                ref: '${{ steps.pr.outputs.head_ref }}',
-                repository: '${{ steps.pr.outputs.head_repo }}'
+                sha: HEAD_SHA,
+                ref: HEAD_REF,
+                repository: HEAD_REPO
               }
             });
+
+            core.notice(
+              sameRepo
+                ? `Dispatched integration-tests.yml from ${HEAD_REF} (PR branch).`
+                : `Dispatched integration-tests.yml from main (${HEAD_REPO} is a fork).`
+            );
