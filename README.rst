@@ -227,3 +227,21 @@ This repository is covered by the Open edX maintainers program and the current m
 - `GitHub Issues <https://github.com/openedx/openedx-ai-extensions/issues>`_
 
 **Note:** As this is an experimental project, support is provided on a best-effort basis.
+
+Continuous Live Integration Testing
+***********************************
+
+Beyond the standard unit test suite, this repository is continuously tested against
+live LLM providers. On every merge to ``main`` and on demand from any pull request
+via a ``/integration-test`` comment. The integration suite sends real requests to
+OpenAI, Anthropic and Gemini and asserts on the responses, so provider-side changes
+are caught before a release rather than in production. See
+`ADR 0011 <docs/decisions/0011-live-llm-provider-integration-tests.md>`_.
+
+Those runs consume real API credits on every execution. Different member of the comunity support this effort.
+
+- `Axim <https://openedx.org>`_ | Anthropic
+- `eduNEXT <https://edunext.co>`_ | OpenAI
+- `Ceibal <https://ceibal.edu.uy/>`_ | Gemini
+
+We are grateful to these organizations for making continuous live testing possible.
