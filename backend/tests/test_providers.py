@@ -57,6 +57,31 @@ class TestProviderSupports:
     def test_unknown_capability_returns_false(self):
         assert provider_supports("anthropic", "nonexistent_capability") is False
 
+    def test_anthropic_requires_user_message(self):
+        assert provider_supports("anthropic", "requires_user_message") is True
+
+    def test_gemini_requires_user_message(self):
+        assert provider_supports("gemini", "requires_user_message") is True
+
+    def test_openai_does_not_require_user_message(self):
+        assert provider_supports("openai", "requires_user_message") is False
+
+    def test_gemini_does_not_support_server_side_thread_id(self):
+        """
+        LiteLLM has no Responses API config for gemini, so responses() falls
+        through to the completion bridge — there is no thread ID to chain.
+        """
+        assert provider_supports("gemini", "server_side_thread_id") is False
+
+    def test_gemini_does_not_support_multi_turn_cache(self):
+        """
+        Gemini honours cache_control by creating a server-side CachedContent
+        resource and removing the cached messages from the request, which the
+        anthropic two-breakpoint strategy is not shaped for. See the comment
+        on the gemini entry in _PROVIDER_CAPABILITIES.
+        """
+        assert provider_supports("gemini", "multi_turn_cache") is False
+
 
 class TestApplyMultiTurnCache:
     """Tests for _apply_multi_turn_cache function."""
@@ -275,3 +300,77 @@ class TestAdaptToProviderOpenAIUnaffected:
         result = adapt_to_provider("openai", params)
         for msg in result["input"]:
             assert isinstance(msg["content"], str)
+
+
+class TestAdaptToProviderGemini:
+    """
+    Verify that adapt_to_provider handles Gemini like a non-threading,
+    non-caching provider that still needs a real user message.
+    """
+
+    def _base_params(self, stream=False):
+        return {
+            "stream": stream,
+            "input": [
+                {"role": "system", "content": "You are a course assistant."},
+                {"role": "system", "content": "Course context: chapter 3."},
+                {"role": "user", "content": "Summarize chapter 3."},
+            ],
+        }
+
+    def test_no_cache_control_applied(self):
+        """Gemini must not receive anthropic-style cache_control breakpoints."""
+        params = self._base_params()
+        result = adapt_to_provider("gemini", params)
+        assert _cache_controlled_indices(result["input"]) == []
+        for msg in result["input"]:
+            assert isinstance(msg["content"], str)
+
+    def test_no_server_side_thread_id_set(self):
+        """Gemini must never receive previous_response_id."""
+        session = _make_session(remote_response_id="some-id")
+        params = self._base_params()
+        result = adapt_to_provider(
+            "gemini", params, user_session=session, input_data="Summarize chapter 3."
+        )
+        assert "previous_response_id" not in result
+
+    def test_streaming_converts_input_to_messages(self):
+        """
+        Without server_side_thread_id, streaming params are converted from
+        Responses API shape to Completion API shape.
+        """
+        params = self._base_params(stream=True)
+        result = adapt_to_provider("gemini", params)
+        assert "input" not in result
+        assert "messages" in result
+        assert _roles(result["messages"]) == ["system", "system", "user"]
+
+    def test_dummy_user_message_injected_when_no_user_message(self):
+        """
+        System-only requests would otherwise reach Gemini with empty contents,
+        which LiteLLM papers over by injecting a placeholder " " user turn.
+        """
+        params = {
+            "stream": False,
+            "input": [
+                {"role": "system", "content": "You are a course assistant."},
+                {"role": "system", "content": "Course context."},
+            ],
+        }
+        result = adapt_to_provider("gemini", params, has_user_input=False)
+        assert _roles(result["input"]) == ["system", "system", "user"]
+        assert result["input"][-1]["content"].strip()
+
+    def test_input_data_used_as_user_message_when_missing(self):
+        """When input_data is available it is preferred over the generic filler."""
+        params = {
+            "stream": False,
+            "input": [
+                {"role": "system", "content": "System prompt."},
+            ],
+        }
+        result = adapt_to_provider(
+            "gemini", params, has_user_input=False, input_data="Explain photosynthesis."
+        )
+        assert result["input"][-1] == {"role": "user", "content": "Explain photosynthesis."}
