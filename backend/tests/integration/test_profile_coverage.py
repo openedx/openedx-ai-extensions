@@ -88,6 +88,10 @@ PROFILE_CASES = [
         id="anthropic-custom-prompt",
     ),
     pytest.param(
+        ProfileCase("test_gemini", "GEMINI_API_KEY", "base/custom_prompt.json", "custom-prompt", None, 20),
+        id="gemini-custom-prompt",
+    ),
+    pytest.param(
         ProfileCase("test_openai", "OPENAI_API_KEY", "examples/openai/box_hello.json", "box-hello", None, 10),
         id="openai-box-hello",
     ),
