@@ -6,7 +6,6 @@ unusual or boundary conditions without crashing.
 """
 
 import json
-import os
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -113,39 +112,23 @@ def test_streaming_long_response_arrives_completely(
 
 @pytest.mark.live_llm
 @pytest.mark.django_db
-@pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-def test_streaming_with_response_format_openai(live_api_client, course_key):
+@pytest.mark.parametrize("provider_slug,env_var", PROVIDERS)
+def test_streaming_with_response_format_clean_outcome(
+    provider_slug, env_var, live_api_client, course_key
+):
     """
-    OpenAI streaming with a json_schema response_format must either yield
-    valid content or surface a clean error — never an unhandled 500 crash.
+    Streaming combined with a strict json_schema response_format must either
+    yield valid content or surface a clean error — never an unhandled 500.
+
+    Support for this combination varies by provider (Anthropic does not accept
+    it in all API versions), so the assertion is deliberately about the failure
+    mode, not the outcome: any provider is allowed to reject the request, none
+    is allowed to crash the plugin.
     """
+    skip_if_no_key(env_var)
     create_profile_and_scope(
-        "test_openai", course_key, "base/summary.json",
-        slug_suffix="stream-m-openai",
-        extra_llm_patch={
-            "stream": True,
-            "options": {"response_format": ANSWER_SCHEMA},
-        },
-    )
-
-    with patch(OPENEDX_PATCH, return_value=SAMPLE_UNIT_CONTENT):
-        response = _post_workflow(live_api_client)
-
-    assert response.status_code != 500, "Server crashed combining streaming + response_format"
-    assert response.status_code in (200, 400, 422)
-
-
-@pytest.mark.live_llm
-@pytest.mark.django_db
-@pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="ANTHROPIC_API_KEY not set")
-def test_streaming_with_response_format_anthropic_clean_outcome(live_api_client, course_key):
-    """
-    Anthropic does not support strict json_schema + streaming in all versions.
-    The plugin must return a clean error or degrade gracefully — never a 500.
-    """
-    create_profile_and_scope(
-        "test_anthropic", course_key, "base/summary.json",
-        slug_suffix="stream-m-anthropic",
+        provider_slug, course_key, "base/summary.json",
+        slug_suffix="stream-m",
         extra_llm_patch={
             "stream": True,
             "options": {"response_format": ANSWER_SCHEMA},
@@ -156,8 +139,9 @@ def test_streaming_with_response_format_anthropic_clean_outcome(live_api_client,
         response = _post_workflow(live_api_client)
 
     assert response.status_code != 500, (
-        "Server crashed (500) combining streaming + response_format on Anthropic"
+        f"Server crashed (500) combining streaming + response_format on {provider_slug}"
     )
+    assert response.status_code in (200, 400, 422)
 
 
 @pytest.mark.live_llm

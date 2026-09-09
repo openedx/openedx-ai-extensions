@@ -17,6 +17,7 @@ import os
 from dataclasses import dataclass
 
 import litellm
+import pytest
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,17 @@ class Judge:
         - *instruction*: INSTRUCTION it was asked to follow (authored system prompt / policy).
         - *user_input*: USER INPUT — the learner's runtime message. Optional; defaults to "".
         - *response*: RESPONSE the primary LLM produced.
+
+        Skips the calling test when the judge's own API key is absent, matching
+        how skip_if_no_key treats the providers under test: a missing key means
+        no signal, not a failure.
         """
+        if not os.environ.get(self.api_key_env):
+            pytest.skip(
+                f"{self.api_key_env} not set — skipping LLM-as-judge test "
+                f"(judge model: {self.model})"
+            )
+
         combined_schema = {
             "type": "object",
             "properties": {q.name: q.schema for q in questions},
