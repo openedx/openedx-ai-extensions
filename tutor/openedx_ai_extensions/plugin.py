@@ -4,6 +4,7 @@ from pathlib import Path
 
 import importlib_resources
 from tutor import hooks
+from tutor.__about__ import __version__ as TUTOR_VERSION
 from tutormfe.hooks import PLUGIN_SLOTS
 
 
@@ -43,10 +44,27 @@ def _mount_plugin(mounts, path):
 # Configuration defaults
 ########################
 
+def _tutor_major_version() -> int:
+    """Major version of the running Tutor, which tracks the Open edX release."""
+    try:
+        return int(TUTOR_VERSION.split(".")[0])
+    except (AttributeError, IndexError, ValueError):
+        return 0
+
+
+# Studio grew a paged unit sidebar (UnitSidebarPagesContext) in Verawood. On
+# earlier releases that module does not exist, so the import that reaches it must
+# not be emitted at all. Operators running a fork that lacks it can override this.
+UNIT_SIDEBAR_PAGES_RELEASE = 22
+
 hooks.Filters.CONFIG_DEFAULTS.add_items([
     ("AI_EXTENSIONS_ENABLE_LLM_CACHE", False),
     ("AI_EXTENSIONS_LLM_CACHE", {}),
     ("AI_EXTENSIONS_ENABLE_EVENT_BUS_CONSUMER", False),
+    (
+        "AI_EXTENSIONS_ENABLE_UNIT_SIDEBAR_PAGE",
+        _tutor_major_version() >= UNIT_SIDEBAR_PAGES_RELEASE,
+    ),
 ])
 
 # Actually connects the patch files as tutor env patches
@@ -94,18 +112,26 @@ PLUGIN_SLOTS.add_items(
             },
           }""",
         ),
+        # Wrapping rather than inserting: on Verawood the default contents are
+        # the paged sidebar, and an inserted widget lands beside it instead of
+        # in it. AIUnitSidebarPanel adds itself as a page when the sidebar has
+        # pages, and appends its boxes below it when it does not, so this one
+        # contribution covers both the new and the legacy sidebar.
         (
             "authoring",
             "org.openedx.frontend.authoring.course_unit_sidebar.v2",
             """
           {
-            op: PLUGIN_OPERATIONS.Insert,
-            widget: {
-                id: 'ai-assist-button-course-outline-sidebar',
-                priority: 60,
-                type: DIRECT_PLUGIN,
-                RenderWidget: ConfigurableAIAssistance,
-            },
+            op: PLUGIN_OPERATIONS.Wrap,
+            widgetId: 'default_contents',
+            wrapper: ({ component, pluginProps }) => (
+              <AIUnitSidebarPanel
+                PagesContext={AIUnitSidebarPagesContext}
+                {...pluginProps}
+              >
+                {component}
+              </AIUnitSidebarPanel>
+            ),
           }""",
         ),
         (

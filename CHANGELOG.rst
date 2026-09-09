@@ -14,7 +14,24 @@ Change Log
 Unreleased
 **********
 
-*
+Added
+=====
+
+* ``AIUnitSidebarPanel``: adds an AI page, marked by the ``AutoAwesome`` sparkle
+  icon, to Studio's redesigned unit sidebar. The page hosts one box per
+  configured ``ui_slot_selector_id``, so further AI experiences are added with a
+  workflow scope and a list entry rather than new UI code.
+* ``AI_EXTENSIONS_ENABLE_UNIT_SIDEBAR_PAGE`` tutor setting, defaulting to true on
+  Verawood (tutor 22) and above.
+
+Changed
+=======
+
+* The ``course_unit_sidebar.v2`` contribution now wraps the sidebar instead of
+  inserting a widget beside it. On Verawood the widget joins the sidebar's icon
+  rail; where the paged sidebar is absent — earlier releases, or Verawood with
+  ``ENABLE_UNIT_PAGE_NEW_DESIGN`` off — the boxes are appended below the legacy
+  sidebar as before. One contribution, no per-release UI.
 
 2.6.0 – 2026-09-01
 **********************************************
