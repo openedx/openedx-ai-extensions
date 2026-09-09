@@ -322,7 +322,7 @@ class TestAdaptToProviderGemini:
         """Gemini must not receive anthropic-style cache_control breakpoints."""
         params = self._base_params()
         result = adapt_to_provider("gemini", params)
-        assert _cache_controlled_indices(result["input"]) == []
+        assert not _cache_controlled_indices(result["input"])
         for msg in result["input"]:
             assert isinstance(msg["content"], str)
 

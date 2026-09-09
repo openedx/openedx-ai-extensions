@@ -34,7 +34,8 @@ Gemini
 - **Model Example**: ``gemini/gemini-3.1-flash-lite``
 - **Note**: Prompts optimized for OpenAI; may require adjustment. Gemini has no
   server-side conversation threading through LiteLLM, so multi-turn history is
-  resent on every request. See :ref:`gemini-notes` below.
+  resent on every request, and prompt caching is not enabled for it. See
+  ADR 0012 for the full rationale.
 
 Ollama
 ======
