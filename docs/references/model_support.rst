@@ -26,6 +26,17 @@ Anthropic
 - **Model Example**: ``anthropic/claude-3-haiku-20240307``
 - **Note**: Prompts optimized for OpenAI; may require adjustment
 
+Gemini
+======
+
+- **Provider**: Google Gemini (via Google AI Studio)
+- **Status**: ✅ Supported
+- **Model Example**: ``gemini/gemini-3.1-flash-lite``
+- **Note**: Prompts optimized for OpenAI; may require adjustment. Gemini has no
+  server-side conversation threading through LiteLLM, so multi-turn history is
+  resent on every request, and prompt caching is not enabled for it. See
+  ADR 0012 for the full rationale.
+
 Ollama
 ======
 
@@ -49,14 +60,16 @@ The following table shows which processors have been tested with each provider:
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 17 17 17 17
+   :widths: 26 14 14 14 14 14
 
    * - Processor
      - OpenAI
      - Anthropic
+     - Gemini
      - Ollama
      - Deepseek
    * - LLMProcessor(Threaded)
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -66,7 +79,9 @@ The following table shows which processors have been tested with each provider:
      - ✅
      - ✅
      - ✅
+     - ✅
    * - EducatorAssistantProcessor
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -90,6 +105,10 @@ Configure AI providers in your Open edX settings using the ``AI_EXTENSIONS`` con
        "my-anthropic": {
            "API_KEY": "sk-ant-your-anthropic-api-key",
            "MODEL": "anthropic/claude-3-haiku-20240307"
+       },
+       "my-gemini": {
+           "API_KEY": "your-google-ai-studio-api-key",
+           "MODEL": "gemini/gemini-3.1-flash-lite"
        },
        "my-ollama": {
            "API_BASE": "http://your-ollama-server:11434",

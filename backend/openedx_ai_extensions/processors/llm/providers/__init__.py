@@ -24,6 +24,16 @@ _PROVIDER_CAPABILITIES = {
         # user message (becomes the lookback target for the next turn). See ADR 0010.
         # Affects: adapt_to_provider (_apply_multi_turn_cache).
         "multi_turn_cache",
+        # Affects: adapt_to_provider.
+        # Provider rejects (or degrades) a conversation carrying only system messages.
+        # Anthropic returns an API error;
+        "requires_user_message",
+    },
+    "gemini": {
+        # Affects: adapt_to_provider.
+        # Gemini maps system messages to system_instruction, leaving "contents" empty
+        # and LiteLLM then injects a placeholder " " user turn rather than failing
+        "requires_user_message",
     },
 }
 
@@ -67,8 +77,8 @@ def adapt_to_provider(  # pylint: disable=unused-argument
             if "input" in params:
                 params["input"] = [{"role": "user", "content": input_data}]
 
-    if provider == "anthropic":
-        # Anthropic requires at least one user message in the conversation.
+    if provider_supports(provider, "requires_user_message"):
+        # These providers need at least one user message in the conversation.
         # Check unconditionally: input_data may be present but never added to the
         # input list (e.g. initial chat_with_context call where _build_response_api_params
         # only puts system messages in params["input"]).

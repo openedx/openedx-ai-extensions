@@ -39,6 +39,7 @@ User = get_user_model()
 PROVIDERS = [
     pytest.param("test_openai", "OPENAI_API_KEY", id="openai"),
     pytest.param("test_anthropic", "ANTHROPIC_API_KEY", id="anthropic"),
+    pytest.param("test_gemini", "GEMINI_API_KEY", id="gemini"),
 ]
 
 INVALID_CREDENTIALS = {
@@ -51,6 +52,10 @@ INVALID_CREDENTIALS = {
             "sk-ant-api03-invalid000000000000000000000000000000000000000000000000000000000000000000000000000AA"
         ),
         "bad_model": "anthropic/claude-nonexistent-model-2099",
+    },
+    "test_gemini": {
+        "bad_key": "AIzaSyInvalid00000000000000000000000000",
+        "bad_model": "gemini/gemini-nonexistent-model-2099",
     },
 }
 

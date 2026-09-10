@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_OPENAI_MODEL = "openai/gpt-5.4-mini"
 DEFAULT_ANTHROPIC_MODEL = "anthropic/claude-haiku-4-5"
+DEFAULT_GEMINI_MODEL = "gemini/gemini-3.1-flash-lite"
 
 DEFAULT_FIELD_FILTERS = {
     "allowed_fields": [
@@ -150,3 +151,5 @@ def plugin_settings(settings):
             configs["openai"]["MODEL"] = DEFAULT_OPENAI_MODEL
         if "anthropic" in configs and "MODEL" not in configs["anthropic"]:
             configs["anthropic"]["MODEL"] = DEFAULT_ANTHROPIC_MODEL
+        if "gemini" in configs and "MODEL" not in configs["gemini"]:
+            configs["gemini"]["MODEL"] = DEFAULT_GEMINI_MODEL
