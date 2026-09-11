@@ -112,11 +112,10 @@ PLUGIN_SLOTS.add_items(
             },
           }""",
         ),
-        # Wrapping rather than inserting: on Verawood the default contents are
-        # the paged sidebar, and an inserted widget lands beside it instead of
-        # in it. AIUnitSidebarPanel adds itself as a page when the sidebar has
-        # pages, and appends its boxes below it when it does not, so this one
-        # contribution covers both the new and the legacy sidebar.
+        # The paged sidebar. Wrapping rather than inserting: on Verawood the
+        # default contents are the sidebar itself, and an inserted widget lands
+        # beside it instead of in it. AIUnitSidebarPanel re-provides the pages
+        # context with one extra page, so the box joins the icon rail.
         (
             "authoring",
             "org.openedx.frontend.authoring.course_unit_sidebar.v2",
@@ -132,6 +131,25 @@ PLUGIN_SLOTS.add_items(
                 {component}
               </AIUnitSidebarPanel>
             ),
+          }""",
+        ),
+        # The legacy sidebar, which the v2 wrapper deliberately leaves alone:
+        # Verawood falls back to it whenever ENABLE_UNIT_PAGE_NEW_DESIGN is off,
+        # and Ulmo and Teak have no paged sidebar at all. The v1 slot sits inside
+        # the sidebar's own padded, width-capped column, so the box lines up with
+        # the publish and location sections instead of hanging below them.
+        (
+            "authoring",
+            "org.openedx.frontend.authoring.course_unit_sidebar.v1",
+            """
+          {
+            op: PLUGIN_OPERATIONS.Insert,
+            widget: {
+                id: 'ai-assist-button-course-outline-sidebar',
+                priority: 60,
+                type: DIRECT_PLUGIN,
+                RenderWidget: ConfigurableAIAssistance,
+            },
           }""",
         ),
         (

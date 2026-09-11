@@ -23,15 +23,19 @@ Added
   workflow scope and a list entry rather than new UI code.
 * ``AI_EXTENSIONS_ENABLE_UNIT_SIDEBAR_PAGE`` tutor setting, defaulting to true on
   Verawood (tutor 22) and above.
+* A ``course_unit_sidebar.v1`` contribution for the legacy sidebar, which
+  Verawood falls back to whenever ``ENABLE_UNIT_PAGE_NEW_DESIGN`` is off and
+  which is the only sidebar on earlier releases. That slot sits inside the
+  sidebar's own padded, width-capped column, so the box lines up with the
+  publish and location sections instead of hanging below them. The widget id is
+  unchanged, so existing ``AIWorkflowScope`` rows keep matching.
 
 Changed
 =======
 
 * The ``course_unit_sidebar.v2`` contribution now wraps the sidebar instead of
-  inserting a widget beside it. On Verawood the widget joins the sidebar's icon
-  rail; where the paged sidebar is absent — earlier releases, or Verawood with
-  ``ENABLE_UNIT_PAGE_NEW_DESIGN`` off — the boxes are appended below the legacy
-  sidebar as before. One contribution, no per-release UI.
+  inserting a widget beside it, so on Verawood the box joins the sidebar's icon
+  rail rather than landing next to the sidebar.
 
 2.6.0 – 2026-09-01
 **********************************************

@@ -1,9 +1,27 @@
 import React, { createContext, useContext, useMemo } from 'react';
+import { getConfig } from '@edx/frontend-platform';
+import type { IntlShape } from '@edx/frontend-platform/i18n';
 import { Stack } from '@openedx/paragon';
 import { AutoAwesome } from '@openedx/paragon/icons';
 
 import ConfigurableAIAssistance from './ConfigurableAIAssistance';
 import messages from './messages';
+
+/**
+ * `react-intl`'s own `MessageDescriptor`, reached through frontend-platform so
+ * that this package pins one intl version rather than two.
+ */
+type MessageDescriptor = Parameters<IntlShape['formatMessage']>[0];
+
+/**
+ * Studio's `isUnitPageNewDesignEnabled`, inlined rather than imported: this
+ * package must stay free of authoring internals. With the flag off Studio
+ * renders the legacy sidebar, which ignores the pages context entirely, so a
+ * page registered there would never be shown.
+ */
+const isPagedSidebarActive = () => (
+  (getConfig().ENABLE_UNIT_PAGE_NEW_DESIGN?.toString().toLowerCase() ?? 'true') === 'true'
+);
 
 /**
  * A single AI box rendered inside the sidebar page.
@@ -79,8 +97,8 @@ interface AIUnitSidebarPanelProps {
   boxes?: AISidebarBox[];
   icon?: React.ComponentType;
   pageKey?: string;
-  /** A react-intl MessageDescriptor; Studio's Sidebar formats it itself. */
-  title?: any;
+  /** Formatted by Studio's Sidebar for the page heading and icon label. */
+  title?: MessageDescriptor;
   courseId?: string | null;
   blockId?: string | null;
   unitTitle?: string | null;
@@ -90,16 +108,18 @@ interface AIUnitSidebarPanelProps {
 }
 
 /**
- * Adds the AI extensions page to Studio's unit sidebar.
+ * Adds the AI extensions page to Studio's paged unit sidebar.
  *
  * Wraps the unit sidebar and re-provides its pages context with one extra
  * page, so the sparkle icon joins the sidebar's icon rail and the AI boxes
  * open, collapse and resize along with every other page.
  *
- * When there is no pages context to extend — an older release, or Verawood
- * with ENABLE_UNIT_PAGE_NEW_DESIGN turned off, which renders the legacy
- * sidebar instead — the boxes are appended below the default sidebar, which
- * is what the plugin did before the sidebar was redesigned.
+ * When the paged sidebar is not the one rendering — an older release that has
+ * no pages context, or Verawood with ENABLE_UNIT_PAGE_NEW_DESIGN turned off —
+ * this wrapper is inert and hands the sidebar straight back. The legacy
+ * sidebar gets its boxes from the `course_unit_sidebar.v1` contribution
+ * instead, which renders inside the sidebar's own padded, width-capped column
+ * rather than as an unstyled block hanging below it.
  */
 const AIUnitSidebarPanel = ({
   children = null,
@@ -129,8 +149,11 @@ const AIUnitSidebarPanel = ({
   const ActiveContext = PagesContext ?? NoPagesContext;
   const existingPages = useContext(ActiveContext);
 
+  // Both conditions matter: Studio mounts `UnitSidebarPagesProvider` whatever
+  // the flag says, so a defined context is no proof that the paged sidebar is
+  // the one on screen.
   const pages = useMemo(
-    () => (existingPages
+    () => (existingPages && isPagedSidebarActive()
       ? {
         ...existingPages,
         [pageKey]: { component: AIExtensionsSidebarPage, icon, title },
@@ -139,15 +162,15 @@ const AIUnitSidebarPanel = ({
     [existingPages, pageKey, icon, title],
   );
 
-return (
+  // Without pages the sidebar is handed straight back: rendering the boxes
+  // here as well would double them up wherever the v1 contribution also
+  // applies. The outer provider is then inert, and kept only for one shape.
+  return (
     <BoxPropsContext.Provider value={boxProps}>
       {pages ? (
         <ActiveContext.Provider value={pages}>{children}</ActiveContext.Provider>
       ) : (
-        <>
-          {children}
-          <AIExtensionsSidebarPage />
-        </>
+        children
       )}
     </BoxPropsContext.Provider>
   );

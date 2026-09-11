@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import { mergeConfig } from '@edx/frontend-platform';
 import { screen } from '@testing-library/react';
 import { renderWrapper as render } from './setupTest';
 import AIUnitSidebarPanel, { DEFAULT_UNIT_SIDEBAR_BOXES } from './AIUnitSidebarPanel';
@@ -23,21 +24,42 @@ const contextProps = {
 
 const boxSelectors = () => screen.getAllByTestId('ai-box').map((el) => el.getAttribute('data-selector'));
 
-describe('AIUnitSidebarPanel without a pages context', () => {
+/**
+ * Studio reads `ENABLE_UNIT_PAGE_NEW_DESIGN` as a string and treats anything
+ * but 'false' as on, so 'true' is the right value to reset to. `mergeConfig`
+ * warns on an undefined value, which rules out deleting the key instead.
+ */
+const setNewUnitDesign = (value: string) => {
+  mergeConfig({ ENABLE_UNIT_PAGE_NEW_DESIGN: value });
+};
+
+afterEach(() => setNewUnitDesign('true'));
+
+/**
+ * The wrapper is inert wherever the paged sidebar is not the one rendering:
+ * there the boxes come from the `course_unit_sidebar.v1` contribution, which
+ * renders inside the legacy sidebar's own column. Rendering them here as well
+ * would show two of every box.
+ */
+describe('AIUnitSidebarPanel outside the paged sidebar', () => {
   const defaultSidebar = <div data-testid="default-sidebar">default sidebar</div>;
 
-  it('renders the default sidebar with the boxes appended', () => {
+  const expectUntouchedSidebar = () => {
+    expect(screen.getByTestId('default-sidebar')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-box')).not.toBeInTheDocument();
+  };
+
+  it('hands back a sidebar it was given no pages context for', () => {
     render(
       <AIUnitSidebarPanel {...contextProps}>
         {defaultSidebar}
       </AIUnitSidebarPanel>,
     );
 
-    expect(screen.getByTestId('default-sidebar')).toBeInTheDocument();
-    expect(boxSelectors()).toEqual(DEFAULT_UNIT_SIDEBAR_BOXES.map((box) => box.selectorId));
+    expectUntouchedSidebar();
   });
 
-  it('falls back to the appended layout when the context has no provider', () => {
+  it('hands back a sidebar whose pages context has no provider', () => {
     const PagesContext = createContext<any>(undefined);
 
     render(
@@ -46,21 +68,7 @@ describe('AIUnitSidebarPanel without a pages context', () => {
       </AIUnitSidebarPanel>,
     );
 
-    expect(screen.getByTestId('default-sidebar')).toBeInTheDocument();
-    expect(screen.getAllByTestId('ai-box')).toHaveLength(1);
-  });
-
-  it('forwards the unit context to the appended boxes', () => {
-    render(
-      <AIUnitSidebarPanel {...contextProps} unitTitle="Course Outline">
-        {defaultSidebar}
-      </AIUnitSidebarPanel>,
-    );
-
-    const [box] = screen.getAllByTestId('ai-box');
-    expect(box).toHaveAttribute('data-course', contextProps.courseId);
-    expect(box).toHaveAttribute('data-location', contextProps.blockId);
-    expect(box).toHaveAttribute('data-unit-title', 'Course Outline');
+    expectUntouchedSidebar();
   });
 });
 
@@ -136,6 +144,12 @@ describe('AIUnitSidebarPanel with a pages context', () => {
     expect(getPages().aiExtensions).toBeUndefined();
   });
 
+  it('renders the default box when no list is configured', () => {
+    renderWithPages({ openPage: true });
+
+    expect(boxSelectors()).toEqual(DEFAULT_UNIT_SIDEBAR_BOXES.map((box) => box.selectorId));
+  });
+
   it('renders one box per configured selector, with the unit context', () => {
     renderWithPages({
       openPage: true,
@@ -167,5 +181,30 @@ describe('AIUnitSidebarPanel with a pages context', () => {
     const [box] = screen.getAllByTestId('ai-box');
     expect(box).toHaveAttribute('data-course', 'course-v1:edunext+02+2026');
     expect(box).toHaveAttribute('data-location', 'block-v1:other');
+  });
+
+  /**
+   * Studio mounts `UnitSidebarPagesProvider` whatever the flag says, then
+   * renders the legacy sidebar, which never reads the pages context. A page
+   * registered there would simply be invisible.
+   */
+  describe('but the new unit design turned off', () => {
+    it.each(['false', 'False'])('registers no page when the flag is %s', (value) => {
+      setNewUnitDesign(value);
+
+      const { getPages } = renderWithPages({ openPage: true });
+
+      expect(getPages().aiExtensions).toBeUndefined();
+      expect(screen.getByTestId('default-sidebar')).toBeInTheDocument();
+      expect(screen.queryByTestId('ai-box')).not.toBeInTheDocument();
+    });
+
+    it('registers the page again once the flag is back on', () => {
+      setNewUnitDesign('true');
+
+      const { getPages } = renderWithPages();
+
+      expect(getPages().aiExtensions).toBeDefined();
+    });
   });
 });
