@@ -139,20 +139,16 @@ const AIUnitSidebarPanel = ({
     [existingPages, pageKey, icon, title],
   );
 
-  if (!pages) {
-    return (
-      <BoxPropsContext.Provider value={boxProps}>
-        {children}
-        <AIExtensionsSidebarPage />
-      </BoxPropsContext.Provider>
-    );
-  }
-
-  return (
+return (
     <BoxPropsContext.Provider value={boxProps}>
-      <ActiveContext.Provider value={pages}>
-        {children}
-      </ActiveContext.Provider>
+      {pages ? (
+        <ActiveContext.Provider value={pages}>{children}</ActiveContext.Provider>
+      ) : (
+        <>
+          {children}
+          <AIExtensionsSidebarPage />
+        </>
+      )}
     </BoxPropsContext.Provider>
   );
 };
