@@ -162,3 +162,20 @@ class FlashCardsOrchestrator(ScopedSessionOrchestrator):
             'cards': None,
             'status': 'no_flashcards',
         }
+
+    def get_debug_messages(self) -> list:
+        """
+        Return debug messages including flashcard data.
+        """
+        messages = super().get_debug_messages()
+
+        metadata = self.session.metadata or {}
+        cards = metadata.get("cards")
+        if cards:
+            messages.append({
+                "role": "assistant",
+                "content": f"Stored Flashcards: {json.dumps(cards, indent=2)}",
+                "source": "metadata",
+            })
+
+        return messages

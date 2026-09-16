@@ -135,6 +135,60 @@ class SessionBasedOrchestrator(BaseOrchestrator):
             self.profile.processor_config, self.session
         )
 
+    def get_debug_messages(self) -> list:
+        """
+        Return debug messages from the session's thread and metadata.
+        """
+        import json  # pylint: disable=import-outside-toplevel
+
+        # 1. Start with the combined thread if available (for threaded workflows)
+        messages = self.session.get_combined_thread() or []
+
+        # 2. Enrich with task status and results from metadata (for non-threaded workflows)
+        metadata = self.session.metadata or {}
+
+        # Add task status if present and not already represented
+        task_status = metadata.get("task_status")
+        if task_status and not any(m.get("role") == "system" and task_status in m.get("content", "") for m in messages):
+            messages.append({
+                "role": "system",
+                "content": f"Task Status: {task_status}",
+                "source": "metadata",
+            })
+
+        # Add task status message if present
+        task_status_msg = metadata.get("task_status_message")
+        if task_status_msg:
+            messages.append({
+                "role": "system",
+                "content": f"Status Message: {task_status_msg}",
+                "source": "metadata",
+            })
+
+        # Add task result if present and not already represented
+        task_result = metadata.get("task_result")
+        if task_result:
+            # Check if task_result content is already in the thread to avoid duplication
+            # (though for non-threaded it likely won't be)
+            result_str = json.dumps(task_result, indent=2)
+            if not any(result_str[:200] in str(m.get("content", "")) for m in messages):
+                messages.append({
+                    "role": "assistant",
+                    "content": result_str,
+                    "source": "metadata",
+                })
+
+        # Add task error if present
+        task_error = metadata.get("task_error")
+        if task_error:
+            messages.append({
+                "role": "error",
+                "content": task_error,
+                "source": "metadata",
+            })
+
+        return messages
+
     def run(self, input_data):
         raise NotImplementedError("Subclasses must implement run method")
 

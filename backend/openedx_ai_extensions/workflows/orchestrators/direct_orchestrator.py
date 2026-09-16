@@ -311,3 +311,28 @@ class EducatorAssistantOrchestrator(SessionBasedOrchestrator):
             'status': 'completed',
             'response': collection_url,
         }
+
+    def get_debug_messages(self) -> list:
+        """
+        Return debug messages including question slots data.
+        """
+        messages = super().get_debug_messages()
+
+        metadata = self.session.metadata or {}
+        question_slots = metadata.get("question_slots")
+        if question_slots:
+            messages.append({
+                "role": "assistant",
+                "content": f"Stored Question Slots: {json.dumps(question_slots, indent=2)}",
+                "source": "metadata",
+            })
+
+        collection_url = metadata.get("collection_url")
+        if collection_url:
+            messages.append({
+                "role": "assistant",
+                "content": f"Saved Collection URL: {collection_url}",
+                "source": "metadata",
+            })
+
+        return messages

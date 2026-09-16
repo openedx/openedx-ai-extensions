@@ -559,6 +559,93 @@ class TestAIWorkflowSessionDebugThreads:
         # content is still present as a human-readable fallback
         assert "get_weather" in item["content"]
 
+    @patch("openedx_ai_extensions.workflows.orchestrators.BaseOrchestrator.get_orchestrator")
+    def test_get_debug_thread_delegates_to_orchestrator(self, mock_get_orchestrator, session_with_ids):
+        """Verify that get_debug_thread calls the orchestrator's get_debug_messages."""
+        mock_orchestrator = Mock()
+        mock_orchestrator.get_debug_messages.return_value = [{"role": "system", "content": "test"}]
+        mock_get_orchestrator.return_value = mock_orchestrator
+
+        result = session_with_ids.get_debug_thread()
+
+        assert result == [{"role": "system", "content": "test"}]
+        mock_get_orchestrator.assert_called_once()
+        mock_orchestrator.get_debug_messages.assert_called_once()
+
+    def test_session_based_orchestrator_debug_messages_with_metadata(self, session_no_ids):
+        """Test that SessionBasedOrchestrator synthesizes messages from metadata."""
+        # pylint: disable=import-outside-toplevel
+        from openedx_ai_extensions.workflows.orchestrators.session_based_orchestrator import SessionBasedOrchestrator
+
+        session_no_ids.metadata = {
+            "task_status": "completed",
+            "task_result": {"answer": "42"},
+            "task_status_message": "All done"
+        }
+        session_no_ids.save()
+
+        orchestrator = SessionBasedOrchestrator(
+            workflow=session_no_ids.scope,
+            user=session_no_ids.user,
+            context={}
+        )
+        # Ensure it uses the session we just updated
+        orchestrator.session = session_no_ids
+
+        messages = orchestrator.get_debug_messages()
+
+        # Should have messages for status, status message, and result
+        assert any("Task Status: completed" in m["content"] for m in messages)
+        assert any("Status Message: All done" in m["content"] for m in messages)
+        assert any("42" in m["content"] for m in messages)
+        assert all(m["source"] == "metadata" for m in messages)
+
+    def test_flashcards_orchestrator_debug_messages(self, session_no_ids):
+        """Test that FlashCardsOrchestrator includes cards in debug messages."""
+        # pylint: disable=import-outside-toplevel
+        from openedx_ai_extensions.workflows.orchestrators.flashcards_orchestrator import FlashCardsOrchestrator
+
+        session_no_ids.metadata = {
+            "cards": [{"question": "Q1", "answer": "A1"}]
+        }
+        session_no_ids.save()
+
+        orchestrator = FlashCardsOrchestrator(
+            workflow=session_no_ids.scope,
+            user=session_no_ids.user,
+            context={}
+        )
+        orchestrator.session = session_no_ids
+
+        messages = orchestrator.get_debug_messages()
+
+        assert any("Stored Flashcards" in m["content"] for m in messages)
+        assert any("Q1" in m["content"] for m in messages)
+
+    def test_educator_assistant_orchestrator_debug_messages(self, session_no_ids):
+        """Test that EducatorAssistantOrchestrator includes question slots."""
+        # pylint: disable=import-outside-toplevel
+        from openedx_ai_extensions.workflows.orchestrators.direct_orchestrator import EducatorAssistantOrchestrator
+
+        session_no_ids.metadata = {
+            "question_slots": [{"versions": [{"q": "v1"}]}],
+            "collection_url": "http://example.com"
+        }
+        session_no_ids.save()
+
+        orchestrator = EducatorAssistantOrchestrator(
+            workflow=session_no_ids.scope,
+            user=session_no_ids.user,
+            context={}
+        )
+        orchestrator.session = session_no_ids
+
+        messages = orchestrator.get_debug_messages()
+
+        assert any("Stored Question Slots" in m["content"] for m in messages)
+        assert any("Saved Collection URL" in m["content"] for m in messages)
+        assert any("http://example.com" in m["content"] for m in messages)
+
 
 # ==========================================================================
 # AIWorkflowScope Resolution (multi-scope per location)
