@@ -120,6 +120,13 @@ export function registerComponents(
 interface ConfigurableAIAssistanceProps {
   fallbackConfig?: PluginConfiguration | null;
   onConfigLoad?: (config: PluginConfiguration) => void;
+  /**
+   * Called when the backend resolves no workflow profile for this selector —
+   * a 404, or a `no_config` status — which is when this component renders
+   * nothing. Optional, so hosts that are happy with it hiding itself silently
+   * need not pass anything.
+   */
+  onNoConfig?: () => void;
   onConfigError?: (error) => void;
   id?: string | null;
   courseId?: string | null;
@@ -131,6 +138,7 @@ interface ConfigurableAIAssistanceProps {
 const ConfigurableAIAssistance = ({
   fallbackConfig = null,
   onConfigLoad,
+  onNoConfig,
   onConfigError,
   id = null,
   ...additionalProps
@@ -178,6 +186,12 @@ const ConfigurableAIAssistance = ({
 
           if (onConfigLoad && fetchedConfig) {
             onConfigLoad(fetchedConfig);
+          }
+
+          // `fetchConfiguration` collapses both "no scope configured" cases —
+          // a 404 and a `no_config` status — to null, so one branch covers them.
+          if (onNoConfig && !fetchedConfig) {
+            onNoConfig();
           }
         }
       } catch (err: any) {

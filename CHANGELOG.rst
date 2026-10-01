@@ -29,6 +29,14 @@ Added
   sidebar's own padded, width-capped column, so the box lines up with the
   publish and location sections instead of hanging below them. The widget id is
   unchanged, so existing ``AIWorkflowScope`` rows keep matching.
+* An optional ``onNoConfig`` callback on ``ConfigurableAIAssistance``, fired
+  where it renders nothing because the backend resolved no workflow profile —
+  a 404 or a ``no_config`` status. Hosts that are happy with it hiding itself
+  silently, such as the learning MFE, need not pass anything.
+* An empty state on the sidebar page, shown once every box reports no
+  configuration. The page holds a permanent place on the icon rail, so unlike
+  the inserted widget it replaced it cannot hide itself; waiting on all boxes
+  keeps the empty state from flashing up while the configured ones load.
 
 Changed
 =======

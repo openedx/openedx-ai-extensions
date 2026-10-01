@@ -1,21 +1,47 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect as mockUseEffect } from 'react';
 import { mergeConfig } from '@edx/frontend-platform';
 import { screen } from '@testing-library/react';
 import { renderWrapper as render } from './setupTest';
 import AIUnitSidebarPanel, { DEFAULT_UNIT_SIDEBAR_BOXES } from './AIUnitSidebarPanel';
 
+/**
+ * What each selector's box should report back, keyed by selector id. A box with
+ * no entry reports a configuration, which is the case most tests care about.
+ * `loading` means it never reports at all.
+ */
+const mockOutcomes: Record<string, 'configured' | 'none' | 'error' | 'loading'> = {};
+
 jest.mock('./ConfigurableAIAssistance', () => ({
   __esModule: true,
-  default: (props: any) => (
-    <div
-      data-testid="ai-box"
-      data-selector={props.uiSlotSelectorId}
-      data-course={props.courseId ?? ''}
-      data-location={props.locationId ?? ''}
-      data-unit-title={props.unitTitle ?? ''}
-    />
-  ),
+  default: ({
+    uiSlotSelectorId, onConfigLoad, onNoConfig, onConfigError, ...props
+  }: any) => {
+    const outcome = mockOutcomes[uiSlotSelectorId] ?? 'configured';
+
+    mockUseEffect(() => {
+      if (outcome === 'configured') { onConfigLoad?.({}); }
+      if (outcome === 'none') { onNoConfig?.(); }
+      if (outcome === 'error') { onConfigError?.(new Error('no profile')); }
+    }, [outcome, onConfigLoad, onNoConfig, onConfigError]);
+
+    // The real component renders nothing when the backend resolves no profile.
+    if (outcome === 'none' || outcome === 'loading') { return null; }
+
+    return (
+      <div
+        data-testid="ai-box"
+        data-selector={uiSlotSelectorId}
+        data-course={props.courseId ?? ''}
+        data-location={props.locationId ?? ''}
+        data-unit-title={props.unitTitle ?? ''}
+      />
+    );
+  },
 }));
+
+beforeEach(() => {
+  Object.keys(mockOutcomes).forEach((key) => { delete mockOutcomes[key]; });
+});
 
 const contextProps = {
   courseId: 'course-v1:edunext+01+2026-mit',
@@ -181,6 +207,54 @@ describe('AIUnitSidebarPanel with a pages context', () => {
     const [box] = screen.getAllByTestId('ai-box');
     expect(box).toHaveAttribute('data-course', 'course-v1:edunext+02+2026');
     expect(box).toHaveAttribute('data-location', 'block-v1:other');
+  });
+
+  /**
+   * The page keeps a permanent place on the icon rail, so when nothing is
+   * configured it has to say so rather than open blank.
+   */
+  describe('with no workflow configured', () => {
+    const twoBoxes = [{ selectorId: 'quiz-generator' }, { selectorId: 'flashcards' }];
+    const emptyState = () => screen.queryByTestId('ai-sidebar-empty');
+
+    it('explains itself when every box reports no configuration', () => {
+      mockOutcomes['quiz-generator'] = 'none';
+      mockOutcomes.flashcards = 'none';
+
+      renderWithPages({ openPage: true, boxes: twoBoxes });
+
+      expect(emptyState()).toBeInTheDocument();
+      expect(screen.getByText('AI Extensions is enabled')).toBeInTheDocument();
+      expect(screen.queryByTestId('ai-box')).not.toBeInTheDocument();
+    });
+
+    it('stays quiet when one box is configured', () => {
+      mockOutcomes['quiz-generator'] = 'none';
+      mockOutcomes.flashcards = 'configured';
+
+      renderWithPages({ openPage: true, boxes: twoBoxes });
+
+      expect(emptyState()).not.toBeInTheDocument();
+      expect(boxSelectors()).toEqual(['flashcards']);
+    });
+
+    it('stays quiet while a box is still loading', () => {
+      mockOutcomes['quiz-generator'] = 'none';
+      mockOutcomes.flashcards = 'loading';
+
+      renderWithPages({ openPage: true, boxes: twoBoxes });
+
+      expect(emptyState()).not.toBeInTheDocument();
+    });
+
+    it('stays quiet when a box failed, leaving its own error showing', () => {
+      mockOutcomes['quiz-generator'] = 'none';
+      mockOutcomes.flashcards = 'error';
+
+      renderWithPages({ openPage: true, boxes: twoBoxes });
+
+      expect(emptyState()).not.toBeInTheDocument();
+    });
   });
 
   /**

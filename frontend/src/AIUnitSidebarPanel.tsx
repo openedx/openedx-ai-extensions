@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, {
+  createContext, useCallback, useContext, useMemo, useState,
+} from 'react';
 import { getConfig } from '@edx/frontend-platform';
-import type { IntlShape } from '@edx/frontend-platform/i18n';
-import { Stack } from '@openedx/paragon';
-import { AutoAwesome } from '@openedx/paragon/icons';
+import { useIntl, type IntlShape } from '@edx/frontend-platform/i18n';
+import { Alert, Stack } from '@openedx/paragon';
+import { AutoAwesome, Info } from '@openedx/paragon/icons';
 
 import ConfigurableAIAssistance from './ConfigurableAIAssistance';
 import messages from './messages';
@@ -62,15 +64,36 @@ const BoxPropsContext = createContext<BoxProps>({
  */
 const NoPagesContext = createContext<any>(undefined);
 
+/** What a box has reported back about its own workflow profile. */
+type BoxState = 'loading' | 'configured' | 'none' | 'error';
+
 /**
  * The AI page itself: one box per configured selector.
+ *
+ * Unlike the inserted widget this replaced, the page has a permanent place on
+ * the sidebar's icon rail, so it cannot simply hide itself when nothing is
+ * configured — an author who opens it would be left with a blank panel. Each
+ * box reports its outcome, and when every one of them comes back with no
+ * configuration the page explains itself instead.
  *
  * Defined at module scope so its identity is constant. Studio stores it in the
  * sidebar's pages object, and a fresh component type on every render would
  * remount the whole page and lose its state.
  */
 const AIExtensionsSidebarPage = () => {
+  const intl = useIntl();
   const { boxes, context } = useContext(BoxPropsContext);
+  const [states, setStates] = useState<Record<string, BoxState>>({});
+
+  const markBox = useCallback((selectorId: string, state: BoxState) => {
+    setStates((prev) => (prev[selectorId] === state ? prev : { ...prev, [selectorId]: state }));
+  }, []);
+
+  // A box absent from `states` has not reported yet and so still counts as
+  // loading. Waiting on every box is what keeps the empty state from flashing
+  // up before the configured ones have answered.
+  const noneConfigured = boxes.length > 0
+    && boxes.every((box) => states[box.selectorId] === 'none');
 
   return (
     <Stack gap={3} className="pt-3">
@@ -78,9 +101,22 @@ const AIExtensionsSidebarPage = () => {
         <ConfigurableAIAssistance
           key={box.selectorId}
           uiSlotSelectorId={box.selectorId}
+          onConfigLoad={() => markBox(box.selectorId, 'configured')}
+          onNoConfig={() => markBox(box.selectorId, 'none')}
+          onConfigError={() => markBox(box.selectorId, 'error')}
           {...context}
         />
       ))}
+      {noneConfigured && (
+        <Alert variant="info" icon={Info} data-testid="ai-sidebar-empty">
+          <Alert.Heading>
+            {intl.formatMessage(messages['ai.extensions.unit.sidebar.empty.heading'])}
+          </Alert.Heading>
+          <p className="mb-0">
+            {intl.formatMessage(messages['ai.extensions.unit.sidebar.empty.message'])}
+          </p>
+        </Alert>
+      )}
     </Stack>
   );
 };

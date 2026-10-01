@@ -135,6 +135,16 @@ const messages = defineMessages({
     defaultMessage: 'AI Extensions',
     description: 'Title of the AI page in the Studio unit sidebar, used for its icon label and heading',
   },
+  'ai.extensions.unit.sidebar.empty.heading': {
+    id: 'ai.extensions.unit.sidebar.empty.heading',
+    defaultMessage: 'AI Extensions is enabled',
+    description: 'Heading shown on the AI sidebar page when no workflow is configured for the unit',
+  },
+  'ai.extensions.unit.sidebar.empty.message': {
+    id: 'ai.extensions.unit.sidebar.empty.message',
+    defaultMessage: 'No AI tools are configured for this unit. Contact your platform administrator to enable one for this course or unit.',
+    description: 'Explains to a course author why the AI sidebar page has nothing in it',
+  },
   // Educator Library Assist Messages
   'ai.extensions.educator.title': {
     id: 'ai.extensions.educator.title',
