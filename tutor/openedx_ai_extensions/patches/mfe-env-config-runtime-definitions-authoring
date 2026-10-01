@@ -1,1 +1,12 @@
-const { ConfigurableAIAssistance, AIExtensionsCard } = await import("@openedx/openedx-ai-extensions-ui");
+const { ConfigurableAIAssistance, AIExtensionsCard, AIUnitSidebarPanel } = await import("@openedx/openedx-ai-extensions-ui");
+{%- if AI_EXTENSIONS_ENABLE_UNIT_SIDEBAR_PAGE %}
+/* Studio's unit sidebar page registry. This module only exists in the authoring
+ * MFE, and 'CourseAuthoring' is only aliased by its webpack config. That is safe
+ * here because the enclosing `if (process.env.APP_ID == 'authoring')` is folded
+ * away at build time in every other MFE, taking this import with it. */
+const { UnitSidebarPagesContext: AIUnitSidebarPagesContext } = await import("CourseAuthoring/course-unit/unit-sidebar/UnitSidebarPagesContext");
+{%- else %}
+/* Release predates Studio's unit sidebar pages: AIUnitSidebarPanel falls back
+ * to appending its boxes below the legacy sidebar. */
+const AIUnitSidebarPagesContext = null;
+{%- endif %}

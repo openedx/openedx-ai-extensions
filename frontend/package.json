@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "@edx/browserslist-config": "1.1.1",
+    "@edx/frontend-platform": "^8.7.1",
     "@edx/typescript-config": "^1.0.1",
     "@openedx/frontend-build": "14.6.0",
     "@openedx/paragon": "23.14.0",
