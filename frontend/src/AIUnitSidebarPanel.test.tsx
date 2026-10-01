@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import { mergeConfig } from '@edx/frontend-platform';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { fetchConfiguration } from './services';
 import { renderWrapper as render } from './setupTest';
 import AIUnitSidebarPanel, { DEFAULT_UNIT_SIDEBAR_BOXES } from './AIUnitSidebarPanel';
 
@@ -16,6 +17,28 @@ jest.mock('./ConfigurableAIAssistance', () => ({
     />
   ),
 }));
+
+jest.mock('./services', () => ({
+  fetchConfiguration: jest.fn(),
+  getDefaultEndpoint: () => 'http://localhost:18010/openedx-ai-extensions/v1/profile/',
+  prepareContextData: (context: any) => context,
+}));
+
+const mockFetchConfiguration = fetchConfiguration as jest.Mock;
+
+/** What the panel's profile probe resolves to, by selector id. */
+const probeResolves = (configured: Record<string, boolean>) => {
+  mockFetchConfiguration.mockImplementation(
+    ({ contextData }: any) => Promise.resolve(configured[contextData.uiSlotSelectorId] ? {} : null),
+  );
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  // Left in flight by default: tests that are not about the probe would
+  // otherwise settle it after their assertions have run, outside `act`.
+  mockFetchConfiguration.mockReturnValue(new Promise(() => {}));
+});
 
 const contextProps = {
   courseId: 'course-v1:edunext+01+2026-mit',
@@ -181,6 +204,66 @@ describe('AIUnitSidebarPanel with a pages context', () => {
     const [box] = screen.getAllByTestId('ai-box');
     expect(box).toHaveAttribute('data-course', 'course-v1:edunext+02+2026');
     expect(box).toHaveAttribute('data-location', 'block-v1:other');
+  });
+
+  /**
+   * The icon has to be drawn before any box has mounted, so the panel probes
+   * the profiles itself and greys the icon out when there is nothing to open.
+   * Studio renders a page carrying a `tooltip` as an `IconButtonWithTooltip`.
+   */
+  describe('profile probe', () => {
+    const twoBoxes = [{ selectorId: 'quiz-generator' }, { selectorId: 'flashcards' }];
+    const aiPage = (getPages: () => any) => getPages().aiExtensions;
+
+    it('disables the page and explains why when no selector is configured', async () => {
+      probeResolves({});
+
+      const { getPages } = renderWithPages({ boxes: twoBoxes });
+
+      await waitFor(() => expect(aiPage(getPages).disabled).toBe(true));
+      expect(aiPage(getPages).tooltip).toEqual(
+        expect.objectContaining({ id: 'ai.extensions.unit.sidebar.disabled.tooltip' }),
+      );
+    });
+
+    it('enables the page with no tooltip when one selector is configured', async () => {
+      probeResolves({ flashcards: true });
+
+      const { getPages } = renderWithPages({ boxes: twoBoxes });
+
+      await waitFor(() => expect(aiPage(getPages).disabled).toBe(false));
+      expect(aiPage(getPages).tooltip).toBeUndefined();
+    });
+
+    it('keeps the page disabled and untooltipped while the probe is in flight', () => {
+      mockFetchConfiguration.mockReturnValue(new Promise(() => {}));
+
+      const { getPages } = renderWithPages({ boxes: twoBoxes });
+
+      expect(aiPage(getPages).disabled).toBe(true);
+      expect(aiPage(getPages).tooltip).toBeUndefined();
+    });
+
+    it('leaves the page open when a probe fails, rather than hiding the tool', async () => {
+      mockFetchConfiguration.mockRejectedValue(new Error('gateway timeout'));
+
+      const { getPages } = renderWithPages({ boxes: twoBoxes });
+
+      await waitFor(() => expect(aiPage(getPages).disabled).toBe(false));
+      expect(aiPage(getPages).tooltip).toBeUndefined();
+    });
+
+    it('probes once per selector, with the unit context', async () => {
+      probeResolves({ flashcards: true });
+
+      renderWithPages({ boxes: twoBoxes });
+
+      await waitFor(() => expect(mockFetchConfiguration).toHaveBeenCalledTimes(2));
+      expect(mockFetchConfiguration.mock.calls.map(([args]) => args.contextData)).toEqual([
+        expect.objectContaining({ uiSlotSelectorId: 'quiz-generator', courseId: contextProps.courseId }),
+        expect.objectContaining({ uiSlotSelectorId: 'flashcards', locationId: contextProps.blockId }),
+      ]);
+    });
   });
 
   /**

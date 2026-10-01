@@ -29,6 +29,17 @@ Added
   sidebar's own padded, width-capped column, so the box lines up with the
   publish and location sections instead of hanging below them. The widget id is
   unchanged, so existing ``AIWorkflowScope`` rows keep matching.
+* An optional ``onNoConfig`` callback on ``ConfigurableAIAssistance``, fired
+  where it renders nothing because the backend resolved no workflow profile —
+  a 404 or a ``no_config`` status. Hosts that are happy with it hiding itself
+  silently, such as the learning MFE, need not pass anything.
+* The sidebar icon is now greyed out, with a tooltip explaining that nothing is
+  configured for the unit, instead of opening on an empty panel. The panel
+  resolves the workflow profiles itself so the icon's state is known before the
+  page is opened, and registers the page either way so the icon rail never
+  reflows. This uses the ``disabled``/``tooltip`` affordance Studio's own
+  ``add`` page already has. A probe that fails counts as configured, so a
+  transient error cannot quietly remove an AI tool the course does have.
 
 Changed
 =======

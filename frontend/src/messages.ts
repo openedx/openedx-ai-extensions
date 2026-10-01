@@ -135,6 +135,11 @@ const messages = defineMessages({
     defaultMessage: 'AI Extensions',
     description: 'Title of the AI page in the Studio unit sidebar, used for its icon label and heading',
   },
+  'ai.extensions.unit.sidebar.disabled.tooltip': {
+    id: 'ai.extensions.unit.sidebar.disabled.tooltip',
+    defaultMessage: 'No AI tools are configured for this unit. Contact your platform administrator to enable one for this course or unit.',
+    description: 'Tooltip on the greyed-out AI sidebar icon, explaining why the page cannot be opened',
+  },
   // Educator Library Assist Messages
   'ai.extensions.educator.title': {
     id: 'ai.extensions.educator.title',

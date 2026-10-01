@@ -1,10 +1,13 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, {
+  createContext, useContext, useEffect, useMemo, useState,
+} from 'react';
 import { getConfig } from '@edx/frontend-platform';
 import type { IntlShape } from '@edx/frontend-platform/i18n';
 import { Stack } from '@openedx/paragon';
 import { AutoAwesome } from '@openedx/paragon/icons';
 
 import ConfigurableAIAssistance from './ConfigurableAIAssistance';
+import { fetchConfiguration, getDefaultEndpoint, prepareContextData } from './services';
 import messages from './messages';
 
 /**
@@ -85,6 +88,65 @@ const AIExtensionsSidebarPage = () => {
   );
 };
 
+/** Whether any of the page's boxes has a workflow profile to show. */
+type ProbeState = 'loading' | 'configured' | 'none';
+
+/**
+ * Resolves, before the page is ever opened, whether it has anything to show.
+ *
+ * The page keeps a permanent place on the sidebar's icon rail, so the icon has
+ * to be drawn before any box has mounted. That is the one thing the boxes
+ * cannot answer for themselves, so the profiles are probed here instead and
+ * the icon is disabled when every selector comes back unconfigured.
+ *
+ * A probe that fails counts as configured: a transient error must not quietly
+ * remove an AI tool the course does have, and the box shows its own error
+ * alert once opened.
+ */
+const useProbedBoxes = (boxes: AISidebarBox[], courseId: any, locationId: any): ProbeState => {
+  const [state, setState] = useState<ProbeState>('loading');
+  const configEndpoint = getDefaultEndpoint('profile');
+  // Only the values that actually scope a profile should restart the probe;
+  // the selector list is flattened so a fresh array of the same ids does not.
+  const selectorKey = boxes.map((box) => box.selectorId).join(',');
+
+  useEffect(() => {
+    const abortController = new AbortController();
+    let cancelled = false;
+
+    setState('loading');
+
+    const probe = async () => {
+      const configured = await Promise.all(boxes.map(async (box) => {
+        try {
+          const config = await fetchConfiguration({
+            configEndpoint,
+            contextData: prepareContextData({ courseId, locationId, uiSlotSelectorId: box.selectorId }),
+            signal: abortController.signal,
+          });
+          return config !== null;
+        } catch {
+          return true;
+        }
+      }));
+
+      if (!cancelled) {
+        setState(configured.some(Boolean) ? 'configured' : 'none');
+      }
+    };
+
+    probe();
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configEndpoint, courseId, locationId, selectorKey]);
+
+  return state;
+};
+
 interface AIUnitSidebarPanelProps {
   /** The wrapped default sidebar, handed over by the FPF `Wrap` operation. */
   children?: React.ReactNode;
@@ -113,6 +175,12 @@ interface AIUnitSidebarPanelProps {
  * Wraps the unit sidebar and re-provides its pages context with one extra
  * page, so the sparkle icon joins the sidebar's icon rail and the AI boxes
  * open, collapse and resize along with every other page.
+ *
+ * The page is always registered, so the icon never shifts the rail, but it is
+ * disabled until a profile is known to exist. With nothing configured for the
+ * unit the icon greys out and explains itself on hover, which is the same
+ * affordance Studio's own `add` page uses, rather than opening on an empty
+ * panel.
  *
  * When the paged sidebar is not the one rendering — an older release that has
  * no pages context, or Verawood with ENABLE_UNIT_PAGE_NEW_DESIGN turned off —
@@ -148,6 +216,7 @@ const AIUnitSidebarPanel = ({
 
   const ActiveContext = PagesContext ?? NoPagesContext;
   const existingPages = useContext(ActiveContext);
+  const probe = useProbedBoxes(boxes, courseId, blockId);
 
   // Both conditions matter: Studio mounts `UnitSidebarPagesProvider` whatever
   // the flag says, so a defined context is no proof that the paged sidebar is
@@ -156,10 +225,20 @@ const AIUnitSidebarPanel = ({
     () => (existingPages && isPagedSidebarActive()
       ? {
         ...existingPages,
-        [pageKey]: { component: AIExtensionsSidebarPage, icon, title },
+        [pageKey]: {
+          component: AIExtensionsSidebarPage,
+          icon,
+          title,
+          // Disabled while probing too, so the page cannot be opened before
+          // its boxes are known to have anything in them.
+          disabled: probe !== 'configured',
+          tooltip: probe === 'none'
+            ? messages['ai.extensions.unit.sidebar.disabled.tooltip']
+            : undefined,
+        },
       }
       : null),
-    [existingPages, pageKey, icon, title],
+    [existingPages, pageKey, icon, title, probe],
   );
 
   // Without pages the sidebar is handed straight back: rendering the boxes
