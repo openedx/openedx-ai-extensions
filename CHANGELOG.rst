@@ -14,7 +14,39 @@ Change Log
 Unreleased
 **********
 
-*
+Added
+=====
+
+* ``AIUnitSidebarPanel``: adds an AI page, marked by the ``AutoAwesome`` sparkle
+  icon, to Studio's redesigned unit sidebar. The page hosts one box per
+  configured ``ui_slot_selector_id``, so further AI experiences are added with a
+  workflow scope and a list entry rather than new UI code.
+* ``AI_EXTENSIONS_ENABLE_UNIT_SIDEBAR_PAGE`` tutor setting, defaulting to true on
+  Verawood (tutor 22) and above.
+* A ``course_unit_sidebar.v1`` contribution for the legacy sidebar, which
+  Verawood falls back to whenever ``ENABLE_UNIT_PAGE_NEW_DESIGN`` is off and
+  which is the only sidebar on earlier releases. That slot sits inside the
+  sidebar's own padded, width-capped column, so the box lines up with the
+  publish and location sections instead of hanging below them. The widget id is
+  unchanged, so existing ``AIWorkflowScope`` rows keep matching.
+* An optional ``onNoConfig`` callback on ``ConfigurableAIAssistance``, fired
+  where it renders nothing because the backend resolved no workflow profile —
+  a 404 or a ``no_config`` status. Hosts that are happy with it hiding itself
+  silently, such as the learning MFE, need not pass anything.
+* The sidebar icon is now greyed out, with a tooltip explaining that nothing is
+  configured for the unit, instead of opening on an empty panel. The panel
+  resolves the workflow profiles itself so the icon's state is known before the
+  page is opened, and registers the page either way so the icon rail never
+  reflows. This uses the ``disabled``/``tooltip`` affordance Studio's own
+  ``add`` page already has. A probe that fails counts as configured, so a
+  transient error cannot quietly remove an AI tool the course does have.
+
+Changed
+=======
+
+* The ``course_unit_sidebar.v2`` contribution now wraps the sidebar instead of
+  inserting a widget beside it, so on Verawood the box joins the sidebar's icon
+  rail rather than landing next to the sidebar.
 
 2.6.0 – 2026-09-01
 **********************************************

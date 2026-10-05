@@ -5,6 +5,8 @@ import ConfigurableAIAssistance, {
   registerComponents,
 } from './ConfigurableAIAssistance';
 import { AIExtensionsCard, AIExtensionsSettingsModal } from './ai-extensions-settings';
+import AIUnitSidebarPanel, { DEFAULT_UNIT_SIDEBAR_BOXES } from './AIUnitSidebarPanel';
+import type { AISidebarBox } from './AIUnitSidebarPanel';
 import { REGISTRY_NAMES, getEntries } from './extensionRegistry';
 import type { RegistryEntry } from './extensionRegistry';
 import {
@@ -29,6 +31,7 @@ export * as services from './services';
  * - getEntries: Read all entries from a named registry
  * - AIExtensionsSettingsModal: Modal with tabbed settings for AI extensions (dynamic tabs)
  * - AIExtensionsCard: Card component for the Pages & Resources section (plugin slot)
+ * - AIUnitSidebarPanel: Wraps Studio's unit sidebar to add an AI page to it
  */
 export {
   GetAIAssistanceButton,
@@ -44,5 +47,7 @@ export {
   AIExtensionsCard,
   FlashcardCreator,
   FlashcardStudyResponse,
+  AIUnitSidebarPanel,
+  DEFAULT_UNIT_SIDEBAR_BOXES,
 };
-export type { RegistryEntry };
+export type { RegistryEntry, AISidebarBox };
